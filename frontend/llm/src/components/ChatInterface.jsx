@@ -298,7 +298,7 @@ const mergeTraceEvents = (inlineEvents, persistedEvents) => {
   return merged;
 };
 
-const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, actions, traceEvents: persistedTraceEvents, onAction, onInspectRefs, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
+const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, actions, traceEvents: persistedTraceEvents, onAction, onInspectRefs, onInspectKnowledge, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
   const isUser = role === 'user';
   const [isCopied, setIsCopied] = useState(false);
   
@@ -310,6 +310,24 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
   if (inlineTraceEvents.length > 0) {
     rawContent = rawContent.replace(/<<EV:(.*?)>>/gs, '').trim();
   }
+  // 知识库管理智能体的检索轨迹：每轮检索语句 + 证据列表 + 模型对证据的
+  // 检索总结。实时 SSE 与持久化回执中的 knowledge_retrieval 事件都会经
+  // runtimeEventToTrace 转换为 {type:'knowledge_retrieval'}，model_output
+  // 转换为 {type:'model_call', kind:'output'}，供"检索详情"抽屉回放检索内容。
+  const knowledgeRetrievals = traceEvents.filter(e => e.type === 'knowledge_retrieval' && e.agent === 'knowledge_base_agent');
+  const knowledgeSummaries = traceEvents
+    .filter(e => e.type === 'model_call' && e.kind === 'output' && e.agent === 'knowledge_base_agent' && e.output)
+    .map(e => {
+      try {
+        const parsed = typeof e.output === 'string' ? JSON.parse(e.output) : e.output;
+        const summary = parsed?.retrieval_summary;
+        return typeof summary === 'string' && summary.trim() ? summary.trim() : null;
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+  const hasKnowledgeRetrieval = knowledgeRetrievals.length > 0;
   const refMatch = rawContent.match(/<<REFS:(.*?)>>/);
   if (refMatch) {
     rawContent = rawContent.replace(refMatch[0], '').trim();
@@ -480,7 +498,31 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
                  <MarkdownRenderer content={rawContent} />
                )}
                
-               {references.length > 0 && (
+               {hasKnowledgeRetrieval && (
+                <div className="mt-2 pt-2 border-t border-gray-100/50">
+                  <div
+                    onClick={() => onInspectKnowledge?.({ retrievals: knowledgeRetrievals, summaries: knowledgeSummaries })}
+                    className="flex items-center gap-2 flex-wrap cursor-pointer group/kb p-1.5 -ml-1.5 rounded-lg hover:bg-orange-50 transition-colors select-none"
+                    title="点击查看知识库检索内容"
+                  >
+                    <div className="text-[10px] font-semibold text-orange-500 uppercase tracking-wider flex items-center gap-1">
+                      <Database size={12} /> 知识库检索 {knowledgeRetrievals.length} 轮
+                    </div>
+                    <div className="flex items-center gap-1.5 pl-2 border-l border-orange-100">
+                      {knowledgeRetrievals.map((kr, idx) => (
+                        <div key={idx} className="w-5 h-5 rounded flex items-center justify-center bg-orange-50 border border-orange-100 text-orange-500">
+                          <Search size={10} />
+                        </div>
+                      ))}
+                      {knowledgeSummaries.length > 0 && (
+                        <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1 rounded">{knowledgeSummaries.length} 份总结</span>
+                      )}
+                      <ChevronRight size={14} className="text-gray-300 group-hover/kb:text-orange-500 transition-colors ml-1" />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {references.length > 0 && (
                  <div className="mt-2 pt-2 border-t border-gray-100/50">
                     <div 
                       onClick={() => onInspectRefs(references, searchQuery)}
@@ -615,7 +657,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
 });
 
 // --- Retrieval Sidebar ---
-const RetrievalSidebar = ({ isOpen, onClose, refs, query }) => {
+const RetrievalSidebar = ({ isOpen, onClose, refs, query, knowledge }) => {
   const [selectedRef, setSelectedRef] = useState(null);
 
   const visibleSelectedRef = isOpen ? selectedRef : null;
@@ -624,6 +666,20 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query }) => {
     setSelectedRef(null);
     onClose();
   };
+
+  // 知识库管理智能体的检索证据映射为引用卡片，复用来源列表/详情视图。
+  const knowledgeRefs = (knowledge?.retrievals || []).flatMap(kr =>
+    (kr.evidence_items || []).map(item => ({
+      type: 'rag',
+      title: item.source_label || item.source_id || '未命名来源',
+      content: item.content_summary || item.content || '',
+      score: typeof item.confidence === 'number' ? item.confidence : undefined,
+      url: item.source_url || undefined,
+    })),
+  );
+  const knowledgeRounds = knowledge?.retrievals || [];
+  const knowledgeSummaries = knowledge?.summaries || [];
+  const allRefs = [...knowledgeRefs, ...(Array.isArray(refs) ? refs : [])];
 
   return (
     <div
@@ -703,13 +759,59 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query }) => {
                </div>
              )}
 
+             {knowledgeRounds.length > 0 && (
+               <div className="mb-6 space-y-4">
+                 <div className="flex items-center gap-2 font-semibold text-gray-700">
+                   <Database size={16} className="text-orange-500" />
+                   <span>知识库检索</span>
+                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">{knowledgeRounds.length} 轮</span>
+                 </div>
+
+                 {knowledgeRounds.map((kr, idx) => (
+                   <div key={idx} className="rounded-xl border border-orange-100 bg-orange-50/40 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                     <div className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-2">第 {idx + 1} 轮检索</div>
+                     {kr.kp_query && (
+                       <div className="mb-1.5">
+                         <div className="text-[10px] text-gray-400 font-semibold mb-0.5">知识点检索</div>
+                         <div className="p-2 bg-white rounded-lg border border-orange-100 text-xs text-gray-800 leading-relaxed">{kr.kp_query}</div>
+                       </div>
+                     )}
+                     {kr.question_query && (
+                       <div>
+                         <div className="text-[10px] text-gray-400 font-semibold mb-0.5">题目检索</div>
+                         <div className="p-2 bg-white rounded-lg border border-orange-100 text-xs text-gray-800 leading-relaxed">{kr.question_query}</div>
+                       </div>
+                     )}
+                     {(kr.evidence_items?.length || 0) > 0 && (
+                       <div className="mt-2 text-[10px] text-gray-400 font-medium">
+                         命中证据 {(kr.evidence_items || []).length} 条 · 题目候选 {(kr.question_candidates || []).length} 道
+                       </div>
+                     )}
+                   </div>
+                 ))}
+
+                 {knowledgeSummaries.length > 0 && (
+                   <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                     <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                       <Sparkles size={11} /> 检索总结（知识库智能体提炼）
+                     </div>
+                     {knowledgeSummaries.map((summary, idx) => (
+                       <div key={idx} className={`text-xs text-gray-700 leading-relaxed whitespace-pre-wrap ${idx > 0 ? 'mt-2 pt-2 border-t border-emerald-100' : ''}`}>
+                         {summary}
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+             )}
+
              <div>
                 <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
-                  <span>来源列表 ({refs.length})</span>
+                  <span>来源列表 ({allRefs.length})</span>
                 </div>
                 
                 <div className="space-y-3">
-                  {refs.map((ref, idx) => (
+                  {allRefs.map((ref, idx) => (
                     <div 
                       key={idx} 
                       onClick={() => setSelectedRef(ref)}
@@ -738,7 +840,7 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query }) => {
                        </div>
                     </div>
                   ))}
-                  {refs.length === 0 && (
+                  {allRefs.length === 0 && (
                      <div className="text-center py-10 text-gray-400 text-sm">暂无引用内容</div>
                   )}
                 </div>
@@ -1274,7 +1376,12 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   };
 
   const handleInspectRefs = (refs, query) => {
-      setRightSidebarContent({ refs, query });
+      setRightSidebarContent({ refs, query, knowledge: null });
+      setIsRightSidebarOpen(true);
+  };
+
+  const handleInspectKnowledge = (knowledge) => {
+      setRightSidebarContent({ refs: [], query: null, knowledge });
       setIsRightSidebarOpen(true);
   };
 
@@ -2298,6 +2405,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                             traceEvents={msg.traceEvents}
                           branch={msg.branch || messageBranches[msg.id]}
                             onInspectRefs={handleInspectRefs} 
+                            onInspectKnowledge={handleInspectKnowledge}
                             onFeedback={handleFeedback}
                             onRegenerate={handleRegenerate}
                           onSwitchBranch={handleSwitchBranch}
@@ -2500,6 +2608,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         onClose={() => setIsRightSidebarOpen(false)} 
         refs={rightSidebarContent.refs}
         query={rightSidebarContent.query}
+        knowledge={rightSidebarContent.knowledge}
       />
     </div>
   );

@@ -71,6 +71,13 @@ _FAILURE_STEP_CONTEXT: ContextVar[str | None] = ContextVar(
     default=None,
 )
 
+# 持久化协作回执的截断上限。metadata_json 列已升级为 LONGTEXT，
+# 这些上限只用于防止单条消息的回执无限膨胀，同时保证侧边栏
+# "模型输入 / 模型原始输出 / 模型传输"能展示完整可读的内容。
+_TRACE_MODEL_LIMIT = 12_000
+_TRACE_SUMMARY_LIMIT = 8_000
+_TRACE_CONTAINER_LIMIT = 100
+
 class PlanChangeContext(BaseModel):
     original_request: str = Field(min_length=1)
     target_layers: list[Literal["long_term", "short_term", "daily_task"]] = Field(min_length=1)
@@ -1871,7 +1878,7 @@ class PersonalizedReviewCardUseCase:
                 "step_id": getattr(envelope, "step_id", ""),
                 "agent": getattr(envelope, "producer", ""),
                 "output_summary": PersonalizedReviewCardUseCase._truncate_trace(
-                    payload, limit=3_000
+                    payload, limit=_TRACE_SUMMARY_LIMIT
                 ),
             })
         for trace in getattr(result, "model_trace", []) or []:
@@ -1889,7 +1896,7 @@ class PersonalizedReviewCardUseCase:
                     "step_id": step_id,
                     "call_id": call_id,
                     "raw_input": PersonalizedReviewCardUseCase._truncate_trace(
-                        item.get("raw_input") or {}, limit=2_000
+                        item.get("raw_input") or {}, limit=_TRACE_MODEL_LIMIT
                     ),
                 })
             if item.get("raw_output") is not None or item.get("raw_output_text") is not None:
@@ -1902,7 +1909,7 @@ class PersonalizedReviewCardUseCase:
                     "step_id": step_id,
                     "call_id": call_id,
                     "raw_output": PersonalizedReviewCardUseCase._truncate_trace(
-                        item.get("raw_output") or {}, limit=2_000
+                        item.get("raw_output") or {}, limit=_TRACE_MODEL_LIMIT
                     ),
                 })
             if item.get("transport_input") is not None or item.get("raw_output_text") is not None:
@@ -1915,9 +1922,9 @@ class PersonalizedReviewCardUseCase:
                     "step_id": step_id,
                     "call_id": call_id,
                     "request_payload": PersonalizedReviewCardUseCase._truncate_trace(
-                        item.get("transport_input") or {}, limit=2_000
+                        item.get("transport_input") or {}, limit=_TRACE_MODEL_LIMIT
                     ),
-                    "response_text": str(item.get("raw_output_text") or "")[:2_000],
+                    "response_text": str(item.get("raw_output_text") or "")[:_TRACE_MODEL_LIMIT],
                 })
         coordination = getattr(result, "coordination", None)
         repair_trace = getattr(coordination, "repair_trace", []) if coordination else []
@@ -1937,19 +1944,20 @@ class PersonalizedReviewCardUseCase:
         """Recursively truncate a trace payload so metadata stays bounded.
 
         Long strings are cut at ``limit`` characters; nested containers are
-        pruned to at most 50 entries each.  Primitive scalars pass through.
+        pruned to at most ``_TRACE_CONTAINER_LIMIT`` entries each.  Primitive
+        scalars pass through.
         """
         if isinstance(value, str):
             return value[:limit]
         if isinstance(value, dict):
             return {
                 key: PersonalizedReviewCardUseCase._truncate_trace(item, limit=limit)
-                for key, item in list(value.items())[:50]
+                for key, item in list(value.items())[:_TRACE_CONTAINER_LIMIT]
             }
         if isinstance(value, list):
             return [
                 PersonalizedReviewCardUseCase._truncate_trace(item, limit=limit)
-                for item in value[:50]
+                for item in value[:_TRACE_CONTAINER_LIMIT]
             ]
         return value
 

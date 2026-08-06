@@ -8,6 +8,7 @@ from competition_app.agents.common import envelope
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.knowledge import (
+    EvidenceItem,
     EvidencePack,
     QuestionCandidateReference,
     QuestionDetail,
@@ -31,6 +32,11 @@ from competition_app.services.conversation_history import (
 
 
 class KnowledgeBaseAgent:
+    # 模型判定证据不足时，允许补充检索的最多轮数与每轮查询数。
+    # 上限由系统强制，避免模型反复要求检索形成无限循环。
+    MAX_SUPPLEMENT_ROUNDS = 2
+    MAX_SUPPLEMENT_QUERIES = 3
+
     def __init__(
         self, retrieval_tool: KnowledgeRetrievalTool, chat_model: ChatModel | None = None
     ) -> None:
@@ -278,98 +284,70 @@ class KnowledgeBaseAgent:
             for item in pack.evidence_items
             if item.resource_type != "question"
         ]
-        try:
-            raw_quality = await self.chat_model.complete_json(
-                "knowledge_base_agent",
-                build_model_context(
-                    context,
-                    target_agent="knowledge_base_agent",
-                    prompt_skill=prompt_skill,
-                    payload={
-                        "kp": {
-                            "query": query,
-                            "resolved_kp_ids": pack.resolved_kp_ids,
-                        },
-                        "phase": "process_retrieved_content",
-                        "user_request": user_request,
-                        "evidence": semantic_facts,
-                        "retrieval_plan": retrieval_plan.model_dump(mode="json"),
-                        "repair_request": (
-                            {
-                                "issue_ids": repair_instruction.get("issue_ids", []),
-                                "locations": repair_instruction.get("locations", []),
-                                "instruction": repair_instruction.get(
-                                    "repair_instruction", ""
-                                ),
-                            }
-                            if repair_instruction
-                            else None
-                        ),
-                        "task_type": str(context.get("task_type", "personalized_review_card")),
-                        "expected_uncertainty": [],
-                        "output_schema": KnowledgeModelOutput.model_json_schema(),
-                    },
-                    permission_note=(
-                        "只处理已返回的教材、向量、BM25和可信网络参考，先筛掉无关内容，再用自然语言总结"
-                        "可供下游使用的回答依据；题目候选不参与本次总结。不得再次规划工具、伪造检索结果或生成系统ID。"
-                    ),
+        # 总结阶段支持按需补充检索：模型输出 need_more_retrieval=true 并给出
+        # 聚焦缺口的补充查询时，系统自动再检索一次并合并证据，然后重新总结；
+        # 最多 MAX_SUPPLEMENT_ROUNDS 轮，防止模型反复要求检索形成无限循环。
+        previous_summary = ""
+        model_output: KnowledgeModelOutput | None = None
+        for retrieval_round in range(1, KnowledgeBaseAgent.MAX_SUPPLEMENT_ROUNDS + 2):
+            model_output = await self._summarize_retrieved_content(
+                context=context,
+                prompt_skill=prompt_skill,
+                query=query,
+                pack=pack,
+                user_request=user_request,
+                semantic_facts=semantic_facts,
+                retrieval_plan=retrieval_plan,
+                repair_instruction=repair_instruction,
+                retrieval_round=retrieval_round,
+                previous_summary=previous_summary,
+            )
+            if (
+                not model_output.need_more_retrieval
+                or retrieval_round > KnowledgeBaseAgent.MAX_SUPPLEMENT_ROUNDS
+            ):
+                break
+            supplement_queries = self._dedupe_supplement_queries(
+                model_output.supplemental_queries,
+                {retrieval_plan.kp_query.strip(), query.strip()},
+            )
+            if not supplement_queries:
+                break
+            existing_source_ids = {item.source_id for item in pack.evidence_items}
+            extra_facts, extra_items, extra_kp_ids = await self._supplement_retrieval(
+                supplement_queries, context, existing_source_ids
+            )
+            if not extra_items:
+                break
+            semantic_facts = [*semantic_facts, *extra_facts]
+            pack = pack.model_copy(update={
+                "evidence_items": [*pack.evidence_items, *extra_items],
+                "resolved_kp_ids": list(
+                    dict.fromkeys([*pack.resolved_kp_ids, *extra_kp_ids])
                 ),
+            })
+            previous_summary = model_output.retrieval_summary
+            emit_runtime_event(
+                "knowledge_retrieval",
+                agent="knowledge_base_agent",
+                kp_query="；".join(supplement_queries),
+                question_query="",
+                retrieval_round=retrieval_round + 1,
+                evidence_items=[
+                    {
+                        "source_id": item.source_id,
+                        "content": item.content_summary,
+                        "content_summary": item.content_summary,
+                        "authority": item.authority_level,
+                        "confidence": item.confidence,
+                        "source_url": item.source_url,
+                        "resource_type": item.resource_type,
+                    }
+                    for item in extra_items
+                ],
+                question_candidates=[],
             )
-            if not isinstance(raw_quality, dict):
-                raw_quality = {}
-            forbidden_quality_fields = {"items", "evidence", "question_id", "kp_id"}.intersection(raw_quality)
-            if forbidden_quality_fields:
-                raise ValueError(
-                    "training output contract forbids objective fields: "
-                    + ", ".join(sorted(forbidden_quality_fields))
-                )
-            # The live model often answers this review step in natural language
-            # names instead of the internal field names. Normalize at the
-            # boundary; downstream code still receives a small typed object.
-            if "quality_labels" not in raw_quality:
-                nested_pack = raw_quality.get("evidence_pack")
-                nested_pack = nested_pack if isinstance(nested_pack, dict) else {}
-                raw_quality["quality_labels"] = raw_quality.get("findings") or nested_pack.get("findings", [])
-            if "uncertainty" not in raw_quality:
-                nested_pack = raw_quality.get("evidence_pack")
-                nested_pack = nested_pack if isinstance(nested_pack, dict) else {}
-                raw_quality["uncertainty"] = nested_pack.get("uncertainty", [])
-            if "retrieval_summary" not in raw_quality:
-                raw_quality["retrieval_summary"] = (
-                    raw_quality.get("summary")
-                    or raw_quality.get("answer_basis")
-                    or raw_quality.get("content")
-                    or ""
-                )
-            # Some live responses repeat the retrieved evidence under an
-            # `evidence_pack`/`knowledge_fragments` field. Those are not model
-            # judgments and are already owned by the retrieval tool.
-            raw_quality = {
-                key: value
-                for key, value in raw_quality.items()
-                if key in {"retrieval_summary", "quality_labels", "uncertainty"}
-            }
-            if isinstance(raw_quality.get("quality_labels"), str):
-                raw_quality["quality_labels"] = [raw_quality["quality_labels"]]
-            if isinstance(raw_quality.get("uncertainty"), str):
-                raw_quality["uncertainty"] = (
-                    [raw_quality["uncertainty"]] if raw_quality["uncertainty"].strip() else []
-                )
-            model_output = validate_training_style_output(
-                KnowledgeModelOutput, raw_quality, []
-            )
-        except ValueError as exc:
-            if context.get("terminal_trace"):
-                context["terminal_trace"].validation("knowledge_base_agent", valid=False, detail=str(exc))
-            if "forbids objective fields" in str(exc):
-                raise
-            model_output = KnowledgeModelOutput(
-                retrieval_summary=self._fallback_retrieval_summary(semantic_facts),
-                quality_labels=["模型总结不可用，系统保留精简检索依据。"],
-                uncertainty=["检索后总结未通过宽松校验。"],
-            )
-        if context.get("terminal_trace"):
-            context["terminal_trace"].validation("knowledge_base_agent", valid=True, detail="KnowledgeModelOutput")
+        assert model_output is not None
         final_needed = True
         candidates = [
             QuestionCandidateReference(
@@ -412,6 +390,213 @@ class KnowledgeBaseAgent:
         })
         pack._question_details = list(question_result.items)
         return envelope(context, "knowledge_base_agent", "evidence_pack", pack)
+
+    async def _summarize_retrieved_content(
+        self,
+        *,
+        context: dict[str, Any],
+        prompt_skill: Any,
+        query: str,
+        pack: EvidencePack,
+        user_request: str,
+        semantic_facts: list[dict[str, Any]],
+        retrieval_plan: KnowledgeRetrievalPlanModelOutput,
+        repair_instruction: dict[str, Any],
+        retrieval_round: int,
+        previous_summary: str,
+    ) -> KnowledgeModelOutput:
+        """Run one summarize pass over the current evidence.
+
+        The live model judges whether the evidence is sufficient; when it
+        reports ``need_more_retrieval=true`` the caller runs supplemental
+        retrieval and calls this method again with the merged evidence.
+        """
+        try:
+            raw_quality = await self.chat_model.complete_json(
+                "knowledge_base_agent",
+                build_model_context(
+                    context,
+                    target_agent="knowledge_base_agent",
+                    prompt_skill=prompt_skill,
+                    payload={
+                        "kp": {
+                            "query": query,
+                            "resolved_kp_ids": pack.resolved_kp_ids,
+                        },
+                        "phase": "process_retrieved_content",
+                        "user_request": user_request,
+                        "evidence": semantic_facts,
+                        "retrieval_plan": retrieval_plan.model_dump(mode="json"),
+                        "retrieval_round": retrieval_round,
+                        "previous_retrieval_summary": previous_summary,
+                        "repair_request": (
+                            {
+                                "issue_ids": repair_instruction.get("issue_ids", []),
+                                "locations": repair_instruction.get("locations", []),
+                                "instruction": repair_instruction.get(
+                                    "repair_instruction", ""
+                                ),
+                            }
+                            if repair_instruction
+                            else None
+                        ),
+                        "task_type": str(context.get("task_type", "personalized_review_card")),
+                        "expected_uncertainty": [],
+                        "output_schema": KnowledgeModelOutput.model_json_schema(),
+                    },
+                    permission_note=(
+                        "只处理已返回的教材、向量、BM25和可信网络参考，先筛掉无关内容，再用自然语言总结"
+                        "可供下游使用的回答依据；题目候选不参与本次总结。若证据不足（召回冲突、覆盖不足、"
+                        "无法映射正式知识点或用户具体问题点缺失），输出 need_more_retrieval=true 并给出"
+                        "1-3 条聚焦缺口的补充检索语句 supplemental_queries，系统会自动执行补充检索后再次"
+                        "调用本阶段重新总结；系统最多补充检索 2 轮，证据足够后 must 输出 need_more_retrieval=false。"
+                        "不得再次规划工具、伪造检索结果或生成系统ID。"
+                    ),
+                ),
+            )
+            if not isinstance(raw_quality, dict):
+                raw_quality = {}
+            forbidden_quality_fields = {"items", "evidence", "question_id", "kp_id"}.intersection(raw_quality)
+            if forbidden_quality_fields:
+                raise ValueError(
+                    "training output contract forbids objective fields: "
+                    + ", ".join(sorted(forbidden_quality_fields))
+                )
+            # The live model often answers this review step in natural language
+            # names instead of the internal field names. Normalize at the
+            # boundary; downstream code still receives a small typed object.
+            if "quality_labels" not in raw_quality:
+                nested_pack = raw_quality.get("evidence_pack")
+                nested_pack = nested_pack if isinstance(nested_pack, dict) else {}
+                raw_quality["quality_labels"] = raw_quality.get("findings") or nested_pack.get("findings", [])
+            if "uncertainty" not in raw_quality:
+                nested_pack = raw_quality.get("evidence_pack")
+                nested_pack = nested_pack if isinstance(nested_pack, dict) else {}
+                raw_quality["uncertainty"] = nested_pack.get("uncertainty", [])
+            if "retrieval_summary" not in raw_quality:
+                raw_quality["retrieval_summary"] = (
+                    raw_quality.get("summary")
+                    or raw_quality.get("answer_basis")
+                    or raw_quality.get("content")
+                    or ""
+                )
+            if "need_more_retrieval" not in raw_quality:
+                raw_quality["need_more_retrieval"] = False
+            if "supplemental_queries" not in raw_quality:
+                raw_quality["supplemental_queries"] = []
+            # Some live responses repeat the retrieved evidence under an
+            # `evidence_pack`/`knowledge_fragments` field. Those are not model
+            # judgments and are already owned by the retrieval tool.
+            raw_quality = {
+                key: value
+                for key, value in raw_quality.items()
+                if key in {
+                    "retrieval_summary",
+                    "quality_labels",
+                    "uncertainty",
+                    "need_more_retrieval",
+                    "supplemental_queries",
+                }
+            }
+            if isinstance(raw_quality.get("quality_labels"), str):
+                raw_quality["quality_labels"] = [raw_quality["quality_labels"]]
+            if isinstance(raw_quality.get("uncertainty"), str):
+                raw_quality["uncertainty"] = (
+                    [raw_quality["uncertainty"]] if raw_quality["uncertainty"].strip() else []
+                )
+            if isinstance(raw_quality.get("need_more_retrieval"), str):
+                raw_quality["need_more_retrieval"] = (
+                    raw_quality["need_more_retrieval"].strip().lower()
+                    in {"true", "yes", "1", "是", "需要", "不足"}
+                )
+            if not isinstance(raw_quality.get("need_more_retrieval"), bool):
+                raw_quality["need_more_retrieval"] = False
+            if isinstance(raw_quality.get("supplemental_queries"), str):
+                raw_quality["supplemental_queries"] = [raw_quality["supplemental_queries"]]
+            if not isinstance(raw_quality.get("supplemental_queries"), list):
+                raw_quality["supplemental_queries"] = []
+            model_output = validate_training_style_output(
+                KnowledgeModelOutput, raw_quality, []
+            )
+        except ValueError as exc:
+            if context.get("terminal_trace"):
+                context["terminal_trace"].validation("knowledge_base_agent", valid=False, detail=str(exc))
+            if "forbids objective fields" in str(exc):
+                raise
+            model_output = KnowledgeModelOutput(
+                retrieval_summary=self._fallback_retrieval_summary(semantic_facts),
+                quality_labels=["模型总结不可用，系统保留精简检索依据。"],
+                uncertainty=["检索后总结未通过宽松校验。"],
+            )
+        if context.get("terminal_trace"):
+            context["terminal_trace"].validation("knowledge_base_agent", valid=True, detail="KnowledgeModelOutput")
+        return model_output
+
+    @staticmethod
+    def _dedupe_supplement_queries(
+        queries: list[str], excluded: set[str]
+    ) -> list[str]:
+        """Normalize and dedupe supplemental retrieval queries.
+
+        Queries are trimmed, whitespace-collapsed and compared case-sensitively
+        against each other and against the queries already executed this run.
+        Empty, oversized (>200 chars) or repeated queries are dropped; at most
+        MAX_SUPPLEMENT_QUERIES are returned.
+        """
+        normalized_excluded = {"".join(str(item).split()) for item in excluded}
+        seen: set[str] = set()
+        result: list[str] = []
+        for raw in queries:
+            query_text = str(raw or "").strip().strip(" \t\n。，,；;：:")
+            if not query_text or len(query_text) > 200:
+                continue
+            normalized = "".join(query_text.split())
+            if normalized in seen or normalized in normalized_excluded:
+                continue
+            seen.add(normalized)
+            result.append(query_text)
+            if len(result) >= KnowledgeBaseAgent.MAX_SUPPLEMENT_QUERIES:
+                break
+        return result
+
+    async def _supplement_retrieval(
+        self,
+        queries: list[str],
+        context: dict[str, Any],
+        existing_source_ids: set[str],
+    ) -> tuple[list[dict[str, Any]], list[EvidenceItem], list[str]]:
+        """Run one supplemental retrieval round over the given queries.
+
+        Merges the newly retrieved evidence into semantic facts, EvidenceItems
+        and resolved KP ids. Evidence already present in the pack is skipped so
+        a broad supplemental query cannot duplicate the first-round content.
+        Returns (facts, items, kp_ids); all three are empty when every query
+        failed to resolve.
+        """
+        facts: list[dict[str, Any]] = []
+        items: list[EvidenceItem] = []
+        kp_ids: list[str] = []
+        for query_text in queries:
+            try:
+                extra_pack = await self._build_evidence_pack(query_text, context)
+            except LookupError:
+                continue
+            for item in extra_pack.evidence_items:
+                if (
+                    item.resource_type == "question"
+                    or item.source_id in existing_source_ids
+                ):
+                    continue
+                existing_source_ids.add(item.source_id)
+                items.append(item)
+                facts.append({
+                    "text": item.content_summary,
+                    "authority": item.authority_level,
+                    "source_id": item.source_id,
+                    "resource_type": item.resource_type,
+                })
+            kp_ids.extend(extra_pack.resolved_kp_ids)
+        return facts, items, kp_ids
 
     @staticmethod
     def _fallback_retrieval_summary(evidence: list[dict[str, Any]]) -> str:

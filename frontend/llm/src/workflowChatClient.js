@@ -88,6 +88,19 @@ export function runtimeEventToTrace(event) {
       responseText: event.response_text,
     };
   }
+  if (name === 'knowledge_retrieval') {
+    // 知识库管理智能体的检索轨迹：每轮检索语句 + 证据列表 + 题目候选。
+    // 同时用于实时 SSE（经 <<EV>> 嵌入）与持久化回执（刷新后回放）。
+    return {
+      type: 'knowledge_retrieval',
+      agent: event.agent || 'knowledge_base_agent',
+      kp_query: event.kp_query,
+      question_query: event.question_query,
+      retrieval_round: event.retrieval_round,
+      evidence_items: event.evidence_items,
+      question_candidates: event.question_candidates,
+    };
+  }
   return null;
 }
 

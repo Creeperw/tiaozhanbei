@@ -694,6 +694,23 @@ class KnowledgeModelOutput(StrictModelOutput):
         default_factory=list,
         description="会影响后续教学结论的证据缺口、冲突或范围歧义。",
     )
+    need_more_retrieval: bool = Field(
+        default=False,
+        description=(
+            "当前已检索证据是否不足：召回冲突、覆盖不足、无法映射正式知识点、"
+            "用户具体问题点缺失或证据空白时为 true，系统将执行最多 2 轮补充检索；"
+            "证据足以支撑回答时为 false。"
+        ),
+    )
+    supplemental_queries: list[str] = Field(
+        default_factory=list,
+        max_length=3,
+        description=(
+            "need_more_retrieval=true 时给出 1-3 条聚焦证据缺口的补充知识点检索语句，"
+            "每句不超过 200 字，必须具体可独立检索，不得重复已有检索词，"
+            "不得泛化为“中医基础知识点”之类空泛词；need_more_retrieval=false 时为空。"
+        ),
+    )
 
 
 def _normalize_progression_nodes(value: Any) -> Any:
