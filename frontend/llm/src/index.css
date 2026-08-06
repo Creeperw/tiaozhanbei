@@ -7970,13 +7970,17 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="learning-path"] .learning-path-orbit__node {
-  width: min(var(--orbit-node-width), 158px);
-  min-height: min(var(--orbit-node-height), 66px);
-  padding: 8px 10px 7px 40px;
+  width: min(var(--orbit-node-width), 220px);
+  min-height: min(var(--orbit-node-height), 80px);
+  padding: 8px 12px 7px 36px;
 }
 
 .app-shell__main[data-page="learning-path"] .learning-path-orbit__title {
-  font-size: .9rem;
+  font-size: .92rem;
+}
+
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__title b {
+  -webkit-line-clamp: 1;
 }
 
 .app-shell__main[data-page="learning-path"] .learning-path-orbit__node small,
@@ -12404,15 +12408,15 @@ textarea:focus-visible {
 .home-today-card__tabs button {
   display: inline-flex;
   min-width: 0;
-  min-height: 36px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
   border: 0;
   border-radius: 10px;
   color: #667a70;
   background: transparent;
-  font-size: .62rem;
+  font-size: .8rem;
   font-weight: 750;
   cursor: pointer;
   transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
@@ -12438,13 +12442,13 @@ textarea:focus-visible {
 
 .home-today-card__tabs small {
   display: grid;
-  min-width: 18px;
-  height: 18px;
+  min-width: 20px;
+  height: 20px;
   place-items: center;
   border-radius: 6px;
   color: #6e8177;
   background: #e4ebe6;
-  font-size: .52rem;
+  font-size: .66rem;
   font-variant-numeric: tabular-nums;
 }
 

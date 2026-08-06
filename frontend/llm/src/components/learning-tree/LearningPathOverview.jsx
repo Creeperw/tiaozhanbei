@@ -77,15 +77,19 @@ function getOrbitMetrics(nodeCount, stageAspectRatio) {
     * TARGET_RENDERED_ORBIT_RATIO
     * ORBIT_ASPECT_RATIO
     / Math.max(1, stageAspectRatio);
+  const nodeWidth = compact ? 160 : nodeCount >= 7 ? 185 : 220;
+  const nodeHeight = compact ? 70 : 82;
+  // 保证相邻节点在椭圆轨道上不重叠（弦长 ≥ 节点宽 + 间隙）
+  const minRadiusX = (nodeWidth + 24) / (2 * Math.sin(Math.PI / Math.max(2, nodeCount)));
   return {
     width: ORBIT_WIDTH,
     height: ORBIT_HEIGHT,
     centerX: ORBIT_WIDTH / 2,
     centerY: ORBIT_HEIGHT / 2 + 4,
-    radiusX: Math.max(150, Math.min(compact ? 260 : 290, desiredRadiusX)),
+    radiusX: Math.max(minRadiusX, Math.min(compact ? 260 : 290, desiredRadiusX)),
     radiusY,
-    nodeWidth: compact ? 140 : nodeCount >= 7 ? 156 : 170,
-    nodeHeight: compact ? 64 : 74,
+    nodeWidth,
+    nodeHeight,
   };
 }
 
