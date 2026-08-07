@@ -231,20 +231,16 @@ async def test_paper_audit_fails_closed_on_contradictory_pass_findings() -> None
 
 
 @pytest.mark.asyncio
-async def test_paper_audit_revises_when_any_selected_question_lacks_explanation() -> None:
+async def test_paper_audit_missing_explanation_is_not_blocking() -> None:
+    """当前对解析不做特殊要求：正式题缺解析不阻止发布，只要答案齐全。"""
     context = _audit_context(2, required_count=2)
     paper = context["dependency_outputs"]["paper_assembly"].payload
     paper.explanations["Q1"] = None
 
     result = await AuditAgent(PassingAuditModel()).run(context)
 
-    assert result.payload.decision == "revise"
-    assert any("缺少解析" in finding and "Q1" in finding for finding in result.payload.findings)
-    issue = result.payload.structured_findings[0]
-    assert issue.issue_type == "answer_or_explanation_invalid"
-    assert [item.location_key for item in issue.locations] == [
-        "paper:explanation:Q1"
-    ]
+    assert result.payload.decision == "pass"
+    assert not any("缺少解析" in finding for finding in result.payload.findings)
 
 
 @pytest.mark.asyncio

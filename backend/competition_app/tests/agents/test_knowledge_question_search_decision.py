@@ -17,6 +17,7 @@ from competition_app.runtime.event_stream import bind_event_sink, reset_event_si
 class FakeToolRegistry:
     def __init__(self, *, model_result: dict, question_result: QuestionSearchResult | None = None) -> None:
         self.calls: list[str] = []
+        self.question_query_calls: list[str] = []
         self.model_result = model_result
         self.question_result = question_result
 
@@ -28,6 +29,7 @@ class FakeToolRegistry:
                 evidence_items=[EvidenceItem(evidence_id="E_1", source_id="C_1", content_summary="教材证据", authority_level="textbook", confidence=0.9)],
             )
         if name == "get_question_with_content":
+            self.question_query_calls.append(kwargs["query"])
             return self.question_result
         raise KeyError(name)
 
@@ -336,6 +338,40 @@ async def test_every_knowledge_task_invokes_both_content_tools() -> None:
     assert registry.calls == ["get_kp_with_content", "get_question_with_content"]
 
 
+@pytest.mark.parametrize(
+    ("request_text",),
+    [
+        ("给我讲讲感冒的知识点",),
+        ("四君子汤的组成",),
+        ("出三道练习题",),
+        # Even a pasted question keeps the agent-owned query: the model is
+        # responsible for turning a stem into the retrieval statement, the
+        # agent must not override it with hard-coded extraction.
+        ("讲解一下这道题：多发性硬化的临床表现错误的是（ ）",),
+        ("帮我解析这道题：五行中“木”的特性是（ ）",),
+    ],
+)
+@pytest.mark.asyncio
+async def test_model_question_query_is_passed_through_unchanged(request_text: str) -> None:
+    registry = FakeToolRegistry(
+        model_result={"quality_labels": [], "uncertainty": []},
+        question_result=QuestionSearchResult(
+            query="ignored",
+            resolved_kp_ids=["KP_1"],
+            embedding_model="stub",
+            vector_index_path="stub",
+            items=[],
+        ),
+    )
+    result = await KnowledgeBaseAgent(None, FixedModel(registry.model_result)).run(
+        {**context("测试"), "user_request": request_text, "tool_registry": registry}
+    )
+
+    # The agent passes the model-generated question_query through untouched;
+    # stem-aware retrieval is the model's job via the retrieval-plan prompt.
+    assert registry.question_query_calls == ["四君子汤练习题"]
+
+
 @pytest.mark.asyncio
 async def test_learning_plan_task_also_invokes_both_content_tools() -> None:
     registry = FakeToolRegistry(model_result={"quality_labels": [], "uncertainty": []}, question_result=None)
@@ -641,6 +677,119 @@ def test_question_type_preferences_normalize_choice_aliases() -> None:
     assert KnowledgeBaseAgent._matches_question_type("单项选择题", ["单选题"])
     assert KnowledgeBaseAgent._matches_question_type("多项选择题", ["选择题"])
     assert not KnowledgeBaseAgent._matches_question_type("判断题", ["选择题"])
+
+
+@pytest.mark.asyncio
+async def test_paper_retrieval_keeps_exact_difficulty_hits_even_without_primary_kp() -> None:
+    """A real difficulty label matching the hard constraint admits the candidate
+    even when its exam-syllabus KP id differs from the course primary KP.
+
+    The formal bank links e.g. 辨证论治 questions to the exam-syllabus KP nodes
+    (儿科学/眼科学/正骨学) instead of 中医学基础/绪论/辨证论治; primary-only
+    scope filtering silently dropped those on-theme difficulty-labelled
+    questions and forced the paper into the generated-fallback path.
+    """
+
+    class DifficultyScopeRegistry:
+        async def invoke(self, name, agent, **kwargs):
+            if name == "get_kp_with_content":
+                return EvidencePack(
+                    evidence_pack_id="EP_DIFF",
+                    query=kwargs["query"],
+                    resolved_kp_ids=["KP_COURSE_BIANZHENG"],
+                    evidence_items=[
+                        EvidenceItem(
+                            evidence_id="E_1", source_id="S_1",
+                            content_summary="辨证论治教材证据", authority_level="textbook",
+                            confidence=0.9,
+                        )
+                    ],
+                )
+            assert name == "get_question_with_content"
+            return QuestionSearchResult(
+                query=kwargs["query"],
+                resolved_kp_ids=["KP_COURSE_BIANZHENG"],
+                embedding_model="stub",
+                vector_index_path="stub",
+                items=[
+                    QuestionDetail(
+                        question_id="Q_EXAM_SYLLABUS",
+                        question_type="单项选择题",
+                        stem="同病异治、异病同治的根本依据在于____。",
+                        reference_answer="证",
+                        analysis="解析",
+                        tags=["辨证论治"],
+                        source_metadata={},
+                        difficulty=2,
+                        difficulty_source="qa_stress_label_2026-08-05",
+                        bridges=[
+                            QuestionBridge(
+                                kp_id="KP_EXAM_ERKE",
+                                bridge_layer="strict",
+                                relation="covered",
+                                confidence=0.8,
+                                rank=1,
+                                evidence_chunk_uid="教材:辨证论治",
+                                match_method="question_kp_ids",
+                            )
+                        ],
+                        retrieval=QuestionRetrievalMetadata(
+                            channels=["bm25"],
+                            channel_scores={"bm25": 1.0},
+                            fusion_score=1.0,
+                        ),
+                    )
+                ],
+            )
+
+    blueprint = PaperBlueprint(
+        blueprint_id="BP_DIFF",
+        title="辨证论治2星卷",
+        source_status="user_provided_unverified",
+        scope_summary="辨证论治",
+        required_total_question_count=1,
+        question_count_is_hard_constraint=True,
+        units=[
+            BlueprintUnit(
+                unit_id="U1",
+                sequence=1,
+                knowledge_module="辨证论治",
+                learning_objective="掌握同病异治异病同治",
+                retrieval_query="辨证论治 同病异治 异病同治",
+                question_type_preferences=["单项选择题"],
+                target_difficulty=2,
+                difficulty_is_hard_constraint=True,
+                required_question_count=1,
+                candidate_limit=4,
+            )
+        ],
+    )
+    result = await KnowledgeBaseAgent(None, FixedModel({})).run(
+        {
+            **context("组卷"),
+            "task_type": "paper_generation",
+            "dependency_outputs": {
+                "paper_blueprint": AgentEnvelope(
+                    artifact_id="A_DIFF",
+                    artifact_type="paper_blueprint",
+                    case_id="C1",
+                    trace_id="T1",
+                    request_id="R1",
+                    execution_id="E1",
+                    step_id="paper_blueprint",
+                    producer="expert_agent",
+                    task_type="paper_generation",
+                    learner_id="L1",
+                    payload=blueprint,
+                )
+            },
+            "tool_registry": DifficultyScopeRegistry(),
+        }
+    )
+
+    unit = result.payload.units[0]
+    assert [item.question_id for item in unit.items] == ["Q_EXAM_SYLLABUS"]
+    assert not any("主题不一致" in warning for warning in unit.warnings)
 
 
 def test_question_type_preferences_group_open_response_aliases() -> None:

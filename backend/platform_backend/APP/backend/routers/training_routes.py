@@ -26,6 +26,7 @@ from APP.backend.database import (
     QuestionAttempt,
     QuestionBankItem,
     UserQuestionItem,
+    UserQuestionDifficultyTag,
     UserQuestionPracticeClaim,
     UserModel,
     get_db,
@@ -333,8 +334,10 @@ def _practice_difficulty_coverage(
     """返回当前训练作用域是否存在真实难度标注及其可用难度集合。
 
     仅统计带 difficulty_source 的真实标注；未标注题不计入。
+    用户手动标记的难度也并入可用集合（标记后该难度即可筛选）。
     前端据此决定是否显示难度筛选控件（无真实标注时隐藏）。
     """
+    levels: set[int] = set()
     if scope in {"user", "all"}:
         rows = db.query(UserQuestionItem.difficulty).filter(
             UserQuestionItem.owner_user_id == user_id,
@@ -348,14 +351,20 @@ def _practice_difficulty_coverage(
             QuestionBankItem.difficulty.is_not(None),
             QuestionBankItem.difficulty_source.is_not(None),
         ).all()
-    levels = sorted(
-        {
-            int(level)
-            for (level,) in rows
-            if isinstance(level, (int, float)) and int(level) in {1, 2, 3, 4, 5}
-        }
+    levels.update(
+        int(level)
+        for (level,) in rows
+        if isinstance(level, (int, float)) and int(level) in {1, 2, 3, 4, 5}
     )
-    return bool(levels), levels
+    tagged_rows = db.query(UserQuestionDifficultyTag.difficulty).filter(
+        UserQuestionDifficultyTag.user_id == user_id,
+    ).all()
+    levels.update(
+        int(level)
+        for (level,) in tagged_rows
+        if isinstance(level, (int, float)) and int(level) in {1, 2, 3, 4, 5}
+    )
+    return bool(levels), sorted(levels)
 
 
 
@@ -385,6 +394,7 @@ def next_practice_question(
     difficulty: int | None = Query(default=None, ge=1, le=5),
     difficulty_min: int | None = Query(default=None, ge=1, le=5),
     difficulty_max: int | None = Query(default=None, ge=1, le=5),
+    exclude_question_id: str | None = Query(default=None, min_length=1, max_length=120),
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -413,6 +423,13 @@ def next_practice_question(
     difficulty_available, available_difficulties = _practice_difficulty_coverage(
         db, user_id=current_user.id, scope=scope
     )
+    user_difficulty_tags = {
+        str(row.question_id): int(row.difficulty)
+        for row in db.query(UserQuestionDifficultyTag).filter(
+            UserQuestionDifficultyTag.user_id == current_user.id,
+        ).all()
+        if int(row.difficulty) in {1, 2, 3, 4, 5}
+    }
     if scope in {"user", "all"}:
         claim_cutoff = _now() - timedelta(minutes=30)
         active_user_claims = {
@@ -434,10 +451,13 @@ def next_practice_question(
             status="active",
         ).all():
             question_kp_ids = json.loads(question.kp_ids_json or "[]")
+            effective_difficulty = question.difficulty
+            if effective_difficulty is None and question.question_id in user_difficulty_tags:
+                effective_difficulty = user_difficulty_tags[question.question_id]
             if (not kp_id or kp_id in question_kp_ids) and _matches_practice_mode(
                 question.question_type, mode
             ) and _difficulty_matches(
-                question.difficulty, **difficulty_constraints
+                effective_difficulty, **difficulty_constraints
             ):
                 user_candidates.append((question, question_kp_ids))
         if difficulty_requested and not user_candidates:
@@ -457,6 +477,11 @@ def next_practice_question(
             item[0].question_id in attempted_user_question_ids,
             item[0].question_id,
         ))
+        if exclude_question_id:
+            user_candidates = [
+                item for item in user_candidates
+                if item[0].question_id != exclude_question_id
+            ]
         if user_candidates:
             question, question_kp_ids = user_candidates[0]
             request_id = str(uuid.uuid4())
@@ -478,8 +503,16 @@ def next_practice_question(
                     "kp_names": _knowledge_point_names(db, question_kp_ids),
                     "request_id": request_id,
                     "source_scope": "user",
-                    "difficulty": question.difficulty,
-                    "difficulty_source": question.difficulty_source,
+                    "difficulty": (
+                        user_difficulty_tags[question.question_id]
+                        if question.difficulty is None and question.question_id in user_difficulty_tags
+                        else question.difficulty
+                    ),
+                    "difficulty_source": (
+                        "user_tagged"
+                        if question.difficulty is None and question.question_id in user_difficulty_tags
+                        else question.difficulty_source
+                    ),
                 },
                 "difficulty_available": difficulty_available,
                 "available_difficulties": available_difficulties,
@@ -507,8 +540,14 @@ def next_practice_question(
             continue
         if not _matches_practice_mode(question.question_type, mode):
             continue
+        effective_difficulty = question.difficulty
+        if effective_difficulty is None and question.question_id in user_difficulty_tags:
+            # A learner-tagged difficulty counts as a real label for that user:
+            # an unlabelled question the user marked participates in strict
+            # matching with the tagged level.
+            effective_difficulty = user_difficulty_tags[question.question_id]
         if not _difficulty_matches(
-            question.difficulty, **difficulty_constraints
+            effective_difficulty, **difficulty_constraints
         ):
             continue
         if not question_kp_ids or not set(question_kp_ids) <= registered_kp_ids:
@@ -540,6 +579,13 @@ def next_practice_question(
         -float(item[0].quality_score or 0),
         item[0].question_id,
     ))
+    if exclude_question_id:
+        # Moving on to the next question must never re-serve the question the
+        # learner just left, even when it is the only candidate left.
+        candidates = [
+            item for item in candidates
+            if item[0].question_id != exclude_question_id
+        ]
     if not candidates:
         return {
             "available": False,
@@ -558,6 +604,9 @@ def next_practice_question(
         }
 
     question, question_kp_ids = candidates[0]
+    effective_difficulty = question.difficulty
+    if effective_difficulty is None and question.question_id in user_difficulty_tags:
+        effective_difficulty = user_difficulty_tags[question.question_id]
     request_id = str(uuid.uuid4())
     controlled = resolve_controlled_practice_submission(
         db,
@@ -583,8 +632,12 @@ def next_practice_question(
             "kp_names": _knowledge_point_names(db, question_kp_ids),
             "request_id": request_id,
             "source_scope": "public",
-            "difficulty": question.difficulty,
-            "difficulty_source": question.difficulty_source,
+            "difficulty": effective_difficulty,
+            "difficulty_source": (
+                "user_tagged"
+                if effective_difficulty is not None and question.difficulty is None
+                else question.difficulty_source
+            ),
         },
         "difficulty_available": difficulty_available,
         "available_difficulties": available_difficulties,

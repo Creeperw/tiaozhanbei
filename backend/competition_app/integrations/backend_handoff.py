@@ -225,7 +225,14 @@ def _real_difficulty_label(question: dict[str, Any]) -> tuple[Any, Any]:
     Never infers or defaults a difficulty: an unlabelled question keeps NULL
     (None, None) so downstream consumers can distinguish labelled content from
     manufactured values.
+
+    Learner-tagged levels are personal labels persisted in
+    user_question_difficulty_tags; they must never be written back into the
+    shared bank as if they were source annotations.
     """
+    source = question.get("difficulty_source") or question.get("难度来源")
+    if str(source or "").strip() == "user_tagged":
+        return None, None
     difficulty_module = importlib.import_module(
         "competition_app.contracts.difficulty"
     )
@@ -235,7 +242,6 @@ def _real_difficulty_label(question: dict[str, Any]) -> tuple[Any, Any]:
     parsed = difficulty_module.parse_difficulty(raw)
     if parsed is None:
         return None, None
-    source = question.get("difficulty_source") or question.get("难度来源")
     difficulty_source = difficulty_module.parse_difficulty_source(
         source or "source_metadata"
     )
@@ -807,6 +813,7 @@ class BackendHandoffRuntime:
                     "importance": "normal",
                     "reason": str(item.get("reason") or "Memory Agent 提取，等待用户在学习记忆设置中确认。"),
                     "confidence": float(item.get("confidence") or 0.8),
+                    "category": str(item.get("category") or "long_term"),
                 }
                 for item in candidates
                 if str(item.get("content") or item.get("summary") or "").strip()
@@ -2018,6 +2025,7 @@ class BackendHandoffRuntime:
         difficulty: int | None = None,
         difficulty_min: int | None = None,
         difficulty_max: int | None = None,
+        exclude_question_id: str | None = None,
     ) -> dict[str, Any]:
         """Fallback for stub mode and already projected formal questions."""
 
@@ -2033,6 +2041,7 @@ class BackendHandoffRuntime:
                 difficulty=difficulty,
                 difficulty_min=difficulty_min,
                 difficulty_max=difficulty_max,
+                exclude_question_id=exclude_question_id,
                 current_user=user,
                 db=db,
             )
@@ -2081,6 +2090,16 @@ class BackendHandoffRuntime:
                 for row in kp_rows
                 if str(row.name or "").strip() and row.name != row.kp_id
             }
+            difficulty = bank.difficulty
+            difficulty_source = bank.difficulty_source
+            if difficulty is None:
+                tag = db.query(database.UserQuestionDifficultyTag).filter_by(
+                    user_id=user.id,
+                    question_id=question_id,
+                ).one_or_none()
+                if tag is not None and int(tag.difficulty) in {1, 2, 3, 4, 5}:
+                    difficulty = int(tag.difficulty)
+                    difficulty_source = "user_tagged"
             return {
                 "available": True,
                 "kp_id": kp_ids[0] if len(kp_ids) == 1 else None,
@@ -2093,6 +2112,8 @@ class BackendHandoffRuntime:
                     "kp_names": [kp_names[kp_id] for kp_id in kp_ids if kp_id in kp_names],
                     "request_id": request_id,
                     "source_scope": "formal_question_bank",
+                    "difficulty": difficulty,
+                    "difficulty_source": difficulty_source,
                 },
             }
         finally:
@@ -2583,6 +2604,67 @@ class BackendHandoffRuntime:
         except Exception:
             db.rollback()
             raise
+        finally:
+            db.close()
+
+    def save_user_question_difficulty_tag(
+        self,
+        external_user_id: str,
+        *,
+        question_id: str,
+        difficulty: int,
+    ) -> dict[str, Any]:
+        """Persist (or replace) the learner's manual difficulty for a question.
+
+        Only 1..5 levels are accepted. The stored tag is a personal label; it
+        never modifies the shared bank's own difficulty annotation.
+        """
+        if int(difficulty) not in {1, 2, 3, 4, 5}:
+            raise ValueError("difficulty must be one of 1..5")
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            tag = (
+                db.query(database.UserQuestionDifficultyTag)
+                .filter_by(user_id=user.id, question_id=question_id)
+                .one_or_none()
+            )
+            if tag is None:
+                tag = database.UserQuestionDifficultyTag(
+                    user_id=user.id,
+                    question_id=question_id,
+                    difficulty=int(difficulty),
+                )
+                db.add(tag)
+            else:
+                tag.difficulty = int(difficulty)
+                tag.updated_at = time_utils.utc_now()
+            db.commit()
+            return {"saved": True, "question_id": question_id, "difficulty": int(difficulty)}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_user_question_difficulty_tags(
+        self, external_user_id: str
+    ) -> dict[str, int]:
+        """Return {question_id: difficulty} for all of the learner's tags."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            rows = db.query(database.UserQuestionDifficultyTag).filter_by(
+                user_id=user.id,
+            ).all()
+            return {
+                str(tag.question_id): int(tag.difficulty)
+                for tag in rows
+                if int(tag.difficulty) in {1, 2, 3, 4, 5}
+            }
         finally:
             db.close()
 

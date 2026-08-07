@@ -18,6 +18,9 @@ class LongTermMemoryCandidate(ContractModel):
     summary: str
     source_refs: list[ArtifactReference] = Field(min_length=1)
     status: Literal["pending_confirmation", "auto_confirmed"] = "pending_confirmation"
+    # 可选类别透传：模型输出本身不携带类别，上游可在构造候选时标注；
+    # 系统侧 health_memory 会做确定性分类兜底（主观感受/偏好一律不自动沉淀）。
+    category: str = "long_term"
 
 
 class RelevantMemoryReference(ContractModel):

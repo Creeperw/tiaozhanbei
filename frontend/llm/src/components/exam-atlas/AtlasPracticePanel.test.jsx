@@ -44,7 +44,9 @@ describe('AtlasPracticePanel', () => {
     render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-yinyang', kpName: '阴阳学说' }} />);
 
     expect(await screen.findByText('阴阳关系的基本特征是什么？')).toBeInTheDocument();
-    expect(screen.queryByText(/难度/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('question-difficulty-label')).not.toBeInTheDocument();
+    // Unlabelled questions offer the manual difficulty tagging control.
+    expect(screen.getByText('本题暂无难度标注')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '对立制约，互根互用。' } });
     fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
 
@@ -208,6 +210,58 @@ describe('AtlasPracticePanel', () => {
     expect(await screen.findByText('今日知识点练习已完成')).toHaveAttribute('role', 'status');
   });
 
+  it('excludes the current question when moving on and reports the bank as exhausted', async () => {
+    const requests = [];
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      requests.push(String(url));
+      if (url.includes('/practice/next') && !url.includes('exclude_question_id')) {
+        return jsonResponse({
+          available: true,
+          kp_id: 'kp-single',
+          question: {
+            question_id: 'question-single',
+            question_type: 'single_choice',
+            stem: '唯一一道题',
+            options: [{ option_id: 'A', content: '选项甲' }],
+            kp_ids: ['kp-single'],
+            request_id: 'request-single',
+          },
+        });
+      }
+      if (url.includes('exclude_question_id=question-single')) {
+        return jsonResponse({
+          available: false,
+          kp_id: 'kp-single',
+          question: null,
+        });
+      }
+      if (url.endsWith('/practice/grade')) {
+        return jsonResponse({ grading: { score: 100, is_correct: true, analysis: '完成' }, writeback: { status: 'applied' } });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+
+    render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-single', kpName: '单题知识点' }} />);
+    expect(await screen.findByText('唯一一道题')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: /选项甲/ }));
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    await screen.findByText(/得分 100/);
+
+    fireEvent.click(screen.getByRole('button', { name: '下一题' }));
+
+    expect(await screen.findByText('该知识点题目已练完')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '返回上一题' })).toBeInTheDocument();
+    const nextRequest = requests.find((url) => url.includes('exclude_question_id'));
+    expect(nextRequest).toBeDefined();
+    expect(nextRequest).toContain('exclude_question_id=question-single');
+
+    // The exhausted state must still let the learner review the answered question.
+    fireEvent.click(screen.getByRole('button', { name: '返回上一题' }));
+    expect(await screen.findByText('唯一一道题')).toBeInTheDocument();
+    expect(screen.getByText(/得分 100/)).toBeInTheDocument();
+  });
+
   it('keeps answer guidance hidden until the learner explicitly requests a hint', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
       if (url.includes('/practice/next')) {
@@ -239,5 +293,77 @@ describe('AtlasPracticePanel', () => {
     expect(screen.getByRole('button', { name: '收起答题提示' })).toHaveAttribute('aria-expanded', 'true');
     expect(within(hintPanel).getByText('思路引导')).toBeInTheDocument();
     expect(within(hintPanel).getByText(/阴阳学说/)).toBeInTheDocument();
+  });
+
+  it('lets the learner tag an unlabelled question and then shows the difficulty', async () => {
+    const requests = [];
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      requests.push({ url, options });
+      if (url.includes('/practice/next')) {
+        return jsonResponse({
+          available: true,
+          question: {
+            question_id: 'question-unlabelled',
+            question_type: 'single_choice',
+            stem: '没有难度标注的题',
+            options: [{ option_id: 'A', content: '选项甲' }],
+            kp_ids: ['kp-tag'],
+            request_id: 'request-tag',
+          },
+        });
+      }
+      if (url.endsWith('/practice/difficulty-tag')) {
+        return jsonResponse({ saved: true, question_id: 'question-unlabelled', difficulty: 4 });
+      }
+      if (url.endsWith('/practice/grade')) {
+        return jsonResponse({ grading: { score: 90, is_correct: true, analysis: '完成' }, writeback: { status: 'applied' } });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+
+    render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-tag', kpName: '标记知识点' }} />);
+
+    expect(await screen.findByText('没有难度标注的题')).toBeInTheDocument();
+    expect(screen.getByText('本题暂无难度标注')).toBeInTheDocument();
+    expect(screen.queryByTestId('question-difficulty-label')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '4星' }));
+
+    expect(await screen.findByTestId('question-difficulty-label')).toHaveTextContent('难度 4星');
+    expect(screen.queryByText('本题暂无难度标注')).not.toBeInTheDocument();
+    const tagRequest = requests.find(({ url }) => url.endsWith('/practice/difficulty-tag'));
+    expect(tagRequest).toBeDefined();
+    expect(tagRequest.options.method).toBe('PUT');
+    expect(JSON.parse(tagRequest.options.body)).toEqual({
+      question_id: 'question-unlabelled',
+      difficulty: 4,
+    });
+  });
+
+  it('shows a real difficulty label without offering the tagging control', async () => {
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url.includes('/practice/next')) {
+        return jsonResponse({
+          available: true,
+          question: {
+            question_id: 'question-labeled',
+            question_type: 'single_choice',
+            stem: '已有难度标注的题',
+            options: [{ option_id: 'A', content: '选项甲' }],
+            kp_ids: ['kp-labeled'],
+            request_id: 'request-labeled',
+            difficulty: 3,
+            difficulty_source: 'curated_question_bank',
+          },
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+
+    render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-labeled', kpName: '标注知识点' }} />);
+
+    expect(await screen.findByText('已有难度标注的题')).toBeInTheDocument();
+    expect(screen.getByTestId('question-difficulty-label')).toHaveTextContent('难度 3星');
+    expect(screen.queryByText('本题暂无难度标注')).not.toBeInTheDocument();
   });
 });

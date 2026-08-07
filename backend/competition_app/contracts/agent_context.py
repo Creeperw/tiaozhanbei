@@ -65,6 +65,14 @@ _PAGE_AWARE_AGENTS = frozenset(
     }
 )
 
+# Recalled personal memories are a system-owned fact every agent may need
+# when answering (for example “你还记得我的名字吗？”).  Extraction, conflict
+# governance and persistence stay with Memory Agent; every agent receives the
+# same compact recall block so it can answer from what the system actually
+# knows.  Source-bounded compilers and audit agents also receive the block,
+# but the rendered boundary tells them memories are background context only
+# and must never fill contract fields or act as evidence.
+
 
 def _as_json_value(value: Any) -> Any:
     if hasattr(value, "model_dump"):
@@ -310,6 +318,38 @@ def _shared_external_information(
     return _compact_value(items, max_items=8, max_text=500)
 
 
+def _shared_relevant_memories(
+    context: dict[str, Any], *, max_items: int = 8, max_text: int = 300
+) -> list[Any]:
+    """Compact the recalled personal memories into the shared brief.
+
+    Only fields an agent can safely quote back are kept (content, category,
+    confidence, source); ids are preserved so Memory Agent can validate
+    conflict references against the same recall slice.
+    """
+
+    items = context.get("relevant_personalization_memories") or []
+    if not isinstance(items, list):
+        return []
+    compacted = [
+        {
+            key: item.get(key)
+            for key in (
+                "id",
+                "category",
+                "importance",
+                "content",
+                "confidence",
+                "source",
+            )
+            if item.get(key) not in (None, "", [], {})
+        }
+        for item in items
+        if isinstance(item, dict) and str(item.get("content") or "").strip()
+    ]
+    return _compact_value(compacted, max_items=max_items, max_text=max_text)
+
+
 def _recent_dialogue(
     messages: list[dict[str, Any]],
     *,
@@ -456,6 +496,12 @@ def build_model_context(
                 context, explicit_external_information
             )
         ),
+        # Recalled personal memories (facts the system already knows about the
+        # learner).  Injected for every agent: memory-aware conversational
+        # agents answer from them, source-bounded compilers receive the same
+        # block with a boundary note that it must never fill contract fields,
+        # and audit sees them as background only, never as evidence.
+        "relevant_memories": _shared_relevant_memories(context),
         "source_bounded_compiler": source_bounded_compiler,
     }
     if source_bounded_compiler:

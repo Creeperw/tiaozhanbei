@@ -136,6 +136,24 @@ def test_second_plan_audit_revision_has_audit_error_code() -> None:
     assert PersonalizedReviewCardUseCase._failure_code(error) == "audit_step_failed"
 
 
+def test_invalid_structured_output_is_not_mislabeled_as_knowledge_failure() -> None:
+    """模型输出解析失败（expert/讲解步骤）不得因 agent 名中的
+    “knowledge” 被误报为知识检索失败。"""
+    error = RuntimeError(
+        "personalized review card execution failed: "
+        "步骤 expert（knowledge_explanation_agent）失败："
+        "ModelResponseError: Model returned invalid structured output "
+        "after one repair attempt"
+    )
+
+    assert PersonalizedReviewCardUseCase._failure_step(error) == "expert"
+    assert (
+        PersonalizedReviewCardUseCase._failure_code(error)
+        == "model_invalid_output"
+    )
+    assert PersonalizedReviewCardUseCase._is_retryable_failure(error) is True
+
+
 def test_waiting_human_review_is_presented_as_a_review_request() -> None:
     message = workflow_result_to_markdown({
         "status": "waiting_human_review",

@@ -1097,12 +1097,11 @@ class AuditAgent:
                     and len(item.question.options) < 2
                 )
                 or not item.question.reference_answer.strip()
-                or not (item.question.analysis or "").strip()
             )
         ]
         if incomplete_generated:
             deterministic_findings.append(
-                "原创题缺少题型所需选项、答案或解析: "
+                "原创题缺少题型所需选项或答案: "
                 + ", ".join(incomplete_generated)
             )
         missing_answers = [
@@ -1113,15 +1112,6 @@ class AuditAgent:
         if missing_answers:
             deterministic_findings.append(
                 "入卷题目缺少标准答案: " + ", ".join(missing_answers)
-            )
-        missing_explanations = [
-            question_id
-            for question_id in selected_ids
-            if not str(paper.explanations.get(question_id) or "").strip()
-        ]
-        if missing_explanations:
-            deterministic_findings.append(
-                "入卷题目缺少解析: " + ", ".join(missing_explanations)
             )
         if set(paper.answer_key) != set(selected_ids):
             deterministic_findings.append("答案键与入卷题目不一致。")

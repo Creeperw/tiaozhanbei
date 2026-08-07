@@ -480,7 +480,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
           <legend className="text-sm font-medium text-slate-700">难度要求 <span className="font-normal text-slate-400">（可选，仅使用真实难度标注）</span></legend>
           <p className="mt-1 text-[15px] leading-5 text-slate-500">指定难度时优先选用该难度的正式题；不足时依次补入未标注难度的正式题、网络参考题，最后才生成补充题。系统会如实标注每题来源，不会把补充题伪装成指定难度。</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setDifficultyFilter(null)} disabled={loading} className={difficultyFilter === null ? 'rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700'}>不限</button>
+            <button type="button" onClick={() => setDifficultyFilter(null)} disabled={loading} title="不按难度筛选，全部题目均可组卷" className={difficultyFilter === null ? 'rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700'}>全部</button>
             {[1, 2, 3, 4, 5].map((level) => <button key={level} type="button" onClick={() => setDifficultyFilter(level)} disabled={loading} className={difficultyFilter === level ? 'rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700'}>难度 {level}</button>)}
           </div>
         </fieldset>}

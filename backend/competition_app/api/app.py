@@ -326,6 +326,11 @@ class ConversationCreateRequest(BaseModel):
     title: str = Field(default="新对话", min_length=1, max_length=120)
 
 
+class DifficultyTagRequest(BaseModel):
+    question_id: str = Field(min_length=1, max_length=120)
+    difficulty: int = Field(ge=1, le=5)
+
+
 class ConversationUpdateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=120)
 
@@ -1222,6 +1227,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "knowledge_step_failed": "知识检索未能完成，请稍后重试。",
             "paper_blueprint_timeout": "试卷蓝图生成超时，请稍后重试。",
             "model_timeout": "模型调用超时，请稍后重试。",
+            "model_invalid_output": "模型输出未能通过解析，请重新生成。",
             "workflow_timeout": "本次处理超时，已保存当前会话，请稍后重试。",
             "plan_compilation_failed": "学习规划未能通过结构化校验，请稍后重试。",
             "audit_step_failed": "内容审核未能完成，请稍后重试。",
@@ -3467,29 +3473,43 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=503, detail="学习工坊持久化服务未启用")
         return backend_handoff
 
-    def _practice_difficulty_coverage() -> tuple[bool, list[int]]:
+    def _practice_difficulty_coverage(
+        user_id: str | None = None,
+    ) -> tuple[bool, list[int]]:
         """Report difficulty support from the formal bank using real labels only.
 
         Returns (has_any_real_difficulty_label, sorted available levels). A bank
         without difficulty annotations reports (False, []) so the UI can hide
         difficulty controls instead of presenting unusable filters.
+
+        When a learner has manually tagged questions, their levels are merged
+        into the available set so the filter remains usable even if the bank
+        itself carries no annotations.
         """
-        backend = container.knowledge_backend
-        if backend is None or getattr(backend, "map", None) is None:
-            return False, []
-        store = backend.map
-        try:
-            store.ensure_questions()
-        except Exception:
-            return False, []
         levels: set[int] = set()
-        for questions in store.questions_by_kp.values():
-            for question in questions:
-                parsed = parse_difficulty(
-                    question.get("difficulty", question.get("难度"))
+        backend = container.knowledge_backend
+        if backend is not None and getattr(backend, "map", None) is not None:
+            store = backend.map
+            try:
+                store.ensure_questions()
+            except Exception:
+                store = None
+            if store is not None:
+                for questions in store.questions_by_kp.values():
+                    for question in questions:
+                        parsed = parse_difficulty(
+                            question.get("difficulty", question.get("难度"))
+                        )
+                        if parsed is not None:
+                            levels.add(parsed)
+        if user_id and backend_handoff is not None:
+            try:
+                user_tags = backend_handoff.load_user_question_difficulty_tags(
+                    user_id
                 )
-                if parsed is not None:
-                    levels.add(parsed)
+                levels.update(int(level) for level in user_tags.values())
+            except Exception:
+                pass
         return bool(levels), sorted(levels)
 
     @app.get("/api/v1/workshop")
@@ -3507,6 +3527,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         difficulty: int | None = None,
         difficulty_min: int | None = None,
         difficulty_max: int | None = None,
+        exclude_question_id: str | None = None,
+        user_difficulty_tags: dict[str, int] | None = None,
     ) -> dict | None:
         backend = container.knowledge_backend
         if backend is None:
@@ -3586,6 +3608,16 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     if payload["standard_answer"] and payload["kp_ids"]:
                         candidates.append(payload)
 
+        # A learner-tagged difficulty counts as a real label for that user:
+        # a question the learner marked (even without a bank annotation) is
+        # presented with the tagged level and participates in strict matching.
+        if user_difficulty_tags:
+            for candidate in candidates:
+                tagged = user_difficulty_tags.get(candidate["question_id"])
+                if tagged is not None and candidate.get("difficulty") is None:
+                    candidate["difficulty"] = tagged
+                    candidate["difficulty_source"] = "user_tagged"
+
         difficulty_requested = any(
             value is not None
             for value in (difficulty, difficulty_min, difficulty_max)
@@ -3632,7 +3664,15 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             for question in candidates
             if question["question_id"] not in attempted_question_ids
         ]
-        return unattempted[0] if unattempted else candidates[0]
+        if unattempted:
+            return unattempted[0]
+        # All candidates were attempted. When the caller explicitly asks to move
+        # on (exclude_question_id), report that the bank is exhausted instead of
+        # re-serving the same question forever. A fresh entry (no exclusion)
+        # may still review the first candidate.
+        if exclude_question_id:
+            return None
+        return candidates[0]
 
     @app.get("/api/v1/workshop/practice/next")
     async def next_workshop_practice_question(
@@ -3665,7 +3705,16 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 status_code=422,
                 detail="difficulty_min must not exceed difficulty_max",
             )
-        difficulty_available, available_difficulties = _practice_difficulty_coverage()
+        difficulty_available, available_difficulties = _practice_difficulty_coverage(
+            user.user_id
+        )
+        user_difficulty_tags: dict[str, int] = {}
+        try:
+            user_difficulty_tags = runtime.load_user_question_difficulty_tags(
+                user.user_id
+            )
+        except Exception:
+            user_difficulty_tags = {}
         difficulty_kwargs = {
             "difficulty": difficulty,
             "difficulty_min": difficulty_min,
@@ -3800,6 +3849,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 difficulty=difficulty,
                 difficulty_min=difficulty_min,
                 difficulty_max=difficulty_max,
+                exclude_question_id=exclude_question_id,
+                user_difficulty_tags=user_difficulty_tags,
             )
             if candidate is not None:
                 issued = await asyncio.to_thread(
@@ -3840,6 +3891,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id,
             kp_id=kp_id,
             mode=mode,
+            exclude_question_id=exclude_question_id,
             **difficulty_kwargs,
         )
         return _with_difficulty_meta(_sanitize_practice_question_labels(cached))
@@ -3869,6 +3921,24 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id,
             question_id=question_id,
             request_id=request_id,
+        )
+
+    @app.put("/api/v1/workshop/practice/difficulty-tag")
+    async def save_workshop_practice_difficulty_tag(
+        payload: DifficultyTagRequest, request: Request
+    ) -> dict:
+        """Save the learner's manual difficulty label for a question.
+
+        The tag is personal: it enables difficulty filtering for questions
+        without a real bank annotation and never overwrites the shared label.
+        """
+        user = current_user(request)
+        runtime = require_workshop_runtime()
+        return await asyncio.to_thread(
+            runtime.save_user_question_difficulty_tag,
+            user.user_id,
+            question_id=payload.question_id,
+            difficulty=payload.difficulty,
         )
 
     @app.get("/api/v1/workshop/knowledge-cards")
@@ -4953,6 +5023,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 retryable = True
             elif "empty" in normalized or "no content" in normalized:
                 error_code = "model_empty_response"
+                retryable = True
+            elif "invalid structured output" in normalized or "invalid_json" in normalized:
+                # 模型输出无法解析为有效 JSON（含 agent 名 knowledge_* 时
+                # 不能误归类为知识检索失败）。
+                error_code = "model_invalid_output"
                 retryable = True
             elif failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
                 error_code = "persistence_failed"

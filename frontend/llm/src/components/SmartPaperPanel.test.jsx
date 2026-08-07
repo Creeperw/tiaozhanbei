@@ -83,7 +83,7 @@ describe('SmartPaperPanel', () => {
     render(<SmartPaperPanel />);
 
     expect(screen.getByRole('heading', { name: /难度要求/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '不限' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '全部' })).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(screen.getByRole('button', { name: '难度 3' }));
     expect(screen.getByRole('button', { name: '难度 3' })).toHaveAttribute('aria-pressed', 'true');

@@ -1204,8 +1204,37 @@ export async function skipPracticeQuestion({ fetcher, question, taskItemId = '' 
   }
 }
 
-export async function loadMistakes({ fetcher, status = 'all', offset = 0, limit = 50 }) {
-  const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit) });
+export async function tagPracticeQuestionDifficulty({ fetcher, question, difficulty }) {
+  if (!question || typeof question !== 'object' || !hasNonEmptyText(question.question_id)
+    || !Number.isInteger(difficulty) || difficulty < 1 || difficulty > 5) {
+    return { saved: false, error: '题目或难度参数无效', source: null };
+  }
+  const paths = [
+    '/v1/workshop/practice/difficulty-tag',
+    '/training/practice/difficulty-tag',
+    '/api/v1/workshop/practice/difficulty-tag',
+    '/api/training/practice/difficulty-tag',
+  ];
+  try {
+    const { data, source } = await fetcher({
+      paths,
+      fallback: null,
+      options: {
+        method: 'PUT',
+        body: JSON.stringify({
+          question_id: question.question_id,
+          difficulty,
+        }),
+      },
+      validator: (payload) => payload && payload.saved === true,
+    });
+    return { saved: data.saved === true, error: '', source };
+  } catch (error) {
+    return { saved: false, error: error.message || '标记难度失败', source: null };
+  }
+}
+
+export async function loadMistakes({ fetcher, status = 'all', offset = 0, limit = 50 }) {  const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit) });
   try {
     const { data, source } = await fetcher({
       paths: [`/v1/workshop/practice/mistakes?${params.toString()}`, `/training/workspace/mistakes?${params.toString()}`],

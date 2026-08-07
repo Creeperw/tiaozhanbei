@@ -114,7 +114,17 @@ class PracticeRuntime:
             },
         }
 
-    def issue_cached_public_practice(self, learner_id: str, *, kp_id, mode) -> dict:
+    def issue_cached_public_practice(
+        self,
+        learner_id: str,
+        *,
+        kp_id,
+        mode,
+        difficulty=None,
+        difficulty_min=None,
+        difficulty_max=None,
+        exclude_question_id=None,
+    ) -> dict:
         raise AssertionError("formal delivery should be used before the database cache")
 
 
@@ -167,6 +177,7 @@ class StrictTargetPracticeRuntime(PracticeRuntime):
         difficulty=None,
         difficulty_min=None,
         difficulty_max=None,
+        exclude_question_id=None,
     ) -> dict:
         self.cached_requests.append((learner_id, kp_id, mode))
         return {"available": False, "kp_id": kp_id, "question": None}
@@ -240,6 +251,57 @@ def test_practice_next_does_not_fall_back_to_another_kp_for_explicit_target(tmp_
     assert runtime.issued == []
     assert len(runtime.cached_requests) == 1
     assert runtime.cached_requests[0][1:] == ("KP_1", "case")
+
+
+def test_practice_next_does_not_repeat_single_question_when_moving_on(tmp_path: Path) -> None:
+    class ExhaustedCacheRuntime(PersonalizedPracticeRuntime):
+        def __init__(self) -> None:
+            super().__init__({
+                "attempt_history": {"FORMAL_Q_1": {"attempt_count": 1}},
+                "active_claims": [],
+            })
+
+        def issue_cached_public_practice(self, learner_id, *, kp_id, mode, **kwargs) -> dict:
+            # The database cache is equally exhausted for this single-question KP.
+            return {"available": False, "kp_id": kp_id, "question": None}
+
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = ExhaustedCacheRuntime()
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=FormalQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        registered = client.post(
+            "/api/v1/auth/register",
+            json={"username": "single-question-practice", "password": "correct-horse-2026"},
+        )
+        # Fresh entry without exclusion may review the only candidate.
+        review = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public", "topic": "四君子汤"},
+        )
+        # Moving on must not re-serve the same question: bank exhausted.
+        next_question = client.get(
+            "/api/v1/workshop/practice/next",
+            params={
+                "mode": "objective",
+                "scope": "public",
+                "topic": "四君子汤",
+                "exclude_question_id": "FORMAL_Q_1",
+            },
+        )
+
+    assert registered.status_code == 201
+    assert review.status_code == 200
+    assert review.json()["question"]["question_id"] == "FORMAL_Q_1"
+    assert next_question.status_code == 200
+    body = next_question.json()
+    assert body["available"] is False
+    assert body["question"] is None
 
 
 def test_practice_next_collects_broad_candidates_and_skips_attempted_question(tmp_path: Path) -> None:
@@ -484,3 +546,90 @@ def test_practice_next_rejects_combined_or_inverted_difficulty(tmp_path: Path) -
 
     assert combined.status_code == 422
     assert inverted.status_code == 422
+
+
+class TaggedDifficultyRuntime(PersonalizedPracticeRuntime):
+    """Runtime with in-memory learner difficulty tags."""
+
+    def __init__(self) -> None:
+        super().__init__({"attempt_history": {}, "active_claims": []})
+        self.tags: dict[str, int] = {}
+        self.saved_tags: list[tuple[str, str, int]] = []
+
+    def save_user_question_difficulty_tag(
+        self, external_user_id: str, *, question_id: str, difficulty: int
+    ) -> dict:
+        if int(difficulty) not in {1, 2, 3, 4, 5}:
+            raise ValueError("difficulty must be one of 1..5")
+        self.tags[question_id] = int(difficulty)
+        self.saved_tags.append((external_user_id, question_id, int(difficulty)))
+        return {"saved": True, "question_id": question_id, "difficulty": int(difficulty)}
+
+    def load_user_question_difficulty_tags(self, external_user_id: str) -> dict[str, int]:
+        return dict(self.tags)
+
+
+def test_practice_difficulty_tag_saves_learner_marking(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = TaggedDifficultyRuntime()
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=LabeledDifficultyQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "tag-difficulty", "password": "correct-horse-2026"},
+        )
+        saved = client.put(
+            "/api/v1/workshop/practice/difficulty-tag",
+            json={"question_id": "FORMAL_NOLABEL", "difficulty": 4},
+        )
+        invalid = client.put(
+            "/api/v1/workshop/practice/difficulty-tag",
+            json={"question_id": "FORMAL_NOLABEL", "difficulty": 7},
+        )
+
+    assert saved.status_code == 200
+    body = saved.json()
+    assert body["saved"] is True
+    assert body["question_id"] == "FORMAL_NOLABEL"
+    assert body["difficulty"] == 4
+    assert runtime.tags == {"FORMAL_NOLABEL": 4}
+    assert len(runtime.saved_tags) == 1
+    assert invalid.status_code == 422
+
+
+def test_practice_next_uses_learner_tagged_difficulty_for_filtering(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = TaggedDifficultyRuntime()
+    runtime.tags = {"FORMAL_NOLABEL": 1}
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=LabeledDifficultyQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "tagged-filter", "password": "correct-horse-2026"},
+        )
+        response = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public", "difficulty": 1},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["difficulty_available"] is True
+    # The learner-tagged level joins the bank's real levels in the available set.
+    assert body["available_difficulties"] == [1, 2, 3]
+    assert body["question"]["question_id"] == "FORMAL_NOLABEL"
+    assert body["question"]["difficulty"] == 1
+    assert body["question"]["difficulty_source"] == "user_tagged"
+    assert runtime.issued[0][1]["difficulty"] == 1

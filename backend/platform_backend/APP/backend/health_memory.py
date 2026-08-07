@@ -543,11 +543,57 @@ def _trim_pending_candidates(db: Session, user_id: int) -> None:
         db.delete(item)
 
 
-_LEGAL_MEMORY_CATEGORIES = {"short_term", "long_term", "preference", "note"}
+_LEGAL_MEMORY_CATEGORIES = {"short_term", "long_term", "preference", "feedback", "note"}
 _AUTO_CONFIRM_MIN_CONFIDENCE = 0.75
 # 直接沉淀时未给出 category 的默认值：requires_confirmation=false 语义上即
 # “确定性事实”，默认按长期背景沉淀，避免 7 天过期丢失长期偏好。
 _AUTO_CONFIRM_DEFAULT_CATEGORY = "long_term"
+
+# ---- 主客观分流确定性兜底（门控一）----
+# 模型把主观感受误标为 requires_confirmation=false + 高置信时，这里做第二道
+# 确定性拦截：主观感受/纠偏反馈一律退回候选池由用户确认，绝不直接沉淀
+# （fail-closed——宁可多一次确认，也不悄悄覆盖画像）。
+# 该函数只做安全兜底，不替代模型的语义判断；客观锚点词（时间/计划/目标等
+# 可核验陈述）用于避免误伤“用户希望每天学习 60 分钟”这类确定性事实。
+_STRONG_SUBJECTIVE_MARKERS = (
+    "太浅", "太深", "太难", "太简单", "太枯燥", "太慢", "太快",
+    "听不懂", "没听懂", "跟不上", "听不进去", "不适应", "很枯燥", "太乏味",
+    "讲解太", "讲得太",
+)
+_SUBJECTIVE_FEELING_WORDS = (
+    "觉得", "感觉", "认为", "希望", "想要", "更喜欢", "不太喜欢", "不喜欢",
+    "有点难", "比较难", "很难", "不太", "有点", "焦虑", "紧张", "压力",
+    "害怕", "担心", "烦躁", "没信心", "疲惫", "乏味", "枯燥",
+)
+_SUBJECTIVE_TARGET_WORDS = (
+    "讲解", "题目", "题干", "内容", "难度", "方式", "节奏", "风格",
+    "课程", "视频", "资源", "复习", "卡点", "讲得", "方法", "安排",
+)
+_OBJECTIVE_ANCHOR_WORDS = (
+    "每天", "每周", "每月", "每周末", "每晚", "分钟", "小时", "点钟",
+    "时间", "计划", "目标", "考试", "备考", "教材", "章节", "书本",
+    "知识点", "掌握", "学习时长", "频率", "优先",
+)
+
+
+def _is_subjective_memory_content(content: str) -> bool:
+    """确定性识别主观感受/纠偏反馈（安全兜底，非路由）。
+
+    - 命中强主观词（太浅/太难/听不懂/跟不上…）直接判定为主观；
+    - 弱感受词需同时命中主观对象词（讲解/题目/难度…）才判定；
+    - 含客观锚点（每天/分钟/计划/考试…）的陈述不判主观，
+      避免把“用户希望每天学习 60 分钟”误伤成主观内容。
+    """
+    text = str(content or "").strip().lower()
+    if not text:
+        return False
+    if any(marker in text for marker in _STRONG_SUBJECTIVE_MARKERS):
+        return True
+    if any(anchor in text for anchor in _OBJECTIVE_ANCHOR_WORDS):
+        return False
+    has_feeling = any(word in text for word in _SUBJECTIVE_FEELING_WORDS)
+    has_target = any(word in text for word in _SUBJECTIVE_TARGET_WORDS)
+    return has_feeling and has_target
 
 
 def _write_active_memory(
@@ -634,9 +680,26 @@ def _auto_confirm_important_memories(
             confidence = max(0.0, min(1.0, float(item.get("confidence", 0.8) or 0.8)))
         except Exception:
             confidence = 0.8
-        can_auto = (not requires_confirmation) and confidence >= _AUTO_CONFIRM_MIN_CONFIDENCE
+        category = str(item.get("category") or "").strip().lower()
+        # 门控一/四确定性兜底：主观感受与 preference/feedback 类别即使被模型
+        # 误标为 requires_confirmation=false 也绝不直接沉淀，退回候选池。
+        subjective = (
+            category in {"preference", "feedback"}
+            or _is_subjective_memory_content(content)
+        )
+        can_auto = (
+            (not requires_confirmation)
+            and confidence >= _AUTO_CONFIRM_MIN_CONFIDENCE
+            and not subjective
+        )
         if not can_auto:
-            deferred.append(item)
+            if subjective and not requires_confirmation:
+                deferred.append({
+                    **item,
+                    "reason": "主观感受/纠偏反馈（确定性兜底拦截），等待用户确认后沉淀。",
+                })
+            else:
+                deferred.append(item)
             continue
         if content in active_by_content:
             existing = active_by_content[content]

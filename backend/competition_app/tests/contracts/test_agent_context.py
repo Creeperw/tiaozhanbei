@@ -226,3 +226,119 @@ def test_source_bounded_compiler_cannot_use_profile_history_or_syllabus_to_fill_
     assert shared["current_user_message"] == ""
     assert shared["external_information"] == []
     assert "current_page" not in shared
+    assert shared["relevant_memories"] == []
+
+
+def test_memory_aware_planner_receives_recalled_memories() -> None:
+    context = {
+        "trace_id": "TRACE_MEM",
+        "request_id": "REQ_MEM",
+        "learner_id": "USER_1",
+        "user_request": "你还记得我的名字吗？",
+        "relevant_personalization_memories": [
+            {
+                "id": 40,
+                "category": "long_term",
+                "importance": "normal",
+                "content": "用户名叫creeper",
+                "source": "memory_agent",
+                "confidence": 0.9,
+                "updated_at": "2026-08-07T05:03:32",
+            },
+            {
+                "id": 39,
+                "category": "long_term",
+                "importance": "normal",
+                "content": "用户以后每天晚上9点开始学习",
+                "source": "memory_agent",
+                "confidence": 0.9,
+            },
+        ],
+    }
+
+    value = build_model_context(
+        context,
+        target_agent="planner_agent",
+        prompt_skill=prompt_skill_registry.load("planner_agent", "route_request"),
+        payload={},
+        permission_note="只读记忆切片",
+    )
+
+    shared = value["payload"]["shared_context"]
+    assert shared["relevant_memories"][0]["content"] == "用户名叫creeper"
+    assert shared["relevant_memories"][0]["id"] == 40
+    assert shared["relevant_memories"][1]["content"] == "用户以后每天晚上9点开始学习"
+    assert "updated_at" not in shared["relevant_memories"][0]
+
+
+def test_audit_agent_receives_recalled_memories_as_background() -> None:
+    context = {
+        "trace_id": "TRACE_AUDIT",
+        "request_id": "REQ_AUDIT",
+        "learner_id": "USER_1",
+        "user_request": "讲解一个知识点",
+        "relevant_personalization_memories": [
+            {"id": 40, "content": "用户名叫creeper"}
+        ],
+    }
+
+    value = build_model_context(
+        context,
+        target_agent="audit_agent",
+        prompt_skill=prompt_skill_registry.load(
+            "audit_agent", "personalized_review_card"
+        ),
+        payload={},
+        permission_note="只读证据",
+    )
+
+    # 记忆注入到所有智能体上下文；审核角色仅作背景，不参与证据判定。
+    assert value["payload"]["shared_context"]["relevant_memories"][0][
+        "content"
+    ] == "用户名叫creeper"
+
+
+def test_source_bounded_compiler_receives_memories_with_boundary() -> None:
+    context = {
+        "trace_id": "TRACE_COMPILER_MEM",
+        "request_id": "REQ_COMPILER_MEM",
+        "learner_id": "USER_1",
+        "user_request": "制定计划",
+        "relevant_personalization_memories": [
+            {"id": 40, "content": "用户名叫creeper"}
+        ],
+    }
+
+    value = build_model_context(
+        context,
+        target_agent="plan_contract_compiler",
+        prompt_skill=prompt_skill_registry.load(
+            "plan_contract_compiler", "compile_plan_contract"
+        ),
+        payload={"source_document": "只允许从这份自然语言计划中抽取字段"},
+        permission_note="只能抽取，不得补写",
+    )
+
+    # 即使 source-bounded compiler 也注入记忆块（渲染层附加边界说明）。
+    assert value["payload"]["shared_context"]["relevant_memories"][0][
+        "content"
+    ] == "用户名叫creeper"
+
+
+def test_memory_context_without_recall_slice_renders_empty() -> None:
+    context = {
+        "trace_id": "TRACE_EMPTY",
+        "request_id": "REQ_EMPTY",
+        "learner_id": "USER_1",
+        "user_request": "随便聊聊",
+    }
+
+    value = build_model_context(
+        context,
+        target_agent="planner_agent",
+        prompt_skill=prompt_skill_registry.load("planner_agent", "route_request"),
+        payload={},
+        permission_note="只读",
+    )
+
+    assert value["payload"]["shared_context"]["relevant_memories"] == []

@@ -1416,6 +1416,27 @@ class CorePracticeSubmissionClaim(Base):
     )
 
 
+class UserQuestionDifficultyTag(Base):
+    """Learner-assigned difficulty for a question that has no real label.
+
+    A user marking survives as long as the question exists; it participates
+    in difficulty filtering exactly like a source annotation but never
+    overwrites the bank's own label.
+    """
+
+    __tablename__ = "user_question_difficulty_tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(String(120), nullable=False, index=True)
+    difficulty = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("user_id", "question_id", name="uq_user_question_difficulty_tag"),
+    )
+
+
 _CORE_LEARNING_CONTRACT_TABLES = (
     "kp",
     "user_learning_targets",
@@ -1432,6 +1453,7 @@ _CORE_LEARNING_CONTRACT_TABLES = (
     "question_learning_stats",
     "user_knowledge_state",
     "core_practice_submission_claims",
+    "user_question_difficulty_tags",
 )
 
 _DAILY_TASK_CONTRACT_TABLES = (

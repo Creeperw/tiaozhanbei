@@ -2148,6 +2148,12 @@ class PersonalizedReviewCardUseCase:
         # 单模型场景下这是最需要清晰提示与重试入口的一类失败。
         if "empty" in message or "no content" in message:
             return "model_empty_response"
+        # 模型输出无法解析为有效结构化 JSON（初答 + 一次修复均失败）是
+        # 瞬态模型质量问题，与知识检索本身无关。必须优先于按关键字归类：
+        # 例如 agent 名 knowledge_explanation_agent 中的 “knowledge” 会把
+        # expert 讲解步骤的失败误报为“知识检索未能完成”。
+        if "invalid structured output" in message or "invalid_json" in message:
+            return "model_invalid_output"
         if (
             failed_step in {"learning_plan", "learning_plan_service"}
             and "dailytaskprogresserror" in message
@@ -2215,6 +2221,8 @@ class PersonalizedReviewCardUseCase:
                 "transport",
                 "empty",
                 "no content",
+                "invalid structured output",
+                "invalid_json",
                 "database",
                 "mysql",
                 "知识检索",

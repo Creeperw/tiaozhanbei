@@ -15,6 +15,7 @@ import {
   loadPracticeQuestion,
   skipPracticeQuestion,
   submitPracticeAnswer,
+  tagPracticeQuestionDifficulty,
 } from '../../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../../utils/api';
 import { Button, EmptyState, InlineError, Skeleton } from '../ui';
@@ -113,6 +114,7 @@ export default function AtlasPracticePanel({
   const [difficultyFilter, setDifficultyFilter] = useState(null);
   const [difficultyAvailable, setDifficultyAvailable] = useState(false);
   const [availableDifficulties, setAvailableDifficulties] = useState([]);
+  const [taggingDifficulty, setTaggingDifficulty] = useState(false);
   const operationGenerationRef = useRef(0);
   const excludedQuestionIdRef = useRef('');
   const historyRef = useRef([]);
@@ -304,6 +306,30 @@ export default function AtlasPracticePanel({
     setGeneration((value) => value + 1);
   };
 
+  const tagQuestionDifficulty = async (level) => {
+    if (!question || taggingDifficulty || question.difficulty != null) return;
+    const operation = operationGenerationRef.current;
+    setTaggingDifficulty(true);
+    setError('');
+    const response = await tagPracticeQuestionDifficulty({
+      fetcher: fetchJsonWithAuthFallback,
+      question,
+      difficulty: level,
+    });
+    if (operation !== operationGenerationRef.current) return;
+    if (response.error || !response.saved) {
+      setError(response.error || '标记难度失败，请稍后重试');
+      setTaggingDifficulty(false);
+      return;
+    }
+    // The learner's tag now counts as a real label for them: show it on the
+    // card and make the level selectable in the difficulty filter.
+    setQuestion((current) => (current ? { ...current, difficulty: level, difficulty_source: 'user_tagged' } : current));
+    setAvailableDifficulties((current) => (current.includes(level) ? current : [...current, level]));
+    setDifficultyAvailable(true);
+    setTaggingDifficulty(false);
+  };
+
   const previousQuestion = () => {
     if (historyIndexRef.current <= 0 || submitting || skipping) return;
     restoreHistoryEntry(historyIndexRef.current - 1);
@@ -315,6 +341,9 @@ export default function AtlasPracticePanel({
       restoreHistoryEntry(historyIndexRef.current + 1);
       return;
     }
+    // Moving on must not re-serve the question just left. The backend treats an
+    // exhausted candidate list with an explicit exclusion as "no more questions".
+    excludedQuestionIdRef.current = question?.question_id || '';
     persistCurrentHistory();
     setGeneration((value) => value + 1);
   };
@@ -324,6 +353,24 @@ export default function AtlasPracticePanel({
   if (!question) {
     if (taskItemId && loadedProgressComplete(progress)) {
       return <p role="status">今日知识点练习已完成</p>;
+    }
+    if (history.length > 0) {
+      return (
+        <EmptyState
+          title={mode === 'case' ? '该知识点案例简答题已练完' : '该知识点题目已练完'}
+          description={kpName ? `“${kpName}”下的题目已全部作答，可返回上一题回顾，或切换题目范围继续练习。` : '当前范围的题目已全部作答，可返回上一题回顾。'}
+          action={
+            <Button
+              variant="secondary"
+              aria-label="返回上一题"
+              onClick={() => restoreHistoryEntry(historyIndexRef.current)}
+              disabled={historyIndex < 0 || submitting || skipping}
+            >
+              <ArrowLeft size={17} aria-hidden="true" />返回上一题
+            </Button>
+          }
+        />
+      );
     }
     return (
       <EmptyState
@@ -387,8 +434,9 @@ export default function AtlasPracticePanel({
                   type="button"
                   className={difficultyFilter === null ? 'is-active' : ''}
                   onClick={() => setDifficultyFilter(null)}
+                  title="显示全部难度的题目"
                 >
-                  不限
+                  全部
                 </button>
                 {[1, 2, 3, 4, 5].map((level) => (
                   <button
@@ -397,7 +445,7 @@ export default function AtlasPracticePanel({
                     className={difficultyFilter === level ? 'is-active' : ''}
                     disabled={availableDifficulties.length > 0 && !availableDifficulties.includes(level)}
                     onClick={() => setDifficultyFilter(level)}
-                    title={`难度 ${level}${availableDifficulties.length > 0 && !availableDifficulties.includes(level) ? '（当前题库暂无该难度标注）' : ''}`}
+                    title={`只看 ${level} 星难度的题目${availableDifficulties.length > 0 && !availableDifficulties.includes(level) ? '（当前题库暂无该难度标注）' : ''}`}
                   >
                     {level}星
                   </button>
@@ -411,9 +459,35 @@ export default function AtlasPracticePanel({
               <span>第 {historyIndex + 1} 题</span>
               <span>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</span>
               <span>{typeLabel}</span>
+              {question.difficulty != null && (
+                <span className="practice-question-difficulty" data-testid="question-difficulty-label">
+                  难度 {question.difficulty}星
+                </span>
+              )}
             </div>
             <p id="practice-question">{question.stem}</p>
           </article>
+
+          {!taskItemId && question.difficulty == null && (
+            <section className="practice-difficulty-tagging" aria-label="标记本题难度">
+              <span className="practice-difficulty-tagging__label">本题暂无难度标注</span>
+              <div className="practice-difficulty-tagging__options">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    className="practice-difficulty-tagging__star"
+                    disabled={taggingDifficulty}
+                    onClick={() => tagQuestionDifficulty(level)}
+                    title={`标记本题为 ${level} 星难度`}
+                  >
+                    {level}星
+                  </button>
+                ))}
+              </div>
+              <small className="practice-difficulty-tagging__hint">标记后本题将参与难度筛选，仅对你可见</small>
+            </section>
+          )}
 
           <button
             type="button"

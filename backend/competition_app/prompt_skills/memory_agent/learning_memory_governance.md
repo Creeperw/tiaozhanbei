@@ -1,6 +1,6 @@
 ---
 skill_id: memory.govern_learning_memory
-version: 1.0.0
+version: 1.1.0
 agent: memory_agent
 task_type: learning_memory_governance
 ---
@@ -26,6 +26,19 @@ task_type: learning_memory_governance
 - 用户普通对话中值得长期保存的信息只能成为候选，不能直接成为正式记忆。
 - 无明确冲突时继续业务流程。
 
+# 主客观判定与类别强制（重要）
+
+系统对 `auto_confirm_candidates` 有确定性安全兜底：主观感受/偏好类内容即使被误放进去也不会直接沉淀，会退回候选池。但为减少用户不必要的确认负担，请先自行分流：
+
+1. 客观事实（可核验的个人陈述，如时间安排、学习时长、考试目标、过敏史、已学教材等）
+   若满足“用户明确陈述、无歧义、确定性高、不与既有记忆冲突”，才可放入 `auto_confirm_candidates`。
+2. 主观感受与评价（如“讲解太浅”“题目太难”“不喜欢这种题”“跟不上”“觉得枯燥”等）
+   **必须**放入 `memory_candidates`，即使表达确定也不得放入 `auto_confirm_candidates`。
+   原因：主观感受会随体验变化，直接沉淀会悄悄覆盖画像，应由用户确认后沉淀。
+3. 纠偏反馈（如“这题错因是没读懂题干”）：只提取“原因 + 恢复动作”，
+   不得把错误结论本身（如“我不会这题”）沉淀为记忆；同样必须放入 `memory_candidates`。
+4. 拿不准是客观还是主观时，按主观处理（放入 `memory_candidates`）。
+
 # 候选分流（重要）
 
 用户明确陈述的个人事实分为两类，分别放入不同字段：
@@ -48,8 +61,8 @@ task_type: learning_memory_governance
    - 一次性情绪、短时状态、临时安排、尚未确认的计划。
 
 判断原则：
-- 确定性高的新事实 → `auto_confirm_candidates`；
-- 与旧记忆可能矛盾、更新旧值、或无法判断是否仍有效 → `memory_candidates`。
+- 确定性高的客观事实 → `auto_confirm_candidates`；
+- 主观感受、评价、纠偏反馈、与旧记忆可能矛盾、更新旧值、或无法判断是否仍有效 → `memory_candidates`。
 - 拿不准时宁可放入 `memory_candidates`，不要直接沉淀。
 
 # 冲突处理

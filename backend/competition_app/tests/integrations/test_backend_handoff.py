@@ -232,6 +232,7 @@ def test_memory_governance_writes_auto_confirm_candidates_directly():
             "importance": "normal",
             "reason": "Memory Agent 提取，等待用户在学习记忆设置中确认。",
             "confidence": 0.8,
+            "category": "long_term",
         }
     ]
     assert extracted["important_short_term"] == [

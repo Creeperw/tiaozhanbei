@@ -251,7 +251,8 @@ class PaperAssemblyAgent:
                     f"{selected.unit_id}候选池中，系统已丢弃该越界选择。"
                 )
                 continue
-            if not self._has_complete_solution(question):
+            unit = blueprint_units[selected.unit_id]
+            if not self._question_solution_ok(question, unit):
                 system_constraints.append(
                     f"候选题{selected.question_id}缺少标准答案或解析，"
                     "系统已跳过并由完整候选或原创题补足。"
@@ -263,7 +264,7 @@ class PaperAssemblyAgent:
                     f"题目{selected.question_id}与已选题题干重复，系统已丢弃。"
                 )
                 continue
-            unit = blueprint_units[selected.unit_id]
+            actual_type = self._normalize_question_type(question.question_type)
             actual_type = self._normalize_question_type(question.question_type)
             if required_by_type and (
                 actual_type not in required_by_type
@@ -395,7 +396,7 @@ class PaperAssemblyAgent:
                 for candidate in unit.items:
                     if len(items) >= required_total or candidate.question_id in selected_ids:
                         continue
-                    if not self._has_complete_solution(candidate):
+                    if not self._question_solution_ok(candidate, blueprint_unit):
                         continue
                     if blueprint_unit.question_type_preferences and not self._matches_question_type(
                         candidate.question_type, blueprint_unit.question_type_preferences
@@ -443,7 +444,7 @@ class PaperAssemblyAgent:
                     (unit, candidate)
                     for unit in candidate_pool.units
                     for candidate in unit.items
-                    if self._has_complete_solution(candidate)
+                    if self._question_solution_ok(candidate, unit)
                 ),
                 None,
             )
@@ -600,6 +601,16 @@ class PaperAssemblyAgent:
             question.reference_answer.strip()
             and (question.analysis or "").strip()
         )
+
+    @classmethod
+    def _question_solution_ok(cls, question: QuestionDetail, unit: Any) -> bool:
+        """候选完整性判定。
+
+        当前对解析不做特殊要求：题库中大量正式题有答案但无解析（难度标注题
+        中约 92%），若把解析作为入卷必要条件，会把这些题全部挡在卷外、迫使
+        组卷退化为系统生成补充题。这里只要求有标准答案即可。
+        """
+        return bool(question.reference_answer.strip())
 
     @classmethod
     def _normalize_model_output(

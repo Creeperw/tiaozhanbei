@@ -86,6 +86,41 @@ def test_candidate_must_have_both_answer_and_explanation_before_selection() -> N
     )
 
 
+class _DifficultyUnit:
+    target_difficulty: int | None = None
+    difficulty_is_hard_constraint: bool = False
+
+
+def test_question_solution_ok_requires_answer_only_now() -> None:
+    question = (
+        _assembly_context()["dependency_outputs"]["question_pool"]
+        .payload.units[0].items[0]
+    )
+
+    # 当前对解析不做特殊要求：有答案即可入卷，解析缺失不再拦截候选。
+    no_analysis = question.model_copy(
+        update={"difficulty": 2, "analysis": "", "reference_answer": "A"}
+    )
+    unit = _DifficultyUnit()
+    unit.target_difficulty = 2
+    unit.difficulty_is_hard_constraint = True
+    assert PaperAssemblyAgent._question_solution_ok(no_analysis, unit)
+
+    unit_soft = _DifficultyUnit()
+    unit_soft.target_difficulty = 2
+    unit_soft.difficulty_is_hard_constraint = False
+    assert PaperAssemblyAgent._question_solution_ok(no_analysis, unit_soft)
+
+    unit_none = _DifficultyUnit()
+    assert PaperAssemblyAgent._question_solution_ok(no_analysis, unit_none)
+
+    # 无答案的题仍然不合格。
+    no_answer = question.model_copy(
+        update={"difficulty": 2, "reference_answer": ""}
+    )
+    assert not PaperAssemblyAgent._question_solution_ok(no_answer, unit_none)
+
+
 class AssemblyModel:
     async def complete_json(self, role, payload, on_delta=None):
         return {
