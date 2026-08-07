@@ -165,26 +165,122 @@ const scoreAsPercentage = (value) => {
   return Math.round((parsed <= 1 ? parsed * 100 : parsed) * 10) / 10;
 };
 
+const weakPointIdentity = (kpId, kpName) => {
+  const normalizedName = String(kpName || '')
+    .normalize('NFKC')
+    .replace(/[\s·•，,。；;：:（）()《》<>【】\[\]]+/g, '')
+    .toLowerCase();
+  return normalizedName ? `name:${normalizedName}` : `id:${String(kpId || '').trim().toLowerCase()}`;
+};
+
+const questionCandidates = (item) => {
+  const nested = item.questions
+    || item.relatedQuestions
+    || item.related_questions
+    || item.question_items;
+  if (Array.isArray(nested) && nested.length > 0) return nested;
+  if (
+    item.questionId || item.question_id || item.questionVersionId || item.question_version_id
+    || item.questionTitle || item.question_title || item.questionText || item.question_text
+    || item.stem || item.attemptItemId || item.attempt_item_id
+  ) {
+    return [item];
+  }
+  return [];
+};
+
+const normalizeRelatedQuestion = (question, fallbackIndex) => {
+  if (!question || typeof question !== 'object') return null;
+  const id = String(
+    question.questionId || question.question_id
+    || question.questionVersionId || question.question_version_id
+    || question.attemptItemId || question.attempt_item_id || '',
+  ).trim();
+  const title = String(
+    question.questionTitle || question.question_title
+    || question.title || question.stem
+    || question.questionText || question.question_text || '',
+  ).trim();
+  const masteryScore = scoreAsPercentage(
+    question.masteryScore ?? question.mastery_score ?? question.score ?? question.accuracy,
+  );
+  if (!id && !title) return null;
+  return {
+    id,
+    title: title || `相关题目 ${fallbackIndex + 1}`,
+    masteryScore,
+  };
+};
+
 export const normalizeWeakKnowledgePoints = (payload = {}) => {
   const source = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.weak_points) ? payload.weak_points : [];
-  const seen = new Set();
+  const groups = new Map();
 
-  return source.reduce((items, item) => {
-    if (!item || typeof item !== 'object') return items;
+  source.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
     const kpName = String(item.kpName || item.kp_name || item.name || item.title || '').trim();
-    const identity = String(item.kpId || item.kp_id || kpName).trim().toLowerCase();
-    if (!kpName || !identity || seen.has(identity) || items.length >= 5) return items;
-    seen.add(identity);
-    items.push({
-      kpId: String(item.kpId || item.kp_id || '').trim(),
-      kpName,
-      masteryScore: scoreAsPercentage(item.masteryScore ?? item.mastery_score ?? item.score),
-      reason: String(item.reason || '近期练习掌握度偏低，建议优先巩固。').trim(),
+    const kpId = String(item.kpId || item.kp_id || '').trim();
+    const identity = weakPointIdentity(kpId, kpName);
+    if (!kpName || identity === 'id:') return;
+
+    if (!groups.has(identity)) {
+      groups.set(identity, {
+        kpId,
+        kpIds: [],
+        kpName,
+        masteryScores: [],
+        reasons: [],
+        relatedQuestions: [],
+        sourceCount: 0,
+        explicitQuestionCount: 0,
+      });
+    }
+
+    const group = groups.get(identity);
+    group.sourceCount += 1;
+    if (kpId && !group.kpIds.includes(kpId)) group.kpIds.push(kpId);
+    if (!group.kpId && kpId) group.kpId = kpId;
+
+    const masteryScore = scoreAsPercentage(item.masteryScore ?? item.mastery_score ?? item.score);
+    if (masteryScore !== null) group.masteryScores.push(masteryScore);
+
+    const reason = String(item.reason || '').trim();
+    if (reason && !group.reasons.includes(reason)) group.reasons.push(reason);
+
+    const explicitCount = nonNegativeNumberOrNull(
+      item.questionCount ?? item.question_count ?? item.attemptCount ?? item.attempt_count,
+    );
+    if (explicitCount !== null) group.explicitQuestionCount += explicitCount;
+
+    questionCandidates(item).forEach((question, questionIndex) => {
+      const normalized = normalizeRelatedQuestion(question, group.relatedQuestions.length + questionIndex);
+      if (!normalized) return;
+      const questionIdentity = String(normalized.id || normalized.title).trim().toLowerCase();
+      if (!group.relatedQuestions.some((current) => String(current.id || current.title).trim().toLowerCase() === questionIdentity)) {
+        group.relatedQuestions.push(normalized);
+      }
     });
-    return items;
-  }, []);
+  });
+
+  return Array.from(groups.values()).slice(0, 5).map((group) => {
+    const masteryScore = group.masteryScores.length > 0
+      ? Math.round((group.masteryScores.reduce((sum, score) => sum + score, 0) / group.masteryScores.length) * 10) / 10
+      : null;
+    const inferredQuestionCount = group.relatedQuestions.length || group.sourceCount;
+    return {
+      kpId: group.kpId,
+      kpIds: group.kpIds,
+      kpName: group.kpName,
+      masteryScore,
+      reason: group.reasons[0] || '近期练习掌握度偏低，建议优先巩固。',
+      reasons: group.reasons,
+      questionCount: Math.max(inferredQuestionCount, group.explicitQuestionCount),
+      relatedQuestions: group.relatedQuestions,
+      sourceCount: group.sourceCount,
+    };
+  });
 };
 
 const recentTaskKeyFromActivity = (activity = {}) => {

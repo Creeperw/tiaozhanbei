@@ -98,6 +98,7 @@ def next_daily_task_practice_question(
             candidate
             for candidate in snapshots
             if candidate.audit_decision not in TERMINAL_AUDIT_DECISIONS
+            and candidate.attempt_status != "skipped"
         ),
         None,
     )
@@ -167,3 +168,60 @@ def next_daily_task_practice_question(
             "source_scope": "daily_task",
         },
     }
+
+
+@router.post("/{task_item_id}/practice/skip")
+def skip_daily_task_practice_question(
+    task_item_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Skip the current frozen snapshot without grading it.
+
+    The snapshot is marked ``skipped`` so it is not returned again by
+    ``/practice/next``; no attempt/grade record is written. The progress
+    counter is unchanged because skipped questions are not reviewed.
+    """
+    item = db.query(DailyTaskItemRecord).filter_by(
+        task_item_id=task_item_id,
+        user_id=current_user.id,
+        item_kind="knowledge_practice",
+    ).one_or_none()
+    if item is None:
+        raise HTTPException(status_code=404, detail="daily task item was not found")
+
+    snapshots = db.query(DailyTaskQuestionSnapshotRecord).filter_by(
+        task_item_id=task_item_id,
+        user_id=current_user.id,
+    ).order_by(
+        DailyTaskQuestionSnapshotRecord.id.asc()
+    ).all()
+    snapshot = next(
+        (
+            candidate
+            for candidate in snapshots
+            if candidate.audit_decision not in TERMINAL_AUDIT_DECISIONS
+            and candidate.attempt_status != "skipped"
+        ),
+        None,
+    )
+    if snapshot is None:
+        return {"skipped": False, "reason": "daily_task_item_completed"}
+
+    claim_cutoff = utc_now() - timedelta(minutes=30)
+    removed = (
+        db.query(CorePracticeSubmissionClaim)
+        .filter(
+            CorePracticeSubmissionClaim.user_id == current_user.id,
+            CorePracticeSubmissionClaim.daily_task_snapshot_id == snapshot.id,
+            CorePracticeSubmissionClaim.created_at >= claim_cutoff,
+        )
+        .delete(synchronize_session=False)
+    )
+    snapshot.attempt_status = "skipped"
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {"skipped": True, "claim_removed": int(removed or 0)}

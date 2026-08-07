@@ -1,6 +1,7 @@
 from APP.backend.system_data_service import build_learning_trends
 from APP.backend.time_utils import utc_now
 import json
+import functools
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
@@ -12,7 +13,7 @@ from typing import Optional
 from APP.backend.auth import get_current_user
 from APP.backend.config import SHORT_TERM_MEMORY_DAYS
 from APP.backend.database import get_db, UserModel, PersonalizationMemory, MemoryCandidate, MemorySummary, AgentEvent
-from APP.backend.health_memory import get_or_create_profile, resolve_personalization_conflicts
+from APP.backend.health_memory import get_or_create_profile, memory_rw_lock, resolve_personalization_conflicts
 from APP.backend.learner_profile_service import (
     apply_learner_profile_update,
     build_learner_profile_payload,
@@ -37,6 +38,22 @@ MAX_MARKDOWN_UPLOAD_BYTES = 1024 * 1024
 MAX_MARKDOWN_MEMORY_SECTIONS = 100
 MAX_MARKDOWN_MEMORY_SECTION_CHARS = 10_000
 MAX_MARKDOWN_MEMORY_TOTAL_CHARS = 500_000
+
+
+def _with_memory_write_lock(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with memory_rw_lock.write():
+            return func(*args, **kwargs)
+    return wrapper
+
+
+def _with_memory_read_lock(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with memory_rw_lock.read():
+            return func(*args, **kwargs)
+    return wrapper
 
 class ProfileUpdate(BaseModel):
     display_name: Optional[str] = None
@@ -406,57 +423,60 @@ def learning_trends(
 
 @router.get("/overview")
 def overview(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    # S 锁：get_or_create_profile 自管理锁；统计查询持共享读锁。
     profile = get_or_create_profile(db, current_user.id)
-    active_rows = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id, PersonalizationMemory.is_active == True).all()
-    inactive_count = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id, PersonalizationMemory.is_active == False).count()
-    pending_candidate_count = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id, MemoryCandidate.status == "pending").count()
-    ignored_candidate_count = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id, MemoryCandidate.status == "ignored").count()
-    promoted_candidate_count = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id, MemoryCandidate.status == "promoted").count()
-    summaries = db.query(MemorySummary).filter(MemorySummary.user_id == current_user.id).order_by(MemorySummary.created_at.desc()).limit(8).all()
-    events = db.query(AgentEvent).filter(AgentEvent.user_id == current_user.id).order_by(AgentEvent.created_at.desc()).limit(12).all()
-    by_category = {}
-    by_source = {}
-    important_count = 0
-    expiring_count = 0
-    now = utc_now()
-    for row in active_rows:
-        by_category[row.category] = by_category.get(row.category, 0) + 1
-        by_source[row.source] = by_source.get(row.source, 0) + 1
-        if row.importance == "important":
-            important_count += 1
-        if row.expires_at and row.expires_at <= now:
-            expiring_count += 1
-    return {
-        "profile": {k: getattr(profile, k) for k in ["display_name", "constitution", "health_goals", "diet_restrictions", "exercise_preferences", "medical_history", "custom_needs"]},
-        "stats": {
-            "active_count": len(active_rows),
-            "inactive_count": inactive_count,
-            "important_count": important_count,
-            "expired_count": expiring_count,
-            "candidate_pending_count": pending_candidate_count,
-            "candidate_ignored_count": ignored_candidate_count,
-            "candidate_promoted_count": promoted_candidate_count,
-            "by_category": by_category,
-            "by_source": by_source,
-        },
-        "recent_summaries": [{
-            "id": s.id,
-            "description": s.description,
-            "key_facts": s.key_facts,
-            "compression_reason": s.compression_reason,
-            "created_at": s.created_at.timestamp() if s.created_at else None,
-        } for s in summaries],
-        "recent_events": [{
-            "id": e.id,
-            "agent_name": e.agent_name,
-            "event_type": e.event_type,
-            "output_summary": e.output_summary,
-            "payload": e.payload,
-            "created_at": e.created_at.timestamp() if e.created_at else None,
-        } for e in events],
-    }
+    with memory_rw_lock.read():
+        active_rows = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id, PersonalizationMemory.is_active == True).all()
+        inactive_count = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id, PersonalizationMemory.is_active == False).count()
+        pending_candidate_count = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id, MemoryCandidate.status == "pending").count()
+        ignored_candidate_count = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id, MemoryCandidate.status == "ignored").count()
+        promoted_candidate_count = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id, MemoryCandidate.status == "promoted").count()
+        summaries = db.query(MemorySummary).filter(MemorySummary.user_id == current_user.id).order_by(MemorySummary.created_at.desc()).limit(8).all()
+        events = db.query(AgentEvent).filter(AgentEvent.user_id == current_user.id).order_by(AgentEvent.created_at.desc()).limit(12).all()
+        by_category = {}
+        by_source = {}
+        important_count = 0
+        expiring_count = 0
+        now = utc_now()
+        for row in active_rows:
+            by_category[row.category] = by_category.get(row.category, 0) + 1
+            by_source[row.source] = by_source.get(row.source, 0) + 1
+            if row.importance == "important":
+                important_count += 1
+            if row.expires_at and row.expires_at <= now:
+                expiring_count += 1
+        return {
+            "profile": {k: getattr(profile, k) for k in ["display_name", "constitution", "health_goals", "diet_restrictions", "exercise_preferences", "medical_history", "custom_needs"]},
+            "stats": {
+                "active_count": len(active_rows),
+                "inactive_count": inactive_count,
+                "important_count": important_count,
+                "expired_count": expiring_count,
+                "candidate_pending_count": pending_candidate_count,
+                "candidate_ignored_count": ignored_candidate_count,
+                "candidate_promoted_count": promoted_candidate_count,
+                "by_category": by_category,
+                "by_source": by_source,
+            },
+            "recent_summaries": [{
+                "id": s.id,
+                "description": s.description,
+                "key_facts": s.key_facts,
+                "compression_reason": s.compression_reason,
+                "created_at": s.created_at.timestamp() if s.created_at else None,
+            } for s in summaries],
+            "recent_events": [{
+                "id": e.id,
+                "agent_name": e.agent_name,
+                "event_type": e.event_type,
+                "output_summary": e.output_summary,
+                "payload": e.payload,
+                "created_at": e.created_at.timestamp() if e.created_at else None,
+            } for e in events],
+        }
 
 @router.get("/memories")
+@_with_memory_read_lock
 def list_memories(
     category: Optional[str] = None,
     importance: Optional[str] = None,
@@ -482,6 +502,7 @@ def list_memories(
     return [serialize_memory(r) for r in rows]
 
 @router.post("/memories")
+@_with_memory_write_lock
 def create_memory(body: MemoryCreate, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     expires_at = body.expires_at
     if expires_at is None and body.category == "short_term":
@@ -552,6 +573,7 @@ async def upload_markdown_memory(
     return {"success": True, "count": len(created), "memories": [serialize_memory(x) for x in created]}
 
 @router.put("/memories/{memory_id}")
+@_with_memory_write_lock
 def update_memory(memory_id: int, body: MemoryUpdate, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(PersonalizationMemory).filter(PersonalizationMemory.id == memory_id, PersonalizationMemory.user_id == current_user.id).first()
     if not item:
@@ -564,6 +586,7 @@ def update_memory(memory_id: int, body: MemoryUpdate, current_user: UserModel = 
     return {"success": True, "memory": serialize_memory(item)}
 
 @router.delete("/memories/{memory_id}")
+@_with_memory_write_lock
 def delete_memory(memory_id: int, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(PersonalizationMemory).filter(PersonalizationMemory.id == memory_id, PersonalizationMemory.user_id == current_user.id).first()
     if not item:
@@ -573,6 +596,7 @@ def delete_memory(memory_id: int, current_user: UserModel = Depends(get_current_
     return {"success": True}
 
 @router.patch("/memories/{memory_id}/restore")
+@_with_memory_write_lock
 def restore_memory(memory_id: int, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(PersonalizationMemory).filter(PersonalizationMemory.id == memory_id, PersonalizationMemory.user_id == current_user.id).first()
     if not item:
@@ -583,6 +607,7 @@ def restore_memory(memory_id: int, current_user: UserModel = Depends(get_current
     return {"success": True, "memory": serialize_memory(item)}
 
 @router.patch("/memories/{memory_id}/promote")
+@_with_memory_write_lock
 def promote_memory(memory_id: int, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(PersonalizationMemory).filter(PersonalizationMemory.id == memory_id, PersonalizationMemory.user_id == current_user.id).first()
     if not item:
@@ -597,6 +622,7 @@ def promote_memory(memory_id: int, current_user: UserModel = Depends(get_current
     return {"success": True, "memory": serialize_memory(item)}
 
 @router.post("/memories/cleanup")
+@_with_memory_write_lock
 def cleanup_expired(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.query(PersonalizationMemory).filter(
         PersonalizationMemory.user_id == current_user.id,
@@ -611,6 +637,7 @@ def cleanup_expired(current_user: UserModel = Depends(get_current_user), db: Ses
     return {"success": True, "cleaned": len(rows)}
 
 @router.get("/candidates")
+@_with_memory_read_lock
 def list_candidates(
     status: str = "pending",
     importance: Optional[str] = None,
@@ -636,6 +663,7 @@ def list_candidates(
     return [serialize_candidate(r) for r in rows]
 
 @router.post("/candidates")
+@_with_memory_write_lock
 def create_candidate(body: CandidateCreate, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     content = body.content.strip()
     if not content:
@@ -657,6 +685,7 @@ def create_candidate(body: CandidateCreate, current_user: UserModel = Depends(ge
     return {"success": True, "id": item.id, "candidate": serialize_candidate(item)}
 
 @router.put("/candidates/{candidate_id}")
+@_with_memory_write_lock
 def update_candidate(candidate_id: int, body: CandidateUpdate, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(MemoryCandidate).filter(MemoryCandidate.id == candidate_id, MemoryCandidate.user_id == current_user.id).first()
     if not item:
@@ -679,6 +708,7 @@ def update_candidate(candidate_id: int, body: CandidateUpdate, current_user: Use
     return {"success": True, "candidate": serialize_candidate(item)}
 
 @router.patch("/candidates/{candidate_id}/ignore")
+@_with_memory_write_lock
 def ignore_candidate(candidate_id: int, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(MemoryCandidate).filter(MemoryCandidate.id == candidate_id, MemoryCandidate.user_id == current_user.id).first()
     if not item:
@@ -693,6 +723,7 @@ def ignore_candidate(candidate_id: int, current_user: UserModel = Depends(get_cu
     return {"success": True, "candidate": serialize_candidate(item)}
 
 @router.delete("/candidates/{candidate_id}")
+@_with_memory_write_lock
 def delete_candidate(candidate_id: int, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(MemoryCandidate).filter(MemoryCandidate.id == candidate_id, MemoryCandidate.user_id == current_user.id).first()
     if not item:
@@ -703,6 +734,7 @@ def delete_candidate(candidate_id: int, current_user: UserModel = Depends(get_cu
     return {"success": True}
 
 @router.patch("/candidates/{candidate_id}/promote")
+@_with_memory_write_lock
 def promote_candidate(candidate_id: int, body: CandidatePromote, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(MemoryCandidate).filter(MemoryCandidate.id == candidate_id, MemoryCandidate.user_id == current_user.id).first()
     if not item:
@@ -776,12 +808,14 @@ def promote_candidate(candidate_id: int, body: CandidatePromote, current_user: U
 
 @router.get("/export")
 def export_personalization(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    # S 锁：get_or_create_profile 自行管理读写锁（双检锁），查询持共享读锁。
     profile = get_or_create_profile(db, current_user.id)
-    memories = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id).order_by(PersonalizationMemory.updated_at.desc()).all()
-    candidates = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id).order_by(MemoryCandidate.updated_at.desc()).all()
-    return {
-        "profile": {k: getattr(profile, k) for k in ["display_name", "constitution", "health_goals", "diet_restrictions", "exercise_preferences", "medical_history", "custom_needs"]},
-        "memories": [serialize_memory(m) for m in memories],
-        "candidates": [serialize_candidate(c) for c in candidates],
-        "exported_at": utc_now().isoformat(),
-    }
+    with memory_rw_lock.read():
+        memories = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id).order_by(PersonalizationMemory.updated_at.desc()).all()
+        candidates = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id).order_by(MemoryCandidate.updated_at.desc()).all()
+        return {
+            "profile": {k: getattr(profile, k) for k in ["display_name", "constitution", "health_goals", "diet_restrictions", "exercise_preferences", "medical_history", "custom_needs"]},
+            "memories": [serialize_memory(m) for m in memories],
+            "candidates": [serialize_candidate(c) for c in candidates],
+            "exported_at": utc_now().isoformat(),
+        }

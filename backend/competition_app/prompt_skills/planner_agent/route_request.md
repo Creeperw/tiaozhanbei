@@ -1,6 +1,6 @@
 ---
 skill_id: planner.route_request
-version: 1.5.1
+version: 1.6.0
 agent: planner_agent
 task_type: route_request
 ---
@@ -12,7 +12,7 @@ task_type: route_request
 ## 工作方法
 
 1. 先判断最终交付物，逐类对照：
-   - `casual_conversation`：纯问候、感谢、告别或询问助教能力且没有学习任务；用户表达考试焦虑、紧张、挫败或需要鼓励时也可使用，回复应先共情，再给出可执行的当下建议和继续求助的入口，不要只返回一句固定欢迎语。
+   - `casual_conversation`：纯问候、感谢、告别或询问助教能力且没有学习任务；用户表达考试焦虑、紧张、挫败或需要鼓励时也可使用，回复应先共情，再给出可执行的当下建议和继续求助的入口，不要只返回一句固定欢迎语。**用户明确陈述可长期复用的个人事实并要求记住（如“以后每天晚上9点开始学习”“每天学习60分钟”“帮我记一下”“记住我……”）时，同样使用 `casual_conversation`，但必须选择 `memory_agent` 参与记忆提取与治理，并用 `casual_response` 给出简短确认。**
    - `general_learning_support`：天气、考试日期、报名时间、截止日期等时效性事实（由 Knowledge 调用网络检索工具并标注来源）；或围绕教材、章节梳理学习要点、阅读重点、学习方法等开放式支持。
    - `knowledge_explanation`：讲解单个概念、原理、区别。
    - `learner_data_query`：查询用户本人近期学习、下一步学习重点、进度、掌握、复习或计划进展。
@@ -23,7 +23,7 @@ task_type: route_request
 2. 阅读输入中的 `routing_skills`，使用与交付物对应的路由 Skill 和示例；这些是规划参考，不是固定工作流模板名称。
    必须理解完整语义、当前消息、近期对话和页面上下文后再路由；不得建立或依赖关键词命中表，也不得在模型判断前使用词法快速路由。
 3. 逐个检查 Agent 是否必要以及依赖是否完整。
-4. Memory 通常参与业务流程，用于读取相关记忆、提取可长期复用的事实并治理冲突。系统根据固定上下文阈值计算 `memory_required`；Planner 不计算阈值、不判断是否压缩。Memory Agent 始终负责记忆读取、提取和治理，仅在系统传入 `memory_required=true` 时执行上下文压缩子步骤；不得因为压缩未触发就移除 Memory。纯闲聊可以不选择 Memory。
+4. Memory 通常参与业务流程，用于读取相关记忆、提取可长期复用的事实并治理冲突。系统根据固定上下文阈值计算 `memory_required`；Planner 不计算阈值、不判断是否压缩。Memory Agent 始终负责记忆读取、提取和治理，仅在系统传入 `memory_required=true` 时执行上下文压缩子步骤；不得因为压缩未触发就移除 Memory。纯闲聊（问候、感谢、告别、情绪支持等不含可记忆事实的对话）可以不选择 Memory；**用户明确陈述个人偏好、习惯、时间安排等可长期复用事实并要求记住时，即使没有学习任务也必须选择 Memory Agent**。
 5. Planner 不生成知识库检索表达；仅当任务需要教材事实、知识内容或题目资源时选择 Knowledge Agent，由其接收原始 `user_request` 并负责检索意图处理。
 6. 输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`task_type`、`query_kind`、`plan_scope`、`plan_action`、`requires_clarification`、`clarification_question`、`casual_response`、`selected_agents`、`routing_reason`、`risk_level`、`requires_audit`、`requires_learning_plan_output`、`external_information_request`、`question_explanation_request`、`emotional_support_request`。除上述字段外，严禁输出任何其他字段；系统对输出做严格字段校验，多出的任何字段都会导致本次路由被判定为失败。不生成计划、资源、工具参数或系统 ID。输入已经给出 `plan_scope` 时必须原样返回，不能自行改成另一层。`plan_scope_hint` 是可选的弱语义提示，仅用于辅助理解和调试；它不是用户明确指令，也不能单独把查询升级为计划，更不能替代你对本轮原始请求和最近对话的语义判断。
 7. 用户只询问学习状态或学情时使用 `learner_data_query`，并选择对应 `query_kind`。Diagnosis 通过系统授权的只读工具读取当前用户数据，不要求 Knowledge Agent，也不得创建学习计划或复习卡。

@@ -1136,3 +1136,94 @@ def test_emotional_support_replaces_generic_completion_fallback() -> None:
     assert normalized["task_type"] == "casual_conversation"
     assert "焦虑" in normalized["casual_response"]
     assert "10分钟" in normalized["casual_response"]
+
+
+def test_casual_memory_record_request_keeps_only_memory_agent() -> None:
+    """A memory-record request stays casual but must retain memory_agent.
+
+    “帮我记一下/以后每天晚上9点学习” is answered with a short confirmation,
+    yet the newly stated durable fact still needs extraction and governance.
+    """
+    output = PlannerModelOutput(
+        task_type="casual_conversation",
+        selected_agents=["memory_agent"],
+        casual_response="好的，已收到您的长期偏好：以后每天晚上9点开始学习。",
+        routing_reason="用户明确陈述个人偏好并要求记住，属于记忆记录请求。",
+        risk_level="low",
+        requires_audit=False,
+    )
+
+    PlannerAgent.validate_selection(output)
+
+    completed = PlannerAgent.complete_required_selection(output)
+    assert completed.selected_agents == ["memory_agent"]
+    assert completed.requires_audit is False
+
+
+def test_casual_small_talk_clears_all_agents() -> None:
+    output = PlannerModelOutput(
+        task_type="casual_conversation",
+        selected_agents=[],
+        casual_response="你好！今天想学点什么？",
+        routing_reason="纯问候",
+        risk_level="low",
+        requires_audit=False,
+    )
+
+    PlannerAgent.validate_selection(output)
+
+    completed = PlannerAgent.complete_required_selection(output)
+    assert completed.selected_agents == []
+    assert completed.requires_audit is False
+
+
+def test_casual_rejects_non_memory_downstream_agents() -> None:
+    output = PlannerModelOutput(
+        task_type="casual_conversation",
+        selected_agents=["knowledge_base_agent"],
+        casual_response="好的。",
+        routing_reason="非法选择",
+        risk_level="low",
+        requires_audit=False,
+    )
+
+    with pytest.raises(ValueError, match="besides memory_agent"):
+        PlannerAgent.validate_selection(output)
+
+
+def test_normalize_keeps_only_memory_agent_for_casual_record_request() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "casual_conversation",
+            "selected_agents": ["memory_agent"],
+            "casual_response": "好的，已记住：以后每天晚上9点开始学习。",
+            "routing_reason": "记忆记录请求",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {
+            "user_request": "我以后每天晚上9点开始学习，帮我记一下",
+        },
+    )
+
+    assert normalized["task_type"] == "casual_conversation"
+    assert normalized["selected_agents"] == ["memory_agent"]
+
+
+def test_normalize_clears_agents_for_pure_small_talk() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "casual_conversation",
+            "selected_agents": ["knowledge_base_agent"],
+            "casual_response": "你好！",
+            "routing_reason": "问候",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {
+            "user_request": "你好",
+        },
+    )
+
+    assert normalized["task_type"] == "casual_conversation"
+    assert normalized["selected_agents"] == []

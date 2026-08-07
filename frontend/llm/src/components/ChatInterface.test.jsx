@@ -397,8 +397,23 @@ describe('ChatInterface session workspace', () => {
         return Promise.resolve(jsonResponse([{
           id: 21,
           role: 'assistant',
-          content: 'A 的回答<<REFS:[{"title":"A 的旧引用","content":"只属于 A","type":"rag"}]>>',
-          trace_events: [{ event: 'step_completed', agent: 'planner_agent' }],
+          content: 'A 的回答',
+          trace_events: [
+            { event: 'step_completed', agent: 'planner_agent' },
+            {
+              event: 'knowledge_retrieval',
+              agent: 'knowledge_base_agent',
+              kp_query: '知识点 A',
+              question_query: '题目 A',
+              evidence_items: [{
+                source_id: 'WEB_A',
+                content_summary: 'A 的网页来源\n网页摘要内容',
+                confidence: 0.9,
+                source_url: 'https://example.com/a',
+                resource_type: 'reference',
+              }],
+            },
+          ],
         }]));
       }
       if (url.endsWith('/conversations/session-b/messages')) {
@@ -409,10 +424,10 @@ describe('ChatInterface session workspace', () => {
 
     render(<ChatInterface currentUser="alice" preferredSessionId="session-a" embedded />);
 
-    fireEvent.click(await screen.findByTitle('点击查看检索详情'));
+    fireEvent.click(await screen.findByTitle('点击查看参考来源'));
     const retrievalSidebar = screen.getByText('检索详情').closest('.fixed');
     expect(retrievalSidebar).not.toHaveAttribute('aria-hidden');
-    expect(screen.getByText('A 的旧引用')).toBeInTheDocument();
+    expect(screen.getAllByText('A 的网页来源').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /查看多智能体协作过程/ }));
     expect(screen.getByRole('complementary', { name: '执行进度' })).toBeInTheDocument();
@@ -421,7 +436,7 @@ describe('ChatInterface session workspace', () => {
     expect(await screen.findByText('B 的回答')).toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name: '执行进度' })).not.toBeInTheDocument();
     expect(retrievalSidebar).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.queryByText('A 的旧引用')).not.toBeInTheDocument();
+    expect(screen.queryByText('A 的网页来源')).not.toBeInTheDocument();
   });
 
   it('restores persisted workflow actions and keeps them navigable after reopening a session', async () => {

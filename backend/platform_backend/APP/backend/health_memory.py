@@ -2,6 +2,9 @@ from APP.backend.time_utils import utc_now
 import json
 import hashlib
 import re
+import threading
+import functools
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 from sqlalchemy.orm import Session
@@ -11,6 +14,100 @@ from sqlalchemy.exc import IntegrityError
 from APP.backend.config import MEMORY_ITEM_CHAR_LIMIT, MEMORY_RETRIEVAL_LIMIT, SHORT_TERM_MEMORY_DAYS, MEMORY_CANDIDATE_LIMIT, SUMMARY_ITEM_CHAR_LIMIT
 from APP.backend.database import PersonalizationMemory, MemoryCandidate, UserProfile, MemorySummary, DbMessage, AgentEvent
 from APP.backend.health_utils import rough_token_count, safe_json_dumps
+from APP.backend.memory_retrieval import rank_memories
+
+
+class _MemoryRWLock:
+    """S 锁（读写锁）：后台多智能体写记忆时，其他工作线程只能读取不能修改。
+
+    - 写锁：独占，同一线程可重入（嵌套写函数调用安全）。
+    - 读锁：共享，多个读线程可并发。
+    - 写者优先：等待中的写者到达后，新读者排队，避免写饥饿。
+    """
+
+    def __init__(self) -> None:
+        self._cond = threading.Condition()
+        self._readers = 0
+        self._writer_tid: int | None = None
+        self._writer_depth = 0
+        self._pending_writers = 0
+
+    def acquire_read(self) -> None:
+        tid = threading.get_ident()
+        with self._cond:
+            if self._writer_tid == tid:
+                return  # 写锁持有者内部直接读，无需计数
+            while self._writer_tid is not None or self._pending_writers > 0:
+                self._cond.wait()
+            self._readers += 1
+
+    def release_read(self) -> None:
+        tid = threading.get_ident()
+        with self._cond:
+            if self._writer_tid == tid:
+                return
+            self._readers -= 1
+            if self._readers == 0:
+                self._cond.notify_all()
+
+    def acquire_write(self) -> None:
+        tid = threading.get_ident()
+        with self._cond:
+            if self._writer_tid == tid:
+                self._writer_depth += 1
+                return
+            self._pending_writers += 1
+            try:
+                while self._writer_tid is not None or self._readers > 0:
+                    self._cond.wait()
+                self._writer_tid = tid
+                self._writer_depth = 1
+            finally:
+                self._pending_writers -= 1
+
+    def release_write(self) -> None:
+        with self._cond:
+            self._writer_depth -= 1
+            if self._writer_depth == 0:
+                self._writer_tid = None
+                self._cond.notify_all()
+
+    @contextmanager
+    def read(self):
+        self.acquire_read()
+        try:
+            yield
+        finally:
+            self.release_read()
+
+    @contextmanager
+    def write(self):
+        self.acquire_write()
+        try:
+            yield
+        finally:
+            self.release_write()
+
+
+# 记忆读写共享锁：写函数持写锁，读函数持读锁。
+memory_rw_lock = _MemoryRWLock()
+
+
+def _with_memory_write_lock(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with memory_rw_lock.write():
+            return func(*args, **kwargs)
+    return wrapper
+
+
+def _with_memory_read_lock(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with memory_rw_lock.read():
+            return func(*args, **kwargs)
+    return wrapper
+
 
 PLACEHOLDER_VALUES = {
     "title", "content", "string", "text", "none", "null", "undefined", "example",
@@ -205,6 +302,7 @@ def _deactivate_expired_memories(db: Session, user_id: int) -> int:
     return len(expired)
 
 
+@_with_memory_write_lock
 def resolve_personalization_conflicts(db: Session, user_id: int) -> int:
     """Apply deterministic expiry only; semantic conflicts require user confirmation.
 
@@ -225,8 +323,19 @@ def get_or_create_profile(
     *,
     commit: bool = True,
 ) -> UserProfile:
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    if not profile:
+    # S 锁：优先走共享读锁；仅当画像不存在时才在独占写锁下创建（双检锁）。
+    with memory_rw_lock.read():
+        profile = db.query(UserProfile).filter(
+            UserProfile.user_id == user_id
+        ).first()
+        if profile is not None:
+            return profile
+    with memory_rw_lock.write():
+        profile = db.query(UserProfile).filter(
+            UserProfile.user_id == user_id
+        ).first()
+        if profile is not None:
+            return profile
         profile = UserProfile(user_id=user_id)
         if not commit:
             db.add(profile)
@@ -237,32 +346,54 @@ def get_or_create_profile(
                 db.add(profile)
                 db.flush()
         except IntegrityError:
-            profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).one()
+            profile = db.query(UserProfile).filter(
+                UserProfile.user_id == user_id
+            ).one()
         if commit:
             db.commit()
             db.refresh(profile)
-    return profile
+        return profile
+
 
 def retrieve_user_context(db: Session, user_id: int, query: str = "") -> str:
+    # S 锁：profile 由 get_or_create_profile 自行管理读写锁；
+    # 记忆/画像字段查询整体持共享读锁，保证后台写时不读到半更新状态。
     profile = get_or_create_profile(db, user_id)
-    lines = []
-    profile_fields = [
-        ("昵称", profile.display_name),
-        ("体质类型", profile.constitution), ("健康目标", profile.health_goals),
-        ("饮食忌口", profile.diet_restrictions), ("运动偏好", profile.exercise_preferences),
-        ("伤病/健康史", profile.medical_history), ("用户自定义需求", profile.custom_needs),
-    ]
-    for label, value in profile_fields:
-        if value:
-            lines.append(f"- [{label}] {value[:MEMORY_ITEM_CHAR_LIMIT]}")
-    memories = db.query(PersonalizationMemory).filter(
-        PersonalizationMemory.user_id == user_id,
-        PersonalizationMemory.is_active == True,
-        or_(PersonalizationMemory.expires_at.is_(None), PersonalizationMemory.expires_at > utc_now()),
-    ).order_by(PersonalizationMemory.updated_at.desc()).limit(MEMORY_RETRIEVAL_LIMIT).all()
-    for item in memories:
-        lines.append(f"- [{item.category}/{item.importance}] {item.title}: {item.content[:MEMORY_ITEM_CHAR_LIMIT]}")
-    return "\n".join(lines) if lines else "无"
+    with memory_rw_lock.read():
+        lines = []
+        profile_fields = [
+            ("昵称", profile.display_name),
+            ("体质类型", profile.constitution), ("健康目标", profile.health_goals),
+            ("饮食忌口", profile.diet_restrictions), ("运动偏好", profile.exercise_preferences),
+            ("伤病/健康史", profile.medical_history), ("用户自定义需求", profile.custom_needs),
+        ]
+        for label, value in profile_fields:
+            if value:
+                lines.append(f"- [{label}] {value[:MEMORY_ITEM_CHAR_LIMIT]}")
+        memories = db.query(PersonalizationMemory).filter(
+            PersonalizationMemory.user_id == user_id,
+            PersonalizationMemory.is_active == True,
+            or_(PersonalizationMemory.expires_at.is_(None), PersonalizationMemory.expires_at > utc_now()),
+        ).all()
+        # 混合检索（向量 + BM25 + 时间衰减）：只注入与当前请求相关的记忆。
+        memory_items = [
+            {
+                "id": item.id,
+                "category": item.category,
+                "title": item.title or "",
+                "content": item.content or "",
+                "importance": item.importance or "normal",
+                "updated_at": item.updated_at,
+            }
+            for item in memories
+        ]
+        selected = rank_memories(query, memory_items, top_n=MEMORY_RETRIEVAL_LIMIT)
+        for item in selected:
+            title = str(item.get("title") or "").strip()
+            content = str(item.get("content") or "").strip()
+            text = f"{title}：{content}" if title else content
+            lines.append(f"- [{item.get('category')}/{item.get('importance')}] {text[:MEMORY_ITEM_CHAR_LIMIT]}")
+        return "\n".join(lines) if lines else "无"
 
 def redact_sensitive_text(text: str) -> str:
     redacted = text or ""
@@ -305,6 +436,7 @@ def format_memory_summary(summary: MemorySummary) -> str:
         lines.append(f"- [{label}] {content}{suffix}")
     return "\n".join(lines)[:SUMMARY_ITEM_CHAR_LIMIT]
 
+@_with_memory_read_lock
 def retrieve_compressed_context(db: Session, user_id: int, query: str = "", session_id: str | None = None, before_message_id: int | None = None) -> str:
     """Retrieve compressed context for the current session only.
 
@@ -346,8 +478,26 @@ def _normalize_memory_items(items: Any) -> List[Dict[str, str]]:
             "content": content,
             "importance": str(item.get("importance") or "normal"),
             "reason": str(item.get("reason") or ""),
+            "requires_confirmation": item.get("requires_confirmation", True),
+            "category": str(item.get("category") or "").strip().lower(),
+            "confidence": item.get("confidence", 0.8),
         })
     return normalized
+
+
+def _as_bool(value: Any, default: bool = True) -> bool:
+    """宽松解析 requires_confirmation 布尔字段（兼容 True/False/'false'/0）。"""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"false", "no", "0", "否", "不需要", "不用"}:
+            return False
+        if lowered in {"true", "yes", "1", "是", "需要"}:
+            return True
+    return default
 
 def _is_placeholder(value: str) -> bool:
     compact = (value or "").strip().strip("'\"`，。；;：: ").lower()
@@ -392,6 +542,131 @@ def _trim_pending_candidates(db: Session, user_id: int) -> None:
     for item in overflow:
         db.delete(item)
 
+
+_LEGAL_MEMORY_CATEGORIES = {"short_term", "long_term", "preference", "note"}
+_AUTO_CONFIRM_MIN_CONFIDENCE = 0.75
+# 直接沉淀时未给出 category 的默认值：requires_confirmation=false 语义上即
+# “确定性事实”，默认按长期背景沉淀，避免 7 天过期丢失长期偏好。
+_AUTO_CONFIRM_DEFAULT_CATEGORY = "long_term"
+
+
+def _write_active_memory(
+    db: Session,
+    user_id: int,
+    item: Dict[str, str],
+    *,
+    source: str,
+    session_id: str | None = None,
+) -> PersonalizationMemory:
+    """把确定性的提取条目直接写入正式记忆（active），并推断 category/importance。"""
+    category = str(item.get("category") or "").strip().lower()
+    if category not in _LEGAL_MEMORY_CATEGORIES:
+        category = _AUTO_CONFIRM_DEFAULT_CATEGORY
+    importance = str(item.get("importance") or "normal").strip().lower()
+    if importance not in {"important", "normal", "low"}:
+        importance = "normal"
+    try:
+        confidence = max(0.0, min(1.0, float(item.get("confidence", 0.8) or 0.8)))
+    except Exception:
+        confidence = 0.8
+    expires_at = None
+    if category == "short_term":
+        expires_at = utc_now() + timedelta(days=SHORT_TERM_MEMORY_DAYS)
+    memory = PersonalizationMemory(
+        user_id=user_id,
+        category=category,
+        importance="normal" if importance == "low" else importance,
+        title=str(item.get("title") or "")[:200],
+        content=str(item.get("content") or "").strip(),
+        source=source or "auto_extract",
+        expires_at=expires_at,
+        confidence=confidence,
+    )
+    db.add(memory)
+    db.flush()
+    return memory
+
+
+def _auto_confirm_important_memories(
+    db: Session,
+    user_id: int,
+    important_items: List[Dict[str, str]],
+    *,
+    source: str,
+    session_id: str | None = None,
+) -> tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+    """确定性高的重要记忆直接沉淀为正式记忆，其余退回候选池。
+
+    - requires_confirmation=false 且 confidence 达标 → 直接写入 active 记忆；
+    - 与既有 active 记忆内容完全相同 → 复用（刷新 title/importance）；
+    - 与既有 active 记忆同类同主题但内容不同（潜在冲突）→ 保守退回候选池，
+      避免悄悄覆盖旧值（例如学习时长 60 分钟 → 30 分钟需用户确认）；
+    - 其余（需确认 / 低置信 / 候选池已存在同内容）→ 退回候选池。
+
+    返回 (auto_confirmed, deferred)：已直接沉淀条目（含落库 id）与退回候选池条目。
+    """
+    auto_confirmed: List[Dict[str, str]] = []
+    deferred: List[Dict[str, str]] = []
+    active_rows = db.query(PersonalizationMemory).filter(
+        PersonalizationMemory.user_id == user_id,
+        PersonalizationMemory.is_active == True,
+    ).all()
+    active_by_content = {
+        str(row.content or "").strip(): row for row in active_rows
+    }
+    active_conflict_keys: Dict[str, List[PersonalizationMemory]] = {}
+    for row in active_rows:
+        active_conflict_keys.setdefault(_infer_memory_conflict_key(row), []).append(row)
+    pending_contents = {
+        str(row.content or "").strip()
+        for row in db.query(MemoryCandidate).filter(
+            MemoryCandidate.user_id == user_id,
+            MemoryCandidate.status == "pending",
+        ).all()
+    }
+
+    for item in important_items:
+        content = str(item.get("content") or "").strip()
+        if not content:
+            continue
+        requires_confirmation = _as_bool(item.get("requires_confirmation"), default=True)
+        try:
+            confidence = max(0.0, min(1.0, float(item.get("confidence", 0.8) or 0.8)))
+        except Exception:
+            confidence = 0.8
+        can_auto = (not requires_confirmation) and confidence >= _AUTO_CONFIRM_MIN_CONFIDENCE
+        if not can_auto:
+            deferred.append(item)
+            continue
+        if content in active_by_content:
+            existing = active_by_content[content]
+            if item.get("title"):
+                existing.title = str(item["title"])[:200]
+            existing.updated_at = utc_now()
+            auto_confirmed.append({**item, "id": existing.id, "duplicate": True})
+            continue
+        if content in pending_contents:
+            deferred.append(item)
+            continue
+        probe = PersonalizationMemory(
+            title=str(item.get("title") or ""),
+            content=content,
+            category=item.get("category") or "note",
+        )
+        conflict_key = _infer_memory_conflict_key(probe)
+        conflicts = active_conflict_keys.get(conflict_key, [])
+        if conflicts and all(
+            str(row.content or "").strip() != content for row in conflicts
+        ):
+            deferred.append(item)
+            continue
+        memory = _write_active_memory(
+            db, user_id, item, source=source, session_id=session_id
+        )
+        auto_confirmed.append({**item, "id": memory.id})
+    return auto_confirmed, deferred
+
+@_with_memory_write_lock
 def save_extracted_memories(
     db: Session,
     user_id: int,
@@ -409,15 +684,25 @@ def save_extracted_memories(
     ])
     important_items = _dedupe_memory_items(important_items)
     candidate_items = _dedupe_memory_items(candidate_items)
+    # 确定性高的重要记忆（requires_confirmation=false 且置信度达标）直接沉淀为
+    # 正式记忆，无需用户逐条确认；其余退回候选池走确认流程。
+    auto_confirmed, deferred_important = _auto_confirm_important_memories(
+        db,
+        user_id,
+        important_items,
+        source=source,
+        session_id=session_id,
+    )
     persisted_extracted = {
         "important_short_term": important_items,
         "non_important_candidates": candidate_items,
         "summary": extracted.get("summary") or "",
+        "auto_confirmed": auto_confirmed,
     }
 
     # Model-extracted facts are proposals, not confirmed active memories.  Keep
     # the existing settings-page confirmation and promotion workflow as the
-    # authority boundary for both important and ordinary extracted items.
+    # authority boundary for items that still need user confirmation.
     candidate_items = [
         *[
             {
@@ -425,7 +710,7 @@ def save_extracted_memories(
                 "importance": "normal",
                 "reason": item.get("reason") or "记忆管理智能体识别为重要信息，等待用户确认。",
             }
-            for item in important_items
+            for item in deferred_important
         ],
         *candidate_items,
     ]
@@ -511,6 +796,7 @@ def _sync_profile_time_from_memory_replacement(
     profile.updated_at = utc_now()
 
 
+@_with_memory_write_lock
 def apply_confirmed_memory_replacements(
     db: Session,
     user_id: int,
@@ -629,6 +915,7 @@ def validate_memory_summary(summary: Dict[str, Any], messages: List[DbMessage]) 
         return None
     return {"description": description[:600], "key_facts": facts}
 
+@_with_memory_write_lock
 def save_memory_summary(db: Session, user_id: int, session_id: str, summary: Dict[str, Any], messages: List[DbMessage], reason: str) -> None:
     summary = validate_memory_summary(summary, messages) or {}
     if not summary.get("description") or not summary.get("key_facts"):
@@ -657,6 +944,7 @@ def save_memory_summary(db: Session, user_id: int, session_id: str, summary: Dic
     ))
     db.commit()
 
+@_with_memory_write_lock
 def log_agent_event(db: Session, user_id: int, session_id: str, agent_name: str, output_summary: str, payload: Any = None, event_type: str = "run") -> None:
     db.add(AgentEvent(user_id=user_id, session_id=session_id, agent_name=agent_name, event_type=event_type, output_summary=output_summary, payload=safe_json_dumps(payload or {})))
     db.commit()

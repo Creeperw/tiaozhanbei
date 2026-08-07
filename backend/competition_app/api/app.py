@@ -1012,14 +1012,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         try:
-            cached = qualification_papers.get_cached_submission(
-                user.user_id, attempt_id, payload.request_id
-            )
-            # Only responses enriched by this API are final.  Legacy/base
-            # service caches do not contain learning_writeback and still need
-            # the one-time handoff below.
-            if cached is not None and "learning_writeback" in cached:
-                return cached
             result = qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
             if backend_handoff is not None and hasattr(
                 backend_handoff, "record_qualification_paper_outcomes"
@@ -1033,14 +1025,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     )
                 except Exception:
                     result["learning_writeback"] = {"status": "retry_pending"}
-            else:
-                result["learning_writeback"] = {"status": "not_configured"}
-            qualification_papers.cache_submission_response(
-                user.user_id,
-                attempt_id,
-                payload.request_id,
-                result,
-            )
             return result
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -3660,6 +3644,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         difficulty: int | None = Query(default=None, ge=1, le=5),
         difficulty_min: int | None = Query(default=None, ge=1, le=5),
         difficulty_max: int | None = Query(default=None, ge=1, le=5),
+        exclude_question_id: str | None = Query(default=None, min_length=1, max_length=120),
     ) -> dict:
         user = current_user(request)
         runtime = require_workshop_runtime()
@@ -3733,6 +3718,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             and isinstance(history, dict)
             and int(history.get("attempt_count") or 0) > 0
         )
+        if exclude_question_id:
+            attempted_ids.add(str(exclude_question_id).strip())
 
         difficulty_requested = any(
             value is not None
@@ -3741,9 +3728,16 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         has_explicit_target = bool(kp_id or str(topic or "").strip())
         latest_claim = selection_context.get("latest_active_claim")
         resume_claim = getattr(runtime, "resume_formal_practice_claim", None)
+        resume_blocked_by_exclude = bool(
+            exclude_question_id
+            and isinstance(latest_claim, dict)
+            and str(latest_claim.get("question_id") or "").strip()
+            == str(exclude_question_id).strip()
+        )
         if (
             not has_explicit_target
             and not difficulty_requested
+            and not resume_blocked_by_exclude
             and isinstance(latest_claim, dict)
             and callable(resume_claim)
         ):
@@ -3849,6 +3843,33 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             **difficulty_kwargs,
         )
         return _with_difficulty_meta(_sanitize_practice_question_labels(cached))
+
+    @app.post("/api/v1/workshop/practice/skip")
+    async def skip_workshop_practice_question(request: Request) -> dict:
+        """Consume the active one-use claim of the current question.
+
+        Removes the claim so the question is no longer resumed as an
+        in-progress exercise; no grade/mistake record is written.
+        """
+        user = current_user(request)
+        runtime = require_workshop_runtime()
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        question_id = str(body.get("question_id") or "").strip()
+        request_id = str(body.get("request_id") or "").strip()
+        if not question_id or not request_id:
+            raise HTTPException(
+                status_code=422,
+                detail="question_id and request_id are required",
+            )
+        return await asyncio.to_thread(
+            runtime.mark_formal_practice_skipped,
+            user.user_id,
+            question_id=question_id,
+            request_id=request_id,
+        )
 
     @app.get("/api/v1/workshop/knowledge-cards")
     async def list_workshop_knowledge_cards(

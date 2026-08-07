@@ -254,6 +254,47 @@ def test_restore_checkpoint_output_retypes_dict_payload_inside_envelope() -> Non
     assert restored.payload.findings == ["证据缺失"]
 
 
+def test_restore_checkpoint_output_retypes_memory_agent_result() -> None:
+    """Checkpoint replay must restore memory_agent envelopes so that memory
+    governance persistence can still find the agent output after a resume."""
+    flattened = AgentEnvelope[dict[str, object]](
+        artifact_id="ART_MEMORY_FLAT",
+        artifact_type="memory_agent_result",
+        case_id="CASE_MEMORY_FLAT",
+        trace_id="TRACE_MEMORY_FLAT",
+        request_id="REQ_MEMORY_FLAT",
+        execution_id="EXE_MEMORY_FLAT",
+        step_id="memory",
+        producer="memory_agent",
+        task_type="govern_learning_memory",
+        learner_id="LEARNER_MEMORY_FLAT",
+        payload=MemoryAgentResult(
+            learner_context=LearnerContextBrief(
+                learner_id="LEARNER_MEMORY_FLAT",
+            ),
+            auto_confirm_memories=[],
+            memory_candidates=[],
+            governance=MemoryGovernanceDecision(
+                analysis="确定性陈述，直接沉淀。",
+                resolution="none",
+                requires_clarification=False,
+                clarification_questions=[],
+                memory_candidates=[],
+                auto_confirm_memories=[],
+                conflicts=[],
+            ),
+        ).model_dump(mode="json"),
+    )
+
+    restored = LangGraphOrchestrator._restore_checkpoint_output(flattened)
+
+    assert isinstance(restored, AgentEnvelope)
+    assert isinstance(restored.payload, MemoryAgentResult)
+    assert restored.producer == "memory_agent"
+    assert isinstance(restored.payload.governance, MemoryGovernanceDecision)
+    assert restored.payload.governance.resolution == "none"
+
+
 @pytest.mark.parametrize(
     ("artifact_type", "payload", "expected_type"),
     [
@@ -898,6 +939,86 @@ async def test_langgraph_memory_conflict_resume_does_not_overwrite_learning_goal
     assert context["memory_conflict_answer"] == "仅本次采用一小时"
     assert context["learning_goal"] == "中医执业医师考试"
     assert agent.calls >= 2
+
+
+@pytest.mark.asyncio
+async def test_langgraph_memory_conflict_deferred_for_non_planning_task() -> None:
+    """Non-planning tasks must NOT hard-interrupt for memory conflicts.
+
+    The conflict is deferred into ``deferred_memory_conflicts`` so the
+    workflow completes normally and the use case surfaces a system message.
+    """
+    registry = AgentRegistry()
+    agent = MemoryConflictClarifyingAgent()
+    registry.register("memory_agent", agent)
+    orchestrator = LangGraphOrchestrator(registry)
+    plan = ExecutionPlan(
+        plan_id="P_MEMORY_CONFLICT_EXPLAIN",
+        task_type="knowledge_explanation",
+        steps=[ExecutionStep(step_id="memory", agent="memory_agent")],
+    )
+    context = {
+        "case_id": "CASE_MEMORY_CONFLICT_EXPLAIN",
+        "trace_id": "TRACE_MEMORY_CONFLICT_EXPLAIN",
+        "request_id": "REQ_MEMORY_CONFLICT_EXPLAIN",
+        "execution_id": "EXE_MEMORY_CONFLICT_EXPLAIN",
+        "learner_id": "LEARNER_MEMORY_CONFLICT_EXPLAIN",
+        "user_request": "讲解白芍的主治功效。",
+        "learning_goal": "中医执业医师考试",
+        "interruptible": True,
+        "task_type": "knowledge_explanation",
+    }
+
+    result = await orchestrator.execute(
+        plan, context, thread_id="THREAD_MEMORY_CONFLICT_EXPLAIN"
+    )
+
+    assert result.status == "success", (
+        result.error_type,
+        result.error_message,
+        result.trace,
+    )
+    assert orchestrator.pending_interrupt("THREAD_MEMORY_CONFLICT_EXPLAIN") is None
+    deferred = context.get("deferred_memory_conflicts", [])
+    assert len(deferred) == 1
+    assert deferred[0]["interrupt_type"] == "memory_conflict"
+    assert deferred[0]["questions"] == [
+        "保留旧记忆、仅本次使用还是替换旧记忆？"
+    ]
+    assert "memory_conflict_answer" not in context
+
+
+@pytest.mark.asyncio
+async def test_langgraph_memory_conflict_deferred_task_type_injected_from_plan() -> None:
+    """When the context omits ``task_type``, execute() injects it from the
+    plan so the memory-conflict gate still applies consistently."""
+    registry = AgentRegistry()
+    agent = MemoryConflictClarifyingAgent()
+    registry.register("memory_agent", agent)
+    orchestrator = LangGraphOrchestrator(registry)
+    plan = ExecutionPlan(
+        plan_id="P_MEMORY_CONFLICT_PLAN_CTX",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="memory", agent="memory_agent")],
+    )
+    context = {
+        "case_id": "CASE_MEMORY_CONFLICT_PLAN_CTX",
+        "trace_id": "TRACE_MEMORY_CONFLICT_PLAN_CTX",
+        "request_id": "REQ_MEMORY_CONFLICT_PLAN_CTX",
+        "execution_id": "EXE_MEMORY_CONFLICT_PLAN_CTX",
+        "learner_id": "LEARNER_MEMORY_CONFLICT_PLAN_CTX",
+        "user_request": "重新制定我的长期学习计划。",
+        "learning_goal": "中医执业医师考试",
+        "interruptible": True,
+    }
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_MEMORY_CONFLICT_PLAN_CTX"
+    )
+
+    assert context["task_type"] == "learning_plan"
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["interrupt_type"] == "memory_conflict"
 
 
 @pytest.mark.asyncio

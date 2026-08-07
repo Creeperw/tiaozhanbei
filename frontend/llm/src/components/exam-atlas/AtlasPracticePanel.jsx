@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   BookOpenText,
   ChevronRight,
   CircleHelp,
@@ -7,8 +8,14 @@ import {
   Lightbulb,
   PenLine,
   Send,
+  SkipForward,
 } from 'lucide-react';
-import { loadDailyTaskPracticeQuestion, loadPracticeQuestion, submitPracticeAnswer } from '../../pageDataLoaders';
+import {
+  loadDailyTaskPracticeQuestion,
+  loadPracticeQuestion,
+  skipPracticeQuestion,
+  submitPracticeAnswer,
+} from '../../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../../utils/api';
 import { Button, EmptyState, InlineError, Skeleton } from '../ui';
 import { FavoriteQuestionButton, NoteQuestionButton } from '../WorkshopSaveActions';
@@ -31,6 +38,35 @@ function questionTypeLabel(questionType, mode) {
   return '简答题';
 }
 
+function formatStandardAnswer(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) {
+    return value.map(formatStandardAnswer).filter(Boolean).join('、');
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  const text = String(value).trim();
+  if (!text) return '';
+  if ((text.startsWith('[') && text.endsWith(']')) || (text.startsWith('{') && text.endsWith('}'))) {
+    try {
+      return formatStandardAnswer(JSON.parse(text));
+    } catch {
+      // Keep malformed legacy answer snapshots readable instead of hiding them.
+    }
+  }
+  const choiceTokens = text.split(/[,，、;；\s]+/).filter(Boolean);
+  if (choiceTokens.length > 1 && choiceTokens.every((token) => /^[A-Za-z]$/.test(token))) {
+    return choiceTokens.map((token) => token.toUpperCase()).join('、');
+  }
+  return text;
+}
+
 function buildGuidance({ isMultiple, isSingle, mode, kpName }) {
   const steps = [
     '先圈出题干中的限定条件，明确题目真正要求回答的对象。',
@@ -47,6 +83,12 @@ function buildGuidance({ isMultiple, isSingle, mode, kpName }) {
   return steps;
 }
 
+function historyStatusLabel(status, result) {
+  if (status === 'skipped') return '已跳过';
+  if (status === 'submitted') return result?.grading?.is_correct ? '回答正确' : '已批改';
+  return '作答中';
+}
+
 export default function AtlasPracticePanel({
   knowledgePoint = null,
   scope = 'public',
@@ -61,48 +103,116 @@ export default function AtlasPracticePanel({
   const [hintVisible, setHintVisible] = useState(false);
   const [loadingQuestion, setLoadingQuestion] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [skipping, setSkipping] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState(null);
   const [generation, setGeneration] = useState(0);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [questionStatus, setQuestionStatus] = useState('active');
   const [difficultyFilter, setDifficultyFilter] = useState(null);
   const [difficultyAvailable, setDifficultyAvailable] = useState(false);
   const [availableDifficulties, setAvailableDifficulties] = useState([]);
   const operationGenerationRef = useRef(0);
+  const excludedQuestionIdRef = useRef('');
+  const historyRef = useRef([]);
+  const historyIndexRef = useRef(-1);
   const kpId = knowledgePoint?.kpId || knowledgePoint?.kp_id || '';
   const kpName = knowledgePoint?.kpName || knowledgePoint?.kp_name || '';
+
+  const replaceHistory = (nextHistory, nextIndex = historyIndexRef.current) => {
+    historyRef.current = nextHistory;
+    historyIndexRef.current = nextIndex;
+    setHistory(nextHistory);
+    setHistoryIndex(nextIndex);
+  };
+
+  const persistCurrentHistory = (overrides = {}) => {
+    const index = historyIndexRef.current;
+    if (index < 0 || !question) return historyRef.current;
+    const nextHistory = [...historyRef.current];
+    nextHistory[index] = {
+      ...nextHistory[index],
+      question,
+      answer,
+      selectedAnswers: [...selectedAnswers],
+      result,
+      hintVisible,
+      progress,
+      status: questionStatus,
+      ...overrides,
+    };
+    replaceHistory(nextHistory, index);
+    return nextHistory;
+  };
+
+  const restoreHistoryEntry = (targetIndex) => {
+    const nextHistory = persistCurrentHistory();
+    const entry = nextHistory[targetIndex];
+    if (!entry) return;
+    operationGenerationRef.current += 1;
+    historyIndexRef.current = targetIndex;
+    setHistoryIndex(targetIndex);
+    setQuestion(entry.question);
+    setAnswer(entry.answer || '');
+    setSelectedAnswers([...(entry.selectedAnswers || [])]);
+    setResult(entry.result || null);
+    setHintVisible(Boolean(entry.hintVisible));
+    setProgress(entry.progress || null);
+    setQuestionStatus(entry.status || 'active');
+    setSubmitting(false);
+    setSkipping(false);
+    setLoadingQuestion(false);
+    setError('');
+  };
 
   useEffect(() => {
     const operation = operationGenerationRef.current + 1;
     operationGenerationRef.current = operation;
+    const excludedQuestionId = excludedQuestionIdRef.current;
     let cancelled = false;
     const load = async () => {
       await Promise.resolve();
       if (cancelled || operation !== operationGenerationRef.current) return;
+      if (generation === 0) replaceHistory([], -1);
       setQuestion(null);
       setAnswer('');
       setSelectedAnswers([]);
       setResult(null);
       setHintVisible(false);
       setSubmitting(false);
+      setSkipping(false);
       setError('');
       setProgress(null);
       setLoadingQuestion(true);
       const loaded = taskItemId
-        ? await loadDailyTaskPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, taskItemId })
-        : await loadPracticeQuestion({
-            fetcher: fetchJsonWithAuthFallback,
-            mode,
-            kpId,
-            topic: kpName,
-            scope,
-            difficulty: difficultyFilter,
-          });
+        ? await loadDailyTaskPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, taskItemId, excludeQuestionId: excludedQuestionId })
+        : await loadPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, mode, kpId, topic: kpName, scope, difficulty: difficultyFilter, excludeQuestionId: excludedQuestionId });
       if (cancelled || operation !== operationGenerationRef.current) return;
-      setQuestion(loaded.practice.available ? loaded.practice.question : null);
+      excludedQuestionIdRef.current = '';
+      const loadedQuestion = loaded.practice.available ? loaded.practice.question : null;
+      setQuestion(loadedQuestion);
       setProgress(loaded.practice.progress || null);
       setDifficultyAvailable(loaded.practice.difficulty_available === true);
       if (Array.isArray(loaded.practice.available_difficulties)) {
         setAvailableDifficulties(loaded.practice.available_difficulties);
+      }
+      if (loadedQuestion) {
+        const entry = {
+          question: loadedQuestion,
+          answer: '',
+          selectedAnswers: [],
+          result: null,
+          hintVisible: false,
+          progress: loaded.practice.progress || null,
+          status: 'active',
+        };
+        const nextHistory = [
+          ...historyRef.current.slice(0, historyIndexRef.current + 1),
+          entry,
+        ];
+        replaceHistory(nextHistory, nextHistory.length - 1);
+        setQuestionStatus('active');
       }
       if (loaded.error) setError(loaded.error);
       setLoadingQuestion(false);
@@ -120,6 +230,8 @@ export default function AtlasPracticePanel({
   const isSingle = singleTypes.has(question?.question_type);
   const submittedAnswer = isMultiple ? selectedAnswers.join(',') : answer.trim();
   const typeLabel = questionTypeLabel(question?.question_type, mode);
+  const standardAnswer = formatStandardAnswer(result?.grading?.standard_answer);
+  const standardAnswerLabel = mode === 'case' ? '参考答案' : '正确答案';
   const knowledgeLabels = [...new Set((kpName
     ? [kpName]
     : (Array.isArray(question?.kp_names)
@@ -162,13 +274,50 @@ export default function AtlasPracticePanel({
       if (response.error) setError(response.error);
       else {
         setResult(response.result);
+        setQuestionStatus('submitted');
+        persistCurrentHistory({ result: response.result, status: 'submitted' });
         onResult?.(response.result, question);
       }
       setSubmitting(false);
     }
   };
 
-  const nextQuestion = () => setGeneration((value) => value + 1);
+  const skipQuestion = async () => {
+    if (!question || submitting || skipping || result) return;
+    const operation = operationGenerationRef.current;
+    setSkipping(true);
+    setError('');
+    const response = await skipPracticeQuestion({
+      fetcher: fetchJsonWithAuthFallback,
+      question,
+      taskItemId,
+    });
+    if (operation !== operationGenerationRef.current) return;
+    if (response.error || !response.skipped) {
+      setError(response.error || '跳过题目失败');
+      setSkipping(false);
+      return;
+    }
+    setQuestionStatus('skipped');
+    persistCurrentHistory({ status: 'skipped' });
+    excludedQuestionIdRef.current = question.question_id;
+    setGeneration((value) => value + 1);
+  };
+
+  const previousQuestion = () => {
+    if (historyIndexRef.current <= 0 || submitting || skipping) return;
+    restoreHistoryEntry(historyIndexRef.current - 1);
+  };
+
+  const nextQuestion = () => {
+    if (submitting || skipping) return;
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      restoreHistoryEntry(historyIndexRef.current + 1);
+      return;
+    }
+    persistCurrentHistory();
+    setGeneration((value) => value + 1);
+  };
 
   if (loadingQuestion) return <Skeleton label={`正在加载${mode === 'case' ? '案例简答题' : '客观题'}`} lines={3} />;
   if (error && !question) return <InlineError message={error} />;
@@ -179,20 +328,54 @@ export default function AtlasPracticePanel({
     return (
       <EmptyState
         title={mode === 'case' ? '当前暂无可用案例简答题' : '当前暂无可用客观题'}
-        description={kpName ? `“${kpName}”暂未匹配到相应题型，可切换题目范围或其他训练模式。` : '题库补齐后会在此提供受控练习。'}
+        description={kpName ? `“${kpName}”暂未匹配到相应题型，可切换题目范围或其他练习模式。` : '题库补齐后会在此提供受控练习。'}
       />
     );
   }
 
   return (
     <section className="practice-question-shell" aria-labelledby="practice-question">
-      <div className="practice-question-grid" data-hint-visible={String(hintVisible)}>
+      <div className="practice-session-layout">
+        <aside className="practice-question-list" aria-label="题目列表">
+          <header>
+            <div>
+              <strong>题目列表</strong>
+              <small>专项特训练习</small>
+            </div>
+            <span>{history.length} 题</span>
+          </header>
+          <nav>
+            {history.map((entry, index) => {
+              const entryStatus = historyStatusLabel(entry.status, entry.result);
+              return (
+                <button
+                  key={`${entry.question?.question_id || 'question'}:${entry.question?.request_id || index}`}
+                  type="button"
+                  className={`${index === historyIndex ? 'is-current' : ''} is-${entry.status || 'active'}`}
+                  aria-current={index === historyIndex ? 'step' : undefined}
+                  aria-label={`第${index + 1}题，${entryStatus}`}
+                  onClick={() => restoreHistoryEntry(index)}
+                  disabled={index === historyIndex || submitting || skipping}
+                  title={entry.question?.stem || `第${index + 1}题`}
+                >
+                  <span>{index + 1}</span>
+                  <span>
+                    <strong>第 {index + 1} 题</strong>
+                    <small>{entryStatus}</small>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <div className="practice-question-grid" data-hint-visible={String(hintVisible)}>
         <div className="practice-answer-workspace">
           <header className="practice-section-heading">
             <span className="practice-section-heading__icon" aria-hidden="true"><PenLine size={20} /></span>
             <div>
               <h3>题目内容</h3>
-              <p>认真阅读题目，完成本次训练</p>
+              <p>认真阅读题目，完成本次练习</p>
             </div>
           </header>
 
@@ -225,23 +408,12 @@ export default function AtlasPracticePanel({
 
           <article className="practice-question-card">
             <div className="practice-question-meta">
+              <span>第 {historyIndex + 1} 题</span>
               <span>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</span>
               <span>{typeLabel}</span>
-              {question.difficulty !== undefined && question.difficulty !== null && (
-                <span>难度 {question.difficulty}星</span>
-              )}
             </div>
             <p id="practice-question">{question.stem}</p>
           </article>
-
-          {knowledgeLabels.length > 0 && (
-            <section className="practice-knowledge-block" aria-label="相关知识点">
-              <div className="practice-subheading"><BookOpenText size={17} aria-hidden="true" />相关知识点</div>
-              <div className="practice-knowledge-chips">
-                {knowledgeLabels.map((label) => <span key={label}>{label}</span>)}
-              </div>
-            </section>
-          )}
 
           <button
             type="button"
@@ -262,7 +434,7 @@ export default function AtlasPracticePanel({
           <section className="practice-answer-block" aria-labelledby="practice-answer-title">
             <div className="practice-subheading" id="practice-answer-title"><FileText size={17} aria-hidden="true" />我的答案 <span>必填</span></div>
             {(isSingle || isMultiple) && questionOptions.length > 0 ? (
-              <fieldset className="practice-option-list" disabled={submitting || Boolean(result)}>
+              <fieldset className="practice-option-list" disabled={submitting || Boolean(result) || questionStatus !== 'active'}>
                 <legend className="sr-only">你的答案</legend>
                 {questionOptions.map((option) => {
                   const checked = isMultiple ? selectedAnswers.includes(option.value) : answer === option.value;
@@ -288,16 +460,48 @@ export default function AtlasPracticePanel({
                   onChange={(event) => setAnswer(event.target.value)}
                   className="practice-answer-input"
                   placeholder="请在此输入你的答案，并尽量写出判断依据……"
-                  disabled={submitting || Boolean(result)}
+                  disabled={submitting || Boolean(result) || questionStatus !== 'active'}
                 />
               </>
             )}
           </section>
 
-          {!result && (
-            <Button aria-label="提交并批改" className="practice-submit-button" onClick={submit} disabled={!submittedAnswer} loading={submitting}>
-              <Send size={17} aria-hidden="true" />提交答案
-            </Button>
+          {questionStatus === 'skipped' && (
+            <p className="practice-skipped-notice" role="status">该题已跳过，原作答凭证已失效。</p>
+          )}
+          {questionStatus === 'active' && !result && (
+            <div className="practice-question-footer">
+              <Button
+                aria-label="返回上一题"
+                className="practice-previous-button"
+                variant="secondary"
+                onClick={previousQuestion}
+                disabled={historyIndex <= 0 || submitting || skipping}
+              >
+                <ArrowLeft size={17} aria-hidden="true" />返回上一题
+              </Button>
+              <div className="practice-submit-actions">
+              <Button
+                aria-label="提交并批改"
+                className="practice-submit-button"
+                onClick={submit}
+                disabled={!submittedAnswer || skipping}
+                loading={submitting}
+              >
+                <Send size={17} aria-hidden="true" />提交练习任务
+              </Button>
+              <Button
+                aria-label="跳过该题"
+                className="practice-skip-button"
+                variant="secondary"
+                onClick={skipQuestion}
+                disabled={submitting}
+                loading={skipping}
+              >
+                <SkipForward size={17} aria-hidden="true" />跳过该题
+              </Button>
+              </div>
+            </div>
           )}
           {error && question && <InlineError message={error} />}
           {result && (
@@ -309,11 +513,27 @@ export default function AtlasPracticePanel({
                 {' · '}得分 {result.grading?.score ?? '待确认'}
               </div>
               <p>{result.grading?.analysis || '批改已完成。'}</p>
-              {result.grading?.question_explanation && (
+              {standardAnswer && (
+                <section className="practice-standard-answer" aria-label={standardAnswerLabel}>
+                  <strong>{standardAnswerLabel}</strong>
+                  <p>{standardAnswer}</p>
+                </section>
+              )}
+              {(result.grading?.question_explanation || knowledgeLabels.length > 0) && (
                 <div className="practice-question-explanation">
                   <strong>题目解析</strong>
-                  <p>{result.grading.question_explanation}</p>
-                  <small>解析来源：{result.grading.explanation_source === 'generated_on_first_attempt' ? '首次作答自动生成并保存' : '题目解析库'}</small>
+                  {result.grading?.question_explanation && <p>{result.grading.question_explanation}</p>}
+                  {knowledgeLabels.length > 0 && (
+                    <section className="practice-explanation-knowledge" aria-label="相关知识点">
+                      <div className="practice-subheading"><BookOpenText size={17} aria-hidden="true" />相关知识点</div>
+                      <div className="practice-knowledge-chips">
+                        {knowledgeLabels.map((label) => <span key={label}>{label}</span>)}
+                      </div>
+                    </section>
+                  )}
+                  {result.grading?.question_explanation && (
+                    <small>解析来源：{result.grading.explanation_source === 'generated_on_first_attempt' ? '首次作答自动生成并保存' : '题目解析库'}</small>
+                  )}
                 </div>
               )}
               {result.grading?.grading_source && (
@@ -330,9 +550,22 @@ export default function AtlasPracticePanel({
                 </div>
               )}
               <small>学习写回：{result.writeback?.status || '未返回'}</small>
-              <div className="flex flex-wrap items-center gap-2">
-                <FavoriteQuestionButton question={favoriteQuestion} source="题目训练" />
-                <NoteQuestionButton question={favoriteQuestion} source="题目训练" />
+            </div>
+          )}
+          {(result || questionStatus === 'skipped') && (
+            <div className="practice-question-footer">
+              <Button
+                aria-label="返回上一题"
+                className="practice-previous-button"
+                variant="secondary"
+                onClick={previousQuestion}
+                disabled={historyIndex <= 0 || submitting || skipping}
+              >
+                <ArrowLeft size={17} aria-hidden="true" />返回上一题
+              </Button>
+              <div className="practice-result-actions">
+                {result && <FavoriteQuestionButton question={favoriteQuestion} source="题目练习" />}
+                {result && <NoteQuestionButton question={favoriteQuestion} source="题目练习" />}
                 <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
               </div>
             </div>
@@ -376,6 +609,7 @@ export default function AtlasPracticePanel({
               </section>
             </div>
         </aside>}
+        </div>
       </div>
     </section>
   );

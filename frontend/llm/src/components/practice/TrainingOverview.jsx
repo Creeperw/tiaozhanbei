@@ -74,7 +74,6 @@ export default function TrainingOverview({ onOpenModule, overviewStats, weakKnow
         <div className="practice-overview__hero-copy">
           <span className="practice-overview__greeting"><span>准备开始今天的练习</span> <span aria-hidden="true">🌿</span></span>
           <h1 id="practice-overview-title">练习工坊</h1>
-          <p>今日建议完成 <strong>{stats.todayGoal}</strong> 道综合题，预计 <strong>15</strong> 分钟</p>
           <div className="practice-overview__hero-actions">
             <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredTrainingCard)}>
               <CirclePlay aria-hidden="true" size={18} />开始今日练习
@@ -84,6 +83,13 @@ export default function TrainingOverview({ onOpenModule, overviewStats, weakKnow
             </button>
           </div>
         </div>
+        <p className="practice-overview__daily-goal">
+          <span>今日建议完成</span>
+          <strong>{stats.todayGoal}</strong>
+          <span>道综合题，预计</span>
+          <strong>15</strong>
+          <span>分钟</span>
+        </p>
         <TrainingBannerIllustration />
       </header>
 
@@ -121,8 +127,20 @@ export default function TrainingOverview({ onOpenModule, overviewStats, weakKnow
                     <li key={item.kpId || item.kpName}>
                       <span className="practice-overview__weak-point-rank">{index + 1}</span>
                       <span className="practice-overview__weak-point-copy">
-                        <strong>{item.kpName}</strong>
+                        <span className="practice-overview__weak-point-title">
+                          <strong>{item.kpName}</strong>
+                          {item.questionCount > 0 && <em>{item.questionCount} 道相关题目</em>}
+                        </span>
                         <small>{item.reason}</small>
+                        {item.relatedQuestions.length > 0 && (
+                          <span className="practice-overview__weak-point-questions">
+                            {item.relatedQuestions.map((question, questionIndex) => (
+                              <span key={question.id || question.title}>
+                                题目 {questionIndex + 1}：{question.title}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </span>
                       <button
                         type="button"

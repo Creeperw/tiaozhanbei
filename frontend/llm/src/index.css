@@ -6126,6 +6126,371 @@ textarea:focus-visible {
   }
 }
 
+.practice-session-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.practice-question-list {
+  position: sticky;
+  top: var(--space-4);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.practice-question-list > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface-accent) 45%, white);
+  padding: var(--space-4);
+}
+
+.practice-question-list > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.practice-question-list > header strong {
+  color: var(--color-ink);
+  font-size: .88rem;
+}
+
+.practice-question-list > header small {
+  color: var(--color-ink-muted);
+  font-size: .66rem;
+}
+
+.practice-question-list > header > span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--color-surface);
+  padding: 4px 8px;
+  color: var(--color-primary-hover);
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.practice-question-list nav {
+  display: grid;
+  gap: 5px;
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.practice-question-list nav button {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  padding: 7px 9px;
+  color: var(--color-ink-body);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--motion-popup) var(--ease-standard), background var(--motion-popup) var(--ease-standard);
+}
+
+.practice-question-list nav button:hover:not(:disabled) {
+  border-color: var(--color-border-accent);
+  background: var(--color-surface-accent);
+}
+
+.practice-question-list nav button.is-current {
+  border-color: var(--color-border-accent);
+  background: var(--color-surface-accent);
+  color: var(--color-primary-hover);
+}
+
+.practice-question-list nav button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.practice-question-list nav button > span:first-child {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  font-size: .75rem;
+  font-weight: 800;
+}
+
+.practice-question-list nav button.is-current > span:first-child {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+
+.practice-question-list nav button.is-submitted:not(.is-current) > span:first-child {
+  border-color: #9ccdb4;
+  background: #eaf8f0;
+  color: #23704c;
+}
+
+.practice-question-list nav button.is-skipped:not(.is-current) > span:first-child {
+  border-color: #ead49c;
+  background: #fff8e6;
+  color: #8a6518;
+}
+
+.practice-question-list nav button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.practice-question-list nav button strong {
+  font-size: .78rem;
+}
+
+.practice-question-list nav button small {
+  color: var(--color-ink-muted);
+  font-size: .66rem;
+}
+
+.practice-explanation-knowledge {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--color-border-accent) 72%, white);
+}
+
+.practice-submit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.practice-question-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.practice-previous-button {
+  border-color: #cbd9d1;
+  background: #fff;
+  color: #49675a;
+}
+
+.practice-previous-button > span,
+.practice-result-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.practice-skipped-notice {
+  margin: 0;
+  border: 1px solid #f0d99e;
+  border-radius: var(--radius-lg);
+  background: #fffbeb;
+  padding: var(--space-3) var(--space-4);
+  color: #7a5b1f;
+  font-size: .82rem;
+  line-height: 1.6;
+}
+
+.practice-submit-button,
+.practice-skip-button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.practice-submit-button > span,
+.practice-skip-button > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.practice-skip-button {
+  border-color: #b9d8c9;
+  background: linear-gradient(180deg, #ffffff 0%, #f0faf4 100%);
+  color: #2e6d58;
+  box-shadow: 0 4px 12px rgba(30, 111, 79, .08);
+}
+
+.practice-skip-button:hover:not(:disabled) {
+  border-color: #82bfa4;
+  background: linear-gradient(180deg, #f8fffb 0%, #e3f5eb 100%);
+  color: #185b43;
+  box-shadow: 0 7px 18px rgba(30, 111, 79, .14);
+  transform: translateY(-1px);
+}
+
+.practice-skip-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
+  outline-offset: 2px;
+}
+
+.practice-standard-answer {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, white);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, .78);
+  padding: var(--space-3) var(--space-4);
+}
+
+.practice-standard-answer strong {
+  color: var(--color-primary);
+  font-size: .9rem;
+}
+
+.practice-standard-answer p {
+  color: var(--color-ink);
+  font-weight: 600;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+  .practice-session-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .practice-question-list {
+    position: static;
+  }
+
+  .practice-question-list nav {
+    grid-auto-columns: 128px;
+    grid-auto-flow: column;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
+@media (max-width: 700px) {
+  .practice-mobile-tabs {
+    position: sticky;
+    z-index: 6;
+    top: 62px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: rgba(247,250,248,.92);
+    padding: 4px;
+    backdrop-filter: blur(14px);
+  }
+
+  .practice-mobile-tabs button {
+    min-height: 42px;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--color-ink-muted);
+    font-size: .875rem;
+    font-weight: 700;
+  }
+
+  .practice-mobile-tabs button[aria-selected="true"] {
+    background: var(--color-surface);
+    color: var(--color-primary-hover);
+    box-shadow: 0 5px 16px rgba(24,49,42,.08);
+  }
+
+  .practice-workspace-grid {
+    display: block;
+  }
+
+  .practice-module-nav,
+  .practice-task-panel,
+  .practice-result-panel {
+    margin-bottom: var(--space-4);
+  }
+
+  .practice-module-nav[data-mobile-active="false"],
+  .practice-task-panel[data-mobile-active="false"],
+  .practice-result-panel[data-mobile-active="false"] {
+    display: none;
+  }
+
+  .practice-module-nav > div:last-child {
+    display: grid;
+    grid-auto-columns: minmax(180px, 78vw);
+    grid-auto-flow: column;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding-bottom: var(--space-1);
+  }
+
+  .question-training-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .question-training-scope {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .practice-answer-workspace,
+  .practice-hint-panel {
+    padding: var(--space-4);
+  }
+
+  .practice-question-card {
+    padding: var(--space-4);
+  }
+
+  .practice-hint-trigger {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .practice-hint-trigger > svg:last-child {
+    display: none;
+  }
+
+  .practice-submit-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .practice-question-footer,
+  .practice-result-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .practice-submit-button,
+  .practice-skip-button,
+  .practice-previous-button,
+  .practice-result-actions > * {
+    width: 100%;
+  }
+}
 @media (hover: none) and (pointer: coarse) {
   :is(.assistant-workspace, .personalization-hub, .settings-hub, .auth-page) .hover\:-translate-y-0\.5:hover,
   :is(.assistant-workspace, .personalization-hub, .settings-hub, .auth-page) .hover\:-translate-y-1:hover,
@@ -8298,228 +8663,6 @@ textarea:focus-visible {
   justify-self: start;
 }
 
-/* Complete practice workshop page imported from the target branch. */
-.app-shell__main[data-page="training-workshop"] .practice-overview__banner {
-  grid-template-columns: minmax(250px, .9fr) minmax(520px, 1.45fr) minmax(148px, .36fr);
-  gap: clamp(16px, 2vw, 32px);
-}
-
-.practice-overview__hero-summary {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid rgba(202, 226, 213, .9);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, .82);
-  padding: 12px 8px;
-  box-shadow: 0 12px 28px rgba(39, 101, 74, .08);
-  backdrop-filter: blur(10px);
-}
-
-.practice-overview__hero-summary .practice-overview__summary-metric {
-  grid-template-columns: 46px minmax(0, 1fr);
-  min-height: 88px;
-  gap: 9px;
-  padding: 8px 12px;
-}
-
-.practice-overview__hero-summary .practice-overview__summary-metric + .practice-overview__summary-metric {
-  border-top: 0;
-  border-left: 1px solid #e7efeb;
-}
-
-.practice-overview__hero-summary .practice-overview__summary-icon { width: 44px; height: 44px; }
-.practice-overview__hero-summary .practice-overview__summary-copy strong { font-size: clamp(1.05rem, 1.4vw, 1.35rem); }
-.practice-overview__hero-summary .practice-overview__summary-copy em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.practice-overview__training-groups { display: grid; gap: 24px; padding: clamp(10px, 1.4vw, 18px) 0; }
-.practice-overview__training-group { display: grid; grid-template-rows: auto auto; align-content: start; gap: 14px; }
-
-.practice-overview__training-group > h2 {
-  position: relative;
-  width: max-content;
-  margin: 0;
-  padding-bottom: 8px;
-  color: #303d37;
-  font-size: 1.05rem;
-  font-weight: 750;
-}
-
-.practice-overview__training-group > h2::after {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 34px;
-  height: 3px;
-  border-radius: 999px;
-  background: #72cbaa;
-  content: "";
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-grid {
-  display: grid;
-  width: 100%;
-  min-height: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: none;
-  gap: 14px;
-  margin: 0;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card {
-  grid-template-columns: 62px minmax(0, 1fr);
-  grid-template-rows: 50px auto;
-  min-height: 138px;
-  height: 138px;
-  align-items: start;
-  align-content: space-evenly;
-  column-gap: 12px;
-  row-gap: 6px;
-  border: 1px solid #72cbaa;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, .94);
-  padding: 14px 18px;
-  box-shadow: 0 8px 20px rgba(72, 57, 36, .055);
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card:hover,
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card:focus-visible {
-  border-color: #42b987;
-  box-shadow: 0 12px 26px rgba(66, 185, 135, .16);
-  transform: translateY(-2px);
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-icon {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: center;
-  width: 50px;
-  height: 50px;
-  border-radius: 16px;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-icon svg {
-  width: 29px;
-  height: 29px;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy {
-  display: contents;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy strong,
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy small {
-  padding: 0;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy strong {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-  color: #33413b;
-  font-size: 1.2rem;
-  line-height: 1.3;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy small {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  align-self: center;
-  padding-right: 30px;
-  color: #7b837f;
-  font-size: .86rem;
-  line-height: 1.6;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-arrow {
-  position: absolute;
-  right: 16px;
-  bottom: 15px;
-  color: #a39180;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__utilities {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  align-self: start;
-  gap: 10px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0 0 0 24px;
-  box-shadow: none;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__utilities::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 2px;
-  border-radius: 999px;
-  background: #d8efe2;
-  content: "";
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__utilities-title {
-  margin: 0;
-  border-left: 3px solid #d8efe2;
-  padding-left: 10px;
-  color: #415149;
-  font-size: 1.05rem;
-  font-weight: 750;
-  line-height: 1.35;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__utility-list {
-  display: grid;
-  flex: none;
-  grid-template-rows: repeat(2, 112px);
-  gap: 10px;
-}
-
-.app-shell__main[data-page="training-workshop"] .practice-overview__utility-card {
-  min-height: 112px;
-}
-
-@media (min-width: 901px) {
-  .practice-overview__hero-summary { transform: translateX(-36px); }
-
-  .app-shell__main[data-page="training-workshop"] .practice-overview__main {
-    display: block;
-  }
-
-  .app-shell__main[data-page="training-workshop"] .practice-overview__training-groups {
-    align-content: start;
-    grid-auto-rows: max-content;
-  }
-}
-
-@media (max-width: 1180px) {
-  .app-shell__main[data-page="training-workshop"] .practice-overview__banner { grid-template-columns: minmax(230px, .75fr) minmax(480px, 1.4fr); }
-  .app-shell__main[data-page="training-workshop"] .practice-overview__illustration { display: none; }
-}
-
-@media (max-width: 900px) {
-  .app-shell__main[data-page="training-workshop"] .practice-overview__banner { grid-template-columns: 1fr; }
-  .practice-overview__hero-summary { width: 100%; }
-  .app-shell__main[data-page="training-workshop"] .practice-overview__training-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .app-shell__main[data-page="training-workshop"] .practice-overview__utilities {
-    padding: 0;
-  }
-  .app-shell__main[data-page="training-workshop"] .practice-overview__utilities::before { display: none; }
-}
-
-@media (max-width: 700px) {
-  .practice-overview__hero-summary,
-  .app-shell__main[data-page="training-workshop"] .practice-overview__training-grid { grid-template-columns: 1fr; }
-  .practice-overview__hero-summary .practice-overview__summary-metric + .practice-overview__summary-metric { border-top: 1px solid #e7efeb; border-left: 0; }
-  .practice-overview__training-groups { gap: 20px; padding: 10px 0; }
-}
 
 .platform-home__capabilities button.platform-home__capability > .platform-home__capability-copy {
   display: flex;
@@ -14584,34 +14727,12 @@ textarea:focus-visible {
 @keyframes personalized-path-pulse { from { opacity: .8; transform: scale(.72); } to { opacity: 0; transform: scale(1.12); } }
 @keyframes personalized-path-spin { to { transform: rotate(360deg); } }
 
-/* The former bottom summary now occupies the hero metric position. */
-.practice-overview__banner { grid-template-columns: minmax(250px, .82fr) minmax(480px, 1.5fr) 150px; }
-.practice-overview__hero-metrics { grid-template-columns: repeat(3, minmax(145px, 1fr)); gap: 10px; }
-.practice-overview__hero-metrics .practice-overview__summary-metric {
-  grid-template-columns: 48px minmax(0, 1fr);
-  min-width: 0;
-  min-height: 112px;
-  gap: 8px;
-  border: 1px solid #dcebe4;
-  border-radius: 18px;
-  background: rgb(255 255 255 / 82%);
-  padding: 12px;
-}
-.practice-overview__hero-metrics .practice-overview__summary-metric + .practice-overview__summary-metric { border-left: 1px solid #dcebe4; }
-.practice-overview__hero-metrics .practice-overview__summary-icon { width: 44px; height: 44px; }
-.practice-overview__hero-metrics .practice-overview__summary-copy strong { font-size: 1.15rem; }
 
+/* Resource upload page: keep the creeper-branch page width rules. */
 .resource-upload-page { width: min(1080px, 100%); margin: 0 auto; }
 .resource-upload-page__eyebrow { color: #119765; font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
 
-@media (max-width: 1120px) {
-  .practice-overview__banner { grid-template-columns: minmax(240px, .8fr) minmax(420px, 1.2fr); }
-  .practice-overview__illustration { display: none; }
-}
 @media (max-width: 760px) {
-  .practice-overview__banner { grid-template-columns: 1fr; }
-  .practice-overview__hero-metrics { grid-template-columns: 1fr; }
-  .practice-overview__hero-metrics .practice-overview__summary-metric { min-height: 88px; }
   .home-portal__planning-progress { padding: 34px 22px 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -14619,7 +14740,439 @@ textarea:focus-visible {
   .home-portal__planning-animation svg { animation: none; }
 }
 
-/* ===== sjy 分支移植：练习工坊薄弱知识点与学习数据侧栏（weak-points/stats-panel） ===== */
+/* Training workshop reference layout: overview statistics live in the hero,
+   while the six primary modules are presented as three calm two-card groups. */
+.app-shell__main[data-page="training-workshop"] .practice-overview__banner {
+  grid-template-columns: minmax(250px, .9fr) minmax(520px, 1.45fr) minmax(148px, .36fr);
+  gap: clamp(16px, 2vw, 32px);
+}
+
+.practice-overview__hero-summary {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(202, 226, 213, .9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .82);
+  padding: 12px 8px;
+  box-shadow: 0 12px 28px rgba(39, 101, 74, .08);
+  backdrop-filter: blur(10px);
+}
+
+.practice-overview__hero-summary .practice-overview__summary-metric {
+  grid-template-columns: 46px minmax(0, 1fr);
+  min-height: 88px;
+  gap: 9px;
+  padding: 8px 12px;
+}
+
+.practice-overview__hero-summary .practice-overview__summary-metric + .practice-overview__summary-metric {
+  border-top: 0;
+  border-left: 1px solid #e7efeb;
+}
+
+.practice-overview__hero-summary .practice-overview__summary-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.practice-overview__hero-summary .practice-overview__summary-copy strong {
+  font-size: clamp(1.05rem, 1.4vw, 1.35rem);
+}
+
+.practice-overview__hero-summary .practice-overview__summary-copy em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 901px) {
+  .practice-overview__hero-summary {
+    transform: translateX(-36px);
+  }
+}
+
+.practice-overview__training-groups {
+  display: grid;
+  gap: 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: clamp(10px, 1.4vw, 18px) 0;
+  box-shadow: none;
+}
+
+.practice-overview__training-group {
+  display: grid;
+  gap: 14px;
+}
+
+.practice-overview__training-group > h2 {
+  position: relative;
+  width: max-content;
+  margin: 0;
+  padding-bottom: 8px;
+  color: #303d37;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.practice-overview__training-group > h2::after {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 34px;
+  height: 3px;
+  border-radius: 999px;
+  background: #72cbaa;
+  content: "";
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-grid {
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: none;
+  gap: 14px;
+  margin: 0;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-group:first-child .practice-overview__training-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card {
+  grid-template-columns: 58px minmax(0, 1fr) 22px;
+  grid-template-rows: auto;
+  min-height: 138px;
+  height: 138px;
+  align-items: center;
+  align-content: center;
+  gap: 14px;
+  border: 1px solid #72cbaa;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .94);
+  padding: 17px 18px;
+  box-shadow: 0 8px 20px rgba(72, 57, 36, .055);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card:hover,
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card:focus-visible {
+  border-color: #42b987;
+  box-shadow: 0 12px 26px rgba(66, 185, 135, .16);
+  transform: translateY(-2px);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy {
+  display: grid;
+  grid-column: 2;
+  grid-row: 1;
+  gap: 4px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy strong,
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy small {
+  grid-column: auto;
+  grid-row: auto;
+  align-self: auto;
+  padding: 0;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy strong {
+  color: #33413b;
+  font-size: 1.05rem;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy small {
+  color: #7b837f;
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-arrow {
+  position: static;
+  grid-column: 3;
+  grid-row: 1;
+  color: #a39180;
+}
+
+@media (max-width: 1180px) {
+  .app-shell__main[data-page="training-workshop"] .practice-overview__banner {
+    grid-template-columns: minmax(230px, .75fr) minmax(480px, 1.4fr);
+  }
+
+  .app-shell__main[data-page="training-workshop"] .practice-overview__illustration {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell__main[data-page="training-workshop"] .practice-overview__banner {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-overview__hero-summary {
+    width: 100%;
+  }
+
+  .app-shell__main[data-page="training-workshop"] .practice-overview__training-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell__main[data-page="training-workshop"] .practice-overview__training-group:first-child .practice-overview__training-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .practice-overview__hero-summary,
+  .app-shell__main[data-page="training-workshop"] .practice-overview__training-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell__main[data-page="training-workshop"] .practice-overview__training-group:first-child .practice-overview__training-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-overview__hero-summary .practice-overview__summary-metric + .practice-overview__summary-metric {
+    border-top: 1px solid #e7efeb;
+    border-left: 0;
+  }
+
+  .practice-overview__training-groups {
+    gap: 20px;
+    padding: 10px 0;
+  }
+}
+
+/* Training workshop compact catalogue layout.
+   The existing training actions remain unchanged; only their overview surface
+   is reorganized into the reference page's centred main-column + side-rail. */
+.app-shell__main[data-page="training-workshop"] {
+  background: linear-gradient(180deg, #f5f9f7 0%, #f3f7f5 100%);
+}
+
+.app-shell__main[data-page="training-workshop"] > .practice-overview {
+  --workshop-section-title-size: 1.05rem;
+  --workshop-card-title-size: .96rem;
+  --workshop-body-size: .76rem;
+  --workshop-caption-size: .7rem;
+  width: min(calc(100% - clamp(28px, 4vw, 72px)), 1180px);
+  min-height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px 0 34px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__banner {
+  grid-template-columns: minmax(300px, 1fr) max-content minmax(300px, 1fr);
+  min-height: 174px;
+  gap: clamp(18px, 2.5vw, 36px);
+  overflow: hidden;
+  border: 1px solid #d6e9de;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 84% 15%, rgba(124, 207, 164, .18), transparent 26%),
+    linear-gradient(125deg, #eef8f2 0%, #e7f4ec 100%);
+  padding: 18px 28px;
+  box-shadow: 0 7px 20px rgba(36, 83, 59, .055);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__hero-copy {
+  align-self: center;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__greeting {
+  color: #4c6157;
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__banner h1 {
+  margin-top: 5px;
+  font-size: clamp(2.25rem, 3.2vw, 3.15rem);
+  line-height: 1.08;
+  letter-spacing: -.04em;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__daily-goal {
+  display: flex;
+  min-width: 0;
+  align-self: center;
+  align-items: baseline;
+  justify-self: center;
+  justify-content: center;
+  gap: .32em;
+  margin: 0;
+  color: #65756d;
+  font-size: clamp(1rem, 1.35vw, 1.22rem);
+  font-weight: 540;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__daily-goal strong {
+  color: #36a86f;
+  font-size: clamp(1.75rem, 2.5vw, 2.35rem);
+  font-weight: 820;
+  line-height: 1;
+  letter-spacing: -.03em;
+  text-shadow: 0 2px 10px rgba(54, 168, 111, .12);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__hero-actions {
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__primary-action,
+.app-shell__main[data-page="training-workshop"] .practice-overview__secondary-action {
+  min-height: 34px;
+  border-radius: 5px;
+  padding-inline: 15px;
+  font-size: .82rem;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__illustration {
+  display: flex;
+  min-width: 132px;
+  justify-self: end;
+  transform: none;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__character-button {
+  width: 132px;
+  height: 142px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__character {
+  width: 132px;
+  height: 230px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__character-note {
+  top: 1px;
+  right: 95px;
+  max-width: 154px;
+  padding: 5px 9px;
+  font-size: .64rem;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.18fr) minmax(245px, .82fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__main {
+  min-width: 0;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-groups {
+  gap: 15px;
+  padding: 0;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-group {
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid #e3ebe7;
+  border-radius: 6px;
+  background: #fff;
+  padding: 14px 14px 15px;
+  box-shadow: 0 4px 14px rgba(43, 73, 57, .045);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-group > h2 {
+  padding: 0 0 8px 2px;
+  font-size: var(--workshop-section-title-size);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-group > h2::after {
+  width: 28px;
+  height: 2px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-grid,
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-group:first-child .practice-overview__training-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card {
+  grid-template-columns: 42px minmax(0, 1fr) 14px;
+  min-height: 104px;
+  height: auto;
+  gap: 9px;
+  border-color: #e6ece9;
+  border-radius: 5px;
+  padding: 12px;
+  box-shadow: none;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-group:first-child .practice-overview__training-card {
+  border-color: #d7e9df;
+  background: linear-gradient(135deg, #fbfefc, #f3faf6);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card:hover,
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card:focus-visible {
+  border-color: #73bd96;
+  box-shadow: 0 7px 17px rgba(35, 123, 78, .11);
+  transform: translateY(-1px);
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy {
+  gap: 3px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy strong {
+  font-size: var(--workshop-card-title-size);
+  line-height: 1.35;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #78857f;
+  font-size: var(--workshop-body-size);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__training-card .practice-overview__card-arrow {
+  width: 14px;
+  color: #9aa49f;
+}
+
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-points {
   display: grid;
   gap: 12px;
@@ -14650,13 +15203,14 @@ textarea:focus-visible {
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-points-heading h2 {
   margin: 0;
   color: #384a41;
-  font-size: .9rem;
+  font-size: var(--workshop-section-title-size);
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-points-heading p {
   margin: 3px 0 0;
   color: #849089;
-  font-size: .66rem;
+  font-size: var(--workshop-body-size);
+  line-height: 1.45;
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-points-list {
@@ -14676,7 +15230,7 @@ textarea:focus-visible {
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  min-height: 76px;
+  min-height: 84px;
   border: 1px solid #e8eeeb;
   border-radius: 5px;
   background: linear-gradient(135deg, #fff, #fbfdfc);
@@ -14693,7 +15247,7 @@ textarea:focus-visible {
   border-radius: 50%;
   background: #edf8f2;
   color: #42a878;
-  font-size: .7rem;
+  font-size: var(--workshop-caption-size);
   font-weight: 800;
 }
 
@@ -14701,25 +15255,59 @@ textarea:focus-visible {
   grid-area: copy;
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: 4px;
 }
 
-.app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-copy strong {
+.app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-title strong {
   overflow: hidden;
   color: #34463d;
-  font-size: .75rem;
+  font-size: var(--workshop-card-title-size);
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-title em {
+  flex: none;
+  border-radius: 999px;
+  background: #edf8f2;
+  padding: 2px 7px;
+  color: #408665;
+  font-size: var(--workshop-caption-size);
+  font-style: normal;
+  font-weight: 700;
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-copy small {
   display: -webkit-box;
   overflow: hidden;
   color: #87928d;
-  font-size: .6rem;
+  font-size: var(--workshop-body-size);
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-questions {
+  display: grid;
+  gap: 3px;
+  margin-top: 2px;
+  color: #687a71;
+  font-size: var(--workshop-caption-size);
+  line-height: 1.4;
+}
+
+.app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-questions > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-score {
@@ -14732,12 +15320,12 @@ textarea:focus-visible {
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-score small {
   color: #98a19d;
-  font-size: .56rem;
+  font-size: var(--workshop-caption-size);
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__weak-point-score strong {
   color: #e58d21;
-  font-size: .74rem;
+  font-size: .88rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -14753,7 +15341,7 @@ textarea:focus-visible {
   background: linear-gradient(135deg, #dff3e6, #ccebd9);
   padding: 4px 8px 4px 10px;
   color: #287452;
-  font-size: .62rem;
+  font-size: var(--workshop-caption-size);
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -14774,7 +15362,8 @@ textarea:focus-visible {
   background: #f8fbf9;
   padding: 15px;
   color: #849089;
-  font-size: .68rem;
+  font-size: var(--workshop-body-size);
+  line-height: 1.5;
   text-align: center;
 }
 
@@ -14805,7 +15394,7 @@ textarea:focus-visible {
   border-left-color: #8bcbae;
   padding-left: 8px;
   color: #384a41;
-  font-size: .9rem;
+  font-size: var(--workshop-section-title-size);
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__utility-list {
@@ -14816,7 +15405,7 @@ textarea:focus-visible {
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__utility-card {
   grid-template-columns: 42px minmax(0, 1fr) 14px;
-  min-height: 76px;
+  min-height: 84px;
   gap: 9px;
   border-color: #e7ece9;
   border-radius: 5px;
@@ -14832,12 +15421,13 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__utility-card strong {
-  font-size: .82rem;
+  font-size: var(--workshop-card-title-size);
+  line-height: 1.35;
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__utility-card small {
-  font-size: .65rem;
-  line-height: 1.4;
+  font-size: var(--workshop-body-size);
+  line-height: 1.45;
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__hero-summary {
@@ -14877,16 +15467,30 @@ textarea:focus-visible {
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__hero-summary .practice-overview__summary-copy small,
 .app-shell__main[data-page="training-workshop"] .practice-overview__hero-summary .practice-overview__summary-copy em {
-  font-size: .62rem;
+  font-size: var(--workshop-caption-size);
 }
 
 .app-shell__main[data-page="training-workshop"] .practice-overview__hero-summary .practice-overview__summary-copy strong {
-  font-size: .92rem;
+  font-size: 1.08rem;
+  line-height: 1.3;
 }
 
 @media (max-width: 980px) {
+  .app-shell__main[data-page="training-workshop"] .practice-overview__banner {
+    grid-template-columns: minmax(250px, .9fr) minmax(300px, 1.1fr);
+  }
+
+  .app-shell__main[data-page="training-workshop"] .practice-overview__illustration {
+    display: none;
+  }
+
   .app-shell__main[data-page="training-workshop"] .practice-overview__layout {
     grid-template-columns: 1fr;
+  }
+
+  .app-shell__main[data-page="training-workshop"] .practice-overview__training-grid,
+  .app-shell__main[data-page="training-workshop"] .practice-overview__training-group:first-child .practice-overview__training-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .app-shell__main[data-page="training-workshop"] .practice-overview__utilities {
@@ -14913,6 +15517,13 @@ textarea:focus-visible {
     grid-template-columns: minmax(0, 1fr);
     min-height: auto;
     padding: 18px;
+  }
+
+  .app-shell__main[data-page="training-workshop"] .practice-overview__daily-goal {
+    justify-self: start;
+    justify-content: flex-start;
+    margin-top: 4px;
+    white-space: normal;
   }
 
   .app-shell__main[data-page="training-workshop"] .practice-overview__illustration {

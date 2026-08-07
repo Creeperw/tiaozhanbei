@@ -595,7 +595,12 @@ class PlannerAgent:
             if item in known_agents
         ]
         if task_type == "casual_conversation":
-            selected = []
+            # A memory-record request (“帮我记一下”等) keeps only memory_agent
+            # so the durable fact is extracted and governed; pure small talk
+            # selects no agents at all.
+            selected = [
+                agent for agent in selected if agent == "memory_agent"
+            ]
         elif task_type == "learner_data_query":
             selected = ["diagnosis_agent"]
         elif scoped_planning_request:
@@ -637,7 +642,7 @@ class PlannerAgent:
                     else len(selected),
                     "audit_agent",
                 )
-        elif task_type != "learner_data_query":
+        elif task_type not in {"learner_data_query", "casual_conversation"}:
             selected = selected or [
                 "knowledge_base_agent", "diagnosis_agent",
                 "review_scheduler", "expert_agent", "audit_agent",
@@ -968,8 +973,14 @@ class PlannerAgent:
         dependencies = AGENT_DEPENDENCIES
         selected = set(output.selected_agents)
         if output.task_type == "casual_conversation":
-            if selected:
-                raise ValueError("casual conversation must not select downstream agents")
+            # memory_agent may accompany a casual reply when the user states a
+            # durable personal fact to remember (“帮我记一下”等); no other
+            # downstream agent is allowed on the casual path.
+            if selected - {"memory_agent"}:
+                raise ValueError(
+                    "casual conversation must not select downstream agents "
+                    "besides memory_agent"
+                )
             return
         if output.task_type == "learning_plan" and output.plan_action == "reuse":
             # Memory is still a required context/governance node when an
@@ -1077,9 +1088,18 @@ class PlannerAgent:
         it is selected only when the task needs教材 evidence or resource generation.
         """
         if output.task_type == "casual_conversation":
+            # Pure small talk selects no agents.  A memory-record request
+            # (“帮我记一下”“以后每天晚上9点学习”) is still routed here for a
+            # light confirmation reply, but Memory must participate to extract
+            # and govern the newly stated fact.  Only memory_agent is allowed;
+            # all other downstream agents are cleared.
             return output.model_copy(
                 update={
-                    "selected_agents": [],
+                    "selected_agents": (
+                        ["memory_agent"]
+                        if "memory_agent" in output.selected_agents
+                        else []
+                    ),
                     "requires_audit": False,
                 }
             )

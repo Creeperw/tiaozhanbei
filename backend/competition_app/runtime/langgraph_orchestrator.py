@@ -12,6 +12,7 @@ from langgraph.errors import GraphInterrupt
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
+from competition_app.agents.memory import MemoryAgentResult
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.default_route import ResolvedPlanningRoute
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
@@ -135,6 +136,9 @@ class LangGraphOrchestrator(Orchestrator):
         thread_id: str | None = None,
     ) -> ExecutionResult:
         plan.validate_dag()
+        # 兜底注入任务类型：记忆冲突门控（_clarification_should_interrupt）
+        # 依赖 task_type 判断是否硬中断；learning_plan 保留中断行为。
+        context.setdefault("task_type", plan.task_type)
         resolved_thread_id = thread_id or f"THREAD_{uuid4().hex}"
         trace = TraceRecorder()
         graph = self.compile_plan(plan, context, trace)
@@ -256,7 +260,10 @@ class LangGraphOrchestrator(Orchestrator):
             emit_runtime_event("graph_interrupted", **interrupt_payload)
             return ExecutionResult(
                 status="interrupted",
-                outputs=dict(state.get("outputs", {})),
+                outputs={
+                    key: self._restore_checkpoint_output(value)
+                    for key, value in dict(state.get("outputs", {})).items()
+                },
                 trace=trace.items,
                 tool_trace=trace.tool_items,
                 communication_trace=self._communication_trace_from_state(state, trace),
@@ -265,7 +272,10 @@ class LangGraphOrchestrator(Orchestrator):
                 interrupt=interrupt_payload,
             )
 
-        outputs = dict(state.get("outputs", {}))
+        outputs = {
+            key: self._restore_checkpoint_output(value)
+            for key, value in dict(state.get("outputs", {})).items()
+        }
         failures = state.get("failures", {})
         if failures:
             failed_step_id = next(
@@ -498,6 +508,7 @@ class LangGraphOrchestrator(Orchestrator):
             "paper_blueprint": PaperBlueprint,
             "question_candidate_pool": QuestionCandidatePool,
             "exam_paper_draft": ExamPaperDraft,
+            "memory_agent_result": MemoryAgentResult,
         }
         if isinstance(value, AgentEnvelope):
             payload_type = payload_types.get(str(value.artifact_type))
@@ -633,11 +644,9 @@ class LangGraphOrchestrator(Orchestrator):
                 )
             try:
                 result = await self._run_step(rerun_step, repair_context, outputs, trace)
-                clarification = (
-                    self._clarification_payload(result, rerun_step)
-                    if root_context.get("interruptible")
-                    else None
-                )
+                clarification = self._clarification_payload(result, rerun_step)
+                if not self._clarification_should_interrupt(root_context, clarification):
+                    clarification = None
                 while clarification is not None:
                     root_context.setdefault("_interrupted_dependency_outputs", {})[
                         action.step_id
@@ -663,7 +672,13 @@ class LangGraphOrchestrator(Orchestrator):
                     result = await self._run_step(
                         rerun_step, repair_context, outputs, trace
                     )
-                    clarification = self._clarification_payload(result, rerun_step)
+                    clarification = self._clarification_payload(
+                        result, rerun_step
+                    )
+                    if not self._clarification_should_interrupt(
+                        root_context, clarification
+                    ):
+                        clarification = None
             except GraphInterrupt:
                 raise
             except Exception as exc:
@@ -828,11 +843,9 @@ class LangGraphOrchestrator(Orchestrator):
                     }
                 })
 
-            clarification = (
-                self._clarification_payload(result, step)
-                if root_context.get("interruptible")
-                else None
-            )
+            clarification = self._clarification_payload(result, step)
+            if not self._clarification_should_interrupt(root_context, clarification):
+                clarification = None
             while clarification is not None:
                 root_context.setdefault("_interrupted_dependency_outputs", {})[
                     step.step_id
@@ -878,6 +891,10 @@ class LangGraphOrchestrator(Orchestrator):
                         }
                     })
                 clarification = self._clarification_payload(result, step)
+                if not self._clarification_should_interrupt(
+                    root_context, clarification
+                ):
+                    clarification = None
 
             preserved_dependencies = root_context.get(
                 "_interrupted_dependency_outputs", {}
@@ -1098,6 +1115,36 @@ class LangGraphOrchestrator(Orchestrator):
                 {"learning_goal", "learning_background"}
             )
         )
+
+    @staticmethod
+    def _clarification_should_interrupt(
+        root_context: dict[str, Any],
+        clarification: dict[str, Any] | None,
+    ) -> bool:
+        """Decide whether a clarification must hard-interrupt the graph.
+
+        Memory-conflict clarifications are background governance: the learner
+        is mid-request (e.g. asking about a herb's indications) and the agent
+        discovered a competing personal fact (e.g. daily minutes 75 vs 60).
+        Interrupting every task forces an unrelated memory question into the
+        middle of an answer.  Only planning tasks (``learning_plan``) stop
+        the graph, because the conflict directly changes the deliverable
+        (available minutes in a plan).  All other task types keep the
+        conflict on the context (``deferred_memory_conflicts``) and the
+        use case surfaces it as a system message instead.
+        """
+        if clarification is None:
+            return False
+        if not root_context.get("interruptible"):
+            return False
+        if clarification.get("interrupt_type") != "memory_conflict":
+            return True
+        if root_context.get("task_type") == "learning_plan":
+            return True
+        root_context.setdefault("deferred_memory_conflicts", []).append(
+            clarification
+        )
+        return False
 
     @staticmethod
     def _clarification_payload(result: Any, step: ExecutionStep) -> dict[str, Any] | None:

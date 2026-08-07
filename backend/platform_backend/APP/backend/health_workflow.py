@@ -75,7 +75,7 @@ def _tool_names(tools: List[Dict[str, Any]]) -> List[str]:
 
 def _attach_global_execution_plan(state: "HealthState", available_tools: List[Dict[str, Any]]) -> None:
     try:
-        learner_context = build_learner_context_brief(state["db"], state["user_id"])
+        learner_context = build_learner_context_brief(state["db"], state["user_id"], state.get("user_question", ""))
         plan = generate_agent_execution_plan(
             learner_context=learner_context,
             user_request=state["user_question"],
@@ -161,16 +161,25 @@ def _short_text(text: str, limit: int = 1000) -> str:
 def _format_extracted_memories(extracted: Dict[str, Any]) -> str:
     important = extracted.get("important_short_term") or []
     candidates = extracted.get("non_important_candidates") or []
+    auto_confirmed = extracted.get("auto_confirmed") or []
+    auto_contents = {
+        str(item.get("content") or "").strip() for item in auto_confirmed
+    }
     lines = [f"抽取摘要：{extracted.get('summary') or '无'}"]
     if important:
-        lines.append("\n重要信息 → 7 天短期记忆：")
+        lines.append("\n重要信息：")
         for idx, item in enumerate(important, 1):
+            status = (
+                "已直接沉淀"
+                if str(item.get("content") or "").strip() in auto_contents
+                else "待确认"
+            )
             lines.append(
                 f"{idx}. {item.get('title') or '未命名'}｜{item.get('content') or ''}"
-                f"\n   重要性：{item.get('importance') or 'normal'}；原因：{item.get('reason') or '无'}"
+                f"\n   重要性：{item.get('importance') or 'normal'}；状态：{status}；原因：{item.get('reason') or '无'}"
             )
     else:
-        lines.append("\n重要信息 → 7 天短期记忆：无")
+        lines.append("\n重要信息：无")
     if candidates:
         lines.append("\n非重要信息 → 候选池：")
         for idx, item in enumerate(candidates, 1):

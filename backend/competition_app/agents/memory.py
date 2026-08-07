@@ -33,6 +33,7 @@ class MemoryAgentResult(ContractModel):
     context_summary: ConversationContextSummary | None = None
     learner_context: LearnerContextBrief
     memory_candidates: list[LongTermMemoryCandidate] = Field(default_factory=list)
+    auto_confirm_memories: list[LongTermMemoryCandidate] = Field(default_factory=list)
     governance: MemoryGovernanceDecision | None = None
 
     @property
@@ -202,6 +203,15 @@ class MemoryAgent:
             )
             if source_refs
         ]
+        auto_confirm_memories = [
+            LongTermMemoryCandidate(
+                summary=item,
+                source_refs=source_refs,
+                status="auto_confirmed",
+            )
+            for item in dict.fromkeys(governance_output.auto_confirm_candidates)
+            if source_refs
+        ]
         valid_memory_ids = {
             int(item["id"])
             for item in context.get("relevant_personalization_memories", [])
@@ -217,6 +227,7 @@ class MemoryAgent:
         governance = MemoryGovernanceDecision(
             analysis=governance_output.governance_notes,
             memory_candidates=memory_candidates,
+            auto_confirm_memories=auto_confirm_memories,
             conflicts=[
                 MemoryConflict(
                     memory_id=item.memory_id,
@@ -238,6 +249,7 @@ class MemoryAgent:
             context_summary=summary,
             learner_context=learner_context,
             memory_candidates=memory_candidates,
+            auto_confirm_memories=auto_confirm_memories,
             governance=governance,
         )
         return AgentEnvelope[MemoryAgentResult](

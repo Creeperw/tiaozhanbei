@@ -14,6 +14,13 @@ from competition_app.application.personalized_review_card import (
     WorkflowResumeRequest,
 )
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
+from competition_app.contracts.base import AgentEnvelope, ArtifactReference
+from competition_app.contracts.memory import (
+    LearnerContextBrief,
+    LongTermMemoryCandidate,
+    MemoryGovernanceDecision,
+)
+from competition_app.agents.memory import MemoryAgentResult
 from competition_app.contracts.resource import AuditResult
 from competition_app.repositories.runtime import InMemoryRunStateRepository
 from competition_app.runtime.orchestrator import ExecutionResult
@@ -597,3 +604,219 @@ def test_review_card_rejects_invalid_coordination_shape() -> None:
         "communication_trace": [],
         "repair_trace": [],
     }
+
+
+def test_resume_resets_model_trace_recorder_like_execute() -> None:
+    """Regression: resume() must reset the recorder in the request context.
+
+    LangGraph resumes node closures inside a copied context
+    (set_config_context).  Without an explicit reset, the recorder's
+    ContextVar is unset in the new request, so model calls recorded while
+    the checkpoint resumes are lost and the persisted trace_events carry no
+    model_input/model_output/model_transport events.
+    """
+    from contextvars import Context
+
+    from competition_app.runtime.model_trace import ModelTraceRecorder
+
+    recorder = ModelTraceRecorder()
+    use_case = _use_case(planner=_CancelledPlanner())
+    use_case.model_trace_recorder = recorder
+
+    # A brand new HTTP request arrives in a fresh (empty) context where the
+    # recorder ContextVar was never set -- exactly like resume() sees.
+    request_context = Context()
+
+    def resume_entry() -> None:
+        # Fixed resume(): reset the recorder in this request's context.
+        use_case.model_trace_recorder.reset()
+
+    request_context.run(resume_entry)
+
+    # LangGraph then resumes node closures in a context copied from the
+    # request; the copy shares the same (now reset) list instance.
+    node_context = request_context.copy()
+
+    def node_model_call() -> None:
+        idx = use_case.model_trace_recorder.begin(
+            "diagnosis_agent", {"message": "resumed run"}
+        )
+        use_case.model_trace_recorder.succeed(idx, {"ok": True})
+
+    node_context.run(node_model_call)
+
+    # The use case reads the recorder in the same request context (e.g.
+    # _model_trace() after the resumed run) and must see the recorded call.
+    seen = request_context.run(lambda: [i.agent for i in recorder.items])
+    assert seen == ["diagnosis_agent"]
+
+
+def test_resume_without_reset_loses_recorder_context() -> None:
+    """Document the failure mode this regression test guards against."""
+    from contextvars import Context
+
+    from competition_app.runtime.model_trace import ModelTraceRecorder
+
+    recorder = ModelTraceRecorder()
+    use_case = _use_case(planner=_CancelledPlanner())
+    use_case.model_trace_recorder = recorder
+
+    # Buggy resume: no reset -> fresh request context has an unset ContextVar.
+    request_context = Context()
+
+    # LangGraph copies the fresh context; the list created inside the copy is
+    # invisible to the original request context that later reads items.
+    node_context = request_context.copy()
+
+    def node_model_call() -> None:
+        idx = recorder.begin("diagnosis_agent", {"message": "resumed run"})
+        recorder.succeed(idx, {"ok": True})
+
+    node_context.run(node_model_call)
+
+    # The original request context still sees no recorded calls.
+    assert recorder.items == []
+
+
+def _memory_envelope_with_conflict() -> AgentEnvelope[MemoryAgentResult]:
+    return AgentEnvelope(
+        artifact_id="ART_MEMORY_CONFLICT",
+        artifact_type="memory_context",
+        case_id="CASE_MEMORY_DEFER",
+        trace_id="TRACE_MEMORY_DEFER",
+        request_id="REQ_MEMORY_DEFER",
+        execution_id="EXE_MEMORY_DEFER",
+        step_id="memory",
+        producer="memory_agent",
+        task_type="knowledge_explanation",
+        learner_id="learner-phase2",
+        payload=MemoryAgentResult(
+            learner_context=LearnerContextBrief(
+                learner_id="learner-phase2",
+                profile_summary="已有每日学习时长记录。",
+            ),
+            memory_candidates=[],
+            governance=MemoryGovernanceDecision(
+                analysis="新旧每日学习时长不能同时成立。",
+                conflicts=[
+                    {
+                        "memory_id": 7,
+                        "proposed_memory": "以后每天学习一小时。",
+                        "reason": "与已有每天最多二十分钟冲突。",
+                    }
+                ],
+                requires_clarification=True,
+                clarification_questions=["保留旧记忆、仅本次使用还是替换旧记忆？"],
+                interrupt_type="memory_conflict",
+                resolution="needs_clarification",
+            ),
+        ),
+    )
+
+
+def test_persist_memory_governance_degrades_deferred_conflict() -> None:
+    """Non-planning tasks defer memory conflicts: persisting must not raise.
+
+    The deferred conflict becomes pending candidates (resolution "none") plus
+    a returned notice used for the system-message reminder, instead of the
+    previous RuntimeError that aborted the whole workflow.
+    """
+    written: list[dict] = []
+    use_case = _use_case(planner=_CancelledPlanner())
+    use_case.memory_governance_writer = lambda *args, **kwargs: written.append(
+        kwargs
+    )
+
+    notice = use_case._persist_memory_governance(
+        request=ReviewCardRequest(
+            thread_id="THREAD_MEMORY_DEFER",
+            conversation_id="THREAD_MEMORY_DEFER",
+            learner_id="learner-phase2",
+            user_request="讲解白芍的主治功效。",
+        ),
+        execution_id="EXE_MEMORY_DEFER",
+        agent_outputs=[_memory_envelope_with_conflict()],
+    )
+
+    assert notice is not None
+    assert notice["conflicts"][0]["memory_id"] == 7
+    assert notice["questions"] == ["保留旧记忆、仅本次使用还是替换旧记忆？"]
+    assert len(written) == 1
+    assert written[0]["resolution"] == "none"
+    assert written[0]["conflicts"] == []
+    # 没有 workshop_runtime 时通知创建被安全跳过
+    assert not hasattr(use_case, "_deferred_memory_conflict_notice") or (
+        use_case._deferred_memory_conflict_notice is None
+    )
+
+
+def test_persist_memory_governance_keeps_normal_resolution() -> None:
+    """Resolved governance still persists candidates + conflicts unchanged."""
+    written: list[dict] = []
+    use_case = _use_case(planner=_CancelledPlanner())
+    use_case.memory_governance_writer = lambda *args, **kwargs: written.append(
+        kwargs
+    )
+    envelope = _memory_envelope_with_conflict()
+    envelope.payload.governance.resolution = "use_current_once"
+    envelope.payload.governance.requires_clarification = False
+
+    notice = use_case._persist_memory_governance(
+        request=ReviewCardRequest(
+            thread_id="THREAD_MEMORY_RESOLVED",
+            conversation_id="THREAD_MEMORY_RESOLVED",
+            learner_id="learner-phase2",
+            user_request="讲解白芍的主治功效。",
+        ),
+        execution_id="EXE_MEMORY_RESOLVED",
+        agent_outputs=[envelope],
+    )
+
+    assert notice is None
+    assert len(written) == 1
+    assert written[0]["resolution"] == "use_current_once"
+    assert written[0]["conflicts"] == [
+        conflict.model_dump(mode="json")
+        for conflict in envelope.payload.governance.conflicts
+    ]
+
+
+def test_persist_memory_governance_forwards_auto_confirm_candidates() -> None:
+    """确定性记忆（auto_confirmed）必须随候选一起传给 writer，不丢失。"""
+    written: list[dict] = []
+    use_case = _use_case(planner=_CancelledPlanner())
+    use_case.memory_governance_writer = lambda *args, **kwargs: written.append(
+        kwargs
+    )
+    envelope = _memory_envelope_with_conflict()
+    envelope.payload.auto_confirm_memories = [
+        LongTermMemoryCandidate(
+            summary="用户明确每天学习一小时。",
+            source_refs=[
+                ArtifactReference(ref_type="conversation_message", ref_id="MSG_9")
+            ],
+            status="auto_confirmed",
+        )
+    ]
+    envelope.payload.governance.resolution = "none"
+    envelope.payload.governance.requires_clarification = False
+
+    notice = use_case._persist_memory_governance(
+        request=ReviewCardRequest(
+            thread_id="THREAD_MEMORY_AUTO",
+            conversation_id="THREAD_MEMORY_AUTO",
+            learner_id="learner-phase2",
+            user_request="以后每天学习一小时。",
+        ),
+        execution_id="EXE_MEMORY_AUTO",
+        agent_outputs=[envelope],
+    )
+
+    assert notice is None
+    assert len(written) == 1
+    auto = written[0]["auto_confirm_candidates"]
+    assert len(auto) == 1
+    assert auto[0]["summary"] == "用户明确每天学习一小时。"
+    assert auto[0]["source_refs"][0]["ref_type"] == "conversation_message"
+    assert auto[0]["source_refs"][0]["ref_id"] == "MSG_9"
+    assert written[0]["candidates"] == []

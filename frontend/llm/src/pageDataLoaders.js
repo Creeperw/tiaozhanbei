@@ -419,6 +419,11 @@ export const isPracticeGradePayloadValid = (data) => (
   && data.writeback && typeof data.writeback === 'object'
 );
 
+export const isPracticeSkipPayloadValid = (data) => (
+  data && typeof data === 'object'
+  && data.skipped === true
+);
+
 export const isMistakePagePayloadValid = (data) => (
   data && typeof data === 'object'
   && data.schema_version === '1.0'
@@ -1046,17 +1051,19 @@ export async function loadVariationSources({ fetcher }) {
   }
 }
 
-export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId = '', topic = '', scope = 'public', difficulty = null }) {
+export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId = '', topic = '', scope = 'public', difficulty = null, excludeQuestionId = '' }) {
   const params = new URLSearchParams({ mode, scope });
   if (hasNonEmptyText(kpId)) params.set('kp_id', kpId.trim());
   if (hasNonEmptyText(topic)) params.set('topic', topic.trim());
   if (Number.isInteger(difficulty) && difficulty >= 1 && difficulty <= 5) {
     params.set('difficulty', String(difficulty));
   }
+  if (hasNonEmptyText(excludeQuestionId)) params.set('exclude_question_id', excludeQuestionId.trim());
   const legacyParams = new URLSearchParams();
   if (hasNonEmptyText(kpId)) legacyParams.set('kp_id', kpId.trim());
   legacyParams.set('scope', scope);
   legacyParams.set('mode', mode);
+  if (hasNonEmptyText(excludeQuestionId)) legacyParams.set('exclude_question_id', excludeQuestionId.trim());
   try {
     const { data, source } = await fetcher({
       paths: [`/v1/workshop/practice/next?${params.toString()}`, `/training/practice/next?${legacyParams.toString()}`],
@@ -1069,15 +1076,18 @@ export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId =
   }
 }
 
-export async function loadDailyTaskPracticeQuestion({ fetcher, taskItemId }) {
+export async function loadDailyTaskPracticeQuestion({ fetcher, taskItemId, excludeQuestionId = '' }) {
   const fallback = { available: false, question: null, progress: { reviewed: 0, required: 0 } };
   if (!hasNonEmptyText(taskItemId)) return { practice: fallback, error: '每日任务项 ID 不能为空', source: null };
   const encodedTaskItemId = encodeURIComponent(taskItemId.trim());
+  const params = new URLSearchParams();
+  if (hasNonEmptyText(excludeQuestionId)) params.set('exclude_question_id', excludeQuestionId.trim());
+  const query = params.toString();
   try {
     const { data, source } = await fetcher({
       paths: [
-        `/daily-task-items/${encodedTaskItemId}/practice/next`,
-        `/v1/daily-task-items/${encodedTaskItemId}/practice/next`,
+        `/daily-task-items/${encodedTaskItemId}/practice/next${query ? `?${query}` : ''}`,
+        `/v1/daily-task-items/${encodedTaskItemId}/practice/next${query ? `?${query}` : ''}`,
       ],
       fallback,
       validator: isDailyTaskPracticeQuestionPayloadValid,
@@ -1164,6 +1174,33 @@ export async function submitPracticeAnswer({ fetcher, question, answer, taskItem
     return { result: data, error: '', source };
   } catch (error) {
     return { result: null, error: error.message || '答案提交失败', source: null };
+  }
+}
+
+export async function skipPracticeQuestion({ fetcher, question, taskItemId = '' }) {
+  if (!question || typeof question !== 'object' || !hasNonEmptyText(question.question_id)
+    || !hasNonEmptyText(question.request_id)) {
+    return { skipped: false, error: '当前题目凭证无效', source: null };
+  }
+  const paths = hasNonEmptyText(taskItemId)
+    ? [`/daily-task-items/${encodeURIComponent(taskItemId.trim())}/practice/skip`]
+    : ['/v1/workshop/practice/skip', '/training/practice/skip', '/api/v1/workshop/practice/skip', '/api/training/practice/skip'];
+  try {
+    const { data, source } = await fetcher({
+      paths,
+      fallback: null,
+      options: {
+        method: 'POST',
+        body: JSON.stringify({
+          question_id: question.question_id,
+          request_id: question.request_id,
+        }),
+      },
+      validator: isPracticeSkipPayloadValid,
+    });
+    return { skipped: data.skipped === true, error: '', source };
+  } catch (error) {
+    return { skipped: false, error: error.message || '跳过题目失败', source: null };
   }
 }
 

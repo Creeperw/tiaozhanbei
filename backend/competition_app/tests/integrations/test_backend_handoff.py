@@ -165,6 +165,92 @@ def test_memory_governance_persists_candidates_and_confirmed_replacement_atomica
     assert result["replaced"] == [{"memory_id": 7, "successor_id": 8}]
 
 
+def test_memory_governance_writes_auto_confirm_candidates_directly():
+    """确定性记忆（auto_confirm_candidates）必须经 important_short_term 直接沉淀，
+    而不是进入待确认候选池。"""
+    calls = []
+
+    class FakeDB:
+        def add(self, item):
+            calls.append(("add", getattr(item, "event_type", None)))
+
+        def commit(self):
+            calls.append("committed")
+
+        def rollback(self):
+            calls.append("rolled_back")
+
+        def close(self):
+            calls.append("closed")
+
+    class FakeAgentEvent:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    db = FakeDB()
+    modules = {
+        "APP.backend.database": SimpleNamespace(
+            SessionLocal=lambda: db,
+            AgentEvent=FakeAgentEvent,
+        ),
+        "APP.backend.health_memory": SimpleNamespace(
+            save_extracted_memories=lambda *args, **kwargs: (
+                calls.append(("saved", args[1], args[2], kwargs))
+                or {"non_important_candidates": [], "auto_confirmed": args[2].get("important_short_term", [])}
+            ),
+            apply_confirmed_memory_replacements=lambda *args, **kwargs: (
+                calls.append(("replace", args[1], args[2])) or {"replaced": []}
+            ),
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: (
+        calls.append(("user", current_db, external_id)) or SimpleNamespace(id=23)
+    )
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        result = runtime.persist_memory_governance(
+            "external-23",
+            execution_id="EXE_2",
+            candidates=[{"summary": "用户偏好对比表式资源。"}],
+            auto_confirm_candidates=[{"summary": "用户明确每天学习45分钟。"}],
+            resolution="none",
+            conflicts=[],
+        )
+
+    assert calls[0] == ("user", db, "external-23")
+    saved_call = next(call for call in calls if call[0] == "saved")
+    extracted = saved_call[2]
+    assert extracted["candidates"] == [
+        {
+            "content": "用户偏好对比表式资源。",
+            "title": "",
+            "importance": "normal",
+            "reason": "Memory Agent 提取，等待用户在学习记忆设置中确认。",
+            "confidence": 0.8,
+        }
+    ]
+    assert extracted["important_short_term"] == [
+        {
+            "content": "用户明确每天学习45分钟。",
+            "title": "",
+            "importance": "normal",
+            "reason": "记忆管理智能体识别为确定性信息，直接沉淀。",
+            "confidence": 0.9,
+            "requires_confirmation": False,
+            "category": "long_term",
+        }
+    ]
+    # 普通候选走 pending 确认流程，auto-confirm 走直接沉淀
+    assert result["auto_confirmed"] == extracted["important_short_term"]
+    assert result["candidates"] == []
+    assert calls[-2:] == ["committed", "closed"]
+
+
 def test_memory_governance_rolls_back_if_replacement_fails():
     calls = []
 

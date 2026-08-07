@@ -251,6 +251,7 @@ class PersonalizedReviewCardUseCase:
         self.workshop_runtime = workshop_runtime
         self.syllabus_context_loader = syllabus_context_loader
         self._continuations: dict[str, _WorkflowContinuation] = {}
+        self._deferred_memory_conflict_notice: dict[str, Any] | None = None
 
     async def execute(
         self, request: ReviewCardRequest
@@ -769,13 +770,56 @@ class PersonalizedReviewCardUseCase:
             "step_completed", step_id="planner", agent="planner_agent", status="success"
         )
         if planner_output.payload.task_type == "casual_conversation":
+            # A memory-record request (“帮我记一下”“以后每天晚上9点学习”) is
+            # still a casual conversation for delivery: Planner answers with a
+            # short confirmation.  But when Planner selected memory_agent, the
+            # newly stated durable fact must still be extracted, governed and
+            # persisted through the same governance pipeline as any business
+            # turn.  Pure small talk selects no agents and stays lightweight.
+            agent_outputs = [planner_output]
+            if "memory_agent" in planner_output.payload.selected_agents:
+                memory_agent = self.orchestrator.agent_registry.get("memory_agent")
+                memory_context = {
+                    **context,
+                    "step_id": "memory",
+                    "dependency_outputs": {},
+                }
+                emit_runtime_event(
+                    "step_started",
+                    step_id="memory",
+                    agent="memory_agent",
+                    depends_on=[],
+                )
+                memory_output = await memory_agent.run(memory_context)
+                emit_runtime_event(
+                    "system_output",
+                    step_id="memory",
+                    agent="memory_agent",
+                    output=memory_output,
+                )
+                emit_runtime_event(
+                    "step_completed",
+                    step_id="memory",
+                    agent="memory_agent",
+                    status="success",
+                )
+                agent_outputs.append(memory_output)
+                memory_conflict_notice = self._persist_memory_governance(
+                    request=request,
+                    execution_id=execution_id,
+                    agent_outputs=agent_outputs,
+                )
+                if memory_conflict_notice is not None:
+                    self._deferred_memory_conflict_notice = memory_conflict_notice
+                else:
+                    self._deferred_memory_conflict_notice = None
             _FAILURE_STEP_CONTEXT.set("snapshot")
             snapshot_path = self.snapshot_exporter.export(
                 case_id,
                 execution_id,
                 {
                     "request": request,
-                    "agent_outputs": [planner_output],
+                    "agent_outputs": agent_outputs,
                     "model_trace": self._model_trace(),
                 },
             )
@@ -784,7 +828,7 @@ class PersonalizedReviewCardUseCase:
                 execution_id=execution_id,
                 task_type="casual_conversation",
                 direct_response=planner_output.payload.casual_response,
-                agent_outputs=[planner_output],
+                agent_outputs=agent_outputs,
                 snapshot_path=snapshot_path,
                 writeback_intents=[],
                 model_trace=self._model_trace(),
@@ -1077,6 +1121,15 @@ class PersonalizedReviewCardUseCase:
         request: WorkflowResumeRequest,
     ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         try:
+            if self.model_trace_recorder:
+                # Mirror the execute() reset: each HTTP request runs in a
+                # fresh asyncio context, and LangGraph resumes node closures
+                # inside a copied context (set_config_context).  Without an
+                # explicit reset here the recorder's ContextVar stays unset
+                # in this request, so model calls recorded during the
+                # checkpoint resume are lost and the assistant message never
+                # persists model_input/model_output/model_transport events.
+                self.model_trace_recorder.reset()
             _FAILURE_STEP_CONTEXT.set("resume_restore")
             return await self._resume_started_run(thread_id, request)
         except asyncio.CancelledError:
@@ -1796,6 +1849,26 @@ class PersonalizedReviewCardUseCase:
         ),
     ) -> None:
         content = sanitize_conversation_content(workflow_result_to_markdown(result))
+        notice = getattr(self, "_deferred_memory_conflict_notice", None)
+        if isinstance(result, ReviewCardResult) and notice:
+            conflict_lines = []
+            for conflict in notice.get("conflicts") or []:
+                proposed = str(conflict.get("proposed_memory") or "").strip()
+                reason = str(conflict.get("reason") or "").strip()
+                if proposed and reason:
+                    conflict_lines.append(f"{proposed}（{reason}）")
+                elif proposed:
+                    conflict_lines.append(proposed)
+                elif reason:
+                    conflict_lines.append(reason)
+            if conflict_lines:
+                reminder = (
+                    "系统消息：检测到学习记忆记录存在不一致（"
+                    + "；".join(conflict_lines[:3])
+                    + "）。本次回答不受影响；如需调整，可在设置页的冲突清单中确认或修改，"
+                    "多智能体会在后台完成更新。"
+                )
+                content = f"{content}\n\n{reminder}"
         actions = [
             action.model_dump(mode="json")
             for action in getattr(result, "ui_actions", [])
@@ -2228,11 +2301,15 @@ class PersonalizedReviewCardUseCase:
         agent_outputs = [planner_output, *[
             output for output in execution.outputs.values() if isinstance(output, AgentEnvelope)
         ]]
-        self._persist_memory_governance(
+        memory_conflict_notice = self._persist_memory_governance(
             request=request,
             execution_id=execution_id,
             agent_outputs=agent_outputs,
         )
+        if memory_conflict_notice is not None:
+            self._deferred_memory_conflict_notice = memory_conflict_notice
+        else:
+            self._deferred_memory_conflict_notice = None
         learning_plan_output = execution.outputs.get("learning_plan")
         learning_plan = (
             getattr(learning_plan_output, "payload", None) if learning_plan_output else None
@@ -2456,17 +2533,24 @@ class PersonalizedReviewCardUseCase:
         request: ReviewCardRequest,
         execution_id: str,
         agent_outputs: list[AgentEnvelope[Any]],
-    ) -> None:
+    ) -> dict[str, Any] | None:
+        """Persist memory governance, degrading unresolved conflicts.
+
+        Returns a ``memory_conflict_notice`` payload when a memory conflict
+        was deferred instead of hard-interrupting the graph (non-planning
+        tasks).  The notice is surfaced as a system message so the learner
+        can resolve the conflict from the conflict list at their own pace.
+        """
         _FAILURE_STEP_CONTEXT.set("memory")
         if self.memory_governance_writer is None:
-            return
+            return None
         memory_output = next(
             (item for item in reversed(agent_outputs) if item.producer == "memory_agent"),
             None,
         )
         payload = getattr(memory_output, "payload", None)
         if payload is None:
-            return
+            return None
         candidates = [
             {
                 "summary": candidate.summary,
@@ -2476,21 +2560,62 @@ class PersonalizedReviewCardUseCase:
             }
             for candidate in getattr(payload, "memory_candidates", [])
         ]
+        auto_confirm_candidates = [
+            {
+                "summary": candidate.summary,
+                "source_refs": [
+                    source.model_dump(mode="json") for source in candidate.source_refs
+                ],
+            }
+            for candidate in getattr(payload, "auto_confirm_memories", [])
+        ]
         governance = getattr(payload, "governance", None)
         resolution = getattr(governance, "resolution", "none") if governance else "none"
-        if resolution == "needs_clarification":
-            raise RuntimeError("unresolved memory conflict cannot be finalized")
         conflicts = [
             conflict.model_dump(mode="json")
             for conflict in getattr(governance, "conflicts", [])
         ] if governance else []
+        if resolution == "needs_clarification":
+            # The orchestrator deferred this conflict instead of interrupting
+            # the learner's current request (knowledge explanation, papers,
+            # review cards, casual chat).  Persist the extracted candidates
+            # so they appear in the conflict list, emit a system notification,
+            # and let the caller attach a non-blocking reminder to the reply.
+            if self.workshop_runtime is not None:
+                try:
+                    self.workshop_runtime.create_memory_conflict_notification(
+                        request.learner_id,
+                        execution_id=execution_id,
+                        conflicts=conflicts,
+                    )
+                except Exception:
+                    pass
+            try:
+                self.memory_governance_writer(
+                    request.learner_id,
+                    execution_id=execution_id,
+                    candidates=candidates,
+                    auto_confirm_candidates=auto_confirm_candidates,
+                    resolution="none",
+                    conflicts=[],
+                )
+            except Exception:
+                pass
+            return {
+                "conflicts": conflicts,
+                "questions": list(
+                    getattr(governance, "clarification_questions", []) or []
+                ),
+            }
         self.memory_governance_writer(
             request.learner_id,
             execution_id=execution_id,
             candidates=candidates,
+            auto_confirm_candidates=auto_confirm_candidates,
             resolution=resolution,
             conflicts=conflicts,
         )
+        return None
 
     def _publish_paper_blueprint(
         self,

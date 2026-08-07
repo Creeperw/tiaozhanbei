@@ -20,6 +20,7 @@ from APP.backend.database import (
     UserProfile,
 )
 from APP.backend.learner_profile_service import build_learner_profile_payload
+from APP.backend.memory_retrieval import rank_memories
 
 
 def _parse_json(value: str | None) -> dict[str, Any]:
@@ -151,7 +152,21 @@ def _agent_trace_item(row: AgentEvent) -> dict[str, Any]:
     }
 
 
-def build_learner_context_brief(db: Session, user_id: int) -> LearnerContextBrief:
+def _render_memory_brief(label: str, items: list[dict[str, Any]]) -> str:
+    """把检索精选后的记忆渲染成自然语言段落，供专家/批改/审核智能体直接使用。"""
+    if not items:
+        return ""
+    lines = [f"{label}："]
+    for item in items:
+        title = str(item.get("title") or "").strip()
+        content = str(item.get("content") or "").strip()
+        text = f"{title}：{content}" if title else content
+        if text:
+            lines.append(f"- {text}")
+    return "\n".join(lines)
+
+
+def build_learner_context_brief(db: Session, user_id: int, query: str = "") -> LearnerContextBrief:
     profile_row = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     profile = build_learner_profile_payload(profile_row or {})
 
@@ -228,6 +243,22 @@ def build_learner_context_brief(db: Session, user_id: int) -> LearnerContextBrie
     next_reviews = [item for item in mastery_items if item["next_review_at"]]
     active_plans = [item for item in plan_items if item["status"] == "active"]
 
+    # 混合检索（向量 + BM25 + 时间衰减）：挑出与当前请求最相关的记忆注入上下文，
+    # 而不是把全部记忆一股脑塞给智能体。query 为空时退化为“时间新 + 重要”排序。
+    selected_memories = rank_memories(query, memory_items)
+    selected_short_term = [
+        item
+        for item in selected_memories
+        if item["category"] in {"short_term", "feedback", "mistake"}
+    ]
+    selected_long_term = [
+        item
+        for item in selected_memories
+        if item["category"] in {"long_term", "preference", "note"}
+    ]
+    short_brief = _render_memory_brief("近期学习记忆", selected_short_term)
+    long_brief = _render_memory_brief("长期偏好与背景", selected_long_term)
+
     return LearnerContextBrief(
         learner_id=str(user_id),
         learner_group=profile.get("learner_group") or "未选择用户群体",
@@ -241,10 +272,18 @@ def build_learner_context_brief(db: Session, user_id: int) -> LearnerContextBrie
         profile=profile,
         short_term_memory={
             "active_items": short_term_items,
+            "selected": selected_short_term,
+            "brief": short_brief,
             "pending_candidates": [_candidate_item(row) for row in candidates],
             "summaries": [_summary_item(row) for row in summaries],
         },
-        long_term_memory={"stable_items": long_term_items, "mastery": mastery_items, "next_reviews": next_reviews},
+        long_term_memory={
+            "stable_items": long_term_items,
+            "selected": selected_long_term,
+            "brief": long_brief,
+            "mastery": mastery_items,
+            "next_reviews": next_reviews,
+        },
         planning_memory={"active_plans": active_plans, "plans": plan_items},
         learning_state={
             "weak_kp_ids": weak_kp_ids,

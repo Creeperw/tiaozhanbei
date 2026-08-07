@@ -64,13 +64,16 @@ def _common_content(
 
 def _build_memories(learner_context: LearnerContextBrief, diagnosis_report: DiagnosisReport) -> list[dict[str, Any]]:
     memories: list[dict[str, Any]] = []
-    for title, payload in (
-        ("short_term", learner_context.short_term_memory),
-        ("long_term", learner_context.long_term_memory),
-        ("planning", learner_context.planning_memory),
+    # 优先使用记忆智能体渲染好的自然语言简报（检索精选），避免把整个 dict repr 塞给模型。
+    for category, title, payload in (
+        ("short_term", "近期学习记忆", learner_context.short_term_memory),
+        ("long_term", "长期偏好与背景", learner_context.long_term_memory),
     ):
-        if payload:
-            memories.append({"category": title, "title": title, "content": _text(payload)})
+        if not isinstance(payload, dict):
+            continue
+        brief = str(payload.get("brief") or "").strip()
+        if brief:
+            memories.append({"category": category, "title": title, "content": brief})
     if diagnosis_report.summary:
         memories.append({"category": "diagnosis", "title": "diagnosis", "content": diagnosis_report.summary})
     return memories
@@ -202,6 +205,11 @@ def _subjective_grading_prompt(
         "knowledge_points": submission.get("knowledge_point_names") or submission.get("knowledge_points") or [],
         "learner_goal": learner_context.goal,
         "learner_group": learner_context.learner_group,
+        "learner_memories": (
+            _text((learner_context.short_term_memory or {}).get("brief"))
+            or _text((learner_context.long_term_memory or {}).get("brief"))
+            or "无"
+        ),
         "diagnosis": diagnosis_report.summary,
         "evidence": [
             {"source_id": item.source_id, "summary": item.summary, "kp_ids": item.kp_ids}

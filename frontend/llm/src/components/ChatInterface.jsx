@@ -122,8 +122,6 @@ const getDomain = (url) => {
 
 const isExternalUrl = (url) => /^https?:\/\//i.test(url || '');
 
-const SourceFavicon = React.memo(() => <Globe size={10} className="text-gray-400" />);
-
 const VideoPreviewCard = React.memo(({ video, index }) => {
   const snippet = (video?.snippet || video?.content || '').replace(/\s+/g, ' ').trim();
 
@@ -298,7 +296,7 @@ const mergeTraceEvents = (inlineEvents, persistedEvents) => {
   return merged;
 };
 
-const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, actions, traceEvents: persistedTraceEvents, onAction, onInspectRefs, onInspectKnowledge, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
+const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, feedbackStatus, branch, actions, traceEvents: persistedTraceEvents, onAction, onInspectKnowledge, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
   const isUser = role === 'user';
   const [isCopied, setIsCopied] = useState(false);
   
@@ -314,7 +312,12 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
   // 检索总结。实时 SSE 与持久化回执中的 knowledge_retrieval 事件都会经
   // runtimeEventToTrace 转换为 {type:'knowledge_retrieval'}，model_output
   // 转换为 {type:'model_call', kind:'output'}，供"检索详情"抽屉回放检索内容。
+  // 当前展示只保留带原始链接的外部来源（视频/论文/网页），向量/BM25 检索内容暂不展示。
   const knowledgeRetrievals = traceEvents.filter(e => e.type === 'knowledge_retrieval' && e.agent === 'knowledge_base_agent');
+  const knowledgeWebCount = knowledgeRetrievals.reduce(
+    (sum, kr) => sum + (kr.evidence_items || []).filter(item => item.source_url).length,
+    0,
+  );
   const knowledgeSummaries = traceEvents
     .filter(e => e.type === 'model_call' && e.kind === 'output' && e.agent === 'knowledge_base_agent' && e.output)
     .map(e => {
@@ -327,7 +330,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
       }
     })
     .filter(Boolean);
-  const hasKnowledgeRetrieval = knowledgeRetrievals.length > 0;
+  const hasKnowledgeRetrieval = knowledgeWebCount > 0;
   const refMatch = rawContent.match(/<<REFS:(.*?)>>/);
   if (refMatch) {
     rawContent = rawContent.replace(refMatch[0], '').trim();
@@ -502,54 +505,26 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
                 <div className="mt-2 pt-2 border-t border-gray-100/50">
                   <div
                     onClick={() => onInspectKnowledge?.({ retrievals: knowledgeRetrievals, summaries: knowledgeSummaries })}
-                    className="flex items-center gap-2 flex-wrap cursor-pointer group/kb p-1.5 -ml-1.5 rounded-lg hover:bg-orange-50 transition-colors select-none"
-                    title="点击查看知识库检索内容"
+                    className="flex items-center gap-2 flex-wrap cursor-pointer group/kb p-1.5 -ml-1.5 rounded-lg hover:bg-blue-50 transition-colors select-none"
+                    title="点击查看参考来源"
                   >
-                    <div className="text-[10px] font-semibold text-orange-500 uppercase tracking-wider flex items-center gap-1">
-                      <Database size={12} /> 知识库检索 {knowledgeRetrievals.length} 轮
+                    <div className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider flex items-center gap-1">
+                      <Globe size={12} /> 参考来源 {knowledgeWebCount} 条
                     </div>
-                    <div className="flex items-center gap-1.5 pl-2 border-l border-orange-100">
-                      {knowledgeRetrievals.map((kr, idx) => (
-                        <div key={idx} className="w-5 h-5 rounded flex items-center justify-center bg-orange-50 border border-orange-100 text-orange-500">
-                          <Search size={10} />
+                    <div className="flex items-center gap-1.5 pl-2 border-l border-blue-100">
+                      {knowledgeRetrievals.filter(kr => (kr.evidence_items || []).some(item => item.source_url)).map((kr, idx) => (
+                        <div key={idx} className="w-5 h-5 rounded flex items-center justify-center bg-blue-50 border border-blue-100 text-blue-500">
+                          <Globe size={10} />
                         </div>
                       ))}
                       {knowledgeSummaries.length > 0 && (
                         <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1 rounded">{knowledgeSummaries.length} 份总结</span>
                       )}
-                      <ChevronRight size={14} className="text-gray-300 group-hover/kb:text-orange-500 transition-colors ml-1" />
+                      <ChevronRight size={14} className="text-gray-300 group-hover/kb:text-blue-500 transition-colors ml-1" />
                     </div>
                   </div>
                 </div>
               )}
-              {references.length > 0 && (
-                 <div className="mt-2 pt-2 border-t border-gray-100/50">
-                    <div 
-                      onClick={() => onInspectRefs(references, searchQuery)}
-                      className="flex items-center gap-2 flex-wrap cursor-pointer group/refs p-1.5 -ml-1.5 rounded-lg hover:bg-gray-50 transition-colors select-none"
-                      title="点击查看检索详情"
-                    >
-                      <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                        <Search size={12} /> {references.length} 来源
-                      </div>
-                      <div className="flex items-center gap-1.5 pl-2 border-l border-gray-200">
-                         {references.slice(0, 5).map((ref, idx) => (
-                           <div key={idx} className={`w-5 h-5 rounded flex items-center justify-center overflow-hidden hover:scale-110 transition-transform border shadow-sm ${ref.type === 'rag' ? 'bg-orange-50 border-orange-100' : 'bg-white border-gray-100'}`}>
-                             {ref.type === 'rag' ? (
-                               <BookOpen size={10} className="text-orange-500" />
-                             ) : (
-                               <SourceFavicon source={ref} />
-                             )}
-                           </div>
-                         ))}
-                         {references.length > 5 && (
-                           <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1 rounded">+{references.length - 5}</span>
-                         )}
-                         <ChevronRight size={14} className="text-gray-300 group-hover/refs:text-gray-500 transition-colors ml-1" />
-                      </div>
-                    </div>
-                 </div>
-               )}
                <VideoLinks videos={videos} />
                {Array.isArray(actions) && actions.length > 0 && (
                  <div className="assistant-message__actions mt-3 flex flex-wrap gap-2 border-t border-emerald-100 pt-3">
@@ -643,7 +618,6 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
     prevProps.timestamp === nextProps.timestamp &&
     prevProps.role === nextProps.role &&
     prevProps.isGenerating === nextProps.isGenerating &&
-    prevProps.searchQuery === nextProps.searchQuery &&
     prevProps.messageId === nextProps.messageId &&
     prevProps.feedbackStatus === nextProps.feedbackStatus &&
     prevProps.isReviewing === nextProps.isReviewing &&
@@ -668,14 +642,20 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query, knowledge }) => {
   };
 
   // 知识库管理智能体的检索证据映射为引用卡片，复用来源列表/详情视图。
+  // 只保留带原始链接的外部来源；向量/BM25 检索内容暂不展示。
   const knowledgeRefs = (knowledge?.retrievals || []).flatMap(kr =>
-    (kr.evidence_items || []).map(item => ({
-      type: 'rag',
-      title: item.source_label || item.source_id || '未命名来源',
-      content: item.content_summary || item.content || '',
-      score: typeof item.confidence === 'number' ? item.confidence : undefined,
-      url: item.source_url || undefined,
-    })),
+    (kr.evidence_items || [])
+      .filter(item => item.source_url)
+      .map(item => {
+        const lines = String(item.content_summary || item.content || '').split('\n');
+        return {
+          type: 'web',
+          title: item.source_label || lines[0] || item.source_id || '未命名来源',
+          content: item.content_summary || item.content || '',
+          score: typeof item.confidence === 'number' ? item.confidence : undefined,
+          url: item.source_url,
+        };
+      }),
   );
   const knowledgeRounds = knowledge?.retrievals || [];
   const knowledgeSummaries = knowledge?.summaries || [];
@@ -762,33 +742,44 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query, knowledge }) => {
              {knowledgeRounds.length > 0 && (
                <div className="mb-6 space-y-4">
                  <div className="flex items-center gap-2 font-semibold text-gray-700">
-                   <Database size={16} className="text-orange-500" />
-                   <span>知识库检索</span>
-                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">{knowledgeRounds.length} 轮</span>
+                   <Globe size={16} className="text-blue-500" />
+                   <span>参考来源</span>
+                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">{knowledgeRefs.length} 条</span>
                  </div>
 
-                 {knowledgeRounds.map((kr, idx) => (
-                   <div key={idx} className="rounded-xl border border-orange-100 bg-orange-50/40 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                     <div className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-2">第 {idx + 1} 轮检索</div>
-                     {kr.kp_query && (
-                       <div className="mb-1.5">
-                         <div className="text-[10px] text-gray-400 font-semibold mb-0.5">知识点检索</div>
-                         <div className="p-2 bg-white rounded-lg border border-orange-100 text-xs text-gray-800 leading-relaxed">{kr.kp_query}</div>
-                       </div>
-                     )}
-                     {kr.question_query && (
-                       <div>
-                         <div className="text-[10px] text-gray-400 font-semibold mb-0.5">题目检索</div>
-                         <div className="p-2 bg-white rounded-lg border border-orange-100 text-xs text-gray-800 leading-relaxed">{kr.question_query}</div>
-                       </div>
-                     )}
-                     {(kr.evidence_items?.length || 0) > 0 && (
-                       <div className="mt-2 text-[10px] text-gray-400 font-medium">
-                         命中证据 {(kr.evidence_items || []).length} 条 · 题目候选 {(kr.question_candidates || []).length} 道
-                       </div>
-                     )}
-                   </div>
-                 ))}
+                 {knowledgeRounds.map((kr, idx) => {
+                   const webItems = (kr.evidence_items || []).filter(item => item.source_url);
+                   if (webItems.length === 0) return null;
+                   return (
+                     <div key={idx} className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                       <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2">第 {idx + 1} 轮检索</div>
+                       {webItems.map((item, i) => {
+                         const lines = String(item.content_summary || item.content || '').split('\n');
+                         const title = item.source_label || lines[0] || item.source_id || '未命名来源';
+                         const summary = lines.slice(1).join('\n').trim() || item.content_summary || item.content || '';
+                         return (
+                           <div key={i} className={`${i > 0 ? 'mt-2 pt-2 border-t border-blue-100' : ''}`}>
+                             <div className="text-xs font-semibold text-gray-800 leading-snug break-words">{title}</div>
+                             {summary && (
+                               <div className="mt-1 text-xs text-gray-600 leading-relaxed line-clamp-3 whitespace-pre-wrap">{summary}</div>
+                             )}
+                             {isExternalUrl(item.source_url) && (
+                               <a
+                                 href={item.source_url}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                                 title="打开原始网页"
+                               >
+                                 访问原始网页 <ExternalLink size={12} />
+                               </a>
+                             )}
+                           </div>
+                         );
+                       })}
+                     </div>
+                   );
+                 })}
 
                  {knowledgeSummaries.length > 0 && (
                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -2398,13 +2389,11 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                             content={msg.content} 
                             files={msg.files} 
                             timestamp={msg.timestamp}
-                            searchQuery={msg.searchQuery}
                             messageId={msg.id}
                             feedbackStatus={msg.feedback_status || msg.feedbackStatus}
                             actions={msg.actions}
                             traceEvents={msg.traceEvents}
                           branch={msg.branch || messageBranches[msg.id]}
-                            onInspectRefs={handleInspectRefs} 
                             onInspectKnowledge={handleInspectKnowledge}
                             onFeedback={handleFeedback}
                             onRegenerate={handleRegenerate}
@@ -2539,7 +2528,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                   </div>
 
                 </div>
-                <div className="mt-2 text-center text-xs font-medium text-gray-400">支持 .txt, .md, .docx, .png, .jpg 拖拽上传</div>
+                <div className="mt-2 text-center text-xs font-medium text-gray-400">AI生成内容仅供学习参考，请结合教材与专业意见进行判断。</div>
               </div>
             </div>
           </>

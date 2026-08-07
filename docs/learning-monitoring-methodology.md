@@ -14,23 +14,23 @@
 
 ## 2. 监测指标来源
 
-| 指标 | 持久化来源 | 采集动作 | 计算公式 | 适用窗口 |
-|---|---|---|---|---|
-| 知识掌握 | `knowledge_mastery_states`，兼容回退 `learner_knowledge_mastery` | 已完成题目经过批改、审核并成功写回 | 各知识点当前掌握度的算术平均 | 当前状态 |
-| 复习保持 | `learner_kp_review_states` | 完成知识点题目后建立或更新复习状态 | `R=exp(-elapsed_seconds/stability_seconds)`，缺少复习时间或稳定度则不计入平均 | 当前时刻 |
-| 任务执行 | `daily_task_instances`、`daily_task_items` | 已发布每日任务物化原子项；原子项完成状态由绑定练习/视频的服务端证据派生 | `completed_non_cancelled_daily_items/non_cancelled_published_daily_items` | 7/30/90 天 |
-| 练习得分率 | `grading_result_records`、`learning_attempts`、`audit_result_records` | 普通练习或试卷逐题完成评分且审核通过 | 审核通过的普通练习与试卷逐题总得分 ÷ 对应总分；不含 AI 病患案例 | 7/30/90 天 |
-| 学习规律 | `learning_activity_records` | 登录成功或主动签到 | 有登录/签到记录的不同日期数 ÷ 窗口天数 | 7/30/90 天 |
-| 登录事件数 | `learning_activity_records` | 注册后自动登录或登录成功 | `activity_type=login` 的事件数；同日多次登录分别计数 | 7/30/90 天 |
-| 实际登录天数 | `learning_activity_records` | 注册后自动登录或登录成功 | 登录事件按 `Asia/Shanghai` 日期去重 | 7/30/90 天 |
-| 活跃天数 | `learning_activity_records` | 登录成功或主动签到 | 登录日期与签到日期的并集天数；兼容字段 `login_frequency` 采用此口径 | 7/30/90 天 |
-| 资源使用 | `learning_activity_records` | 服务端记录一次推荐展示；用户点击时携带该展示 ID | 已点击且确实展示过的资源数 ÷ 展示资源数 | 7/30/90 天 |
-| 有效学习分钟 | `learning_focus_sessions` | 开始、心跳、暂停、完成专注会话 | 每日已确认 `active_seconds` 求和后除以 60 | 7/30/90 天 |
-| 错因分布 | `mistake_records` | 错题写回；客观题完成错因调研后更新，主观题采用审核后的批改归因 | 按 `error_type` 计数 | 7/30/90 天 |
-| 到期复习数 | `review_memory_units`（`canonical_review_memory`） | 题目完成、批改与审核通过后建立或更新 canonical 记忆单元 | 已准入记忆单元中 `next_review_at<=calculated_at` 的数量 | 当前时刻 |
-| 已完成题目数 | `learning_attempt_items`、`grading_result_records`、`audit_result_records`、`paper_submissions` | 提交题目并完成批改、审核；历史试卷按最新完成提交兼容 | 正式非试卷题项数 + `max(正式试卷题项数, 最新完成试卷内题项数)` | 累计及 7/30/90 天 |
-| 不同题目数 | `question_version_records` | 正式完成题目 | 审核通过题目版本解析到稳定 `question_id` 后去重 | 累计及 7/30/90 天 |
-| 同题重试次数 | `learning_attempt_items`、`grading_result_records`、`audit_result_records` | 同一题目版本再次完成正式批改且审核通过 | `sum(max(同一 question_version_id 的正式完成次数-1, 0))` | 7/30/90 天 |
+| 指标         | 持久化来源                                                                                              | 采集动作                                                                | 计算公式                                                                        | 适用窗口          |
+| ------------ | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------- |
+| 知识掌握     | `knowledge_mastery_states`，兼容回退 `learner_knowledge_mastery`                                    | 已完成题目经过批改、审核并成功写回                                      | 各知识点当前掌握度的算术平均                                                    | 当前状态          |
+| 复习保持     | `learner_kp_review_states`                                                                            | 完成知识点题目后建立或更新复习状态                                      | `R=exp(-elapsed_seconds/stability_seconds)`，缺少复习时间或稳定度则不计入平均 | 当前时刻          |
+| 任务执行     | `daily_task_instances`、`daily_task_items`                                                          | 已发布每日任务物化原子项；原子项完成状态由绑定练习/视频的服务端证据派生 | `completed_non_cancelled_daily_items/non_cancelled_published_daily_items`     | 7/30/90 天        |
+| 练习得分率   | `grading_result_records`、`learning_attempts`、`audit_result_records`                             | 普通练习或试卷逐题完成评分且审核通过                                    | 审核通过的普通练习与试卷逐题总得分 ÷ 对应总分；不含 AI 病患案例                | 7/30/90 天        |
+| 学习规律     | `learning_activity_records`                                                                           | 登录成功或主动签到                                                      | 有登录/签到记录的不同日期数 ÷ 窗口天数                                         | 7/30/90 天        |
+| 登录事件数   | `learning_activity_records`                                                                           | 注册后自动登录或登录成功                                                | `activity_type=login` 的事件数；同日多次登录分别计数                          | 7/30/90 天        |
+| 实际登录天数 | `learning_activity_records`                                                                           | 注册后自动登录或登录成功                                                | 登录事件按`Asia/Shanghai` 日期去重                                            | 7/30/90 天        |
+| 活跃天数     | `learning_activity_records`                                                                           | 登录成功或主动签到                                                      | 登录日期与签到日期的并集天数；兼容字段`login_frequency` 采用此口径            | 7/30/90 天        |
+| 资源使用     | `learning_activity_records`                                                                           | 服务端记录一次推荐展示；用户点击时携带该展示 ID                         | 已点击且确实展示过的资源数 ÷ 展示资源数                                        | 7/30/90 天        |
+| 有效学习分钟 | `learning_focus_sessions`                                                                             | 开始、心跳、暂停、完成专注会话                                          | 每日已确认`active_seconds` 求和后除以 60                                      | 7/30/90 天        |
+| 错因分布     | `mistake_records`                                                                                     | 错题写回；客观题完成错因调研后更新，主观题采用审核后的批改归因          | 按`error_type` 计数                                                           | 7/30/90 天        |
+| 到期复习数   | `review_memory_units`（`canonical_review_memory`）                                                  | 题目完成、批改与审核通过后建立或更新 canonical 记忆单元                 | 已准入记忆单元中`next_review_at<=calculated_at` 的数量                        | 当前时刻          |
+| 已完成题目数 | `learning_attempt_items`、`grading_result_records`、`audit_result_records`、`paper_submissions` | 提交题目并完成批改、审核；历史试卷按最新完成提交兼容                    | 正式非试卷题项数 +`max(正式试卷题项数, 最新完成试卷内题项数)`                 | 累计及 7/30/90 天 |
+| 不同题目数   | `question_version_records`                                                                            | 正式完成题目                                                            | 审核通过题目版本解析到稳定`question_id` 后去重                                | 累计及 7/30/90 天 |
+| 同题重试次数 | `learning_attempt_items`、`grading_result_records`、`audit_result_records`                        | 同一题目版本再次完成正式批改且审核通过                                  | `sum(max(同一 question_version_id 的正式完成次数-1, 0))`                      | 7/30/90 天        |
 
 接口响应的 `dimensions[].source_ids`、`formula`、`evidence_count` 和 `window_days` 是前端展示及审计的正式来源；
 `data_sources[]` 给出表名、字段和时间字段。
@@ -124,7 +124,7 @@ M_t = 0.65 × M_(t-1) × exp(-lambda × delta_days) + 0.35 × q_t
 
 1. [1EdTech Caliper Analytics 1.2](https://www.imsglobal.org/spec/caliper/v1p2/)：用于学习事件、测验、媒体和资源交互的统一语义。它不规定本系统的计算公式或权重。
 2. [Properties of the Bayesian Knowledge Tracing Model](https://jedm.educationaldatamining.org/index.php/JEDM/article/view/35)：支持根据知识组件及连续作答更新掌握状态的研究方向。当前系统仍是显式工程公式，并未声称实现 BKT。
-3. [The Cold Start Problem and Interpretation of Knowledge Tracing Models' Predictive Performance](https://educationaldatamining.org/EDM2021/virtual/poster_paper126.html)：说明首次少量练习下的知识追踪解释风险，因此系统在证据不足时禁止主动干预。
+3. [The Cold Start Problem and Interpretation of Knowledge Tracing Models&#39; Predictive Performance](https://educationaldatamining.org/EDM2021/virtual/poster_paper126.html)：说明首次少量练习下的知识追踪解释风险，因此系统在证据不足时禁止主动干预。
 4. [A systematic literature review on educational recommender systems](https://pubmed.ncbi.nlm.nih.gov/36124004/)：支持教育推荐采用多维信息并验证对学习过程的实际效果；它不为当前固定权重背书。
 
 ## 7. 可审计性与版本

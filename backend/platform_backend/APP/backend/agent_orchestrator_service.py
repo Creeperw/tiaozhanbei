@@ -629,7 +629,9 @@ def run_agent_orchestration(
     steps_output: list[dict[str, Any]] = []
     results: dict[str, Any] = {"artifact_map": {}, "artifact_step_ids": [], "reviews": []}
 
-    context_invocation = runtime.execute("build_learner_context_brief", "memory_agent", db=db, user_id=user_id)
+    context_invocation = runtime.execute(
+        "build_learner_context_brief", "memory_agent", db=db, user_id=user_id, query=request.query
+    )
     if context_invocation.status != "success" or context_invocation.result is None:
         return _record_and_fail(
             db,

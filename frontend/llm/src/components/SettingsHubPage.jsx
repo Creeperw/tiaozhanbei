@@ -67,7 +67,7 @@ export default function SettingsHubPage({ navigationContext = {}, onNavigate }) 
         {activeTab === 'conflicts' && (
           <>
             {conflictError && <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{conflictError}</div>}
-            <ProfileConflictList memories={memories} candidates={candidates} />
+            <ProfileConflictList memories={memories} candidates={candidates} onRefresh={loadConflicts} />
           </>
         )}
       </main>

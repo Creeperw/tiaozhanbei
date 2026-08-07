@@ -268,6 +268,17 @@ class StubChatModel:
                         questions = [
                             "当前一小时安排与原有每天最多二十分钟的记忆冲突。请确认：保留原记忆、仅本次采用一小时，还是用一小时替换原记忆？"
                         ]
+                auto_confirm: list[str] = []
+                if conflict is None:
+                    stable_match = re.search(
+                        r"(?:以后|今后|以后每天|从现在起|每天)[^。\n]{0,30}?"
+                        r"(\d+(?:\.\d+)?\s*(?:分钟|小时))",
+                        current_request,
+                    )
+                    if stable_match:
+                        auto_confirm = [
+                            f"用户明确每天学习{stable_match.group(1)}。"
+                        ]
                 return self._emit(
                     {
                         "governance_notes": (
@@ -276,6 +287,7 @@ class StubChatModel:
                             else "本轮未发现与相关学习记忆不能同时成立的信息。"
                         ),
                         "memory_candidates": [],
+                        "auto_confirm_candidates": auto_confirm,
                         "conflicts": conflicts,
                         "requires_clarification": requires_clarification,
                         "clarification_questions": questions,
@@ -433,6 +445,20 @@ class StubChatModel:
             # layer.  Keep this boundary inside the stub rather than making it
             # an application router; live mode remains model-led.
             normalized_request = "".join(request_text.split())
+            # A memory-record request (“帮我记一下”“以后每天晚上9点学习”) is
+            # answered with a short confirmation like small talk, but it must
+            # keep memory_agent so the newly stated durable fact is extracted
+            # and governed.  Pure small talk selects no agents.
+            memory_record_request = bool(
+                any(
+                    marker in normalized_request
+                    for marker in (
+                        "帮我记一下", "帮我记住", "记住我", "记得我",
+                        "以后每天晚上", "以后每天", "以后每周", "帮我记录",
+                        "记一下", "要记住", "请记住",
+                    )
+                )
+            )
             # Production Planner receives the recent dialogue once via
             # shared_context.recent_conversation (a duplicated
             # conversation_context block was removed).  The offline stub
@@ -611,7 +637,7 @@ class StubChatModel:
             return self._emit({
                 "task_type": (
                     "casual_conversation"
-                    if casual_request or emotional_support_request
+                    if casual_request or emotional_support_request or memory_record_request
                     else "learner_data_query"
                     if learner_query_kind is not None
                     else "general_learning_support"
@@ -622,7 +648,9 @@ class StubChatModel:
                     else "learning_plan" if is_plan else "personalized_review_card"
                 ),
                 "selected_agents": (
-                    []
+                    ["memory_agent"]
+                    if memory_record_request
+                    else []
                     if casual_request or emotional_support_request
                     else ["memory_agent", "diagnosis_agent"]
                     if learner_query_kind is not None
@@ -675,17 +703,21 @@ class StubChatModel:
                 "clarification_question": clarification_question,
                 "casual_response": (
                     (
-                        "我能理解你明天要考试时的焦虑，紧张并不代表你准备得不好。现在先不要试图把所有内容重学一遍："
+                        "好的，已记住您长期偏好：以后每天晚上9点开始学习。"
+                        if memory_record_request
+                        else "我能理解你明天要考试时的焦虑，紧张并不代表你准备得不好。现在先不要试图把所有内容重学一遍："
                         "用10分钟列出最常考、最不稳的3个点，接着做一轮限时回忆或错题复盘，最后留出时间休息和准备考试用品。"
                         "如果你愿意，可以把考试科目或最担心的题型告诉我，我帮你把剩余时间拆成一个可执行的冲刺安排。"
                         if "焦虑" in request_text or "紧张" in request_text
                         else "你好！我是时珍智训智能助教。你想先聊聊当前学习情况，还是直接开始一项学习任务？"
                     )
-                    if casual_request or emotional_support_request
+                    if casual_request or emotional_support_request or memory_record_request
                     else None
                 ),
                 "routing_reason": (
-                    "用户本轮是在进行日常交流，不需要启动学习业务流程。"
+                    "用户明确陈述个人偏好并要求记住，属于记忆记录请求，由 Memory 提取并治理该事实。"
+                    if memory_record_request
+                    else "用户本轮是在进行日常交流，不需要启动学习业务流程。"
                     if casual_request or emotional_support_request
                     else "用户查询外部当前事实，需要检索时效来源后自然语言回答。"
                     if external_information_request
@@ -703,7 +735,7 @@ class StubChatModel:
                 ),
                 "risk_level": "low",
                 "requires_audit": not (
-                    casual_request or emotional_support_request
+                    casual_request or emotional_support_request or memory_record_request
                 ),
                 "requires_learning_plan_output": bool(
                     requests_resource

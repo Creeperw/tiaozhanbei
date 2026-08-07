@@ -37,6 +37,37 @@ async def test_plain_greeting_is_a_lightweight_conversation_without_business_age
 
 
 @pytest.mark.asyncio
+async def test_memory_record_request_runs_memory_agent_and_persists_governance(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    memory_writes = []
+    container.review_card_use_case.memory_governance_writer = (
+        lambda learner_id, **kwargs: memory_writes.append((learner_id, kwargs)) or {}
+    )
+
+    result = await container.review_card_use_case.execute(
+        request(message="我以后每天晚上9点开始学习，帮我记一下")
+    )
+
+    assert result.status == "success"
+    assert result.task_type == "casual_conversation"
+    assert "已记住" in result.direct_response
+    # Planner + Memory both participated: the durable fact must be extracted.
+    assert [item.producer for item in result.agent_outputs] == [
+        "planner_agent",
+        "memory_agent",
+    ]
+    assert memory_writes, "memory governance must be persisted for a memory-record request"
+    assert "memory_agent" in {
+        item.producer for item in result.agent_outputs
+    }
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.audit is None
+
+
+@pytest.mark.asyncio
 async def test_planner_routes_plan_request_through_plan_audit_without_expert(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 

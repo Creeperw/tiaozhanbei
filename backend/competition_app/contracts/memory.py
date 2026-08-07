@@ -17,7 +17,7 @@ class ConversationContextSummary(ContractModel):
 class LongTermMemoryCandidate(ContractModel):
     summary: str
     source_refs: list[ArtifactReference] = Field(min_length=1)
-    status: Literal["pending_confirmation"] = "pending_confirmation"
+    status: Literal["pending_confirmation", "auto_confirmed"] = "pending_confirmation"
 
 
 class RelevantMemoryReference(ContractModel):
@@ -37,6 +37,7 @@ class MemoryConflict(ContractModel):
 class MemoryGovernanceDecision(ContractModel):
     analysis: str = Field(min_length=1)
     memory_candidates: list[LongTermMemoryCandidate] = Field(default_factory=list)
+    auto_confirm_memories: list[LongTermMemoryCandidate] = Field(default_factory=list)
     conflicts: list[MemoryConflict] = Field(default_factory=list)
     requires_clarification: bool = False
     clarification_questions: list[str] = Field(default_factory=list)

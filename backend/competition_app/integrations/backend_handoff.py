@@ -731,42 +731,44 @@ class BackendHandoffRuntime:
 
         database = importlib.import_module("APP.backend.database")
         time_utils = importlib.import_module("APP.backend.time_utils")
+        memory_service = importlib.import_module("APP.backend.health_memory")
         sqlalchemy = importlib.import_module("sqlalchemy")
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
-            rows = (
-                db.query(database.PersonalizationMemory)
-                .filter(
-                    database.PersonalizationMemory.user_id == user.id,
-                    database.PersonalizationMemory.is_active.is_(True),
-                    sqlalchemy.or_(
-                        database.PersonalizationMemory.expires_at.is_(None),
-                        database.PersonalizationMemory.expires_at > time_utils.utc_now(),
-                    ),
+            with memory_service.memory_rw_lock.read():
+                rows = (
+                    db.query(database.PersonalizationMemory)
+                    .filter(
+                        database.PersonalizationMemory.user_id == user.id,
+                        database.PersonalizationMemory.is_active.is_(True),
+                        sqlalchemy.or_(
+                            database.PersonalizationMemory.expires_at.is_(None),
+                            database.PersonalizationMemory.expires_at > time_utils.utc_now(),
+                        ),
+                    )
+                    .order_by(
+                        database.PersonalizationMemory.updated_at.desc(),
+                        database.PersonalizationMemory.id.desc(),
+                    )
+                    .all()
                 )
-                .order_by(
-                    database.PersonalizationMemory.updated_at.desc(),
-                    database.PersonalizationMemory.id.desc(),
-                )
-                .all()
-            )
-            return [
-                {
-                    "id": row.id,
-                    "category": row.category or "note",
-                    "importance": row.importance or "normal",
-                    "title": row.title or "",
-                    "content": row.content or "",
-                    "source": row.source or "",
-                    "confidence": float(row.confidence or 0.0),
-                    "updated_at": row.updated_at.isoformat()
-                    if row.updated_at
-                    else None,
-                }
-                for row in rows
-                if str(row.content or "").strip()
-            ]
+                return [
+                    {
+                        "id": row.id,
+                        "category": row.category or "note",
+                        "importance": row.importance or "normal",
+                        "title": row.title or "",
+                        "content": row.content or "",
+                        "source": row.source or "",
+                        "confidence": float(row.confidence or 0.0),
+                        "updated_at": row.updated_at.isoformat()
+                        if row.updated_at
+                        else None,
+                    }
+                    for row in rows
+                    if str(row.content or "").strip()
+                ]
         finally:
             db.close()
 
@@ -778,8 +780,15 @@ class BackendHandoffRuntime:
         candidates: list[dict[str, Any]],
         resolution: str = "none",
         conflicts: list[dict[str, Any]] | None = None,
+        auto_confirm_candidates: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Persist pending candidates and only user-confirmed replacements."""
+        """Persist pending candidates and only user-confirmed replacements.
+
+        ``auto_confirm_candidates`` carries facts the memory agent judged
+        deterministic enough to persist directly (requires_confirmation=false):
+        they are written straight into active memories instead of the pending
+        candidate pool, so the learner does not have to confirm them one by one.
+        """
 
         allowed_resolutions = {
             "none", "keep_existing", "use_current_once", "replace_existing"
@@ -802,10 +811,26 @@ class BackendHandoffRuntime:
                 for item in candidates
                 if str(item.get("content") or item.get("summary") or "").strip()
             ]
+            normalized_auto_confirm = [
+                {
+                    "content": str(item.get("content") or item.get("summary") or "").strip(),
+                    "title": str(item.get("title") or "")[:200],
+                    "importance": str(item.get("importance") or "normal"),
+                    "reason": str(item.get("reason") or "记忆管理智能体识别为确定性信息，直接沉淀。"),
+                    "confidence": float(item.get("confidence") or 0.9),
+                    "requires_confirmation": False,
+                    "category": str(item.get("category") or "long_term"),
+                }
+                for item in (auto_confirm_candidates or [])
+                if str(item.get("content") or item.get("summary") or "").strip()
+            ]
+            extracted = {"candidates": normalized_candidates}
+            if normalized_auto_confirm:
+                extracted["important_short_term"] = normalized_auto_confirm
             saved = memory_service.save_extracted_memories(
                 db,
                 user.id,
-                {"candidates": normalized_candidates},
+                extracted,
                 source="memory_agent",
                 session_id=None,
                 commit=False,
@@ -824,7 +849,8 @@ class BackendHandoffRuntime:
                     event_type="learning_memory_governance",
                     input_summary="学习记忆候选与冲突治理",
                     output_summary=(
-                        f"候选{len(normalized_candidates)}条，决策{resolution}"
+                        f"候选{len(normalized_candidates)}条，"
+                        f"自动沉淀{len(normalized_auto_confirm)}条，决策{resolution}"
                     ),
                     payload=json.dumps(
                         {
@@ -832,6 +858,9 @@ class BackendHandoffRuntime:
                             "resolution": resolution,
                             "candidate_contents": [
                                 item["content"] for item in normalized_candidates
+                            ],
+                            "auto_confirm_contents": [
+                                item["content"] for item in normalized_auto_confirm
                             ],
                             "replacements": replacement_result.get("replaced", []),
                         },
@@ -842,6 +871,7 @@ class BackendHandoffRuntime:
             db.commit()
             return {
                 "candidates": saved.get("non_important_candidates", []),
+                "auto_confirmed": saved.get("auto_confirmed", []),
                 "resolution": resolution,
                 **replacement_result,
             }
@@ -1233,6 +1263,56 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def create_memory_conflict_notification(
+        self,
+        external_user_id: str,
+        *,
+        execution_id: str,
+        conflicts: list[dict[str, Any]],
+    ) -> dict[str, Any] | None:
+        """Emit a system notification for a deferred memory conflict.
+
+        Non-planning tasks (knowledge explanation, papers, review cards,
+        casual chat) do not hard-interrupt the graph for memory conflicts;
+        the conflict is surfaced here as a system message so the learner can
+        resolve it from the conflict list at their own pace.
+        """
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            summaries: list[str] = []
+            for conflict in conflicts or []:
+                proposed = str(conflict.get("proposed_memory") or "").strip()
+                reason = str(conflict.get("reason") or "").strip()
+                if proposed and reason:
+                    summaries.append(f"{proposed}（{reason}）")
+                elif proposed:
+                    summaries.append(proposed)
+                elif reason:
+                    summaries.append(reason)
+            detail = "；".join(summaries[:3]) or "检测到学习记忆记录存在不一致"
+            row = governance.create_notification(
+                db,
+                user.id,
+                category="memory_conflict",
+                title="记忆记录待确认",
+                message=f"检测到学习记忆存在不一致，请在冲突清单中确认或修改：{detail}",
+                dedupe_key=f"memory_conflict:{execution_id}",
+                severity="info",
+                source_type="memory_conflict",
+                source_id=execution_id,
+                action={"view": "conflicts"},
+            )
+            db.commit()
+            return governance.serialize_notification(row) if row is not None else None
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def get_notification_preferences(self, external_user_id: str) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         governance = importlib.import_module("APP.backend.learning_governance_service")
@@ -1336,6 +1416,7 @@ class BackendHandoffRuntime:
                 insights=insights,
                 plan_context=plan_context or {},
                 trigger_type=trigger_type,
+                agent_decider=governance.build_governance_agent_decider(),
             )
             db.commit()
             return result
@@ -2462,6 +2543,46 @@ class BackendHandoffRuntime:
             db.commit()
         except Exception:
             db.rollback()
+        finally:
+            db.close()
+
+    def mark_formal_practice_skipped(
+        self,
+        external_user_id: str,
+        *,
+        question_id: str,
+        request_id: str,
+    ) -> dict[str, Any]:
+        """Consume a one-use practice claim without grading it.
+
+        The active claim is removed so the skipped question is no longer
+        resumed as an in-progress exercise. No attempt/grade record is
+        written, so skipped questions never pollute mistake or mastery
+        statistics; callers pass ``exclude_question_id`` when loading the
+        next question to keep the skipped item out of the same session.
+        """
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            cutoff = time_utils.utc_now() - timedelta(minutes=30)
+            removed = (
+                db.query(database.CorePracticeSubmissionClaim)
+                .filter(
+                    database.CorePracticeSubmissionClaim.user_id == user.id,
+                    database.CorePracticeSubmissionClaim.question_id == question_id,
+                    database.CorePracticeSubmissionClaim.request_id == request_id,
+                    database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                    database.CorePracticeSubmissionClaim.created_at >= cutoff,
+                )
+                .delete(synchronize_session=False)
+            )
+            db.commit()
+            return {"skipped": True, "claim_removed": int(removed or 0)}
+        except Exception:
+            db.rollback()
+            raise
         finally:
             db.close()
 

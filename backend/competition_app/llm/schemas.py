@@ -780,7 +780,13 @@ class MemoryGovernanceModelOutput(StrictModelOutput):
     )
     memory_candidates: list[str] = Field(
         default_factory=list,
-        description="仅提取用户明确表达、值得保存但尚未确认的信息。",
+        description="仅提取用户明确表达、值得保存但尚未确认的信息，需要用户确认后沉淀。",
+    )
+    auto_confirm_candidates: list[str] = Field(
+        default_factory=list,
+        description="用户明确陈述、确定性高、无歧义、且不会与既有记忆冲突的个人事实，"
+        "可直接沉淀为正式记忆，无需用户逐条确认；"
+        "对既有记忆的更新或替换、模糊或可能变化的信息不得放入此字段。",
     )
     conflicts: list[MemoryConflictModelOutput] = Field(default_factory=list)
     requires_clarification: bool = False

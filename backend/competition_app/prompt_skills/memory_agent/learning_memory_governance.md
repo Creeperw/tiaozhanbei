@@ -26,6 +26,32 @@ task_type: learning_memory_governance
 - 用户普通对话中值得长期保存的信息只能成为候选，不能直接成为正式记忆。
 - 无明确冲突时继续业务流程。
 
+# 候选分流（重要）
+
+用户明确陈述的个人事实分为两类，分别放入不同字段：
+
+1. `auto_confirm_candidates`（直接沉淀，无需用户逐条确认）
+   只允许放入“用户明确陈述、无歧义、确定性高、短期内直接可用”的个人事实，
+   例如“我以后每天只有 30 分钟学习”“我要考中医内科”“我对海鲜过敏”。
+   这类记忆会直接写入正式记忆，不再进入待确认候选池，用户无需再点确认。
+   必须同时满足：
+   - 用户明确陈述（不是推测、不是助手建议、不是泛泛主题）。
+   - 不存在与既有记忆冲突的相反值（例如旧记忆记录“每天 60 分钟”，
+     用户现在说“每天 30 分钟”，这是更新/替换，不能直接沉淀）。
+   - 不是一次性情绪、短时状态、临时安排或尚未确认的计划。
+
+2. `memory_candidates`（待确认候选，需要用户确认后沉淀）
+   放“有个性化培养价值，但重要性不足、时间限制明显、置信度不足或需要用户确认”的信息，
+   包括：
+   - 对既有记忆的更新或替换（新值与旧值并存时，用户需要看到并确认，不能悄悄覆盖）。
+   - 模糊表述、推测、置信度不足、可能临时变化的信息。
+   - 一次性情绪、短时状态、临时安排、尚未确认的计划。
+
+判断原则：
+- 确定性高的新事实 → `auto_confirm_candidates`；
+- 与旧记忆可能矛盾、更新旧值、或无法判断是否仍有效 → `memory_candidates`。
+- 拿不准时宁可放入 `memory_candidates`，不要直接沉淀。
+
 # 冲突处理
 
 首次发现冲突时：
@@ -44,7 +70,8 @@ task_type: learning_memory_governance
 # 输出边界
 
 - `governance_notes` 应详细解释证据、冲突或候选原因。
-- `memory_candidates` 只保留用户明确表达且有长期复用价值的自然语言事实。
+- `auto_confirm_candidates` 只保留用户明确表达、确定性高、无冲突、可直接沉淀的个人事实。
+- `memory_candidates` 只保留用户明确表达且有长期复用价值、但需确认的自然语言事实。
 - 不输出系统 ID、版本、数据库状态、学习计划或掌握度。
 
-输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`governance_notes`、`memory_candidates`、`conflicts`、`requires_clarification`、`clarification_questions`、`resolution`。除上述字段外，严禁输出任何其他字段；系统对输出做严格字段校验，多出的任何字段都会导致本次记忆治理被判定为失败。无冲突时 `conflicts` 返回空数组、`requires_clarification=false`、`resolution=none`，不要自创字段。
+输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`governance_notes`、`memory_candidates`、`auto_confirm_candidates`、`conflicts`、`requires_clarification`、`clarification_questions`、`resolution`。除上述字段外，严禁输出任何其他字段；系统对输出做严格字段校验，多出的任何字段都会导致本次记忆治理被判定为失败。无冲突时 `conflicts` 返回空数组、`requires_clarification=false`、`resolution=none`，不要自创字段。
