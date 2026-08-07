@@ -122,6 +122,13 @@ const getDomain = (url) => {
 
 const isExternalUrl = (url) => /^https?:\/\//i.test(url || '');
 
+// 教材证据的 source_id 形如 "中西医结合口腔科学_clean:00475"，提取教材名作标题。
+const formatTextbookSourceTitle = (sourceId = '') => {
+  const text = String(sourceId || '');
+  const cleaned = text.replace(/_clean:\d+$/, '').replace(/\.md$/, '');
+  return cleaned || '知识库教材';
+};
+
 const VideoPreviewCard = React.memo(({ video, index }) => {
   const snippet = (video?.snippet || video?.content || '').replace(/\s+/g, ' ').trim();
 
@@ -312,12 +319,18 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, fee
   // 检索总结。实时 SSE 与持久化回执中的 knowledge_retrieval 事件都会经
   // runtimeEventToTrace 转换为 {type:'knowledge_retrieval'}，model_output
   // 转换为 {type:'model_call', kind:'output'}，供"检索详情"抽屉回放检索内容。
-  // 当前展示只保留带原始链接的外部来源（视频/论文/网页），向量/BM25 检索内容暂不展示。
+  // 证据展示：本地教材（无 source_url）与外部来源（视频/论文/网页）都展示，
+  // 分别以知识库卡片 / 网页卡片呈现。
   const knowledgeRetrievals = traceEvents.filter(e => e.type === 'knowledge_retrieval' && e.agent === 'knowledge_base_agent');
+  const knowledgeEvidenceCount = knowledgeRetrievals.reduce(
+    (sum, kr) => sum + (kr.evidence_items || []).length,
+    0,
+  );
   const knowledgeWebCount = knowledgeRetrievals.reduce(
     (sum, kr) => sum + (kr.evidence_items || []).filter(item => item.source_url).length,
     0,
   );
+  const knowledgeRagCount = knowledgeEvidenceCount - knowledgeWebCount;
   const knowledgeSummaries = traceEvents
     .filter(e => e.type === 'model_call' && e.kind === 'output' && e.agent === 'knowledge_base_agent' && e.output)
     .map(e => {
@@ -330,7 +343,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, fee
       }
     })
     .filter(Boolean);
-  const hasKnowledgeRetrieval = knowledgeWebCount > 0;
+  const hasKnowledgeRetrieval = knowledgeEvidenceCount > 0;
   const refMatch = rawContent.match(/<<REFS:(.*?)>>/);
   if (refMatch) {
     rawContent = rawContent.replace(refMatch[0], '').trim();
@@ -509,14 +522,19 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, fee
                     title="点击查看参考来源"
                   >
                     <div className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider flex items-center gap-1">
-                      <Globe size={12} /> 参考来源 {knowledgeWebCount} 条
+                      <Library size={12} /> 参考来源 {knowledgeEvidenceCount} 条
                     </div>
                     <div className="flex items-center gap-1.5 pl-2 border-l border-blue-100">
-                      {knowledgeRetrievals.filter(kr => (kr.evidence_items || []).some(item => item.source_url)).map((kr, idx) => (
-                        <div key={idx} className="w-5 h-5 rounded flex items-center justify-center bg-blue-50 border border-blue-100 text-blue-500">
+                      {knowledgeRagCount > 0 && (
+                        <div className="w-5 h-5 rounded flex items-center justify-center bg-orange-50 border border-orange-100 text-orange-500" title={`${knowledgeRagCount} 条教材/知识库检索内容`}>
+                          <BookOpen size={10} />
+                        </div>
+                      )}
+                      {knowledgeWebCount > 0 && (
+                        <div className="w-5 h-5 rounded flex items-center justify-center bg-blue-50 border border-blue-100 text-blue-500" title={`${knowledgeWebCount} 条外部来源（视频/论文/网页）`}>
                           <Globe size={10} />
                         </div>
-                      ))}
+                      )}
                       {knowledgeSummaries.length > 0 && (
                         <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1 rounded">{knowledgeSummaries.length} 份总结</span>
                       )}
@@ -642,20 +660,22 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query, knowledge }) => {
   };
 
   // 知识库管理智能体的检索证据映射为引用卡片，复用来源列表/详情视图。
-  // 只保留带原始链接的外部来源；向量/BM25 检索内容暂不展示。
+  // 本地教材（无 source_url）映射为知识库卡片（type:'rag'），带原始链接的
+  // 外部来源（视频/论文/网页）映射为网页卡片（type:'web'）。
   const knowledgeRefs = (knowledge?.retrievals || []).flatMap(kr =>
-    (kr.evidence_items || [])
-      .filter(item => item.source_url)
-      .map(item => {
-        const lines = String(item.content_summary || item.content || '').split('\n');
-        return {
-          type: 'web',
-          title: item.source_label || lines[0] || item.source_id || '未命名来源',
-          content: item.content_summary || item.content || '',
-          score: typeof item.confidence === 'number' ? item.confidence : undefined,
-          url: item.source_url,
-        };
-      }),
+    (kr.evidence_items || []).map(item => {
+      const lines = String(item.content_summary || item.content || '').split('\n');
+      const isTextbook = !item.source_url;
+      return {
+        type: isTextbook ? 'rag' : 'web',
+        title: item.source_label || (isTextbook ? formatTextbookSourceTitle(item.source_id) : lines[0]) || item.source_id || '未命名来源',
+        content: item.content_summary || item.content || '',
+        score: typeof item.confidence === 'number' ? item.confidence : undefined,
+        url: item.source_url,
+        authority: item.authority,
+        resourceType: item.resource_type,
+      };
+    }),
   );
   const knowledgeRounds = knowledge?.retrievals || [];
   const knowledgeSummaries = knowledge?.summaries || [];
@@ -742,24 +762,50 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query, knowledge }) => {
              {knowledgeRounds.length > 0 && (
                <div className="mb-6 space-y-4">
                  <div className="flex items-center gap-2 font-semibold text-gray-700">
-                   <Globe size={16} className="text-blue-500" />
+                   <Library size={16} className="text-indigo-500" />
                    <span>参考来源</span>
-                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">{knowledgeRefs.length} 条</span>
+                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">{knowledgeRefs.length} 条</span>
                  </div>
 
                  {knowledgeRounds.map((kr, idx) => {
-                   const webItems = (kr.evidence_items || []).filter(item => item.source_url);
-                   if (webItems.length === 0) return null;
+                   const roundItems = (kr.evidence_items || []).map(item => ({
+                     ...item,
+                     isTextbook: !item.source_url,
+                   }));
+                   const roundQueries = [
+                     ...(kr.kp_query ? [{ label: '知识点检索语句', value: kr.kp_query }] : []),
+                     ...(kr.question_query ? [{ label: '题目检索语句', value: kr.question_query }] : []),
+                   ];
+                   if (roundItems.length === 0 && roundQueries.length === 0) return null;
                    return (
                      <div key={idx} className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                        <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2">第 {idx + 1} 轮检索</div>
-                       {webItems.map((item, i) => {
+                       {roundQueries.length > 0 && (
+                         <div className="mb-2 space-y-1">
+                           {roundQueries.map((queryItem, qi) => (
+                             <div key={qi} className="flex items-start gap-1.5">
+                               <span className="shrink-0 mt-px inline-flex items-center gap-0.5 text-[10px] font-semibold text-indigo-500 bg-white border border-indigo-100 rounded px-1 py-0.5">
+                                 <Search size={9} /> {queryItem.label}
+                               </span>
+                               <span className="text-xs text-indigo-900 font-medium leading-snug break-words">“{queryItem.value}”</span>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                       {roundItems.map((item, i) => {
                          const lines = String(item.content_summary || item.content || '').split('\n');
-                         const title = item.source_label || lines[0] || item.source_id || '未命名来源';
+                         const title = item.source_label || (item.isTextbook ? formatTextbookSourceTitle(item.source_id) : lines[0]) || item.source_id || '未命名来源';
                          const summary = lines.slice(1).join('\n').trim() || item.content_summary || item.content || '';
                          return (
                            <div key={i} className={`${i > 0 ? 'mt-2 pt-2 border-t border-blue-100' : ''}`}>
-                             <div className="text-xs font-semibold text-gray-800 leading-snug break-words">{title}</div>
+                             <div className="flex items-center gap-1.5">
+                               {item.isTextbook && (
+                                 <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-orange-500 bg-orange-50 border border-orange-100 rounded px-1 py-0.5">
+                                   <BookOpen size={10} /> 教材
+                                 </span>
+                               )}
+                               <div className="text-xs font-semibold text-gray-800 leading-snug break-words">{title}</div>
+                             </div>
                              {summary && (
                                <div className="mt-1 text-xs text-gray-600 leading-relaxed line-clamp-3 whitespace-pre-wrap">{summary}</div>
                              )}

@@ -14,6 +14,7 @@ from competition_app.contracts.knowledge import (
     QuestionDetail,
     QuestionSearchDecision,
     QuestionSearchResult,
+    RetrievalSummaryItem,
 )
 from competition_app.contracts.paper import QuestionCandidatePool, UnitQuestionCandidates
 from competition_app.tools.knowledge_retrieval import KnowledgeRetrievalTool
@@ -280,6 +281,7 @@ class KnowledgeBaseAgent:
                 "authority": item.authority_level,
                 "source_id": item.source_id,
                 "resource_type": item.resource_type,
+                "evidence_id": item.evidence_id,
             }
             for item in pack.evidence_items
             if item.resource_type != "question"
@@ -367,6 +369,47 @@ class KnowledgeBaseAgent:
             candidate_count=len(candidates),
             channel_summary=channel_summary,
         )
+        # 逐条提取结果：模型只输出了 evidence_id + content，来源字段由系统
+        # 从证据集确定性补全，专家智能体据此按 evidence_id 输出引用。
+        evidence_by_id = {item.evidence_id: item for item in pack.evidence_items}
+        summary_items = [
+            RetrievalSummaryItem(
+                evidence_id=item.evidence_id,
+                source_id=evidence_by_id[item.evidence_id].source_id,
+                authority_level=evidence_by_id[item.evidence_id].authority_level,
+                resource_type=evidence_by_id[item.evidence_id].resource_type,
+                source_url=evidence_by_id[item.evidence_id].source_url,
+                source_label=evidence_by_id[item.evidence_id].source_label,
+                content=item.content,
+            )
+            for item in model_output.summary_items
+            if item.evidence_id in evidence_by_id
+        ]
+        # 网络搜索条目系统兜底：模型可能只提取教材切片而漏掉视频/参考/网页
+        # 条目，导致专家无法引用网络来源。系统按证据集原文补全这些条目的
+        # 提取（content 取该条原始内容），保证网络搜索内容同样可被引用。
+        covered_evidence_ids = {item.evidence_id for item in summary_items}
+        for evidence in pack.evidence_items:
+            if (
+                evidence.resource_type in {"video", "reference", "web"}
+                and evidence.evidence_id not in covered_evidence_ids
+            ):
+                summary_items.append(
+                    RetrievalSummaryItem(
+                        evidence_id=evidence.evidence_id,
+                        source_id=evidence.source_id,
+                        authority_level=evidence.authority_level,
+                        resource_type=evidence.resource_type,
+                        source_url=evidence.source_url,
+                        source_label=evidence.source_label,
+                        content=" ".join(
+                            str(evidence.content_summary).split()
+                        )[:2_000],
+                    )
+                )
+        summary_text = "\n".join(
+            f"[{item.evidence_id}] {item.content}" for item in summary_items
+        )
         pack = pack.model_copy(update={
             # quality_labels are an internal retrieval assessment, not learner-facing
             # safety notes. Only uncertainty is allowed to flow into downstream
@@ -378,13 +421,18 @@ class KnowledgeBaseAgent:
             ],
             "retrieval_summary": (
                 model_output.retrieval_summary.strip()
+                or summary_text
                 or self._fallback_retrieval_summary(semantic_facts)
             ),
-            "summary_evidence_ids": [
-                item.evidence_id
-                for item in pack.evidence_items
-                if item.resource_type != "question"
-            ][:5],
+            "summary_items": summary_items,
+            "summary_evidence_ids": (
+                [item.evidence_id for item in summary_items]
+                or [
+                    item.evidence_id
+                    for item in pack.evidence_items
+                    if item.resource_type != "question"
+                ][:5]
+            ),
             "question_search_decision": decision,
             "question_candidates": candidates,
         })
@@ -445,11 +493,17 @@ class KnowledgeBaseAgent:
                         "output_schema": KnowledgeModelOutput.model_json_schema(),
                     },
                     permission_note=(
-                        "只处理已返回的教材、向量、BM25和可信网络参考，先筛掉无关内容，再用自然语言总结"
-                        "可供下游使用的回答依据；题目候选不参与本次总结。若证据不足（召回冲突、覆盖不足、"
-                        "无法映射正式知识点或用户具体问题点缺失），输出 need_more_retrieval=true 并给出"
-                        "1-3 条聚焦缺口的补充检索语句 supplemental_queries，系统会自动执行补充检索后再次"
-                        "调用本阶段重新总结；系统最多补充检索 2 轮，证据足够后 must 输出 need_more_retrieval=false。"
+                        "对 evidence 中的每一条内容逐条提取并规范化：每条提取对应一个 summary_items 条目，"
+                        "evidence_id 必须取自该条 evidence 的 evidence_id（不得自造），content 是从该条原始切片中"
+                        "提取的规范化原文（可轻微裁剪，不得用自己的话改写、扩写或自由概括原文；关键定义、"
+                        "机制描述必须保留原文表述）。教材切片与网络搜索条目（视频、参考、网页）一视同仁，"
+                        "都要逐条提取；仅当某条与用户问题完全无关时才可跳过。不得发表对用户问题的看法"
+                        "（不评价提问、不判断答案对错、不下教学结论），解答与判断交给下游专家智能体；"
+                        "来源信息由系统按 evidence_id 补全，不输出来源字段；题目候选不参与本次总结。"
+                        "若证据不足（召回冲突、覆盖不足、无法映射正式知识点或用户具体问题点缺失），"
+                        "输出 need_more_retrieval=true 并给出1-3 条聚焦缺口的补充检索语句 supplemental_queries，"
+                        "系统会自动执行补充检索后再次调用本阶段重新总结；系统最多补充检索 2 轮，"
+                        "证据足够后 must 输出 need_more_retrieval=false。"
                         "不得再次规划工具、伪造检索结果或生成系统ID。"
                     ),
                 ),
@@ -484,6 +538,43 @@ class KnowledgeBaseAgent:
                 raw_quality["need_more_retrieval"] = False
             if "supplemental_queries" not in raw_quality:
                 raw_quality["supplemental_queries"] = []
+            # 逐条提取：优先取 summary_items，兼容常见别名；evidence_id 必须
+            # 属于本次输入证据集，自造的 id 直接丢弃，防止模型伪造来源。
+            known_evidence_ids = {
+                str(item.get("evidence_id", "")).strip()
+                for item in semantic_facts
+                if str(item.get("evidence_id", "")).strip()
+            }
+            raw_summary_items = raw_quality.get("summary_items")
+            if not isinstance(raw_summary_items, list):
+                for alias in ("extracted_contents", "extracted_items", "content_items", "evidence_extracts"):
+                    candidate = raw_quality.get(alias)
+                    if isinstance(candidate, list):
+                        raw_summary_items = candidate
+                        break
+            normalized_summary_items: list[dict[str, str]] = []
+            for raw_item in raw_summary_items or []:
+                if not isinstance(raw_item, dict):
+                    continue
+                evidence_id = str(
+                    raw_item.get("evidence_id")
+                    or raw_item.get("id")
+                    or raw_item.get("source_evidence_id")
+                    or ""
+                ).strip()
+                content = str(
+                    raw_item.get("content")
+                    or raw_item.get("extracted_content")
+                    or raw_item.get("text")
+                    or ""
+                ).strip()
+                if not evidence_id or evidence_id not in known_evidence_ids:
+                    continue
+                if not content:
+                    continue
+                normalized_summary_items.append(
+                    {"evidence_id": evidence_id, "content": content[:2_000]}
+                )
             # Some live responses repeat the retrieved evidence under an
             # `evidence_pack`/`knowledge_fragments` field. Those are not model
             # judgments and are already owned by the retrieval tool.
@@ -492,12 +583,14 @@ class KnowledgeBaseAgent:
                 for key, value in raw_quality.items()
                 if key in {
                     "retrieval_summary",
+                    "summary_items",
                     "quality_labels",
                     "uncertainty",
                     "need_more_retrieval",
                     "supplemental_queries",
                 }
             }
+            raw_quality["summary_items"] = normalized_summary_items
             if isinstance(raw_quality.get("quality_labels"), str):
                 raw_quality["quality_labels"] = [raw_quality["quality_labels"]]
             if isinstance(raw_quality.get("uncertainty"), str):
@@ -525,8 +618,17 @@ class KnowledgeBaseAgent:
                 raise
             model_output = KnowledgeModelOutput(
                 retrieval_summary=self._fallback_retrieval_summary(semantic_facts),
-                quality_labels=["模型总结不可用，系统保留精简检索依据。"],
-                uncertainty=["检索后总结未通过宽松校验。"],
+                summary_items=[
+                    {
+                        "evidence_id": str(item.get("evidence_id", "")).strip(),
+                        "content": " ".join(str(item.get("text", "")).split())[:2_000],
+                    }
+                    for item in semantic_facts
+                    if str(item.get("evidence_id", "")).strip()
+                    and str(item.get("text", "")).strip()
+                ],
+                quality_labels=["模型总结不可用，系统保留原始检索内容。"],
+                uncertainty=["检索后总结未通过宽松校验，已回退为原文逐条提取。"],
             )
         if context.get("terminal_trace"):
             context["terminal_trace"].validation("knowledge_base_agent", valid=True, detail="KnowledgeModelOutput")
@@ -594,6 +696,7 @@ class KnowledgeBaseAgent:
                     "authority": item.authority_level,
                     "source_id": item.source_id,
                     "resource_type": item.resource_type,
+                    "evidence_id": item.evidence_id,
                 })
             kp_ids.extend(extra_pack.resolved_kp_ids)
         return facts, items, kp_ids
@@ -951,7 +1054,27 @@ class KnowledgeBaseAgent:
         unit: Any,
         evidence_pack: EvidencePack,
     ) -> bool:
-        """Fail closed for narrow named topics before a candidate reaches Expert."""
+        """Fail closed for narrow named topics before a candidate reaches Expert.
+
+        A candidate whose real difficulty exactly matches the blueprint's hard
+        difficulty requirement is admitted by retrieval relevance plus the
+        explicit difficulty constraint: the retrieval layer already ranked it
+        against the unit query, and the user asked for that difficulty level
+        explicitly. Formal bank questions often carry exam-syllabus KP ids
+        (e.g. the 辨证论治 node under 儿科学/眼科学/正骨学) that differ from
+        the course KP node (中医学基础/绪论/辨证论治) for the same theme;
+        requiring a KP overlap here would silently drop on-theme,
+        difficulty-labelled formal questions and force paper generation into
+        the fallback path.
+        """
+        requested_difficulty = getattr(unit, "target_difficulty", None)
+        if (
+            requested_difficulty is not None
+            and getattr(unit, "difficulty_is_hard_constraint", False)
+            and item.difficulty == requested_difficulty
+        ):
+            return True
+
         primary_kp_ids = set(evidence_pack.resolved_kp_ids[:1])
         candidate_kp_ids = {bridge.kp_id for bridge in item.bridges}
         if primary_kp_ids.intersection(candidate_kp_ids):

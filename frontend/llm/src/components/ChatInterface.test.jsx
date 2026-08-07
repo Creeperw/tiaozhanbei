@@ -405,13 +405,22 @@ describe('ChatInterface session workspace', () => {
               agent: 'knowledge_base_agent',
               kp_query: '知识点 A',
               question_query: '题目 A',
-              evidence_items: [{
-                source_id: 'WEB_A',
-                content_summary: 'A 的网页来源\n网页摘要内容',
-                confidence: 0.9,
-                source_url: 'https://example.com/a',
-                resource_type: 'reference',
-              }],
+              evidence_items: [
+                {
+                  source_id: 'WEB_A',
+                  content_summary: 'A 的网页来源\n网页摘要内容',
+                  confidence: 0.9,
+                  source_url: 'https://example.com/a',
+                  resource_type: 'reference',
+                },
+                {
+                  source_id: '中西医结合妇产科学_clean:00473',
+                  content_summary: '教材切片内容摘要',
+                  confidence: 0.87,
+                  source_url: null,
+                  resource_type: 'textbook',
+                },
+              ],
             },
           ],
         }]));
@@ -428,6 +437,9 @@ describe('ChatInterface session workspace', () => {
     const retrievalSidebar = screen.getByText('检索详情').closest('.fixed');
     expect(retrievalSidebar).not.toHaveAttribute('aria-hidden');
     expect(screen.getAllByText('A 的网页来源').length).toBeGreaterThan(0);
+    // 教材证据（无 source_url）也应展示为知识库来源
+    expect(screen.getAllByText('中西医结合妇产科学').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('教材').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /查看多智能体协作过程/ }));
     expect(screen.getByRole('complementary', { name: '执行进度' })).toBeInTheDocument();

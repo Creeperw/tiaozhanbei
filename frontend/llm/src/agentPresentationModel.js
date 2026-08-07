@@ -190,6 +190,13 @@ export function buildAgentPresentation(nodes = []) {
     )).map(sanitizeAgentLog));
     const tools = meaningfulTools(roleNodes.flatMap((node) => node.tools || []));
     const modelCalls = mergeModelCalls(roleNodes.flatMap((node) => node.modelCalls || []));
+    const retrievals = roleNodes.flatMap((node) => (
+      (node.retrievals || []).map((retrieval) => ({
+        ...retrieval,
+        kp_query: String(retrieval.kp_query || '').trim(),
+        question_query: String(retrieval.question_query || '').trim(),
+      }))
+    )).filter((retrieval) => retrieval.kp_query || retrieval.question_query);
     const startedAt = roleNodes.length
       ? Math.min(...roleNodes.map((node) => node.startTime || Number.MAX_SAFE_INTEGER))
       : null;
@@ -204,6 +211,7 @@ export function buildAgentPresentation(nodes = []) {
       details,
       tools,
       modelCalls,
+      retrievals,
       nodes: roleNodes,
       startedAt: startedAt === Number.MAX_SAFE_INTEGER ? null : startedAt,
       endedAt,

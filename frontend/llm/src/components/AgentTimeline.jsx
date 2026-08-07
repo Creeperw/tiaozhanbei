@@ -143,6 +143,31 @@ function TechnicalDetails({ role }) {
           <div>{internalAgents.map((agent) => <code key={agent}>{agent}</code>)}</div>
         </div>
       )}
+      {role.retrievals?.length > 0 && (
+        <div className="agent-task__tools">
+          <div className="agent-task__technical-title"><Search size={13} aria-hidden="true" />检索语句</div>
+          {role.retrievals.map((retrieval, index) => (
+            <details key={`${retrieval.ts || index}-${index}`} open={index === role.retrievals.length - 1}>
+              <summary>
+                <code>第 {index + 1} 轮检索</code>
+                <span>{retrieval.ts ? new Date(retrieval.ts).toLocaleTimeString('zh-CN', { hour12: false }) : '已返回'}</span>
+              </summary>
+              {retrieval.kp_query && (
+                <div className="agent-task__retrieval-line">
+                  <span>知识点检索语句</span>
+                  <pre>{retrieval.kp_query}</pre>
+                </div>
+              )}
+              {retrieval.question_query && (
+                <div className="agent-task__retrieval-line">
+                  <span>题目检索语句</span>
+                  <pre>{retrieval.question_query}</pre>
+                </div>
+              )}
+            </details>
+          ))}
+        </div>
+      )}
       {role.details.length > 0 && (
         <ol className="agent-task__event-list" aria-label={`${role.label}执行记录`}>
           {role.details.map((detail) => <li key={detail}>{detail}</li>)}
@@ -187,7 +212,7 @@ function AgentTask({ role }) {
   const [open, setOpen] = useState(false);
   const Icon = ROLE_ICONS[role.key] || Sparkles;
   const duration = durationLabel(role);
-  const hasDetails = role.nodes.length > 0 || role.tools.length > 0 || role.modelCalls.length > 0;
+  const hasDetails = role.nodes.length > 0 || role.tools.length > 0 || role.modelCalls.length > 0 || (role.retrievals?.length || 0) > 0;
 
   return (
     <article className="agent-task" data-status={role.status}>

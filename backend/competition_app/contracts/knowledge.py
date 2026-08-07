@@ -20,12 +20,30 @@ class EvidenceItem(ContractModel):
     source_label: str | None = None
 
 
+class RetrievalSummaryItem(ContractModel):
+    """知识库管理智能体对单条检索内容的逐条提取结果。
+
+    每条对应一条 evidence：content 是从该条原始切片中提取的规范化原文
+    （可轻微裁剪，不得自由概括改写）；来源字段由系统从 EvidenceItem
+    确定性填充，模型不得自造来源。
+    """
+
+    evidence_id: str
+    source_id: str
+    authority_level: str = "textbook"
+    resource_type: Literal["textbook", "question", "video", "reference", "web"] = "textbook"
+    source_url: str | None = None
+    source_label: str | None = None
+    content: str = ""
+
+
 class EvidencePack(ContractModel):
     evidence_pack_id: str
     query: str
     resolved_kp_ids: list[str] = Field(default_factory=list)
     evidence_items: list[EvidenceItem] = Field(default_factory=list)
     retrieval_summary: str = ""
+    summary_items: list[RetrievalSummaryItem] = Field(default_factory=list)
     summary_evidence_ids: list[str] = Field(default_factory=list)
     conflict_evidence: list[str] = Field(default_factory=list)
     risk_notes: list[str] = Field(default_factory=list)

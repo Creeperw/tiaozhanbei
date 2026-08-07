@@ -54,6 +54,28 @@ class GenericQueryModel:
         }
 
 
+class SummaryItemsModel:
+    """模型对每条证据逐条提取，并尝试注入一条伪造 id 验证系统过滤。"""
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if payload["payload"].get("phase") == "plan_retrieval":
+            return {
+                "kp_query": "理中丸",
+                "question_query": "理中丸 相关题目",
+                "retrieval_reason": "检索教材依据和候选练习。",
+            }
+        return {
+            "retrieval_summary": "",
+            "summary_items": [
+                {"evidence_id": "E_1", "content": "理中丸由人参、干姜、白术、炙甘草组成。"},
+                {"evidence_id": "E_FAKE_NOT_EXISTS", "content": "伪造来源内容。"},
+                {"evidence_id": "E_2", "content": "（E_2 不在本次证据集中，应被过滤）"},
+            ],
+            "quality_labels": ["教材依据相关"],
+            "uncertainty": [],
+        }
+
+
 class QuestionTimeoutRetrievalTool(FakeRetrievalTool):
     async def get_question_with_content(self, *args, **kwargs):
         raise TimeoutError("question embedding timed out")
@@ -98,6 +120,135 @@ async def test_knowledge_agent_keeps_evidence_when_optional_question_search_time
     assert output.payload.resolved_kp_ids == ["KP_FJ_018"]
     assert output.payload.question_candidates == []
     assert any("题目候选检索暂不可用" in note for note in output.payload.risk_notes)
+
+
+@pytest.mark.asyncio
+async def test_knowledge_agent_extracts_each_evidence_with_system_filled_source() -> None:
+    output = await KnowledgeBaseAgent(FakeRetrievalTool(), SummaryItemsModel()).run(context())
+
+    # 伪造 id 被过滤，只保留证据集内真实存在的 E_1
+    assert [item.evidence_id for item in output.payload.summary_items] == ["E_1"]
+    item = output.payload.summary_items[0]
+    assert item.content == "理中丸由人参、干姜、白术、炙甘草组成。"
+    # 来源字段由系统从 EvidenceItem 确定性补全
+    assert item.source_id == "方剂学:2"
+    assert item.authority_level == "textbook"
+    assert item.resource_type == "textbook"
+    # 引用 id 列表与逐条提取一致
+    assert output.payload.summary_evidence_ids == ["E_1"]
+    # 兼容文本字段仍可拼接展示
+    assert "理中丸由人参" in output.payload.retrieval_summary
+
+
+@pytest.mark.asyncio
+async def test_knowledge_agent_falls_back_to_raw_extraction_when_model_output_invalid() -> None:
+    class InvalidModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            if payload["payload"].get("phase") == "plan_retrieval":
+                return {
+                    "kp_query": "理中丸",
+                    "question_query": "理中丸 相关题目",
+                    "retrieval_reason": "检索教材依据和候选练习。",
+                }
+            return {
+                "retrieval_summary": "",
+                "summary_items": "not-a-list",
+                "quality_labels": {"not": "a-list"},
+                "uncertainty": [],
+            }
+
+    output = await KnowledgeBaseAgent(FakeRetrievalTool(), InvalidModel()).run(context())
+
+    # 模型输出不合规时回退为原文逐条提取，evidence_id 依然真实
+    assert len(output.payload.summary_items) >= 1
+    assert output.payload.summary_items[0].evidence_id == "E_1"
+    assert "理中丸由人参" in output.payload.summary_items[0].content
+
+
+class WebEvidenceRetrievalTool:
+    """同时包含教材切片与网络搜索（视频/参考）条目的证据集。"""
+
+    async def build_evidence_pack(self, query: str) -> EvidencePack:
+        return EvidencePack(
+            evidence_pack_id="EP_WEB",
+            query=query,
+            resolved_kp_ids=["KP_FJ_018"],
+            evidence_items=[
+                EvidenceItem(
+                    evidence_id="E_TEXTBOOK",
+                    source_id="方剂学:2",
+                    content_summary="理中丸由人参、干姜、白术、炙甘草组成。",
+                    authority_level="textbook",
+                    confidence=0.95,
+                    bridge_layer="strict",
+                ),
+                EvidenceItem(
+                    evidence_id="E_VIDEO",
+                    source_id="video:1",
+                    content_summary="【视频】理中丸方义讲解：温中祛寒、补气健脾。",
+                    authority_level="web_video",
+                    confidence=0.8,
+                    bridge_layer="external",
+                    source_url="https://example.com/video/1",
+                    source_label="理中丸方义讲解视频",
+                    resource_type="video",
+                ),
+                EvidenceItem(
+                    evidence_id="E_REFERENCE",
+                    source_id="ref:2",
+                    content_summary="【论文】理中丸临床研究综述：辨证要点与加减应用。",
+                    authority_level="web_reference",
+                    confidence=0.7,
+                    bridge_layer="external",
+                    source_url="https://example.com/ref/2",
+                    source_label="理中丸研究综述",
+                    resource_type="reference",
+                ),
+            ],
+        )
+
+
+class TextbookOnlySummaryModel:
+    """模型只提取教材条目，漏掉网络搜索条目。"""
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if payload["payload"].get("phase") == "plan_retrieval":
+            return {
+                "kp_query": "理中丸",
+                "question_query": "理中丸 相关题目",
+                "retrieval_reason": "检索教材依据和候选练习。",
+            }
+        return {
+            "retrieval_summary": "",
+            "summary_items": [
+                {"evidence_id": "E_TEXTBOOK", "content": "理中丸由人参、干姜、白术、炙甘草组成。"},
+            ],
+            "quality_labels": ["教材依据相关"],
+            "uncertainty": [],
+        }
+
+
+@pytest.mark.asyncio
+async def test_knowledge_agent_extracts_web_evidence_when_model_skips_it() -> None:
+    """模型漏掉网络搜索条目时，系统自动按原文兜底补全。"""
+    output = await KnowledgeBaseAgent(
+        WebEvidenceRetrievalTool(), TextbookOnlySummaryModel()
+    ).run(context())
+
+    by_id = {item.evidence_id: item for item in output.payload.summary_items}
+    # 教材条目保留模型提取内容
+    assert by_id["E_TEXTBOOK"].content == "理中丸由人参、干姜、白术、炙甘草组成。"
+    # 网络搜索条目（视频/参考）被系统兜底提取，来源字段确定性补全
+    assert by_id["E_VIDEO"].content == "【视频】理中丸方义讲解：温中祛寒、补气健脾。"
+    assert by_id["E_VIDEO"].resource_type == "video"
+    assert by_id["E_VIDEO"].source_url == "https://example.com/video/1"
+    assert by_id["E_VIDEO"].source_label == "理中丸方义讲解视频"
+    assert by_id["E_REFERENCE"].resource_type == "reference"
+    assert by_id["E_REFERENCE"].source_url == "https://example.com/ref/2"
+    # 引用 id 列表包含教材与网络条目
+    assert set(output.payload.summary_evidence_ids) == {
+        "E_TEXTBOOK", "E_VIDEO", "E_REFERENCE"
+    }
 
 
 @pytest.mark.asyncio

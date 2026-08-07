@@ -118,28 +118,58 @@ class KnowledgeExplanationAgent:
         # (id + short label) is offered so the model can still declare
         # evidence_refs for the trailing reference card without duplicating
         # the whole evidence set in the prompt.
-        semantic_evidence = [
-            {
-                "evidence_id": item.evidence_id,
-                "text": item.content_summary,
-                "authority": item.authority_level,
-                "resource_type": item.resource_type,
-                "source_url": item.source_url,
-            }
-            for item in evidence_pack.evidence_items
-        ]
-        citation_manifest = [
-            {
-                "evidence_id": item.evidence_id,
-                "label": (
-                    item.source_label
-                    or item.resource_type
-                    or item.evidence_id
-                ),
-            }
-            for item in evidence_pack.evidence_items
-        ]
-        retrieval_summary = str(getattr(evidence_pack, "retrieval_summary", "")).strip()
+        # 知识库管理智能体对每条检索内容逐条提取（summary_items）：下游优先
+        # 使用该结构化结果，每条带 evidence_id + 提取的原文 + 确定性来源，
+        # 专家智能体据此在 evidence_refs 中按 evidence_id 声明引用；无逐条
+        # 结果时回退到旧逻辑（完整证据体 / 拼接总结文本 + 精简引用清单）。
+        summary_items = getattr(evidence_pack, "summary_items", None) or []
+        if summary_items:
+            summary_evidence = [
+                {
+                    "evidence_id": item.evidence_id,
+                    "content": item.content,
+                    "authority": item.authority_level,
+                    "resource_type": item.resource_type,
+                    "source_url": item.source_url,
+                    "source_label": item.source_label or item.source_id,
+                }
+                for item in summary_items
+            ]
+            retrieval_summary = "\n".join(
+                f"[{item.evidence_id}｜{item.source_label or item.source_id}] {item.content}"
+                for item in summary_items
+            )
+            citation_manifest = [
+                {
+                    "evidence_id": item.evidence_id,
+                    "label": item.source_label or item.resource_type or item.evidence_id,
+                }
+                for item in summary_items
+            ]
+            semantic_evidence = summary_evidence
+        else:
+            semantic_evidence = [
+                {
+                    "evidence_id": item.evidence_id,
+                    "text": item.content_summary,
+                    "authority": item.authority_level,
+                    "resource_type": item.resource_type,
+                    "source_url": item.source_url,
+                }
+                for item in evidence_pack.evidence_items
+            ]
+            citation_manifest = [
+                {
+                    "evidence_id": item.evidence_id,
+                    "label": (
+                        item.source_label
+                        or item.resource_type
+                        or item.evidence_id
+                    ),
+                }
+                for item in evidence_pack.evidence_items
+            ]
+            retrieval_summary = str(getattr(evidence_pack, "retrieval_summary", "")).strip()
         memory_output = context.get("dependency_outputs", {}).get("memory")
         memory_payload = getattr(memory_output, "payload", None)
         context_summary = getattr(memory_payload, "context_summary", None)
@@ -178,7 +208,7 @@ class KnowledgeExplanationAgent:
                             "retrieval_summary": retrieval_summary,
                             "semantic_evidence": (
                                 semantic_evidence
-                                if not retrieval_summary
+                                if (summary_items or not retrieval_summary)
                                 else citation_manifest
                             ),
                             "audit_feedback": list(
@@ -198,7 +228,8 @@ class KnowledgeExplanationAgent:
                                     "不要求固定标题或固定段落。"
                                     if flexible_support
                                     else (
-                                        "直接输出完整自然语言题目讲解正文；按讲题逻辑自然组织，"
+                                        "完整讲解正文（必须是本 JSON 对象中的 explanation_content 字段值，"
+                                        "禁止把正文放在 JSON 包装之外；按讲题逻辑自然组织，"
                                         "小节标题自由拟定，不必套用固定小节标题。"
                                         "要求：开头点明考查要点，接着直接给出答案/思路与依据，"
                                         "逐项辨析选项或展开答题要点，末尾点出易错提示。"
@@ -206,7 +237,8 @@ class KnowledgeExplanationAgent:
                                         "讲解紧扣题目展开，直接给出解题路径，讲完即止。"
                                         if question_explanation_request
                                         else (
-                                            "直接输出完整自然语言讲解正文；按自己的逻辑自然组织，"
+                                            "完整讲解正文（必须是本 JSON 对象中的 explanation_content 字段值，"
+                                            "禁止把正文放在 JSON 包装之外；按自己的逻辑自然组织，"
                                             "小节标题自由拟定，不必套用固定小节标题。"
                                             "要求：开头自然带出为什么讲这个点（结合学情或考纲），"
                                             "正文讲透核心内容，末尾提出 2-3 个开放式思考问题引导用户"

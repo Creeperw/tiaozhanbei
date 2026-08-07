@@ -36,11 +36,31 @@ class ExpertAgent:
         if not evidence_pack.evidence_items:
             raise ValueError("expert agent requires at least one evidence item")
         primary_evidence = evidence_pack.evidence_items[0]
-        semantic_evidence = [
-            " ".join(str(item.content_summary).split())[:800]
-            for item in evidence_pack.evidence_items[:3]
-        ]
-        retrieval_summary = str(getattr(evidence_pack, "retrieval_summary", "")).strip()
+        # 知识库管理智能体逐条提取的结果优先：每条带 evidence_id + 原文 + 来源，
+        # 专家智能体据此在输出中引用 evidence_id；无逐条结果时回退旧逻辑。
+        summary_items = getattr(evidence_pack, "summary_items", None) or []
+        if summary_items:
+            semantic_evidence = [
+                {
+                    "evidence_id": item.evidence_id,
+                    "content": item.content,
+                    "authority": item.authority_level,
+                    "resource_type": item.resource_type,
+                    "source_url": item.source_url,
+                    "source_label": item.source_label or item.source_id,
+                }
+                for item in summary_items
+            ]
+            retrieval_summary = "\n".join(
+                f"[{item.evidence_id}｜{item.source_label or item.source_id}] {item.content}"
+                for item in summary_items
+            )
+        else:
+            semantic_evidence = [
+                " ".join(str(item.content_summary).split())[:800]
+                for item in evidence_pack.evidence_items[:3]
+            ]
+            retrieval_summary = str(getattr(evidence_pack, "retrieval_summary", "")).strip()
         dependency_outputs = context["dependency_outputs"]
         memory_payload = getattr(dependency_outputs.get("memory"), "payload", None)
         diagnosis_payload = getattr(dependency_outputs.get("diagnosis"), "payload", None)
@@ -144,7 +164,11 @@ class ExpertAgent:
                         {
                             "topic": topic,
                             "retrieval_summary": retrieval_summary,
-                            "evidence": semantic_evidence if not retrieval_summary else [],
+                            "evidence": (
+                                semantic_evidence
+                                if (summary_items or not retrieval_summary)
+                                else []
+                            ),
                             "candidate_questions": [
                                 {
                                     "question_id": item["question_id"],

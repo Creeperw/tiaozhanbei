@@ -774,10 +774,18 @@ class StubChatModel:
             return self._emit({
                 "retrieval_summary": "；".join(
                     str(item.get("text", ""))
-                    for item in business_payload.get("evidence", [])[:3]
+                    for item in business_payload.get("evidence", [])[:5]
                     if item.get("text")
                 ),
-                "quality_labels": ["教材证据已覆盖"],
+                "summary_items": [
+                    {
+                        "evidence_id": str(item.get("evidence_id", "")).strip(),
+                        "content": " ".join(str(item.get("text", "")).split())[:2_000],
+                    }
+                    for item in business_payload.get("evidence", [])[:5]
+                    if item.get("evidence_id") and item.get("text")
+                ],
+                "quality_labels": ["教材与网络证据已覆盖"],
                 "uncertainty": [],
             }, on_delta)
         if role == "plan_contract_compiler":

@@ -260,6 +260,32 @@ export function reduceLangGraphEvent(state, ev) {
       };
     });
     if (!currentActiveNodeId) currentActiveNodeId = targetId;
+  } else if (ev.type === 'knowledge_retrieval') {
+    // 知识库管理智能体的每轮检索语句：kp_query（知识点检索语句）与
+    // question_query（题目检索语句）记录到 knowledge 节点，供协作侧边栏展示。
+    const requestedTarget = eventNode(ev, 'knowledge', 'knowledge_base_agent', NODE_MAP.tool);
+    const matchingNode = nodes.find((node) => node.agent === requestedTarget.agent);
+    const target = matchingNode ? { ...requestedTarget, id: matchingNode.id } : requestedTarget;
+    nodes = upsertNode(nodes, target.id, target.name, '', 'running', ts, target.agent);
+    nodes = nodes.map((node) => {
+      if (node.id !== target.id) return node;
+      const retrievals = [...(node.retrievals || [])];
+      const existingIndex = retrievals.findIndex((retrieval) => (
+        retrieval.kp_query === ev.kp_query && retrieval.question_query === ev.question_query
+      ));
+      const retrieval = {
+        kp_query: ev.kp_query || '',
+        question_query: ev.question_query || '',
+        ts,
+      };
+      if (existingIndex >= 0) {
+        retrievals[existingIndex] = retrieval;
+      } else {
+        retrievals.push(retrieval);
+      }
+      return { ...node, retrievals };
+    });
+    if (!currentActiveNodeId) currentActiveNodeId = target.id;
   } else if (ev.type === 'human_review_waiting') {
     const requestedTarget = eventNode(ev, 'feedback', 'audit_agent', NODE_MAP.feedback);
     const matchingNode = nodes.find((node) => node.agent === requestedTarget.agent);

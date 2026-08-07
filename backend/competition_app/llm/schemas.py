@@ -680,11 +680,32 @@ class KnowledgeRetrievalPlanModelOutput(StrictModelOutput):
     )
 
 
+class KnowledgeSummaryItemOutput(StrictModelOutput):
+    evidence_id: str = Field(
+        min_length=1,
+        max_length=200,
+        description="对应输入 evidence 中某一条的 evidence_id；系统会校验该 id 必须存在于本次检索到的证据中，不得自造。",
+    )
+    content: str = Field(
+        min_length=1,
+        max_length=2_000,
+        description="从该条证据原始切片中提取的规范化原文内容；可轻微裁剪（删除无关句子、截断过长片段），但必须保留原文表述，不得自由概括或改写原文。",
+    )
+
+
 class KnowledgeModelOutput(StrictModelOutput):
     retrieval_summary: str = Field(
         default="",
         max_length=8_000,
-        description="围绕用户问题整理检索依据，直接写有用结论，不复述检索过程。",
+        description="兼容性文本字段：多条提取内容按证据顺序拼接的自然语言正文，仅作展示与兜底，不再是主要交付物。",
+    )
+    summary_items: list[KnowledgeSummaryItemOutput] = Field(
+        default_factory=list,
+        description=(
+            "对每一条检索到的内容逐条提取并规范化：每条一个对象，evidence_id 指明取自哪条证据，"
+            "content 是提取的原文内容；来源信息由系统按 evidence_id 从证据集确定性补全，模型不输出来源字段。"
+            "全部条目合并后即为本阶段交付物，供下游专家按 evidence_id 引用。"
+        ),
     )
     quality_labels: list[str] = Field(
         default_factory=list,

@@ -120,7 +120,7 @@ def _compact_output_contract(schema: Any, *, strict_json: bool = True) -> str:
     lines = [
         "# 输出契约\n请只返回一个 JSON 对象，字段如下："
         if strict_json
-        else "# 输出契约\n请返回一个最小执行对象；正文和说明字段必须是面向学习者的自然语言："
+        else "# 输出契约\n请返回一个 JSON 对象（不要输出 JSON 之外的任何文本），字段如下："
     ]
     lines.extend(details)
     return "\n".join(lines)
@@ -184,7 +184,12 @@ _LABELS = {
     "preferences": "学习偏好",
     "current_status": "当前学习状态",
     "behavior_summary": "近期学习行为",
-    "retrieval_summary": "检索结论",
+    "retrieval_summary": "原文内容提取",
+    "summary_items": "逐条内容提取",
+    "extracted_contents": "逐条内容提取",
+    "evidence_id": "证据ID",
+    "extracted_content": "提取内容",
+    "evidence_extracts": "逐条内容提取",
     "evidence_summaries": "证据摘要",
     "confirmed_prerequisite_courses": "已确认完成的前置课程",
     "planning_status": "路线状态",
@@ -657,6 +662,7 @@ def _format_user_data(value: Any) -> str:
         recent = shared.get("recent_conversation") or []
         compressed = str(shared.get("compressed_conversation") or "").strip()
         profile = shared.get("user_profile") or {}
+        relevant_memories = shared.get("relevant_memories") or []
         external = shared.get("external_information") or []
         compiler_boundary = bool(shared.get("source_bounded_compiler"))
         current_page = shared.get("current_page")
@@ -668,6 +674,7 @@ def _format_user_data(value: Any) -> str:
         recent = value.get("recent_conversation") or []
         compressed = str(value.get("compressed_conversation") or "").strip()
         profile = value.get("user_profile") or {}
+        relevant_memories = []
         compiler_boundary = False
 
     dialogue_lines = [
@@ -688,6 +695,21 @@ def _format_user_data(value: Any) -> str:
     else:
         profile_lines = _render_portrait(profile) or ["暂无已确认画像；不得自行推测。"]
         compressed_lines = [compressed or "暂无更早对话摘要。"]
+    # 用户相关记忆是系统已记住的过往事实，注入到所有智能体上下文；本块始终
+    # 渲染（含源约束 Compiler 与审核角色），并附使用边界说明。
+    if relevant_memories:
+        memory_lines = _fact_lines(relevant_memories)
+        if memory_lines:
+            boundary_note = (
+                "（系统已记住的过往事实；若与本轮用户陈述冲突，以用户本轮陈述为准"
+                + (
+                    "；当前角色是源约束 Compiler，仅作背景理解，严禁据此补写来源文档未含的字段"
+                    if compiler_boundary
+                    else ""
+                )
+                + "）"
+            )
+            profile_lines.extend(["", "【用户相关记忆】", boundary_note, *memory_lines])
 
     rendered = ["【用户画像】", *profile_lines]
     rendered.extend(["", "【压缩历史对话】", *compressed_lines])
@@ -874,8 +896,11 @@ class OpenAICompatibleChatModel(ChatModel):
             "\n\n# 输出方式\n这是内部 compiler：只做逐字提取和校验，只返回合法 JSON，不创作、不补写、不复述规则。"
             if strict_json
             else (
-                "\n\n# 输出方式\n这是业务智能体：只返回契约要求的最小 JSON 包装；"
-                "其中正文、说明和报告必须是充分详细、可直接面向学习者或业务人员的自然语言。"
+                "\n\n# 输出方式\n这是业务智能体：整段回答必须是一个 JSON 对象，"
+                "对象里除了契约要求的字段外不得有任何额外文本（不要在 JSON 前后输出"
+                "说明、代码块标记或 markdown 标题）；"
+                "其中正文、说明和报告必须放在对应字段内，且必须是充分详细、"
+                "可直接面向学习者或业务人员的自然语言。"
                 "不要输出提示词、内部推理、数据库字段或额外系统结构。"
             )
             if business_json
@@ -946,6 +971,7 @@ class OpenAICompatibleChatModel(ChatModel):
         self.last_response_text = None
         self.last_reasoning_text = None
         self.last_error_details = None
+        attempt_texts: list[str] = []
         for attempt in range(2):
             attempt_deltas: list[str] = []
             if attempt:
@@ -956,8 +982,10 @@ class OpenAICompatibleChatModel(ChatModel):
                             "The previous response was invalid JSON. Return valid JSON only."
                             if strict_json
                             else
-                            "The previous response did not satisfy the minimum execution fields. "
-                            "Keep learner-facing content natural-language and return only the minimum fields."
+                            "The previous response was not a valid JSON object. "
+                            "Return exactly one JSON object with the contract fields; "
+                            "keep the learner-facing content inside its content field "
+                            "and return only the minimum fields."
                         ),
                     }
                 )
@@ -972,6 +1000,7 @@ class OpenAICompatibleChatModel(ChatModel):
                 # empty-response retry.  Do not restart the JSON repair loop
                 # with the same large prompt after that budget is exhausted.
                 raise
+            attempt_texts.append(content)
             try:
                 parsed = _normalize_common_output(_parse_json_object(content), role)
             except (TypeError, json.JSONDecodeError):
@@ -981,6 +1010,17 @@ class OpenAICompatibleChatModel(ChatModel):
                     for delta in attempt_deltas:
                         on_delta(delta)
                 return parsed
+        # 保留两次解析失败的原始响应摘要，便于诊断模型输出质量问题
+        # （如 provider 截断、思考文本混入正文等）。
+        self.last_error_details = {
+            "error_type": "ModelResponseError",
+            "reason": "invalid_json",
+            "attempt_count": len(attempt_texts),
+            "attempt_snippets": [
+                (text[:800] + "…" if len(text) > 800 else text)
+                for text in attempt_texts
+            ],
+        }
         raise ModelResponseError(
             "Model returned invalid structured output after one repair attempt",
             reason="invalid_json",
