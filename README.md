@@ -1,0 +1,226 @@
+# 时珍智训（挑战杯项目）
+
+本仓库用于前后端协作与统一部署。当前提交包含完整后端与可直接体验的 React 前端。
+
+## 系统能力
+
+- 长期规划、短期规划和当日任务按“画像就绪 → 长期 → 短期 → 当日”分层生成，并提供统一前置状态接口；规划投影为“阶段 → 教材 → 知识点”学习路径，同时提供可独立浏览的非个性化经典路线；
+- 桌面端统一使用顶部导航，集中提供五类官方资格考试路径、智能助教、通知和账户入口；移动端保留抽屉导航。考试路径选择后保存到当前用户并打开独立的“阶段 → 教材”经典路线子页；平台首页参考登录页重做为六智能体协作门户，考试路线子页继续联动倒计时、长短期规划正文、今日学习动态和到期复习队列；
+- 正式对话界面支持 LangGraph 流式执行、中断恢复和引用展示；每条回答以协作凭证呈现按需参与角色、证据检索、审核门禁与局部修复，并可展开六智能体执行轨迹；
+- 智能助教作为全局悬浮入口独立于侧边导航，支持悬浮球、小窗真实对话及延续当前会话进入全屏工作区；
+- 学习工坊包含客观题、案例简答、AI 病患模拟、全量错题与变式训练、知识卡片和计时试卷；知识卡可聚合讲解、教材切片、视频与题目；
+- 训练工坊以全高总览聚合专项训练、智能组卷、综合套题、AI 病患模拟、错题库、题目收藏和学习笔记；解题界面可即时收藏，题单采用侧栏管理，学习笔记支持 Markdown 编辑/预览和用户隔离的图片上传；智能组卷逐题校验题型、答案与解析，缺失候选由专家智能体补足后再经审核发布；
+- 智能助教按会话恢复连续问答，超过上下文阈值后由 Memory Agent 压缩；客观错题先补充作答情境再开放变式，主观题由 Expert Agent 批改；
+- 学习行为、掌握度、复习队列和资源推送按登录用户隔离并持久化；学情诊断依赖带样本数与新鲜度的监控快照，复习队列只接纳已完成且批改通过的知识点题目作答，成果统计、学情洞察与复习页统一读取同一份规范复习记忆；
+- 个性数据以“用户画像—学情报告—复习与掌握”组织：画像支持弹窗编辑和字段锁定，报告展示真实行为摘要、能力雷达、趋势与薄弱点，复习页展示掌握热力图、到期队列和历史变化；主动干预、站内通知及规划自动复盘形成可确认、可追踪的闭环；
+- 数据库模式下 LangGraph 中断检查点和恢复上下文均持久化，页面刷新、断线或服务重启后可从原节点继续；
+- 智能体间按需通信只传递下一步所需的已确认事实与证据；Audit 可触发一轮白名单内的局部修复，并保留未受影响节点结果；
+- 版本化多时间尺度学情把宏观路线、中观计划与复习、微观作答与掌握证据统一为只读快照；规划页直接消费带硬约束和透明评分的路径候选；
+- 知识库优先使用本地可信资料，资源不足时保留网络检索与专家补题能力；
+- Cookie 会话认证、注册登录、管理员权限和前后端同源部署已经接入；新注册用户必须先完成基础学情调查，画像与初始记忆建立后才进入学习工作台；
+- 注册调查会在学情调查页回显，并同步投影到 `/api/v1/learning-context.user_profile`，供 Diagnosis、路线解析和规划智能体直接使用；学习/考试方向限定为五类教材型资格考试，保存时同时落库官方考试轨道与教材路线，避免重复询问已填写的目标、基础、专业与时间；
+- 学习画像与学习记忆合并为统一工作区，知识资料与个人知识库合并为同一入口；公共/个人数据仍按权限隔离；
+- Embedding 默认开启，支持本地模型或远程服务；PDF 由服务端 MinerU 精确解析后再进入知识抽取和向量索引。
+
+系统对外统一呈现六个智能体角色：任务规划、记忆管理、学情诊断、知识库管理、专家、审核裁判。复习调度、计划持久化等确定性能力作为后端服务运行，不额外伪装成智能体。
+
+## 仓库结构
+
+```text
+tiaozhanbei/
+├── backend/
+│   ├── competition_app/                 # FastAPI + LangGraph 主后端
+│   ├── platform_backend/                # 已装配到主进程的业务接口包
+│   └── competition/                     # 章节映射和旧路径兼容入口
+├── frontend/llm/                         # React + Vite 正式前端
+├── assets/                               # 版本化公共资产入口（本机含外部软链接）
+├── runtime/                              # 可写运行数据，不清空
+├── TreeKG-main/                          # 知识图谱展示与教材建图流水线
+├── evaluation/                          # 运行台依赖的数据集和评测工具
+├── scripts/                             # 生产入口、资产检查和维护工具
+├── deploy/                              # 生产部署模板
+├── docs/                                # 当前维护说明
+├── .gitignore
+└── README.md
+```
+
+后端完整环境、数据库、接口、SSE、中断恢复和测试说明见
+[backend/competition_app/README.md](backend/competition_app/README.md)。
+全部当前文档及历史资料边界见 [文档索引](docs/index.md)，代码与数据边界见
+[当前架构](docs/architecture.md) 和 [数据目录规范](docs/data-layout.md)。
+
+团队部署与运维请阅读 [部署与升级指南](docs/deployment.md) 和
+[数据库运维指南](docs/database-operations.md)。两份文档覆盖无 Docker 安装、双库初始化、迁移、备份恢复、生产启动、升级回滚和常见故障。
+
+前端开发和联调请优先阅读 [前端接口参考](docs/frontend-api-reference.md)。文档明确区分正式 `/api/v1` 与迁移期 `/api` 接口，并包含认证、SSE、中断恢复、学习路径、学习行为、正式题库取题与批改、全量错题、案例训练、知识库顺序节点、复习队列和错误处理契约；关键接口均给出请求、成功响应、空状态、幂等/一次性凭证与用户隔离说明。
+
+学情指标的数据表、采集动作、时间窗口、公式、推荐权重、版本和研究依据见 [学情监测与资源匹配口径](docs/learning-monitoring-methodology.md)。
+
+参与开发前请阅读 [协作与贡献说明](CONTRIBUTING.md)。本次按所有者要求重建干净 `main`；
+旧分支及历史已私下备份，贡献署名保留，新基线之后通过 Pull Request 协作。
+本分支交付的教材 PDF 上传、训练工坊题库上传和教材 PDF 阅读，详见 [三项导入与 PDF 阅读交付说明](backend/competition/README.md)。
+
+## 快速启动
+
+下述 stub 流程仅供开发联调。正式部署请阅读 [部署指南](docs/deployment.md)，
+使用 `scripts/serve_production.py`，该入口拒绝静默降级到 stub，不自动安装依赖或覆盖前端构建。
+
+项目不要求 Docker，统一使用 Python 3.10 与已有 Conda `torch` 环境：
+
+```bash
+git clone https://github.com/Creeperw/tiaozhanbei.git
+cd tiaozhanbei/backend
+conda activate torch
+python -m pip install -r competition_app/requirements.txt
+cp competition_app/.env.example competition_app/.env.local
+```
+
+构建正式前端，随后由 FastAPI 同源托管：
+
+```bash
+cd ../frontend/llm
+npm install
+npm run build
+cd ../../backend
+COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
+```
+
+打开：
+
+- 正式应用：`http://127.0.0.1:7860/`
+- 健康检查：`http://127.0.0.1:7860/health`
+- OpenAPI：`http://127.0.0.1:7860/docs`
+
+`/chat/`、`/demo/` 旧静态界面已经删除；正式产品与智能助教统一从 `/` 进入。
+
+Stub 模式不需要外部模型、向量库或数据库，适合前端先完成接口联调。完整应用固定启用
+`BACKEND_HANDOFF_ENABLED=true`，由同一个 FastAPI 进程挂载交接业务域。
+
+完整本地模式示例：
+
+```bash
+cd backend
+export COMPETITION_APP_MODE=live
+export BACKEND_HANDOFF_ENABLED=true
+python -m competition_app.cli.app serve
+```
+
+模型密钥、MySQL 密码和本地知识资产路径只写入 `competition_app/.env.local` 或操作系统环境变量，不提交到 Git。
+
+## 前端接入要点
+
+1. 开发服务器将 `/api` 和登录页健康检查 `/health` 代理到 `http://127.0.0.1:7860`。
+2. Cookie 会话请求设置 `credentials: 'include'`。
+3. 以 `/api/v1/platform/openapi.json` 与 `/docs` 为接口真源。
+4. 对话执行使用 `POST /api/v1/review-cards/stream`，按 SSE `event` 字段消费。
+5. 收到 `run_interrupted` 后保存 `thread_id`，调用
+   `POST /api/v1/review-cards/runs/{thread_id}/resume/stream` 恢复。
+6. 普通自然语言输入只可提交 `plan_scope_hint`；只有用户明确选择长期、短期或当日层级时
+   才提交强约束 `plan_scope`。
+7. 用户和学习数据以服务端登录身份隔离，前端不得用请求体中的 `learner_id` 切换用户。
+8. 学情报告与规划页直接读取 `/api/v1/learning-state/multiscale` 和
+   `/api/v1/learning-state/path-candidates`，不得解析计划正文生成阶段、知识点或评分。
+9. 执行协调展示读取 `/api/v1/executions/{execution_id}/coordination`，只显示通信、修复的安全摘要，
+   不展示或缓存原始交接正文。
+
+正式前端已使用主后端 HttpOnly Cookie，不在 localStorage 保存认证令牌。前端构建产物与
+`/api/v1/*`、迁移期 `/api/*` 和 `/health` 全部由同一个 `7860` 集成后端提供；其中
+`/api/*` 交给主进程内挂载的兼容业务路由：
+
+```powershell
+$env:BACKEND_PYTHON = "D:\anaconda3\python.exe" # 按本机环境调整
+powershell -ExecutionPolicy Bypass -File backend/platform_backend/run.ps1 start
+```
+
+打开 `http://127.0.0.1:7860`。登录、会话、首页、LangGraph 对话和交接业务均由该端口提供。
+
+未登录时前端展示“承时珍医脉，启智慧学习”登录页，并在右侧直接提供账号表单；
+用户可在同一卡片内切换登录与注册，不再经过额外弹层。登录和注册仍分别调用
+`/api/v1/auth/login`、`/api/v1/auth/register`，
+不会在浏览器本地保存令牌。新账号注册成功后会立即建立会话并进入系统首页。
+
+## Live 环境与大体积数据
+
+Live 模式使用环境中配置的聊天模型、`Qwen/Qwen3-Embedding-4B` 和正式知识库。下列内容
+不进入 Git，由项目共享盘提供并通过环境变量指向绝对路径：
+
+下载、校验和安装步骤见 [网盘数据包说明](docs/data-package.md)。网盘包只含公共资源；
+用户数据库、运行记录和密钥必须另行私密备份迁移，不随资源包共享。
+
+- 题库与知识点原始交付包；
+- FAISS `vdb_store`；
+- 视频知识库与知识库管理组件 runtime；
+- MySQL 数据、本地 SQLite、用户上传文件和运行快照。
+
+需要的环境变量名称已列在 `backend/competition_app/.env.example`，其中没有有效密钥。
+
+本机联调可以直接把路径指向已有资产，不需要复制数 GB 的索引。例如在
+`backend/competition_app/.env.local` 中设置绝对路径：
+
+```bash
+QUESTION_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
+KNOWLEDGE_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
+SHIZHEN_ASSET_ROOT=/absolute/path/to/shizhen-assets
+SHIZHEN_RUNTIME_ROOT=/absolute/path/to/shizhen-runtime
+# 可选；留空时使用统一资产目录中的 2026-07-22 章节映射
+KNOWLEDGE_ATLAS_CHAPTER_ROOT=/absolute/path/to/chapter-mapping
+EMBEDDING_MODE=enabled
+# 可选本地模型；留空时使用 SILICONFLOW_API_KEY 对应的远程服务
+EMBEDDING_MODEL_PATH=
+MINERU_TOKEN=服务端密钥
+```
+
+标准目录 `assets/knowledge-atlas/chapters/releases/2026-07-22` 保存章节顺序映射；旧目录
+`backend/competition/knowledge_atlas_chapters/2026-07-22` 仅作为迁移期兼容来源。该资产不复制
+原始教材和切片正文。知识星球据此按“教材 → 章节 → 小节 → 知识点”四级展示；
+同章同名的重复切片区间会合并为一个小节入口，底层 `chunk_uid` 关联保持不变。
+
+新部署不再要求把资产软链接到源码目录。资产安装、版本 manifest、旧目录迁移和部署前校验见
+[数据目录规范](docs/data-layout.md)。启动时可通过 `/health` 和
+`/api/v1/platform/status` 检查主框架与平台业务后端，通过知识库状态接口检查索引是否可读。
+
+## 数据库
+
+正式联调建议使用同一 MySQL 实例中的两个数据库：
+
+- `competition_app`：认证、主规划、复习队列和 LangGraph 运行状态；
+- `competition_frontend`：前端交接业务域。
+
+```bash
+cd backend
+export MYSQL_PASSWORD='本机密码'
+python -m competition_app.cli.app init-db
+```
+
+首次启动后通过正式应用注册普通用户。管理员账号只有在设置 `ADMIN_DEFAULT_PASSWORD` 时才应启用；生产环境同时设置随机 `SECRET_KEY` 并在 HTTPS 部署中启用安全 Cookie。
+
+主库使用带校验和的编号迁移，已执行的迁移文件不得修改；兼容业务库在模块装载时执行结构初始化和增量修复。完整授权、状态检查、备份恢复与升级顺序见
+[数据库运维指南](docs/database-operations.md)。
+
+## 测试
+
+```bash
+cd backend
+conda run -n torch python -m pytest -q competition_app/tests \
+  --ignore=competition_app/tests/integration/test_learning_plan_live_flow.py
+
+cd ../frontend/llm
+npm run test:unit
+npm run lint
+npm run build
+```
+
+不要从 WSL 命令行运行 Live pytest；Live 验收在已启动前端运行面板点击 Execute。
+
+当前基线：主后端非 Live 测试 620 项通过、3 项按环境跳过；前端完整测试基线随功能增加，
+以 CI/本地最新输出为准。登录页定向测试、lint 与生产构建必须通过。
+
+## 协作建议
+
+- 后端改动放在 `backend/**`，前端改动放在 `frontend/**`；
+- 每个功能分支只处理一个交付目标，通过 Pull Request 合并到 `main`，并保留原提交作者历史；
+- 不提交 `.env`、密钥、数据库、缓存、快照、向量索引和用户数据；
+- 接口有变化时同步更新 OpenAPI/Pydantic 契约和 README；
+- 前端不要硬编码 Agent 节点数、执行顺序、系统 ID 或计划版本。
+
+贡献者名单、历史分支和验收规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。

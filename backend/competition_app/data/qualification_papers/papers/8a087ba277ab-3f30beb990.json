@@ -1,0 +1,917 @@
+{
+  "template_id": "8a087ba277ab-3f30beb990",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0026",
+      "question_type": "single_choice",
+      "question_content": "人体的某些局部，可以看作是脏腑的“缩影”，体现了",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "整体审察"
+        },
+        {
+          "option_id": "B",
+          "content": "司外揣内"
+        },
+        {
+          "option_id": "C",
+          "content": "见微知著"
+        },
+        {
+          "option_id": "D",
+          "content": "辨证论治"
+        },
+        {
+          "option_id": "E",
+          "content": "以常衡变"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "见微知著，是指机体的某些局部表现，常包含着整体的生理、病理信息，通过微小的变化，可以测知整体的情况。临床实践证明，某些局部的改变，确实有诊断全身疾病的意义。因而有人说，中医学含有当代“生物全息”的思想，认为人体的某些局部可以看作是脏腑的“缩影”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 26,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0028",
+      "question_type": "single_choice",
+      "question_content": "形体肥胖，肌肉坚实，食欲旺盛，属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "形盛气虚"
+        },
+        {
+          "option_id": "B",
+          "content": "形气有余"
+        },
+        {
+          "option_id": "C",
+          "content": "中焦有火"
+        },
+        {
+          "option_id": "D",
+          "content": "中气虚弱"
+        },
+        {
+          "option_id": "E",
+          "content": "痰湿积聚"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "体胖：①形气有余：形体肥胖，肌肉坚实，食欲旺盛；②形盛气虚：形体肥胖，肉松皮缓，食少懒动，动则乏力气短。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 28,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0029",
+      "question_type": "single_choice",
+      "question_content": "牙齿燥如枯骨，属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阳明热盛"
+        },
+        {
+          "option_id": "B",
+          "content": "肾阴枯涸"
+        },
+        {
+          "option_id": "C",
+          "content": "胃阴不足"
+        },
+        {
+          "option_id": "D",
+          "content": "燥邪伤肺"
+        },
+        {
+          "option_id": "E",
+          "content": "热盛伤津"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "牙齿光燥如石，提示阳明热盛，津液大伤。牙齿燥如枯骨，提示肾阴枯涸，精不上荣，见于温热病的晚期。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 29,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0030",
+      "question_type": "single_choice",
+      "question_content": "高热神昏，肢厥，舌质红绛，病在",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "下焦"
+        },
+        {
+          "option_id": "B",
+          "content": "上焦"
+        },
+        {
+          "option_id": "C",
+          "content": "营分"
+        },
+        {
+          "option_id": "D",
+          "content": "中焦"
+        },
+        {
+          "option_id": "E",
+          "content": "血分"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "上焦病证指温热之邪侵袭手太阴肺和手厥阴心包所表现的证候。邪陷心包，以高热神昏，肢厥，舌质红绛为",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 30,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0031",
+      "question_type": "single_choice",
+      "question_content": "肺肾阴虚与肝肾阴虚的共同点",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "目涩"
+        },
+        {
+          "option_id": "B",
+          "content": "眩晕"
+        },
+        {
+          "option_id": "C",
+          "content": "口燥咽干"
+        },
+        {
+          "option_id": "D",
+          "content": "声音嘶哑"
+        },
+        {
+          "option_id": "E",
+          "content": "干咳"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "肝肾阴虚证和肺肾阴虚证都有肾阴虚的证候，均见腰膝酸软、耳鸣、遗精，和阴虚内热的表现（如口燥咽干）。但肝肾阴虚证兼肝阴虚损，失于滋养，常见胁痛、目涩、眩晕等症；肺肾阴虚证兼肺阴亏损，肺失清肃，故有干咳、痰少难咳等表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 31,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0032",
+      "question_type": "single_choice",
+      "question_content": "苔白燥裂如砂石，扪之粗糙，提示",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "瘟疫或内痈"
+        },
+        {
+          "option_id": "B",
+          "content": "脾胃湿热"
+        },
+        {
+          "option_id": "C",
+          "content": "内热暴起，津液暴伤"
+        },
+        {
+          "option_id": "D",
+          "content": "湿浊宿食，积久化热"
+        },
+        {
+          "option_id": "E",
+          "content": "邪热伤津，燥结腑实"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "苔白燥裂如砂石，扪之粗糙（“糙裂苔”），提示内热暴起，津液暴伤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 32,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0033",
+      "question_type": "single_choice",
+      "question_content": "关于小儿指纹望诊，下列说法不正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "指纹鲜红，为外感表证"
+        },
+        {
+          "option_id": "B",
+          "content": "指纹色淡细，为实证"
+        },
+        {
+          "option_id": "C",
+          "content": "指纹到达命关，为邪气入脏腑"
+        },
+        {
+          "option_id": "D",
+          "content": "指纹紫黑，为血络郁闭"
+        },
+        {
+          "option_id": "E",
+          "content": "指纹沉隐不显，为里证"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "淡滞定虚实：浅淡而纤细者为虚证；浓滞而增粗者为实证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 33,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0034",
+      "question_type": "single_choice",
+      "question_content": "下列关于疼痛性质的说法中不正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "湿邪困阻致痛多为重痛"
+        },
+        {
+          "option_id": "B",
+          "content": "寒邪阻滞致痛多为冷痛"
+        },
+        {
+          "option_id": "C",
+          "content": "气血亏虚致痛多为空痛"
+        },
+        {
+          "option_id": "D",
+          "content": "瘀血内阻致痛不是刺痛"
+        },
+        {
+          "option_id": "E",
+          "content": "结石阻塞致痛多为绞痛"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "刺痛指疼痛如针刺之状，是瘀血致痛的特征之一。故D选项不正确。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0035",
+      "question_type": "single_choice",
+      "question_content": "关于妇人脉说法错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "左关、尺忽洪大于右手为月经将至"
+        },
+        {
+          "option_id": "B",
+          "content": "尺脉虚细而涩为虚闭(精亏血少)"
+        },
+        {
+          "option_id": "C",
+          "content": "脉来滑数冲和为妊娠之征"
+        },
+        {
+          "option_id": "D",
+          "content": "妇人两尺脉搏动弱于寸脉为妊娠之征"
+        },
+        {
+          "option_id": "E",
+          "content": "左寸脉滑数动甚为妊娠之征"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "已婚妇女，平时月经正常，突然停经，脉来滑数冲和，兼饮食偏嗜者，多为妊娠之征。妇人两尺脉搏动强于 寸脉或左寸脉滑数动甚者，均为妊娠之征。所以D选项“两尺脉搏动弱于寸脉”是错误的。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0036",
+      "question_type": "single_choice",
+      "question_content": "胃阴虚和胃气虚的共同症状是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "饥不欲食"
+        },
+        {
+          "option_id": "B",
+          "content": "口淡不渴"
+        },
+        {
+          "option_id": "C",
+          "content": "痞胀不舒"
+        },
+        {
+          "option_id": "D",
+          "content": "隐隐灼痛"
+        },
+        {
+          "option_id": "E",
+          "content": "小便短少"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "胃阴虚和胃气虚都有胃痛痞胀的表现。饥不欲食、隐隐灼痛、小便短少可见于胃阴虚；口淡不渴可见于胃气虚。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 36,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0037",
+      "question_type": "single_choice",
+      "question_content": "脉有胃气最主要的表现为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "不浮不沉"
+        },
+        {
+          "option_id": "B",
+          "content": "柔和有力"
+        },
+        {
+          "option_id": "C",
+          "content": "不大不小"
+        },
+        {
+          "option_id": "D",
+          "content": "从容和缓流利"
+        },
+        {
+          "option_id": "E",
+          "content": "尺脉有力"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "脉有胃气表现为：从容、和缓、流利；脉有神表现为：有力柔和、节律整齐；脉有根表现为：尺脉有力、沉取不绝。 更多医考干货可扫码关注微信公众平台 9-经络系统常考总结 12-中药学30味中药药理作用总",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 37,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0038",
+      "question_type": "single_choice",
+      "question_content": "痰热壅肺证与肺热炽盛证的主要区别是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "喉中痰鸣"
+        },
+        {
+          "option_id": "B",
+          "content": "鼻翼煽动"
+        },
+        {
+          "option_id": "C",
+          "content": "咳喘息粗"
+        },
+        {
+          "option_id": "D",
+          "content": "发热口渴"
+        },
+        {
+          "option_id": "E",
+          "content": "溲赤便秘"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "肺热炽盛证为火热炽盛，壅积于肺，肺失清肃；痰热壅肺证是指痰热交结，壅滞于肺，肺失清肃。两者的主要区别在于痰的表现（喉中痰鸣）。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 38,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0039",
+      "question_type": "single_choice",
+      "question_content": "石菖蒲、砂仁的共同功效是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "开窍豁痰"
+        },
+        {
+          "option_id": "B",
+          "content": "开窍宁神"
+        },
+        {
+          "option_id": "C",
+          "content": "温脾止泻"
+        },
+        {
+          "option_id": "D",
+          "content": "醒神益智 懒人医考整理"
+        },
+        {
+          "option_id": "E",
+          "content": "化湿开胃"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "砂仁：化湿开胃，温脾止泻，理气安胎 石菖蒲：开窍豁痰，醒神益智，化湿开胃",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 39,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0040",
+      "question_type": "single_choice",
+      "question_content": "三七粉的冲服用量是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "$3 - 5\\mathrm{g}$"
+        },
+        {
+          "option_id": "B",
+          "content": "$1 - 3\\mathrm{g}$"
+        },
+        {
+          "option_id": "C",
+          "content": "$0.5 - 1\\mathrm{g}$"
+        },
+        {
+          "option_id": "D",
+          "content": "$3 - 6\\mathrm{g}$"
+        },
+        {
+          "option_id": "E",
+          "content": "$6 - 9\\mathrm{g}$"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "三七多研末吞服，每次 $1 - 3\\mathrm{g}$ ；煎服 $3 - 9\\mathrm{g}$ 。外用适量。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0041",
+      "question_type": "single_choice",
+      "question_content": "能补肝肾，强筋骨，安胎，疗伤续折的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "杜仲"
+        },
+        {
+          "option_id": "B",
+          "content": "补骨脂"
+        },
+        {
+          "option_id": "C",
+          "content": "续断"
+        },
+        {
+          "option_id": "D",
+          "content": "淫羊藿"
+        },
+        {
+          "option_id": "E",
+          "content": "肉苁蓉"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "续断：补肝肾、强筋骨、续折伤、止崩漏，兼有安胎作用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 41,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0042",
+      "question_type": "single_choice",
+      "question_content": "下列不属于巴豆霜药理作用的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "泻下"
+        },
+        {
+          "option_id": "B",
+          "content": "利尿"
+        },
+        {
+          "option_id": "C",
+          "content": "抗肿瘤"
+        },
+        {
+          "option_id": "D",
+          "content": "抗炎"
+        },
+        {
+          "option_id": "E",
+          "content": "抗菌"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "巴豆霜：峻下冷积，逐水退肿，豁痰利咽；外用蚀疮。有泻下、抗肿瘤、抗炎、抗菌作用。巴豆油主要含有毒性球蛋白，能溶解红细胞，使局部组织坏死。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 42,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0043",
+      "question_type": "single_choice",
+      "question_content": "补骨脂能纳气平喘，还能",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "益肝明目"
+        },
+        {
+          "option_id": "B",
+          "content": "温脾摄唾"
+        },
+        {
+          "option_id": "C",
+          "content": "祛寒除湿"
+        },
+        {
+          "option_id": "D",
+          "content": "活血止痛"
+        },
+        {
+          "option_id": "E",
+          "content": "消风祛斑"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "补骨脂：补肾助阳，纳气平喘，温脾止泻，外用消风祛斑",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 43,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0044",
+      "question_type": "single_choice",
+      "question_content": "为妇产科要药，用于水瘀互阻之水肿的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "川芎"
+        },
+        {
+          "option_id": "B",
+          "content": "姜黄"
+        },
+        {
+          "option_id": "C",
+          "content": "益母草"
+        },
+        {
+          "option_id": "D",
+          "content": "莪术"
+        },
+        {
+          "option_id": "E",
+          "content": "桃仁"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "益母草功效：活血调经，利尿消肿，清热解毒。 应用：血滞经闭、痛经、经行不畅、产后恶露不尽、瘀滞腹痛；为妇产科要药。水肿，小便不利；尤适宜水瘀互阻的水肿。跌打损伤，疮痈肿毒，皮肤瘾疹。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 44,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0045",
+      "question_type": "single_choice",
+      "question_content": "砂仁长于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补肝肾安胎"
+        },
+        {
+          "option_id": "B",
+          "content": "解表安胎"
+        },
+        {
+          "option_id": "C",
+          "content": "清热安胎"
+        },
+        {
+          "option_id": "D",
+          "content": "止血安胎"
+        },
+        {
+          "option_id": "E",
+          "content": "理气安胎"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "砂仁：化湿开胃，温脾止泻，理气安胎。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 45,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0046",
+      "question_type": "single_choice",
+      "question_content": "下列哪项属于栀子所具有的药理作用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "镇痛"
+        },
+        {
+          "option_id": "B",
+          "content": "抗菌"
+        },
+        {
+          "option_id": "C",
+          "content": "降血糖"
+        },
+        {
+          "option_id": "D",
+          "content": "保肝利胆"
+        },
+        {
+          "option_id": "E",
+          "content": "利尿"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "栀子：泻火除烦，清热利湿，凉血解毒；外用消肿止痛。 焦栀子：凉血止血。 有抗病毒、抗内毒素、解热、抗炎、利胆和保肝等作用。 大剂量栀子及其有效成分对肝脏有一定毒性作用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 46,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0047",
+      "question_type": "single_choice",
+      "question_content": "含微量砷，不宜长期服用的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牡蛎"
+        },
+        {
+          "option_id": "B",
+          "content": "赭石"
+        },
+        {
+          "option_id": "C",
+          "content": "天麻"
+        },
+        {
+          "option_id": "D",
+          "content": "珍珠母"
+        },
+        {
+          "option_id": "E",
+          "content": "磁石"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "赭石使用注意：虚寒证及孕妇慎用。含微量砷不宜长期服用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 47,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0048",
+      "question_type": "single_choice",
+      "question_content": "血余炭的服用方法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "先煎"
+        },
+        {
+          "option_id": "B",
+          "content": "后下"
+        },
+        {
+          "option_id": "C",
+          "content": "包煎"
+        },
+        {
+          "option_id": "D",
+          "content": "另煎"
+        },
+        {
+          "option_id": "E",
+          "content": "研末冲服"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "某些药物，根据病情需要，为提高药效，也常研成散剂冲服。如用于止血的三七、花蕊石、白及、紫珠草、血余炭、棕榈炭及用于息风止痉的蜈蚣、全蝎、僵蚕、地龙和用于制酸止痛的乌贼骨、瓦楞子、海蛤壳、延胡索等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 48,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0049",
+      "question_type": "single_choice",
+      "question_content": "以下哪一项是虎杖的功效",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "祛风通络 懒人医考整理"
+        },
+        {
+          "option_id": "B",
+          "content": "凉血止血"
+        },
+        {
+          "option_id": "C",
+          "content": "化痰止咳"
+        },
+        {
+          "option_id": "D",
+          "content": "凉血消痈"
+        },
+        {
+          "option_id": "E",
+          "content": "润肠通便"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "虎杖功效：利湿退黄，清热解毒，散瘀止痛，化痰止咳 主治病证：湿热黄疸，淋浊，带下；水火烫伤，痈肿疮毒，毒蛇咬伤；经闭，癥瘕，跌打损伤；肺热咳嗽。热结便秘。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 49,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3f30beb990-q0050",
+      "question_type": "single_choice",
+      "question_content": "风热咳嗽及肺热燥咳常选用的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牛蒡子"
+        },
+        {
+          "option_id": "B",
+          "content": "蝉蜕"
+        },
+        {
+          "option_id": "C",
+          "content": "菊花"
+        },
+        {
+          "option_id": "D",
+          "content": "薄荷"
+        },
+        {
+          "option_id": "E",
+          "content": "桑叶"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "桑叶功效：疏散风热，清肺润燥，平抑肝阳，清肝明目。 应用：风热感冒，温病初起。桑菊饮；肺热咳嗽、燥热咳嗽。清燥救肺汤、桑杏汤；肝阳上亢，头晕头痛。羚角钩藤汤；目赤昏花。血热妄行咯血、吐血、衄血。 重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货可扫码关注微信公众平台 6-中西医结 合内科学最 字题 7-中西医结 合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+        "number": 50,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

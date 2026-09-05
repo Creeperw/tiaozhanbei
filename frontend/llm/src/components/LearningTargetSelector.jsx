@@ -1,0 +1,177 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasApi';
+
+const TARGET_SELECTED_EVENT = 'competition:learning-target-selected';
+
+export default function LearningTargetSelector({ className = '', onSaved, onSelected, variant = 'select' }) {
+  const [options, setOptions] = useState([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const mountedRef = useRef(false);
+  const loadRequestRef = useRef(0);
+  const savingRef = useRef(false);
+
+  const load = useCallback(async () => {
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const [catalogResponse, targetPayload] = await Promise.all([
+        fetchWithAuth(`${MAIN_API_BASE}/qualification-targets`).then(async (response) => {
+          const payload = await readJsonResponse(response, { items: [] });
+          if (!response.ok) {
+            throw new Error(payload.detail || '资格考试目录加载失败');
+          }
+          return payload;
+        }),
+        loadLearningTarget(),
+      ]);
+      if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+
+      const nextOptions = Array.isArray(catalogResponse?.items) ? catalogResponse.items : [];
+      if (!nextOptions.length) {
+        throw new Error('暂无可用的资格考试');
+      }
+      const target = targetPayload?.target || targetPayload || {};
+      const selected = nextOptions.find((item) => item.exam_track_id === target.exam_track_id);
+      setOptions(nextOptions);
+      setSelectedId(selected?.target_id || '');
+    } catch (requestError) {
+      if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+      setOptions([]);
+      setSelectedId('');
+      setError(requestError.message || '考试类别加载失败');
+    } finally {
+      if (mountedRef.current && requestId === loadRequestRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => {
+      mountedRef.current = false;
+      loadRequestRef.current += 1;
+    };
+  }, [load]);
+
+  const selectTargetById = async (targetId) => {
+    if (savingRef.current) return;
+    const selected = options.find((item) => item.target_id === targetId);
+    if (!selected) return;
+    if (selected.target_id === selectedId) {
+      try {
+        const selectedTarget = {
+          ...selected,
+          target: { exam_track_id: selected.exam_track_id },
+        };
+        if (onSelected) await onSelected(selectedTarget);
+        else window.dispatchEvent(new CustomEvent(TARGET_SELECTED_EVENT, { detail: selectedTarget }));
+      } catch {
+        // Navigation callback failures must not affect the persisted target.
+      }
+      return;
+    }
+
+    const previousId = selectedId;
+    savingRef.current = true;
+    setSaving(true);
+    setError('');
+    setMessage('');
+    setSelectedId(selected.target_id);
+
+    let savedTarget;
+    try {
+      const savedPayload = await saveLearningTarget(selected.exam_track_id);
+      if (!mountedRef.current) return;
+      savedTarget = savedPayload?.target || savedPayload || {};
+      setMessage('考试类别已更新');
+    } catch (requestError) {
+      if (!mountedRef.current) return;
+      setSelectedId(previousId);
+      setError(requestError.message || '考试类别保存失败');
+      return;
+    } finally {
+      savingRef.current = false;
+      if (mountedRef.current) setSaving(false);
+    }
+
+    const selectedTarget = { ...selected, target: savedTarget };
+    try {
+      await onSaved?.(selectedTarget);
+    } catch {
+      // Consumer callback failures must not roll back a target already persisted by the server.
+    }
+    try {
+      if (onSelected) await onSelected(selectedTarget);
+      else window.dispatchEvent(new CustomEvent(TARGET_SELECTED_EVENT, { detail: selectedTarget }));
+    } catch {
+      // Navigation callback failures must not roll back a target already persisted by the server.
+    }
+  };
+
+  const selectTarget = (event) => selectTargetById(event.target.value);
+
+  const rootClassName = [
+    'learning-target-selector',
+    variant === 'menu' ? 'learning-target-selector--menu' : '',
+    className,
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div className={rootClassName}>
+      {loading ? (
+        <span className="learning-target-selector__loading" role="status">
+          正在加载考试类别
+        </span>
+      ) : error && !options.length ? (
+        <div className="learning-target-selector__load-error">
+          <span role="alert">{error}</span>
+          <button type="button" onClick={load}>重试加载考试类别</button>
+        </div>
+      ) : variant === 'menu' ? (
+        <div className="learning-target-selector__options" role="menu" aria-label="资格考试选项">
+          {options.map((item) => (
+            <button
+              key={item.target_id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={item.target_id === selectedId}
+              disabled={saving}
+              onClick={() => selectTargetById(item.target_id)}
+            >
+              {item.official_name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <label className="learning-target-selector__control">
+          <span>考试类别</span>
+          <select
+            className="learning-target-selector__input"
+            aria-label="考试类别"
+            value={selectedId}
+            disabled={saving}
+            onChange={selectTarget}
+          >
+            <option value="" disabled>请选择考试类别</option>
+            {options.map((item) => (
+              <option key={item.target_id} value={item.target_id}>{item.official_name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {error && options.length > 0 && <span role="alert">{error}</span>}
+      {message && <span role="status">{message}</span>}
+    </div>
+  );
+}

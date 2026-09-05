@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <title>TreeKG 知识图谱</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: linear-gradient(160deg, #f7fafd 0%, #eef4fa 45%, #f2f7f2 100%);
+      overflow: hidden;
+      --toolbar-h: 48px;
+    }
+
+    /* ── 工具栏 ── */
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(224, 224, 224, 0.7);
+      box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    #search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+
+    #search {
+      width: 100%;
+      height: 34px;
+      padding: 0 36px 0 12px;
+      border-radius: 8px;
+      border: 1px solid #d0d0d0;
+      background: #f5f5f5;
+      color: #333;
+      font-size: 14px;
+      outline: none;
+    }
+
+    #search:focus {
+      border-color: #3C7BE6;
+      background: #fff;
+    }
+
+    #search-icon {
+      position: absolute;
+      right: 10px;
+      top: 8px;
+      color: #999;
+      pointer-events: none;
+    }
+
+    #search-dropdown {
+      display: none;
+      position: absolute;
+      top: 40px;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      max-height: 320px;
+      overflow-y: auto;
+      z-index: 40;
+    }
+
+    #search-dropdown .item {
+      padding: 8px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #search-dropdown .item:hover {
+      background: #f0f4ff;
+    }
+
+    #search-dropdown .item .name {
+      color: #333;
+    }
+
+    #search-dropdown .item .type {
+      color: #999;
+      font-size: 11px;
+    }
+
+    #search-dropdown .no-result {
+      padding: 12px 14px;
+      color: #999;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    #stats {
+      color: #999;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    #toolbar-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tb-btn {
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid #d0d0d0;
+      border-radius: 7px;
+      background: #f5f5f5;
+      color: #444;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+
+    .tb-btn:hover { background: #e8e8e8; border-color: #b8b8b8; }
+    .tb-btn.active { background: #3C7BE6; border-color: #3C7BE6; color: #fff; }
+
+    .tb-divider {
+      width: 1px;
+      height: 18px;
+      background: #dcdcdc;
+      margin: 0 2px;
+    }
+
+    /* 类型过滤面板 */
+    #filter-panel {
+      position: fixed;
+      right: 18px;
+      top: calc(var(--toolbar-h, 48px) + 14px);
+      z-index: 26;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid #e3e3e3;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+      font-size: 12px;
+      color: #444;
+    }
+
+    #filter-panel label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    /* 节点详情面板（右侧垂直居中，避开右下角操作提示） */
+    #detail-panel {
+      position: fixed;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 26;
+      width: 280px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.97);
+      border: 1px solid #e3e3e3;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      font-size: 12px;
+      color: #444;
+    }
+
+    #detail-close {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      border: 0;
+      background: none;
+      font-size: 16px;
+      color: #999;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    #detail-close:hover { color: #333; }
+
+    #detail-panel h3 { margin: 0 0 4px; font-size: 14px; color: #222; }
+    #detail-panel .detail-type { margin-bottom: 6px; font-size: 11px; color: #888; }
+    #detail-panel p { margin: 0 0 8px; line-height: 1.5; }
+    #detail-panel .detail-src {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: #f2f6fb;
+      color: #3C7BE6;
+      padding: 5px 8px;
+      border-radius: 6px;
+      margin-top: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #detail-panel .detail-src:hover { background: #e4ecf7; }
+
+    /* 工具栏折叠箭头（吸附在信息栏下缘） */
+    #toolbar-toggle {
+      position: fixed;
+      top: var(--toolbar-h, 48px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 31;
+      width: 30px;
+      height: 14px;
+      border: 1px solid #d0d0d0;
+      border-top: none;
+      border-radius: 0 0 7px 7px;
+      background: #fff;
+      color: #666;
+      font-size: 8px;
+      line-height: 10px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    #toolbar-toggle:hover { background: #f0f4ff; color: #3C7BE6; }
+
+    /* 工具栏折叠状态 */
+    body.toolbar-collapsed {
+      --toolbar-h: 0px;
+    }
+
+    body.toolbar-collapsed #toolbar {
+      transform: translateY(calc(-100% - 1px));
+    }
+
+    body.toolbar-collapsed #toolbar-toggle {
+      top: 0;
+      border: 1px solid #d0d0d0;
+      border-radius: 0 0 7px 7px;
+    }
+
+    body.toolbar-collapsed #toolbar-toggle::before {
+      content: '';
+    }
+
+    /* ── 图例与操作提示 ── */
+    #legend {
+      position: fixed;
+      right: 18px;
+      top: calc(var(--toolbar-h, 48px) + 14px);
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 10px;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(227, 227, 227, 0.8);
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+      color: #555;
+      font-size: 12px;
+    }
+
+    #legend-toggle {
+      position: fixed;
+      right: 18px;
+      top: calc(var(--toolbar-h, 48px) + 14px);
+      z-index: 25;
+      width: 26px;
+      height: 26px;
+      border: 1px solid rgba(227, 227, 227, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #666;
+      font-size: 11px;
+      line-height: 24px;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      display: none;
+    }
+
+    #legend-toggle:hover { color: #3C7BE6; }
+
+    /* 图例折叠状态：只显示切换按钮 */
+    body.legend-collapsed #legend { display: none; }
+    body.legend-collapsed #legend-toggle { display: block; }
+
+    #legend .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    #legend .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    #legend .toc {
+      background: #2F5FC0;
+    }
+
+    #legend .toc-section {
+      background: #5b8af0;
+    }
+
+    #legend .core {
+      background: #F0A63A;
+    }
+
+    #legend .noncore {
+      background: #3BBF8A;
+    }
+
+    #legend .line {
+      width: 19px;
+      height: 0;
+      border-top: 2px solid #8fb4e8;
+      display: inline-block;
+    }
+
+    #legend .semantic-line {
+      width: 19px;
+      height: 0;
+      border-top: 2px solid #8fa3bd;
+      display: inline-block;
+    }
+
+    #legend .cluster {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      border: 2px dashed #7d5fc0;
+      display: inline-block;
+    }
+
+    #help {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 25;
+      padding: 8px 11px;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(227, 227, 227, 0.8);
+      border-radius: 10px;
+      color: #777;
+      font-size: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+    }
+
+    #help .cluster-item { color: #7d5fc0; }
+
+    /* ── 左侧目录 ── */
+    #sidebar {
+      position: fixed;
+      top: var(--toolbar-h, 48px);
+      left: 0;
+      bottom: 0;
+      width: 260px;
+      background: rgba(250, 250, 252, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-right: 1px solid rgba(232, 232, 232, 0.8);
+      overflow-y: auto;
+      z-index: 20;
+      padding: 8px 0;
+      transition: left 0.18s ease;
+    }
+
+    /* 侧栏折叠 */
+    body.sidebar-collapsed #sidebar {
+      transform: translateX(-100%);
+    }
+
+    body.sidebar-collapsed #canvas-wrap {
+      left: 0;
+    }
+
+    /* 侧栏拖拽手柄 */
+    #sidebar-resizer {
+      position: fixed;
+      top: var(--toolbar-h, 48px);
+      bottom: 0;
+      left: 260px;
+      width: 5px;
+      z-index: 21;
+      cursor: col-resize;
+      background: transparent;
+      transition: background 0.15s ease;
+    }
+
+    #sidebar-resizer:hover,
+    #sidebar-resizer.dragging {
+      background: rgba(76, 141, 246, 0.4);
+    }
+
+    #sidebar .tree-item {
+      padding: 5px 12px 5px 8px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #555;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+
+    #sidebar .tree-item:hover {
+      background: #e8ecf4;
+      color: #333;
+    }
+
+    #sidebar .tree-item.active {
+      background: #dce4f8;
+      color: #1a3a6e;
+      font-weight: 600;
+    }
+
+    #sidebar .tree-item .arrow {
+      width: 16px;
+      text-align: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      color: #aaa;
+      transition: transform 0.15s;
+    }
+
+    #sidebar .tree-item .arrow.open {
+      transform: rotate(90deg);
+    }
+
+    #sidebar .tree-item .label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #sidebar .tree-item .badge {
+      margin-left: auto;
+      font-size: 10px;
+      background: #e0e0e0;
+      color: #888;
+      padding: 1px 6px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    #sidebar .loading {
+      padding: 16px;
+      text-align: center;
+      color: #aaa;
+      font-size: 13px;
+    }
+
+    /* ── 主画布 ── */
+    #canvas-wrap {
+      position: fixed;
+      top: var(--toolbar-h, 48px);
+      left: 260px;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      transition: left 0.18s ease, top 0.18s ease;
+      background: transparent;
+    }
+
+    #mynetwork {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── 提示 ── */
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.78);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    #loading-indicator {
+      display: none;
+      position: fixed;
+      top: calc(var(--toolbar-h, 48px) + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 工具栏 -->
+  <div id="toolbar">
+    <button type="button" id="btn-back" class="tb-btn" title="返回教材">← 返回</button>
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="搜索实体..." autocomplete="off" />
+      <span id="search-icon">🔍</span>
+      <div id="search-dropdown"></div>
+    </div>
+    <span id="toolbar-actions">
+      <button type="button" id="btn-collapse" class="tb-btn" title="收起全部（回到目录树）">⟲ 收起</button>
+      <button type="button" id="btn-filter" class="tb-btn" title="按类型过滤">⚙ 过滤</button>
+      <button type="button" id="btn-labels" class="tb-btn" title="显示/隐藏标签">字 标签</button>
+      <button type="button" id="btn-cluster" class="tb-btn" title="按章节聚类/展开">◉ 聚类</button>
+      <button type="button" id="btn-export" class="tb-btn" title="导出 PNG">↓ 导出</button>
+      <span class="tb-divider"></span>
+      <button type="button" id="btn-sidebar" class="tb-btn" title="折叠/展开目录 (B)">☰ 目录</button>
+      <button type="button" id="btn-zoom-in" class="tb-btn" title="放大 (+)">＋</button>
+      <button type="button" id="btn-zoom-out" class="tb-btn" title="缩小 (-)">－</button>
+      <button type="button" id="btn-fit" class="tb-btn" title="适应画布 (R)">⛶ 适应</button>
+      <button type="button" id="btn-fullscreen" class="tb-btn" title="全屏 (F)">⛶ 全屏</button>
+    </span>
+    <span id="stats">就绪</span>
+  </div>
+  <button type="button" id="toolbar-toggle" title="折叠/展开工具栏 (S)">▲</button>
+
+  <!-- 图例 -->
+  <div id="legend">
+    <span class="legend-item"><i class="dot toc"></i>章</span>
+    <span class="legend-item"><i class="dot toc-section"></i>节</span>
+    <span class="legend-item"><i class="dot core"></i>核心</span>
+    <span class="legend-item"><i class="dot noncore"></i>非核心</span>
+    <span class="legend-item"><i class="line"></i>目录层级</span>
+    <span class="legend-item"><i class="semantic-line"></i>语义关系</span>
+    <span class="legend-item"><i class="cluster"></i>聚类节点</span>
+    <button type="button" id="legend-fold" title="折叠图例">▾</button>
+  </div>
+  <button type="button" id="legend-toggle" title="展开图例">◎</button>
+
+  <!-- 操作提示 -->
+  <div id="help">
+    <div id="help-inner">
+      <strong>操作提示</strong>
+      <div>双击章节节点 → 展开知识点</div>
+      <div>右键实体 → 扩展关联</div>
+      <div>单击目录项 → 聚焦章节</div>
+      <div>点击节点 → 查看详情与溯源</div>
+      <div class="cluster-item">聚类模式：点击章节节点或聚合节点 → 展开/收起整章</div>
+      <div>快捷键：F 全屏 · B 目录 · S 工具栏 · R 适应 · +/− 缩放</div>
+    </div>
+  </div>
+
+  <!-- 类型过滤面板 -->
+  <div id="filter-panel" style="display:none">
+    <strong>节点类型</strong>
+    <label><input type="checkbox" id="filter-toc" checked /> <i class="dot toc"></i>章节</label>
+    <label><input type="checkbox" id="filter-core" checked /> <i class="dot core"></i>核心</label>
+    <label><input type="checkbox" id="filter-noncore" checked /> <i class="dot noncore"></i>非核心</label>
+  </div>
+
+  <!-- 节点详情面板 -->
+  <div id="detail-panel" style="display:none">
+    <button type="button" id="detail-close" title="关闭 (Esc)">×</button>
+    <h3 id="detail-name"></h3>
+    <div id="detail-type" class="detail-type"></div>
+    <p id="detail-desc"></p>
+    <div id="detail-sources"></div>
+  </div>
+
+  <!-- 左侧目录树 -->
+  <div id="sidebar">
+    <div class="loading">加载中...</div>
+  </div>
+  <div id="sidebar-resizer" title="拖拽调整目录宽度"></div>
+
+  <!-- 主画布 -->
+  <div id="canvas-wrap">
+    <div id="mynetwork"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+  <div id="loading-indicator">加载中...</div>
+
+  <script src="./vendor/vis-network.min.js"></script>
+  <script>
+    // ===================== 全局状态 =====================
+    var API_BASE = '/api/treekg';            // TreeKG 后端 API 前缀
+    var API = '';                            // 当前教材 API 前缀
+    var network = null;                      // vis-network 实例
+    var allData = { nodes: new vis.DataSet([]), edges: new vis.DataSet([]) };
+    var loadedChunks = {};                   // 已加载的 chunk 缓存 { tocName: {nodes, edges} }
+    var tocNameToId = {};                    // TOC name → node index (展开用)
+    var entityCache = {};                    // 已展开的实体 { entityName: true }
+
+    var TOC_COLOR = '#2F5FC0';          // 章节蓝（更深更饱和）
+    var TOC_BORDER = '#22468f';
+    var CORE_COLOR = '#F0A63A';         // 核心琥珀（柔和）
+    var CORE_BORDER = '#c97f14';
+    var NONCORE_COLOR = '#3BBF8A';      // 非核心绿（柔和）
+    var NONCORE_BORDER = '#1f9a6c';
+    var EDGE_COLOR = '#aab8cc';
+    var EDGE_SEMANTIC = '#8fa3bd';
+
+    // ===================== 工具函数 =====================
+    function $(id) { return document.getElementById(id); }
+
+    function showLoading() { $('loading-indicator').style.display = 'block'; }
+    function hideLoading() { $('loading-indicator').style.display = 'none'; }
+
+    function toast(msg) {
+      var t = $('toast');
+      t.textContent = msg; t.style.display = 'block';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.style.display = 'none'; }, 2000);
+    }
+
+    // 物理引擎控制：始终可用（动效保留）；vis-network 原生会在布局收敛后自动停止模拟，
+    // 展开/拖拽时重新激活，无需手动暂停计时器。
+    // 注：必须用 physics.setOptions(布尔) 同时同步 enabled 与 physicsEnabled 标志，
+    // 单独 setOptions({physics:{enabled}}) 会导致 startSimulation 静默失败。
+    function setPhysics(enabled) {
+      if (network.physics) network.physics.setOptions(enabled);
+    }
+
+    // ===================== 聚类（按章节聚合） =====================
+    // 章节节点 -> 其下实体的 name；实体名 -> 归属章节（先加载过的章节优先）
+    var chapterOf = {};
+    var entityChapters = {};
+    function registerChapter(chunkNodes, tocName) {
+      var children = [];
+      (chunkNodes || []).forEach(function (n) {
+        if (n.level !== 'toc' && n.name !== tocName) {
+          children.push(n.name);
+          if (!entityChapters[n.name]) entityChapters[n.name] = tocName;
+        }
+      });
+      if (children.length > 0) chapterOf[tocName] = children;
+    }
+
+    function nodeStyle(n) {
+      var level = n.level || 'noncore';
+      // 章节节点区分"章"（目录第 1 层）与"节"（更深层）
+      if (level === 'toc') {
+        var isChapter = (n.tocDepth || 0) === 0;
+        if (isChapter) {
+          // 章：大球 + 深蓝粗边 + 双层阴影
+          return { color: { background: TOC_COLOR, border: TOC_BORDER, highlight: { background: '#4a7ae0', border: '#22468f' } }, size: 26, group: 'toc', shape: 'dot', borderWidth: 3, shadow: { enabled: true, color: 'rgba(47,95,192,0.5)', size: 12 } };
+        }
+        // 节：中球 + 浅蓝细边
+        return { color: { background: '#5b8af0', border: '#3a63b8', highlight: { background: '#6fa0f5', border: '#3a63b8' } }, size: 20, group: 'toc', shape: 'dot', borderWidth: 1.5, shadow: { enabled: true, color: 'rgba(91,138,240,0.35)', size: 8 } };
+      }
+      if (level === 'core') return { color: { background: CORE_COLOR, border: CORE_BORDER, highlight: { background: '#f5b95c', border: '#c97f14' } }, size: 17, group: 'core', shape: 'dot', shadow: { enabled: true, color: 'rgba(240,166,58,0.3)', size: 7 } };
+      return { color: { background: NONCORE_COLOR, border: NONCORE_BORDER, highlight: { background: '#5fd0a2', border: '#1f9a6c' } }, size: 11, group: 'noncore', shape: 'dot', shadow: { enabled: true, color: 'rgba(59,191,138,0.25)', size: 5 } };
+    }
+
+    function makeNode(n) {
+      var s = nodeStyle(n);
+      return {
+        id: n.name, label: n.name,
+        title: (n.description || '').substring(0, 300),
+        color: s.color, size: s.size, group: s.group, shape: s.shape,
+        borderWidth: s.borderWidth || 1,
+        shadow: s.shadow,
+        description: n.description || '',
+        level: n.level || 'noncore',
+        tocDepth: n.tocDepth || 0,
+        _chunks: n.chunks || [],
+        _baseFontSize: 12
+      };
+    }
+
+    function makeEdge(e, idx) {
+      var isToc = e.type === 'toc->toc' || e.type === 'toc->core';
+      return {
+        id: (e.source + '|' + e.target + '|' + (e.type || '') + '|' + idx),
+        from: e.source, to: e.target,
+        title: (e.type || '') + (e.description ? ' | ' + e.description : ''),
+        length: (e.type === 'toc->toc' ? 65 : e.type === 'toc->core' ? 60 : 40),
+        arrows: isToc ? { to: { enabled: true, scaleFactor: 0.8 } } : { to: { enabled: false } },
+        arrowStrikethrough: false,
+        color: { color: (isToc ? '#8fb4e8' : EDGE_SEMANTIC), opacity: 0.45 },
+        width: (isToc ? 0.8 : 0.5),
+        smooth: { type: 'dynamic', roundness: 0.4 },
+        font: { size: 9, align: 'middle', color: '#888' }
+      };
+    }
+
+    // ===================== vis-network 初始化 =====================
+    var container = $('mynetwork');
+    var options = {
+      interaction: {
+        hover: true, tooltipDelay: 80,
+        zoomView: true, dragView: true,
+        navigationButtons: true, keyboard: true,
+        multiselect: true
+      },
+      physics: {
+        enabled: true,
+        stabilization: { iterations: 80, updateInterval: 15 },
+        barnesHut: {
+          gravitationalConstant: -25000, centralGravity: 0.08,
+          springLength: 120, springConstant: 0.03, damping: 0.14
+        }
+      },
+      edges: {
+        smooth: true,
+        color: { color: '#aaa', opacity: 0.35 },
+        width: 0.5, selectionWidth: 1.5, hoverWidth: 1,
+        font: { size: 9, align: 'middle', color: '#888' }
+      },
+      nodes: {
+        font: { size: 12, color: '#333', strokeWidth: 1, strokeColor: '#fff' }
+      }
+    };
+    network = new vis.Network(container, allData, options);
+
+    // ===================== 数据加载 =====================
+    function updateStats() {
+      var ns = allData.nodes.length;
+      var es = allData.edges.length;
+      var chunks = Object.keys(loadedChunks).length;
+      $('stats').textContent = '节点 ' + ns + ' | 边 ' + es + ' | 已加载 ' + chunks + ' 章';
+    }
+
+    // 加载教材列表
+    function loadTextbooks() {
+      var wantedBook = '';
+      var m = window.location.search.match(/[?&]book=([^&]+)/);
+      if (m) { try { wantedBook = decodeURIComponent(m[1]); } catch (e) { wantedBook = m[1]; } }
+      fetch(API_BASE + '/textbooks')
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          // 书名 → 数据目录 id 的映射：教材名优先匹配，_clean 优先于原始名。
+          function resolveBookId(name) {
+            if (!name) return null;
+            var exact = list.find(function (tb) { return tb.id === name; });
+            if (exact) return exact.id;
+            var byName = list.filter(function (tb) { return tb.id === name || tb.id.indexOf(name) !== -1; });
+            if (byName.length === 0) return null;
+            return (byName.find(function (tb) { return tb.id.indexOf('_clean') !== -1; }) || byName[0]).id;
+          }
+          var bookId = resolveBookId(wantedBook) || (list.length > 0 ? list[0].id : null);
+          if (bookId) {
+            API = API_BASE + '/' + encodeURIComponent(bookId);
+            loadTOC();
+          }
+        })
+        .catch(function (e) {
+          console.error(e);
+          $('sidebar').innerHTML = '<div class="loading" style="color:#e04040">❌ 无法连接服务器</div>';
+        });
+    }
+
+    // 重置画布
+    function resetAll() {
+      allData.nodes.clear();
+      allData.edges.clear();
+      loadedChunks = {};
+      tocNameToId = {};
+      entityCache = {};
+      chapterOf = {};
+      entityChapters = {};
+      $('sidebar').innerHTML = '<div class="loading">加载中...</div>';
+    }
+
+    // 加载 TOC 树
+    function loadTOC() {
+      $('sidebar').innerHTML = '<div class="loading">加载中...</div>';
+      fetch(API + '/toc')
+        .then(function (r) { return r.json(); })
+        .then(function (tree) {
+          renderSidebar(tree);
+          renderTOCGraph(tree);
+        })
+        .catch(function (e) {
+          console.error(e);
+          toast('加载 TOC 失败');
+        });
+    }
+
+    // ===================== 目录树渲染 =====================
+    function renderSidebar(tree) {
+      var html = '';
+      function walk(nodes, depth) {
+        nodes.forEach(function (n) {
+          var hasChildren = n.children && n.children.length > 0;
+          var ec = n.entityCount || 0;
+          var indent = depth * 18;
+          html += '<div class="tree-item" data-name="' + escAttr(n.name) + '" style="padding-left:' + (8 + indent) + 'px" onclick="focusNode(\'' + escJS(n.name) + '\')">';
+          html += '<span class="arrow' + (hasChildren ? ' open' : '') + '">' + (hasChildren ? '▶' : '') + '</span>';
+          html += '<span class="label">' + escHtml(n.name) + '</span>';
+          if (ec > 0) html += '<span class="badge">' + ec + '</span>';
+          html += '</div>';
+          if (hasChildren) walk(n.children, depth + 1);
+        });
+      }
+      walk(tree, 0);
+      $('sidebar').innerHTML = html;
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function escAttr(s) {
+      return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escJS(s) {
+      return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+
+    // 点击目录项 → 聚焦节点
+    function focusNode(name) {
+      // 高亮当前项
+      var items = document.querySelectorAll('#sidebar .tree-item');
+      items.forEach(function (el) { el.classList.remove('active'); });
+      var target = document.querySelector('#sidebar .tree-item[data-name="' + escAttr(name) + '"]');
+      if (target) target.classList.add('active');
+
+      // 聚焦画布
+      var nodeExists = allData.nodes.get(name);
+      if (nodeExists) {
+        network.selectNodes([name], false);
+        network.focus(name, { scale: 1.4, animation: true, offset: { x: 0, y: 0 } });
+      }
+    }
+
+    // ===================== TOC 图渲染 =====================
+    function renderTOCGraph(tree) {
+      var nodes = [];
+      var edges = [];
+      var idx = 0;
+
+      function walk(treeNodes, parentName, depth) {
+        treeNodes.forEach(function (n) {
+          nodes.push(makeNode({
+            name: n.name, type: 'toc', level: 'toc',
+            description: n.description || n.name,
+            tocDepth: depth || 0
+          }));
+          tocNameToId[n.name] = n.name;
+          if (parentName) {
+            edges.push(makeEdge({ source: parentName, target: n.name, type: 'toc->toc' }, idx++));
+          }
+          if (n.children && n.children.length > 0) {
+            walk(n.children, n.name, (depth || 0) + 1);
+          }
+        });
+      }
+      walk(tree, null, 0);
+
+      allData.nodes.clear();
+      allData.edges.clear();
+      allData.nodes.add(nodes);
+      allData.edges.add(edges);
+
+      // 新 TOC 图需要重新物理布局 → 重置聚类注册并确保物理开启
+      setPhysics(true);
+      chapterOf = {};
+      entityChapters = {};
+
+      updateStats();
+      network.fit({ animation: true });
+      toast('已加载 ' + nodes.length + ' 个章节节点');
+
+      // 设置自动展开：双击 TOC 节点加载章节实体；聚类节点双击展开其内容
+      network.off('doubleClick');
+      network.on('doubleClick', function (params) {
+        if (params.nodes.length !== 1) return;
+        var nodeId = params.nodes[0];
+        if (network.isCluster(nodeId)) {
+          network.clustering.openCluster(nodeId);
+          return;
+        }
+        if (loadedChunks[nodeId]) {
+          toast('章节已加载，展开中...');
+          return;
+        }
+        expandSection(nodeId);
+      });
+
+      // 显式稳定：布局更美观（收敛后引擎自动停止模拟）
+      network.off('stabilizationIterationsDone');
+      network.stabilize(80);
+
+      // 右键展开实体
+      network.off('oncontext');
+      network.on('oncontext', function (params) {
+        if (params.nodes.length === 1) {
+          var nodeId = params.nodes[0];
+          var node = allData.nodes.get(nodeId);
+          if (node && node.group !== 'toc' && !entityCache[nodeId]) {
+            expandEntity(nodeId);
+          }
+        }
+      });
+
+      // 阻止浏览器默认右键菜单（图谱画布上）
+      container.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        return false;
+      });
+
+      // 邻居高亮：悬停节点 → 高亮其直接关联，其余淡化（节点多时跳过自动高亮，避免卡顿）
+      var highlightActive = false;
+      var HIGHLIGHT_LIMIT = 200;
+      network.off('hoverNode');
+      network.on('hoverNode', function (params) {
+        if (params.node && !highlightActive && allData.nodes.length <= HIGHLIGHT_LIMIT) highlightNeighbors(params.node, true);
+      });
+      network.off('blurNode');
+      network.on('blurNode', function () {
+        if (!highlightActive && allData.nodes.length <= HIGHLIGHT_LIMIT) clearHighlight();
+      });
+      // 选中节点 → 固定高亮（直到取消选择）
+      network.off('selectNode');
+      network.on('selectNode', function (params) {
+        if (params.nodes.length === 1) {
+          highlightActive = true;
+          highlightNeighbors(params.nodes[0], true);
+          showDetail(params.nodes[0]);
+        } else {
+          highlightActive = false;
+          clearHighlight();
+        }
+      });
+      network.off('deselectNode');
+      network.on('deselectNode', function () {
+        highlightActive = false;
+        clearHighlight();
+      });
+
+      // 交互（拖拽/缩放/平移）时确保物理引擎在线（动效常驻）
+      network.off('dragStart');
+      network.on('dragStart', function () { setPhysics(true); });
+      network.off('zoom');
+      network.on('zoom', function () { setPhysics(true); });
+      network.off('dragEnd');
+      network.on('dragEnd', function () { setPhysics(true); });
+    }
+
+    // ===================== 邻居高亮 =====================
+    function highlightNeighbors(nodeId, on) {
+      var nodesDS = allData.nodes;
+      var edgesDS = allData.edges;
+      var neighborIds = {};
+      neighborIds[nodeId] = true;
+      edgesDS.forEach(function (e) {
+        if (e.from === nodeId) neighborIds[e.to] = true;
+        if (e.to === nodeId) neighborIds[e.from] = true;
+      });
+      nodesDS.forEach(function (n) {
+        var isFocus = n.id === nodeId;
+        var isNeighbor = !!neighborIds[n.id];
+        var opacity = (isFocus || isNeighbor) ? 1 : 0.15;
+        nodesDS.update({
+          id: n.id,
+          opacity: opacity,
+          font: { size: (isFocus || isNeighbor) ? (n._baseFontSize || 12) : 9, color: '#333' },
+          color: n.color,
+        });
+      });
+      edgesDS.forEach(function (e) {
+        var isNeighbor = neighborIds[e.from] && neighborIds[e.to];
+        edgesDS.update({
+          id: e.id,
+          opacity: isNeighbor ? 1 : 0.1,
+        });
+      });
+    }
+
+    function clearHighlight() {
+      allData.nodes.forEach(function (n) {
+        allData.nodes.update({
+          id: n.id,
+          opacity: 1,
+          font: { size: n._baseFontSize || 12, color: '#333' },
+        });
+      });
+      allData.edges.forEach(function (e) {
+        allData.edges.update({ id: e.id, opacity: 1 });
+      });
+    }
+
+    // ===================== 节点详情与溯源 =====================
+    function showDetail(nodeId) {
+      var node = allData.nodes.get(nodeId);
+      if (!node) return;
+      var name = node.id;
+      $('detail-name').textContent = name;
+      var typeLabel = node.level === 'toc' ? '章节' : (node.level === 'core' ? '核心知识点' : '非核心知识点');
+      $('detail-type').textContent = typeLabel + (node.type ? ' · ' + node.type : '');
+      // 描述：优先节点描述，其次边关系描述
+      var desc = node.description || '';
+      if (!desc) {
+        var rels = allData.edges.get({ filter: function (e) { return e.from === name || e.to === name; } });
+        var types = {};
+        rels.forEach(function (e) {
+          var t = (e.title || '').split('|')[0] || '关联';
+          types[t] = (types[t] || 0) + 1;
+        });
+        var parts = Object.keys(types).map(function (t) { return t + ' × ' + types[t]; });
+        desc = '直接关联 ' + rels.length + ' 个实体' + (parts.length ? '（' + parts.join('，') + '）' : '');
+      }
+      $('detail-desc').textContent = desc;
+      // 溯源：找出该实体在图中的直接邻居（可点击聚焦）
+      var srcBox = $('detail-sources');
+      var neighbors = allData.edges.get({ filter: function (e) { return e.from === name || e.to === name; } })
+        .map(function (e) { return e.from === name ? e.to : e.from; })
+        .filter(function (id, i, arr) { return arr.indexOf(id) === i; })
+        .slice(0, 12);
+      if (neighbors.length === 0) {
+        srcBox.innerHTML = '<div style="color:#999">暂无直接关联</div>';
+      } else {
+        srcBox.innerHTML = '<strong>直接关联（点击聚焦）：</strong>';
+        neighbors.forEach(function (nb) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'detail-src';
+          btn.textContent = '🔗 ' + nb;
+          btn.onclick = function () {
+            network.selectNodes([nb], false);
+            network.focus(nb, { scale: 1.4, animation: true, offset: { x: 0, y: 0 } });
+            showDetail(nb);
+          };
+          srcBox.appendChild(btn);
+        });
+      }
+      $('detail-panel').style.display = 'block';
+    }
+
+    // ===================== 展开章节 =====================
+    // 布局策略：物理引擎始终可用（动效），静止 2 秒自动暂停省 CPU；
+    // 展开新节点时不硬编码坐标，交由物理引擎自然飞入布局。
+    function expandSection(tocName) {
+      showLoading();
+      var url = API + '/section/' + encodeURIComponent(tocName);
+      fetch(url)
+        .then(function (r) {
+          if (!r.ok) throw new Error('章节不存在或无数据');
+          return r.json();
+        })
+        .then(function (chunk) {
+          loadedChunks[tocName] = true;
+
+          var newNodes = [];
+          var newEdges = [];
+          var idx = Object.keys(allData.edges.get()).length;
+
+          // 只添加不在画布上的新节点；已存在的实体（跨章节复用）不动
+          (chunk.nodes || []).forEach(function (n) {
+            if (!allData.nodes.get(n.name)) newNodes.push(makeNode(n));
+          });
+
+          (chunk.edges || []).forEach(function (e, i) {
+            var eid = e.source + '|' + e.target + '|' + (e.type || '') + '|' + (idx + i);
+            if (!allData.edges.get(eid)) newEdges.push(makeEdge(e, idx + i));
+          });
+
+          // 唤醒物理引擎 → 新节点自然飞入布局（带动效）
+          setPhysics(true);
+          if (newNodes.length > 0) allData.nodes.add(newNodes);
+          if (newEdges.length > 0) allData.edges.add(newEdges);
+
+          registerChapter(chunk.nodes || [], tocName);
+
+          updateStats();
+          hideLoading();
+          toast('加载了 ' + newNodes.length + ' 个实体, ' + newEdges.length + ' 条边');
+
+          // 聚焦到该 TOC 节点
+          network.focus(tocName, { scale: 1.2, animation: true, offset: { x: 0, y: 0 } });
+        })
+        .catch(function (e) {
+          hideLoading();
+          toast('⚠ ' + e.message);
+        });
+    }
+
+    // ===================== 展开实体邻居 =====================
+    function expandEntity(entityName) {
+      entityCache[entityName] = true;
+      showLoading();
+      var url = API + '/expand/' + encodeURIComponent(entityName);
+      fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var newNodes = [];
+          var newEdges = [];
+          var idx = Object.keys(allData.edges.get()).length;
+
+          (data.nodes || []).forEach(function (n) {
+            if (!allData.nodes.get(n.name)) newNodes.push(makeNode(n));
+          });
+          (data.edges || []).forEach(function (e, i) {
+            newEdges.push(makeEdge(e, idx + i));
+          });
+
+          // 唤醒物理引擎 → 新实体自然飞入布局（带动效）
+          setPhysics(true);
+          if (newNodes.length > 0) allData.nodes.add(newNodes);
+          if (newEdges.length > 0) allData.edges.add(newEdges);
+
+          updateStats();
+          hideLoading();
+          toast('展开 ' + (newNodes.length) + ' 个关联实体');
+
+          if (newNodes.length > 0) {
+            network.focus(entityName, { scale: 1.3, animation: true, offset: { x: 0, y: 0 } });
+          }
+        })
+        .catch(function (e) {
+          entityCache[entityName] = false;
+          hideLoading();
+          toast('⚠ ' + e.message);
+        });
+    }
+
+    // ===================== 搜索 =====================
+    var searchInput = $('search');
+    var searchDropdown = $('search-dropdown');
+    var searchTimer = null;
+
+    searchInput.addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      var q = this.value.trim();
+      if (!q) {
+        searchDropdown.style.display = 'none';
+        return;
+      }
+      searchTimer = setTimeout(function () {
+        fetch(API + '/search?q=' + encodeURIComponent(q) + '&limit=15')
+          .then(function (r) { return r.json(); })
+          .then(function (results) {
+            if (results.length === 0) {
+              searchDropdown.innerHTML = '<div class="no-result">未找到匹配实体</div>';
+            } else {
+              searchDropdown.innerHTML = results.map(function (r) {
+                var levelBadge = r.level === 'core' ? '⭐' : '🔹';
+                return '<div class="item" onclick="searchSelect(\'' + escJS(r.name) + '\')">' +
+                  '<span class="name">' + levelBadge + ' ' + escHtml(r.name) + '</span>' +
+                  '<span class="type">' + escHtml(r.type) + '</span>' +
+                  '</div>';
+              }).join('');
+            }
+            searchDropdown.style.display = 'block';
+          });
+      }, 250);
+    });
+
+    searchInput.addEventListener('blur', function () {
+      setTimeout(function () { searchDropdown.style.display = 'none'; }, 200);
+    });
+
+    searchInput.addEventListener('focus', function () {
+      if (this.value.trim() && searchDropdown.children.length > 0) {
+        searchDropdown.style.display = 'block';
+      }
+    });
+
+    function searchSelect(name) {
+      searchInput.value = name;
+      searchDropdown.style.display = 'none';
+
+      // 检查节点是否已在画布上
+      var node = allData.nodes.get(name);
+      if (node) {
+        network.selectNodes([name], false);
+        network.focus(name, { scale: 1.5, animation: true, offset: { x: 0, y: 0 } });
+        return;
+      }
+
+      // 不在画布上 → 尝试展开（作为实体）
+      showLoading();
+      expandEntity(name);
+    }
+
+    // ===================== 快捷键 =====================
+    // ===================== 工具栏按钮 =====================
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen).call(document.documentElement);
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      }
+    }
+
+    function toggleToolbar() {
+      var collapsed = document.body.classList.toggle('toolbar-collapsed');
+      $('toolbar-toggle').innerHTML = collapsed ? '▼' : '▲';
+      $('toolbar-toggle').title = collapsed ? '展开工具栏 (S)' : '折叠工具栏 (S)';
+      setTimeout(function () { if (network) network.fit({ animation: true }); }, 220);
+    }
+
+    function toggleSidebar() {
+      var collapsed = document.body.classList.toggle('sidebar-collapsed');
+      // vis-network 会动态注入样式导致 transform 失效，改用 left 定位控制折叠
+      var sb = $('sidebar');
+      sb.style.left = collapsed ? '-260px' : '0px';
+      var cw = $('canvas-wrap');
+      cw.style.left = collapsed ? '0px' : '260px';
+      $('btn-sidebar').classList.toggle('active', !collapsed);
+      $('btn-sidebar').title = collapsed ? '展开目录 (B)' : '折叠目录 (B)';
+      setTimeout(function () { if (network) network.fit({ animation: true }); }, 220);
+    }
+
+    $('btn-sidebar').addEventListener('click', toggleSidebar);
+    $('btn-back').addEventListener('click', function () {
+      // 通知父页面返回（iframe 内嵌场景），独立打开时回退到浏览器后退
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'treekg-back' }, '*');
+      } else {
+        window.history.back();
+      }
+    });
+
+    // ===================== 收起全部 =====================
+    $('btn-collapse').addEventListener('click', function () {
+      loadedChunks = {};
+      entityCache = {};
+      if (clustered) {
+        openAllClusters();
+        clustered = false;
+        $('btn-cluster').classList.remove('active');
+      }
+      // 重新加载目录树（回到纯净 TOC 图）
+      fetch(API + '/toc')
+        .then(function (r) { return r.json(); })
+        .then(function (tree) {
+          renderSidebar(tree);
+          renderTOCGraph(tree);
+          toast('已收起全部，回到目录树');
+        });
+    });
+
+    // ===================== 导出 PNG =====================
+    $('btn-export').addEventListener('click', function () {
+      var canvas = document.querySelector('#mynetwork canvas');
+      if (!canvas) return;
+      var link = document.createElement('a');
+      link.download = 'knowledge-graph.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast('图谱已导出 PNG');
+    });
+
+    // ===================== 标签显隐 =====================
+    var labelsVisible = true;
+    $('btn-labels').addEventListener('click', function () {
+      labelsVisible = !labelsVisible;
+      $('btn-labels').classList.toggle('active', labelsVisible);
+      allData.nodes.forEach(function (n) {
+        allData.nodes.update({
+          id: n.id,
+          font: labelsVisible ? { size: n._baseFontSize || 12, color: '#333' } : { size: 0 },
+        });
+      });
+      toast(labelsVisible ? '显示标签' : '已隐藏标签');
+    });
+
+    // ===================== 聚类折叠 =====================
+    var clustered = false;
+    // 展开全部聚类（vendored 版本无 openAllClusters，逐个 open）
+    function openAllClusters() {
+      var ids = [];
+      for (var id in network.body.nodes) {
+        if (network.body.nodes[id].isCluster) ids.push(id);
+      }
+      ids.forEach(function (id) { network.clustering.openCluster(id); });
+    }
+    var CLUSTER_PROPS = {
+      shape: 'dot', size: 16,
+      color: { background: '#b9a7e8', border: '#7d5fc0', highlight: { background: '#cbbdf0', border: '#7d5fc0' } },
+      borderWidth: 2, font: { size: 9, color: '#7d5fc0' },
+      shadow: { enabled: true, color: 'rgba(125,95,192,0.35)', size: 6 }
+    };
+    $('btn-cluster').addEventListener('click', function () {
+      if (clustered) {
+        openAllClusters();
+        clustered = false;
+        $('btn-cluster').classList.remove('active');
+        toast('已展开聚类');
+        return;
+      }
+      // 按章节聚合：把每个已加载章节的实体并入该章节节点
+      var joined = 0;
+      Object.keys(chapterOf).forEach(function (tocName) {
+        var children = chapterOf[tocName].filter(function (n) { return allData.nodes.get(n); });
+        if (children.length === 0) return;
+        // 连通分量聚类：一个章节下的实体与其章节节点一起收进簇
+        network.clustering.clusterByConnection(tocName, {
+          joinCondition: function (chapterOpts, nodeOpts) { return children.indexOf(nodeOpts.id) !== -1; },
+          clusterNodeProperties: Object.assign({}, CLUSTER_PROPS)
+        });
+        joined += children.length;
+      });
+      clustered = true;
+      $('btn-cluster').classList.add('active');
+      if (joined > 0) {
+        toast('已按章节聚类 ' + joined + ' 个实体（点击聚合节点可展开）');
+      } else {
+        toast('暂无已加载章节内容，先双击章节加载知识点');
+      }
+    });
+
+    // ===================== 类型过滤 =====================
+    $('btn-filter').addEventListener('click', function () {
+      var panel = $('filter-panel');
+      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+    });
+    function applyFilters() {
+      var showToc = $('filter-toc').checked;
+      var showCore = $('filter-core').checked;
+      var showNoncore = $('filter-noncore').checked;
+      allData.nodes.forEach(function (n) {
+        var keep = (n.group === 'toc' && showToc) || (n.group === 'core' && showCore) || (n.group === 'noncore' && showNoncore);
+        allData.nodes.update({ id: n.id, hidden: !keep });
+      });
+    }
+    $('filter-toc').addEventListener('change', applyFilters);
+    $('filter-core').addEventListener('change', applyFilters);
+    $('filter-noncore').addEventListener('change', applyFilters);
+    $('detail-close').addEventListener('click', function () { $('detail-panel').style.display = 'none'; });
+
+    // ===================== 图例折叠 =====================
+    $('legend-fold').addEventListener('click', function () {
+      document.body.classList.add('legend-collapsed');
+    });
+    $('legend-toggle').addEventListener('click', function () {
+      document.body.classList.remove('legend-collapsed');
+    });
+
+    // ===================== 侧栏拖拽调宽 =====================
+    (function setupSidebarResizer() {
+      var resizer = $('sidebar-resizer');
+      var sidebar = $('sidebar');
+      var canvasWrap = $('canvas-wrap');
+      var dragging = false;
+
+      resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        dragging = true;
+        resizer.classList.add('dragging');
+      });
+
+      document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        // 宽度限制 160 ~ 480
+        var w = Math.max(160, Math.min(480, e.clientX));
+        sidebar.style.width = w + 'px';
+        canvasWrap.style.left = w + 'px';
+        resizer.style.left = w + 'px';
+        if (network) network.redraw();
+      });
+
+      document.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('dragging');
+        if (network) network.fit({ animation: true });
+      });
+    })();
+    $('btn-zoom-in').addEventListener('click', function () { network.moveTo({ scale: network.getScale() * 1.25, animation: true }); });
+    $('btn-zoom-out').addEventListener('click', function () { network.moveTo({ scale: network.getScale() / 1.25, animation: true }); });
+    $('btn-fit').addEventListener('click', function () { network.fit({ animation: true }); });
+    $('btn-fullscreen').addEventListener('click', toggleFullscreen);
+    $('toolbar-toggle').addEventListener('click', toggleToolbar);
+
+    // ===================== 快捷键 =====================
+    document.addEventListener('keydown', function (e) {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+      }
+      if (e.key === 'Escape') {
+        searchDropdown.style.display = 'none';
+        $('filter-panel').style.display = 'none';
+        $('detail-panel').style.display = 'none';
+        network.fit({ animation: true });
+      }
+      // R 键：重置视图
+      if (e.key === 'r' && !e.ctrlKey && document.activeElement !== searchInput) {
+        network.fit({ animation: true });
+      }
+      // F 全屏 / B 目录 / S 工具栏
+      if (document.activeElement !== searchInput) {
+        if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+        if (e.key === 'b' || e.key === 'B') toggleSidebar();
+        if (e.key === 's' || e.key === 'S') toggleToolbar();
+      }
+    });
+
+    // ===================== 启动 =====================
+    loadTextbooks();
+    updateStats();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,40 @@
+{
+  "schema_version": "d1-three-stage-manifest-1.0",
+  "dataset_id": "d1_three_stage_v5",
+  "version": "5.0.0",
+  "target_rule_family": "semantic_conflict_pair_closure",
+  "stages": {
+    "discovery": {
+      "case_count": 8,
+      "use": "baseline-only failure discovery; never score final effect"
+    },
+    "qualification": {
+      "case_count": 8,
+      "use": "unseen candidate-rule admission gate; never score final effect"
+    },
+    "final_ab": {
+      "case_count": 100,
+      "paired_generation_count": 200,
+      "groups": {
+        "target_fault": 60,
+        "compatible_boundary": 20,
+        "ordinary_control": 20
+      },
+      "pair_orders": {
+        "AB": 50,
+        "BA": 50
+      },
+      "use": "strict single-treatment production A/B and four final metrics"
+    }
+  },
+  "runtime_gold_separated": true,
+  "cross_stage_prompt_and_material_overlap": 0,
+  "formal_environment_write_allowed": false,
+  "annotation_status": "synthetic_evaluation_fixture_pending_independent_human_review",
+  "files": {
+    "d1_rule_discovery_v5.jsonl": "96689bbfc54001416fa0bc3e218fe94e1504effd1c41c3083bd8f44ab7db6804",
+    "d1_rule_qualification_v5.jsonl": "610fc85ad1aa8eb02319c9996c35031f414108552b034dbd76f6ee86b2555179",
+    "d1_rule_final_ab_v5.jsonl": "71c9f8fc58b4e06b19675a4f330d29366bf3178321587ae98b2ded069984a50e",
+    "d1_rule_three_stage_v5.gold.jsonl": "e96091bcefd1f06fef02350247a7ff9a4d940a19bae69920ab12b95155978488"
+  }
+}

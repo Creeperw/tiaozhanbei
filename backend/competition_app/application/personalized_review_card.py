@@ -1,0 +1,5103 @@
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import re
+from contextvars import ContextVar
+from datetime import datetime, timezone
+from dataclasses import dataclass
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, Callable, Literal
+from uuid import uuid4
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from competition_app.agents.common import envelope
+from competition_app.agents.planner import PlannerAgent, PlannerDecision
+from competition_app.contracts.base import AgentEnvelope, WritebackIntent
+from competition_app.contracts.execution import ExecutionPlan
+from competition_app.contracts.learning_plan import (
+    LearningPlanClarificationResult,
+    LearningPlanResult,
+    LearningTask,
+    LongTermPlan,
+    ShortTermPlan,
+)
+from competition_app.contracts.paper import (
+    ExamPaperDraft,
+    PaperBlueprint,
+    QuestionCandidatePool,
+)
+from competition_app.contracts.resource import (
+    AuditResult,
+    QuestionConsumptionDecision,
+    ResourceDraft,
+    ResourceVersion,
+)
+from competition_app.contracts.review import ReviewResourceBinding, ReviewSchedule, ReviewTask
+from competition_app.contracts.workshop import UiAction
+from competition_app.runtime.orchestrator import ExecutionResult, Orchestrator
+from competition_app.runtime.trace import CommunicationTrace, RepairTrace
+from competition_app.runtime.snapshot import SnapshotExporter, _sanitize
+from competition_app.runtime.model_trace import ModelCallTrace, ModelTraceRecorder
+from competition_app.runtime.event_stream import (
+    build_public_agent_output,
+    drain_recording_sink,
+    emit_runtime_event,
+    public_runtime_event,
+)
+from competition_app.runtime.debug_trace import (
+    DebugTraceManager,
+    record_debug_trace,
+    update_debug_trace_metadata,
+)
+from competition_app.runtime.data_permissions import AgentDataPermissionGateway
+from competition_app.repositories.learning_plan import (
+    InMemoryLearningPlanRepository,
+    LearningPlanRepository,
+)
+from competition_app.repositories.runtime import (
+    ConversationRepository,
+    InMemoryConversationRepository,
+    InMemoryRunStateRepository,
+    RunStateRepository,
+)
+from competition_app.repositories.failure_case import (
+    AuditFailureCase,
+    FailureCaseRepository,
+    InMemoryFailureCaseRepository,
+)
+from competition_app.services.writeback import WritebackExecutor
+from competition_app.services.review import ReviewService
+from competition_app.services.plan_scope import (
+    infer_continued_plan_scope,
+    infer_plan_scope,
+)
+from competition_app.services.learning_monitoring import LearningMonitoringService
+from competition_app.services.smart_paper import (
+    build_smart_paper_execution_plan,
+    validate_smart_paper_constraints,
+)
+from competition_app.services.conversation_history import (
+    sanitize_compressed_dialogue_summary,
+    sanitize_conversation_content,
+    sanitize_conversation_messages,
+)
+from competition_app.exam_scope import (
+    bind_exam_workspace,
+    bind_exam_workspace_context,
+    current_exam_workspace,
+)
+from competition_app.contracts.exam_scope import LEGACY_EXAM_SCOPE
+from competition_app.application.workflow_presentation import workflow_result_to_markdown
+
+
+_FAILURE_STEP_CONTEXT: ContextVar[str | None] = ContextVar(
+    "personalized_review_card_failure_step",
+    default=None,
+)
+
+
+class WorkflowExecutionError(RuntimeError):
+    """Preserve safe execution diagnostics while crossing the use-case boundary."""
+
+    def __init__(self, detail: str, execution: ExecutionResult) -> None:
+        super().__init__(f"personalized review card execution failed: {detail}")
+        self.failed_step = self._failed_step(execution.error_message)
+        diagnostics = dict(execution.error_diagnostics or {})
+        if diagnostics:
+            self.last_error_details = {
+                "reason": "step_timeout"
+                if diagnostics.get("cancel_source")
+                == "orchestrator_step_deadline"
+                else "execution_failed",
+                **diagnostics,
+            }
+        self.last_timing_details = {
+            key: diagnostics[key]
+            for key in (
+                "provider_duration_ms",
+                "request_attempt_count",
+                "last_reasoning_at_monotonic",
+                "reasoning_delta_count",
+                "response_chars",
+            )
+            if key in diagnostics
+        }
+        for key, value in diagnostics.items():
+            setattr(self, key, value)
+
+    @staticmethod
+    def _failed_step(message: str | None) -> str | None:
+        match = re.search(r"步骤\s+([^（(\s]+)", str(message or ""))
+        return match.group(1) if match else None
+
+class ExamWorkspaceChangedError(RuntimeError):
+    """Reject a checkpoint after the learner switches exam workspaces."""
+
+    error_code = "exam_workspace_changed"
+    retryable = False
+
+    def __init__(self, *, checkpoint_scope: str, current_scope: str) -> None:
+        super().__init__(
+            "考试目标已切换，旧工作流不能在新的考试空间中继续；"
+            "请在当前考试下重新发起该请求。"
+        )
+        self.checkpoint_scope = checkpoint_scope
+        self.current_scope = current_scope
+
+_RUNTIME_ONLY_CONTINUATION_CONTEXT_KEYS = frozenset({
+    "cancellation_check",
+    "model_trace_recorder",
+    "terminal_trace",
+})
+
+class PlanChangeContext(BaseModel):
+    original_request: str = Field(min_length=1)
+    target_layers: list[Literal["long_term", "short_term", "daily_task"]] = Field(min_length=1)
+    change_details: str = Field(min_length=1)
+    available_time: str | None = None
+    keep_items: str | None = None
+    drop_items: str | None = None
+    expected_outcome: str | None = None
+
+
+class ReviewCardRequest(BaseModel):
+    operation_id: str | None = Field(default=None, min_length=8, max_length=96)
+    thread_id: str | None = Field(default=None, min_length=8, max_length=128)
+    conversation_id: str | None = Field(default=None, min_length=8, max_length=128)
+    learner_id: str
+    user_request: str = Field(min_length=1)
+    # Unknown is distinct from a learner-supplied limit. Product surfaces that
+    # own a real structured budget still send it explicitly; open chat must not
+    # manufacture a default and let it outrank profile/plan facts.
+    available_minutes: int | None = Field(default=None, gt=0, le=24 * 60)
+    messages: list[dict[str, str]] = Field(default_factory=list)
+    user_profile: dict[str, Any] = Field(default_factory=dict)
+    learning_profile: dict[str, Any] = Field(default_factory=dict)
+    system_data: dict[str, Any] = Field(default_factory=dict)
+    user_knowledge_state: list[dict[str, Any]] = Field(default_factory=list)
+    question_attempt: list[dict[str, Any]] = Field(default_factory=list)
+    question_learning_stats: list[dict[str, Any]] = Field(default_factory=list)
+    long_term_plan: dict[str, Any] = Field(default_factory=dict)
+    short_term_plan: dict[str, Any] = Field(default_factory=dict)
+    learning_task: dict[str, Any] = Field(default_factory=dict)
+    exam_constraints: dict[str, Any] = Field(default_factory=dict)
+    daily_task_item_id: str | None = Field(default=None, min_length=1, max_length=120)
+    plan_change_context: PlanChangeContext | None = None
+    plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
+    plan_scope_hint: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
+    system_operation: Literal["due_review_dispatch", "plan_review_replan"] | None = None
+    current_page: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReviewCardResult(BaseModel):
+    status: Literal["success", "failed"]
+    execution_id: str
+    task_type: str
+    direct_response: str | None = None
+    learner_data: dict[str, Any] = Field(default_factory=dict)
+    agent_outputs: list[AgentEnvelope[Any]]
+    learning_plan: Any | None = None
+    review_schedule: ReviewSchedule | None = None
+    review_task: ReviewTask | None = None
+    resource: ResourceDraft | None = None
+    resource_version: ResourceVersion | None = None
+    resource_binding: ReviewResourceBinding | None = None
+    audit: AuditResult | None = None
+    snapshot_path: Path
+    writeback_intents: list[WritebackIntent]
+    model_trace: list[ModelCallTrace] = Field(default_factory=list)
+    ui_actions: list[UiAction] = Field(default_factory=list)
+    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
+
+
+class WorkflowResumeRequest(BaseModel):
+    answer: str = Field(min_length=1)
+    plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
+    plan_change_context: PlanChangeContext | None = None
+    profile_updates: dict[str, str] = Field(default_factory=dict)
+    current_page: dict[str, Any] = Field(default_factory=dict)
+
+
+class CoordinationSummary(BaseModel):
+    """Versioned, persisted summary of executor coordination artifacts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["1.0"] = "1.0"
+    communication_trace: list[CommunicationTrace] = Field(default_factory=list)
+    repair_trace: list[RepairTrace] = Field(default_factory=list)
+
+
+class WorkflowInterruptedResult(BaseModel):
+    status: Literal["interrupted"] = "interrupted"
+    thread_id: str
+    execution_id: str
+    task_type: str
+    interrupt: dict[str, Any]
+    completed_steps: list[str] = Field(default_factory=list)
+    agent_outputs: list[AgentEnvelope[Any]] = Field(default_factory=list)
+    model_trace: list[ModelCallTrace] = Field(default_factory=list)
+    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
+
+
+class WorkflowHumanReviewResult(BaseModel):
+    status: Literal["waiting_human_review"] = "waiting_human_review"
+    review_id: str = "HR_PENDING"
+    execution_id: str
+    task_type: str
+    review: AuditResult
+    preview: dict[str, Any] = Field(default_factory=dict)
+    completed_steps: list[str] = Field(default_factory=list)
+    agent_outputs: list[AgentEnvelope[Any]] = Field(default_factory=list)
+    model_trace: list[ModelCallTrace] = Field(default_factory=list)
+    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
+
+
+@dataclass
+class _WorkflowContinuation:
+    request: ReviewCardRequest
+    case_id: str
+    execution_id: str
+    execution_plan: ExecutionPlan
+    planner_output: AgentEnvelope[Any]
+    context: dict[str, Any]
+
+
+class _PrerequisiteInterrupted(Exception):
+    """A parent-plan run is waiting for the learner before the child can continue."""
+
+    def __init__(
+        self,
+        *,
+        thread_id: str,
+        interrupt: dict[str, Any],
+        scope: str | None = None,
+        confirmation: str | None = None,
+    ) -> None:
+        super().__init__("parent planning prerequisite is waiting for learner input")
+        self.thread_id = thread_id
+        self.interrupt = interrupt
+        self.scope = scope
+        self.confirmation = confirmation
+
+
+class PersonalizedReviewCardUseCase:
+    conversation_compression_threshold_chars = 4_000
+
+    def __init__(
+        self,
+        orchestrator: Orchestrator,
+        snapshot_exporter: SnapshotExporter,
+        writeback_executor: WritebackExecutor | None = None,
+        terminal_trace=None,
+        model_trace_recorder: ModelTraceRecorder | None = None,
+        plan_repository: LearningPlanRepository | None = None,
+        run_state_repository: RunStateRepository | None = None,
+        conversation_repository: ConversationRepository | None = None,
+        review_service: ReviewService | None = None,
+        behavior_context_loader: Callable[[str], dict[str, Any]] | None = None,
+        multiscale_state_loader: Callable[..., dict[str, Any]] | None = None,
+        path_candidate_loader: Callable[..., dict[str, Any]] | None = None,
+        memory_retriever: Any | None = None,
+        memory_governance_writer: Callable[..., dict[str, Any]] | None = None,
+        profile_update_writer: Callable[[str, dict[str, Any], str | None], dict[str, Any]] | None = None,
+        profile_memory_extractor: Callable[[str, str, str | None], dict[str, Any]] | None = None,
+        data_permission_gateway: AgentDataPermissionGateway | None = None,
+        workshop_runtime: Any | None = None,
+        syllabus_context_loader: Callable[[str, str], dict[str, Any]] | None = None,
+        failure_case_repository: FailureCaseRepository | None = None,
+        feedback_governance_service: Any | None = None,
+        failure_signature_service: Any | None = None,
+        debug_trace_manager: DebugTraceManager | None = None,
+    ) -> None:
+        self.orchestrator = orchestrator
+        self.snapshot_exporter = snapshot_exporter
+        self.writeback_executor = writeback_executor
+        self.terminal_trace = terminal_trace
+        self.model_trace_recorder = model_trace_recorder
+        self.plan_repository = plan_repository or InMemoryLearningPlanRepository()
+        self.run_state_repository = run_state_repository or InMemoryRunStateRepository()
+        self.conversation_repository = (
+            conversation_repository or InMemoryConversationRepository()
+        )
+        self.review_service = review_service
+        self.behavior_context_loader = behavior_context_loader
+        self.multiscale_state_loader = multiscale_state_loader
+        self.path_candidate_loader = path_candidate_loader
+        self.memory_retriever = memory_retriever
+        self.memory_governance_writer = memory_governance_writer
+        self.profile_update_writer = profile_update_writer
+        self.profile_memory_extractor = profile_memory_extractor
+        self.data_permission_gateway = data_permission_gateway or AgentDataPermissionGateway()
+        self.workshop_runtime = workshop_runtime
+        self.syllabus_context_loader = syllabus_context_loader
+        self.failure_case_repository = (
+            failure_case_repository or InMemoryFailureCaseRepository()
+        )
+        self.feedback_governance_service = feedback_governance_service
+        self.failure_signature_service = failure_signature_service
+        self.debug_trace_manager = debug_trace_manager
+        self._continuations: dict[str, _WorkflowContinuation] = {}
+        self._deferred_memory_conflict_notice: dict[str, Any] | None = None
+
+    async def execute(
+        self,
+        request: ReviewCardRequest,
+        *,
+        execution_entrypoint: str | None = None,
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+        failure_step_token = _FAILURE_STEP_CONTEXT.set(None)
+        thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
+        conversation_id = request.conversation_id or thread_id
+        # 系统自动任务（如到期复习卡调度）只保留轻量会话：会话标记为
+        # system（不出现在用户侧边栏），且不落库 assistant 回复，仅保留
+        # 请求消息用于排查。用户发起的任务保持 user 会话完整语义。
+        conversation_source = "system" if request.system_operation else "user"
+        operation_id = request.operation_id or thread_id
+        operation_digest = hashlib.sha256(
+            f"{request.learner_id}:{operation_id}".encode("utf-8")
+        ).hexdigest()[:32]
+        execution_id = f"EXE_{operation_digest}"
+        case_id = f"CASE_{operation_digest}"
+        update_debug_trace_metadata(
+            execution_id=execution_id,
+            case_id=case_id,
+            learner_id=request.learner_id,
+        )
+        record_debug_trace(
+            "run_metadata",
+            execution_id=execution_id,
+            case_id=case_id,
+            learner_id=request.learner_id,
+            execution_entrypoint=execution_entrypoint or "execute",
+        )
+        record_debug_trace(
+            "run_started",
+            resumed=False,
+            user_request=request.user_request,
+        )
+        try:
+            if self.model_trace_recorder:
+                self.model_trace_recorder.reset()
+            _FAILURE_STEP_CONTEXT.set("run_state")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "running",
+                    "thread_id": thread_id,
+                    "execution_id": execution_id,
+                    "case_id": case_id,
+                    "learner_id": request.learner_id,
+                    # 失败路径（mark_run_failed / save_failure_message）需要
+                    # 知道会话归属，才能在 run_state 之外落库一条 assistant
+                    # 错误消息（否则刷新后对话看起来“直接没了”）。
+                    "conversation_id": request.conversation_id or thread_id,
+                },
+            )
+            _FAILURE_STEP_CONTEXT.set("conversation")
+            return await self._execute_started_run(
+                request=request,
+                thread_id=thread_id,
+                conversation_id=conversation_id,
+                conversation_source=conversation_source,
+                execution_id=execution_id,
+                case_id=case_id,
+                execution_entrypoint=execution_entrypoint,
+            )
+        except asyncio.CancelledError:
+            record_debug_trace("run_cancelled", status="cancelled")
+            raise
+        except Exception as exc:
+            # _record_run_failure → mark_run_failed 内部会经 save_failure_message
+            # 把失败回执落库到会话（conversation_id 已在初始 run_state 中），
+            # 刷新后对话不会只剩用户消息。
+            self._record_run_failure(thread_id, exc)
+            record_debug_trace(
+                "run_failed",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                run_state=self.get_run_state(thread_id),
+            )
+            raise
+        finally:
+            # Failure attribution belongs to this request only. A leaked
+            # terminal "persistence" marker would otherwise misclassify a
+            # later, unrelated audit failure in a reused worker context.
+            _FAILURE_STEP_CONTEXT.reset(failure_step_token)
+
+    async def _execute_review_task_adjustment(
+        self,
+        *,
+        request: ReviewCardRequest,
+        case_id: str,
+        execution_id: str,
+        conversation_id: str,
+        thread_id: str,
+        conversation_source: str = "user",
+        persisted_messages: list[dict[str, str]],
+        context: dict[str, Any],
+        planner_output: AgentEnvelope[PlannerDecision],
+    ) -> ReviewCardResult:
+        """Inline, deterministic execution of review-task adjustments.
+
+        The Planner already classified the user request as a review-task
+        adjustment and selected an execution intent (``review_adjustment``).
+        This method performs the write (capacity preference / task status)
+        through the review service and composes the reply from the real,
+        post-change state — no model call, no invented numbers.
+        """
+
+        adjustment = planner_output.payload.review_adjustment
+        learner_id = request.learner_id
+        cancellation_check = lambda: self.raise_if_run_cancelled(thread_id)
+        response_lines: list[str] = []
+        changed = False
+        changed_task_ids: list[str] = []
+        try:
+            cancellation_check()
+            if self.review_service is None:
+                raise RuntimeError("复习任务调整服务当前不可用")
+            if adjustment == "reduce_capacity":
+                current = self.review_service.get_daily_capacity(learner_id)
+                new_capacity = 1 if current is None else max(1, current - 1)
+                self.review_service.set_daily_capacity(learner_id, new_capacity)
+                response_lines.append(
+                    f"好的，已把每日复习任务上限调整为 **{new_capacity} 条/天**。"
+                )
+                changed = True
+            elif adjustment == "increase_capacity":
+                current = self.review_service.get_daily_capacity(learner_id)
+                new_capacity = 3 if current is None else min(50, current + 2)
+                self.review_service.set_daily_capacity(learner_id, new_capacity)
+                response_lines.append(
+                    f"好的，已把每日复习任务上限调整为 **{new_capacity} 条/天**。"
+                )
+                changed = True
+            elif adjustment in {"cancel_tasks", "snooze_tasks"}:
+                # 用户视角的“复习任务”包含两类：已物化为 review_tasks 的活跃
+                # 交付，以及已到期但尚未生成任务的记忆单元（due memory units）。
+                # 只处理前者会导致“明明有 10 条到期复习却说没有待处理任务”。
+                queue = self.review_service.get_queue(learner_id, limit=200)
+                name_by_kp = {
+                    entry.memory_unit.kp_id: (
+                        entry.memory_unit.prompt_abstract
+                        if entry.memory_unit.prompt_abstract.strip()
+                        and entry.memory_unit.prompt_abstract.strip()
+                        != entry.memory_unit.kp_id
+                        else entry.memory_unit.kp_id
+                    )
+                    for entry in queue.entries
+                }
+                # 1) 到期但无任务的记忆单元：推迟记忆单元（等价于取消/推迟这次复习）
+                postponed_kp_ids = self.review_service.postpone_due_memory_units(
+                    learner_id,
+                    hours=24 if adjustment == "snooze_tasks" else 24,
+                )
+                for kp_id in postponed_kp_ids:
+                    changed_task_ids.append(f"due:{kp_id}")
+                    response_lines.append(
+                        f"- {name_by_kp.get(kp_id, kp_id)}"
+                    )
+                # 2) 已物化为任务的活跃交付：走 cancel_task/snooze_task
+                deliveries = self.review_service.list_active_deliveries(learner_id)
+                for delivery in deliveries:
+                    task_id = delivery.task.review_task_id
+                    if adjustment == "cancel_tasks":
+                        self.review_service.cancel_task(
+                            task_id, learner_id=learner_id
+                        )
+                    else:
+                        self.review_service.snooze_task(
+                            task_id, learner_id=learner_id
+                        )
+                    changed_task_ids.append(task_id)
+                    kp_name = name_by_kp.get(
+                        delivery.task.primary_kp_id,
+                        delivery.task.primary_kp_id,
+                    )
+                    response_lines.append(f"- {kp_name}")
+                if not response_lines:
+                    response_lines.append("当前没有待处理的复习任务，无需调整。")
+                else:
+                    action_label = (
+                        "已取消以下复习任务（对应知识点稍后再安排）："
+                        if adjustment == "cancel_tasks"
+                        else "已把以下复习任务推迟到 24 小时后再提醒："
+                    )
+                    response_lines.insert(0, action_label)
+                    changed = True
+            else:
+                raise ValueError(f"unsupported review adjustment: {adjustment}")
+        except Exception as exc:
+            emit_runtime_event(
+                "review_adjustment_failed",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+            if not response_lines:
+                response_lines.append(
+                    "抱歉，这次没能完成复习任务调整，请稍后再试或换一种说法。"
+                )
+        _FAILURE_STEP_CONTEXT.set("review_adjustment_snapshot")
+        cancellation_check()
+        # Memory 参与（用户同时表达长期偏好时）与业务写库并行是安全的：
+        # 记忆提取只读本轮消息，调整写库只依赖 review_service。
+        memory_output = None
+        if "memory_agent" in planner_output.payload.selected_agents:
+            memory_agent = self.orchestrator.agent_registry.get("memory_agent")
+            memory_context = {
+                **context,
+                "step_id": "memory",
+                "dependency_outputs": {},
+            }
+            emit_runtime_event(
+                "step_started",
+                step_id="memory",
+                agent="memory_agent",
+                depends_on=[],
+            )
+            memory_output = await memory_agent.run(memory_context)
+            cancellation_check()
+            emit_runtime_event(
+                "system_output",
+                step_id="memory",
+                agent="memory_agent",
+                output=memory_output,
+            )
+            emit_runtime_event(
+                "step_completed",
+                step_id="memory",
+                agent="memory_agent",
+                status="success",
+            )
+        agent_outputs = (
+            [planner_output, memory_output]
+            if memory_output is not None
+            else [planner_output]
+        )
+        if memory_output is not None:
+            cancellation_check()
+            memory_conflict_notice = self._persist_memory_governance(
+                request=request,
+                execution_id=execution_id,
+                agent_outputs=agent_outputs,
+                cancellation_check=cancellation_check,
+            )
+            self._deferred_memory_conflict_notice = (
+                memory_conflict_notice
+                if memory_conflict_notice is not None
+                else None
+            )
+            cancellation_check()
+        snapshot_path = self.snapshot_exporter.export(
+            case_id,
+            execution_id,
+            {
+                "request": request,
+                "agent_outputs": agent_outputs,
+                "review_adjustment": adjustment,
+                "changed": changed,
+                "changed_task_ids": changed_task_ids,
+                "model_trace": self._model_trace(),
+            },
+        )
+        cancellation_check()
+        result = ReviewCardResult(
+            status="success",
+            execution_id=execution_id,
+            task_type="review_task_adjustment",
+            direct_response="\n".join(response_lines),
+            agent_outputs=agent_outputs,
+            snapshot_path=snapshot_path,
+            writeback_intents=[],
+            model_trace=self._model_trace(),
+        )
+        self._remember_run(
+            thread_id,
+            {
+                "status": "completed",
+                "thread_id": thread_id,
+                "result": result,
+                "continuation": None,
+            },
+        )
+        _FAILURE_STEP_CONTEXT.set("persistence")
+        self._save_assistant_message(
+            conversation_id,
+            learner_id,
+            persisted_messages,
+            result,
+            persist=conversation_source == "user",
+        )
+        return result
+
+    async def _execute_started_run(
+        self,
+        *,
+        request: ReviewCardRequest,
+        thread_id: str,
+        conversation_id: str,
+        conversation_source: str = "user",
+        execution_id: str,
+        case_id: str,
+        execution_entrypoint: str | None = None,
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+        self.raise_if_run_cancelled(thread_id)
+        smart_paper_v2 = execution_entrypoint == "workshop_smart_paper"
+        if smart_paper_v2:
+            request = request.model_copy(
+                update={
+                    "exam_constraints": validate_smart_paper_constraints(
+                        request.exam_constraints
+                    ),
+                    "current_page": {
+                        **dict(request.current_page or {}),
+                        "product_surface": "smart_paper",
+                    },
+                }
+            )
+        request_exam_workspace = current_exam_workspace(request.learner_id)
+        existing_messages = self.conversation_repository.get_messages(
+            conversation_id, request.learner_id
+        )
+        clean_existing_messages = sanitize_conversation_messages(existing_messages)
+        clean_request_messages = sanitize_conversation_messages(request.messages)
+        # The repository is the durable source of conversation context.  A
+        # client may send only the visible/current turn after a refresh, so it
+        # must never replace a longer server-side history.
+        persisted_messages = list(clean_existing_messages)
+        if clean_request_messages:
+            if not persisted_messages:
+                persisted_messages = list(clean_request_messages)
+            else:
+                persisted_signature = [
+                    (item.get("role"), item.get("content"))
+                    for item in persisted_messages
+                ]
+                request_signature = [
+                    (item.get("role"), item.get("content"))
+                    for item in clean_request_messages
+                ]
+                if request_signature[: len(persisted_signature)] == persisted_signature:
+                    suffix = clean_request_messages[len(persisted_signature) :]
+                else:
+                    suffix = clean_request_messages
+                for message in suffix:
+                    if not persisted_messages or message != persisted_messages[-1]:
+                        persisted_messages.append(message)
+        clean_user_request = (
+            sanitize_conversation_content(request.user_request)
+            or request.user_request.strip()
+        )
+        if (
+            not persisted_messages
+            or persisted_messages[-1].get("content") != clean_user_request
+        ):
+            persisted_messages.append({"role": "user", "content": clean_user_request})
+        # The latest persisted dialogue summary is loaded once per run and
+        # injected into the shared model context.  Agents then read the
+        # compressed history instead of the entire conversation; when a
+        # summary exists the knowledge/expert agents only attach the most
+        # recent message on top of it.  The summary is refreshed by Memory
+        # Agent only for messages that the previous summary did not cover.
+        persisted_summary = self.conversation_repository.get_latest_context_summary(
+            conversation_id, request.learner_id
+        )
+        covered_message_ids = set(
+            str(item.get("ref_id", ""))
+            for item in (persisted_summary or {}).get("source_refs", []) or []
+            if isinstance(item, dict) and str(item.get("ref_id", "")).strip()
+        )
+        if persisted_summary and not covered_message_ids:
+            covered_message_ids = {
+                str(item.get("message_id", ""))
+                for item in (persisted_summary.get("covered_messages") or [])
+                if isinstance(item, dict) and str(item.get("message_id", "")).strip()
+            }
+        uncovered_messages = [
+            item
+            for item in persisted_messages
+            if str(item.get("message_id", "")) not in covered_message_ids
+        ]
+        _FAILURE_STEP_CONTEXT.set("behavior_context")
+        behavior_context = await self._load_behavior_context(request.learner_id)
+        # Freeze the server-owned exam workspace before persisting any
+        # conversation rows or reading mutable learning state.  Later browser
+        # target switches cannot redirect this running workflow into another
+        # certificate's plan hierarchy.
+        if request_exam_workspace is not None:
+            bind_exam_workspace_context(request_exam_workspace)
+        else:
+            bind_exam_workspace(
+                request.learner_id,
+                behavior_context.get("learning_target"),
+            )
+        _FAILURE_STEP_CONTEXT.set("conversation")
+        self.raise_if_run_cancelled(thread_id)
+        # Persist the user's in-flight turn before orchestration.  Message ids
+        # are assigned with the same rule the workflow uses for agent context
+        # (``{conversation_id}:message:{index+1}``) so the Memory Agent's
+        # summary source refs always match the durable rows; the repository
+        # honors a supplied id instead of falling back to a fingerprint.
+        persisted_for_save = [
+            {
+                **item,
+                "message_id": (
+                    item.get("message_id")
+                    or f"{conversation_id}:message:{index + 1}"
+                ),
+            }
+            for index, item in enumerate(persisted_messages)
+        ]
+        self.conversation_repository.save_messages(
+            conversation_id,
+            request.learner_id,
+            persisted_for_save,
+            source=conversation_source,
+        )
+        if not existing_messages:
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self.conversation_repository.rename_session(
+                conversation_id,
+                request.learner_id,
+                request.user_request.strip().replace("\n", " ")[:40] or "新对话",
+            )
+        _FAILURE_STEP_CONTEXT.set("memory")
+        self.raise_if_run_cancelled(thread_id)
+        memory_retrieval = (
+            await self.memory_retriever.retrieve(
+                request.learner_id,
+                request.user_request,
+            )
+            if self.memory_retriever is not None
+            else {"items": [], "degraded": False, "error": None}
+        )
+        effective_user_profile = self._merge_context_dict(
+            request.user_profile, behavior_context.get("user_profile", {})
+        )
+        effective_learning_profile = self._merge_context_dict(
+            request.learning_profile, behavior_context.get("learning_profile", {})
+        )
+        effective_system_data = self._merge_context_dict(
+            request.system_data, behavior_context.get("system_data", {})
+        )
+        effective_knowledge_states = (
+            behavior_context.get("user_knowledge_state")
+            or request.user_knowledge_state
+        )
+        effective_question_attempts = (
+            behavior_context.get("question_attempt", [])
+            if self.behavior_context_loader is not None
+            else request.question_attempt
+        )
+        effective_question_learning_stats = (
+            behavior_context.get("question_learning_stats")
+            or request.question_learning_stats
+        )
+        learning_monitoring = LearningMonitoringService().build_snapshot(
+            request.learner_id,
+            {
+                **behavior_context,
+                "learning_profile": effective_learning_profile,
+                "system_data": effective_system_data,
+                "question_attempt": effective_question_attempts,
+                "mastery": effective_knowledge_states,
+            },
+            window_days=7,
+        )
+        if self.review_service is not None and effective_question_attempts:
+            self.review_service.ingest_question_attempts(
+                learner_id=request.learner_id,
+                attempts=effective_question_attempts,
+            )
+        if self.review_service is not None and effective_knowledge_states:
+            self.review_service.ingest_knowledge_states(
+                learner_id=request.learner_id,
+                states=effective_knowledge_states,
+                prompt_abstract=request.user_request,
+            )
+        _FAILURE_STEP_CONTEXT.set("planning_context")
+        persisted_plans = self.plan_repository.get_current(request.learner_id)
+        current_long_term_plan = (
+            request.long_term_plan
+            or (
+                persisted_plans.long_term_plan.model_dump(mode="json")
+                if persisted_plans is not None
+                and persisted_plans.long_term_plan is not None
+                else {}
+            )
+        )
+        current_short_term_plan = (
+            request.short_term_plan
+            or (
+                persisted_plans.short_term_plan.model_dump(mode="json")
+                if persisted_plans is not None
+                and persisted_plans.short_term_plan is not None
+                else {}
+            )
+        )
+        current_learning_task = (
+            request.learning_task
+            or (
+                persisted_plans.learning_task.model_dump(mode="json")
+                if persisted_plans is not None
+                and persisted_plans.learning_task is not None
+                else {}
+            )
+        )
+        plan_change = request.plan_change_context
+        effective_user_request = request.user_request
+        if plan_change is not None:
+            clarification_parts = [
+                plan_change.original_request,
+                f"用户补充的具体变化：{plan_change.change_details}",
+            ]
+            for label, value in (
+                ("可用时间", plan_change.available_time),
+                ("希望保留", plan_change.keep_items),
+                ("希望放弃", plan_change.drop_items),
+                ("期望结果", plan_change.expected_outcome),
+            ):
+                if value and value.strip():
+                    clarification_parts.append(f"{label}：{value.strip()}")
+            effective_user_request = "\n".join(clarification_parts)
+        total_message_chars = sum(
+            len(str(item.get("content", ""))) for item in persisted_messages
+        )
+        # Explicit scope is user/system authority. Text classifiers only provide
+        # a hint; Planner owns the semantic decision and may override that hint.
+        explicit_plan_scope = request.plan_scope
+        # Scope hints are accepted only as explicit structured UI/workflow
+        # input. Free-text scope and continuation semantics belong to Planner;
+        # the application must not pre-route them with keyword rules.
+        plan_scope_hint = request.plan_scope_hint
+        continued_plan_scope = None
+        candidate_scope = next(
+            (
+                value
+                for value in (
+                    explicit_plan_scope,
+                    continued_plan_scope,
+                    plan_scope_hint,
+                )
+                if value in {"long_term", "short_term", "daily_task"}
+            ),
+            "daily_task",
+        )
+        _FAILURE_STEP_CONTEXT.set("multiscale_planning")
+        multiscale_state, path_candidates = (
+            await self._load_multiscale_planning_context(
+                request.learner_id,
+                plan_context={
+                    key: value
+                    for key, value in {
+                        "long_term_plan": current_long_term_plan,
+                        "short_term_plan": current_short_term_plan,
+                        "learning_task": current_learning_task,
+                        "available_minutes": request.available_minutes,
+                        # Server-built, bounded current-turn evidence. The
+                        # candidate service parses only approved-route course
+                        # names and explicit learner statements; it never
+                        # trusts user-supplied booleans or rule structures.
+                        "prerequisite_turn": {
+                            "current_user_request": effective_user_request[:2000],
+                            "recent_messages": [
+                                {
+                                    "role": str(item.get("role") or ""),
+                                    "message_id": str(item.get("message_id") or ""),
+                                    "content": str(item.get("content") or "")[:1000],
+                                }
+                                for item in persisted_messages[-6:]
+                                if isinstance(item, dict)
+                            ],
+                        },
+                    }.items()
+                    if value not in (None, "", [], {})
+                },
+                scope=candidate_scope,
+                legacy_state={
+                    "macro": effective_learning_profile,
+                    "meso": behavior_context,
+                    "micro": {
+                        "knowledge_states": effective_knowledge_states,
+                        "question_attempts": effective_question_attempts,
+                        "question_learning_stats": (
+                            effective_question_learning_stats
+                        ),
+                    },
+                },
+            )
+        )
+        task_load_policy: dict[str, Any] = {}
+        load_policy = getattr(
+            self.workshop_runtime, "load_task_load_policy", None
+        )
+        if callable(load_policy):
+            try:
+                queue = (
+                    self.review_service.get_queue(request.learner_id, limit=500)
+                    if self.review_service is not None
+                    else None
+                )
+                task_load_policy = await asyncio.to_thread(
+                    load_policy,
+                    request.learner_id,
+                    plan_context={
+                        key: value
+                        for key, value in {
+                            "long_term_plan": current_long_term_plan,
+                            "short_term_plan": current_short_term_plan,
+                            "learning_task": current_learning_task,
+                        }.items()
+                        if value not in (None, "", [], {})
+                    },
+                    review_projection=(
+                        {
+                            "source": "canonical_review_memory",
+                            "due_count": queue.due_count,
+                            "total_count": len(queue.entries),
+                            "active_task_count": queue.active_task_count,
+                        }
+                        if queue is not None
+                        else None
+                    ),
+                    days=7,
+                )
+            except Exception as exc:
+                emit_runtime_event(
+                    "task_load_policy_unavailable",
+                    error_type=type(exc).__name__,
+                )
+                task_load_policy = {}
+        context_messages = [
+            {
+                **item,
+                "message_id": item.get("message_id") or f"{conversation_id}:message:{index + 1}",
+                "learner_id": item.get("learner_id") or request.learner_id,
+            }
+            for index, item in enumerate(persisted_messages)
+            if isinstance(item, dict)
+        ]
+        effective_goals = effective_user_profile.get("goals")
+        effective_goals = effective_goals if isinstance(effective_goals, dict) else {}
+        effective_preferences = next(
+            (
+                value
+                for value in (
+                    effective_user_profile.get("preferences"),
+                    effective_user_profile.get("user_preference"),
+                    effective_user_profile.get("preference"),
+                )
+                if isinstance(value, dict) and value
+            ),
+            {},
+        )
+        current_page_context = await self._read_current_page_context(
+            request.current_page,
+            agent="planner_agent",
+        )
+        syllabus_context: dict[str, Any] = {}
+        if self.syllabus_context_loader is not None:
+            try:
+                syllabus_context = await asyncio.to_thread(
+                    self.syllabus_context_loader,
+                    request.learner_id,
+                    effective_user_request,
+                )
+            except Exception as exc:
+                emit_runtime_event(
+                    "user_syllabus_context_unavailable",
+                    error_type=type(exc).__name__,
+                )
+        context = {
+            "case_id": case_id,
+            "trace_id": f"TRACE_{uuid4().hex}",
+            "request_id": f"REQ_{uuid4().hex}",
+            "execution_id": execution_id,
+            "cancellation_check": lambda: self.raise_if_run_cancelled(thread_id),
+            "thread_id": thread_id,
+            "interruptible": request.thread_id is not None,
+            "original_user_request": clean_user_request,
+            "learner_id": request.learner_id,
+            "user_request": effective_user_request,
+            "learning_goal": (
+                effective_user_profile.get("learning_goal")
+                or effective_goals.get("goal_name")
+                or effective_goals.get("name")
+            ),
+            "available_minutes": request.available_minutes,
+            "system_operation": request.system_operation,
+            "time_budget": request.available_minutes,
+            "source_policy": {
+                "trusted_source_types": [
+                    "textbook",
+                    "knowledge_base",
+                    "official_question_bank",
+                    "web",
+                ],
+            },
+            "messages": context_messages,
+            "user_profile": effective_user_profile,
+            "learning_profile": effective_learning_profile,
+            "system_data": effective_system_data,
+            "user_knowledge_states": effective_knowledge_states,
+            "question_attempts": effective_question_attempts,
+            "question_learning_stats": effective_question_learning_stats,
+            "multi_scale_learning_state": multiscale_state,
+            "task_load_policy": task_load_policy,
+            "path_candidates": path_candidates,
+            "planner_multiscale_summary": self._planner_multiscale_summary(
+                multiscale_state,
+                current_long_term_plan=current_long_term_plan,
+                current_short_term_plan=current_short_term_plan,
+            ),
+            "behavior_context_source": behavior_context.get("source"),
+            "relevant_personalization_memories": memory_retrieval.get("items", []),
+            "memory_retrieval_degraded": bool(memory_retrieval.get("degraded")),
+            "memory_retrieval_error": memory_retrieval.get("error"),
+            "confirmed_memories": [
+                str(item.get("content") or "")
+                for item in memory_retrieval.get("items", [])
+                if str(item.get("content") or "").strip()
+            ],
+            # Every product entry point follows the same backend-owned planning
+            # prerequisite policy. Tests that call agents directly remain able to
+            # opt in explicitly without manufacturing persistence dependencies.
+            "enforce_profile_readiness": self.behavior_context_loader is not None,
+            "enforce_planning_readiness": True,
+            "behavior_context_calculated_at": behavior_context.get("calculated_at"),
+            "learning_monitoring": learning_monitoring.model_dump(mode="json"),
+            "learning_target": behavior_context.get("learning_target"),
+            "exam_scope_id": (
+                current_exam_workspace(request.learner_id).storage_scope
+                if current_exam_workspace(request.learner_id) is not None
+                else None
+            ),
+            "current_long_term_plan": current_long_term_plan,
+            "current_short_term_plan": current_short_term_plan,
+            "current_learning_task": current_learning_task,
+            "exam_constraints": request.exam_constraints,
+            "user_syllabus": syllabus_context.get("user_syllabus"),
+            "syllabus_requirements": syllabus_context.get(
+                "syllabus_requirements", []
+            ),
+            "syllabus_knowledge_points": syllabus_context.get(
+                "syllabus_knowledge_points", []
+            ),
+            "plan_change_context": (
+                plan_change.model_dump(exclude_none=True) if plan_change else None
+            ),
+            "plan_scope": explicit_plan_scope,
+            "plan_scope_hint": plan_scope_hint,
+            "continued_plan_scope": continued_plan_scope,
+            "explicit_long_term_change": bool(
+                plan_change and "long_term" in plan_change.target_layers
+            ),
+            "explicit_short_term_change": bool(
+                plan_change and "short_term" in plan_change.target_layers
+            ),
+            # Planner owns this semantic decision.  The initial value is only
+            # a neutral placeholder and is replaced after model routing.
+            "requires_learning_plan_output": False,
+            "conversation_requires_compression": (
+                total_message_chars > self.conversation_compression_threshold_chars
+            ),
+            # This is a system-owned fact. Planner only receives it; the
+            # threshold itself is never inferred from user wording.  When a
+            # durable summary already exists, compression only needs to cover
+            # the messages that the previous summary did not include, so the
+            # threshold is evaluated against that uncovered slice instead of
+            # the whole history.
+            "memory_required": (
+                sum(
+                    len(str(item.get("content", ""))) for item in uncovered_messages
+                )
+                > self.conversation_compression_threshold_chars
+                if persisted_summary
+                else (
+                    total_message_chars > self.conversation_compression_threshold_chars
+                )
+            ),
+            # Durable summary loaded from the conversation store.  Only the
+            # formal ``user：`` / ``assistant：`` dialogue lines count as
+            # history; anything else is never injected as conversation.
+            "compressed_conversation_summary": sanitize_compressed_dialogue_summary(
+                (persisted_summary or {}).get("summary", "")
+            ),
+            "compressed_conversation_covered_message_ids": sorted(covered_message_ids),
+            "profile": {
+                "confirmed_preferences": effective_preferences,
+            },
+            "terminal_trace": self.terminal_trace,
+            "model_trace_recorder": self.model_trace_recorder,
+            "current_page_context": current_page_context,
+            # Server-owned execution mode set only by the dedicated workshop
+            # endpoint. It is never inferred from user prose or retrieved data.
+            "smart_paper_v2": smart_paper_v2,
+        }
+        _FAILURE_STEP_CONTEXT.set("planner")
+        planner = self.orchestrator.agent_registry.get("planner_agent")
+        planner_context = dict(context)
+        planner_context["step_id"] = "planner"
+        public_context_summary = {
+            "user_request": effective_user_request[:1200],
+            "original_user_request": clean_user_request[:1200],
+            "available_minutes": context.get("available_minutes"),
+            "has_user_profile": bool(effective_user_profile),
+            "has_compressed_history": bool(context.get("compressed_conversation_summary")),
+            "recent_message_count": min(len(context_messages), 99),
+            "has_external_information": bool(current_page_context),
+            "has_learning_monitoring": bool(context.get("learning_monitoring")),
+        }
+        if not smart_paper_v2:
+            emit_runtime_event(
+                "step_started",
+                step_id="planner",
+                agent="planner_agent",
+                depends_on=[],
+                input_summary=public_context_summary,
+            )
+        # 组卷表单（前端“生成试卷”入口）会下发 exam_constraints 系统级约束，
+        # 业务意图在进入会话前已经确定为“生成试卷”，不需要语义路由模型再
+        # 判断一次。此前模型会把“随心练/专项练组卷”误判为 learning_plan 等
+        # 任务，导致前端收到非 paper_generation 回执。此处对携带有效题量/
+        # 题型约束的请求做确定性路由：跳过 Planner 模型调用，直接构造
+        # paper_generation 决策进入组卷链路。其余请求仍走 Planner 语义路由。
+        _exam_constraints = request.exam_constraints or {}
+        _exam_question_count = _exam_constraints.get("question_count")
+        _exam_distribution = _exam_constraints.get("question_type_distribution")
+        _has_exam_question_count = (
+            isinstance(_exam_question_count, int) and _exam_question_count >= 1
+        )
+        _has_exam_distribution = (
+            isinstance(_exam_distribution, dict)
+            and any(
+                isinstance(count, int) and count >= 1
+                for count in _exam_distribution.values()
+            )
+        )
+        if _has_exam_question_count or _has_exam_distribution:
+            planner_output = envelope(
+                planner_context,
+                "planner_agent",
+                "planner_decision",
+                PlannerDecision(
+                    task_type="paper_generation",
+                    selected_agents=[
+                        "memory_agent",
+                        "knowledge_base_agent",
+                        "expert_agent",
+                        "audit_agent",
+                    ],
+                    routing_reason=(
+                        "组卷表单已携带题量/题型约束，业务意图为生成试卷，"
+                        "直接进入组卷链路。"
+                    ),
+                    risk_level="low",
+                    requires_audit=True,
+                ),
+            )
+        else:
+            planner_output = await planner.run(planner_context)
+        # The transport-level value is a UI fallback.  When the semantic
+        # Planner confirms that the current user message explicitly states a
+        # tighter (or otherwise different) budget, that current-turn fact must
+        # become the authoritative constraint for every downstream node and
+        # for any resumed prerequisite flow.  The Planner contract deliberately
+        # forbids sourcing this override from history/page/external content, so
+        # untrusted read_current_page text cannot alter execution capacity.
+        semantic_minutes = planner_output.payload.current_turn_available_minutes
+        semantic_minutes_scope = (
+            planner_output.payload.current_turn_available_minutes_scope
+        )
+        if semantic_minutes is not None:
+            context["available_minutes"] = semantic_minutes
+            context["time_budget"] = semantic_minutes
+            context["available_minutes_constraint"] = {
+                "minutes": semantic_minutes,
+                "scope": semantic_minutes_scope,
+                "source_type": "current_user_message",
+                "source_quote": (
+                    planner_output.payload.current_turn_available_minutes_source_quote
+                ),
+            }
+            if semantic_minutes_scope == "daily_recurring":
+                context["daily_available_minutes"] = semantic_minutes
+            elif semantic_minutes_scope == "today_only":
+                context["today_available_minutes"] = semantic_minutes
+        elif request.available_minutes is None:
+            context.pop("available_minutes", None)
+            context.pop("time_budget", None)
+
+        # The initial read is intentionally budget-neutral for open chat and
+        # may also use only a structured scope hint. Planner is the semantic
+        # authority for free text. Rebuild both state and candidates after its
+        # validated decision so every downstream agent sees one scope/budget
+        # fact instead of pre-Planner transport defaults.
+        resolved_candidate_scope = planner_output.payload.plan_scope
+        if resolved_candidate_scope not in {"long_term", "short_term", "daily_task"}:
+            resolved_candidate_scope = candidate_scope
+        resolved_plan_context = {
+            key: value
+            for key, value in {
+                "long_term_plan": current_long_term_plan,
+                "short_term_plan": current_short_term_plan,
+                "learning_task": current_learning_task,
+                "available_minutes": context.get("available_minutes"),
+                "prerequisite_turn": {
+                    "current_user_request": effective_user_request[:2000],
+                    "recent_messages": [
+                        {
+                            "role": str(item.get("role") or ""),
+                            "message_id": str(item.get("message_id") or ""),
+                            "content": str(item.get("content") or "")[:1000],
+                        }
+                        for item in persisted_messages[-6:]
+                        if isinstance(item, dict)
+                    ],
+                },
+            }.items()
+            if value not in (None, "", [], {})
+        }
+        multiscale_state, path_candidates = (
+            await self._load_multiscale_planning_context(
+                request.learner_id,
+                plan_context=resolved_plan_context,
+                scope=resolved_candidate_scope,
+                legacy_state={
+                    "macro": effective_learning_profile,
+                    "meso": behavior_context,
+                    "micro": {
+                        "knowledge_states": effective_knowledge_states,
+                        "question_attempts": effective_question_attempts,
+                        "question_learning_stats": (
+                            effective_question_learning_stats
+                        ),
+                    },
+                },
+            )
+        )
+        context["multi_scale_learning_state"] = multiscale_state
+        context["path_candidates"] = path_candidates
+        context["planner_multiscale_summary"] = self._planner_multiscale_summary(
+            multiscale_state,
+            current_long_term_plan=current_long_term_plan,
+            current_short_term_plan=current_short_term_plan,
+        )
+        if not smart_paper_v2:
+            emit_runtime_event(
+                "system_output",
+                step_id="planner",
+                agent="planner_agent",
+                output=planner_output,
+                public_output=self._planner_formal_output(planner_output),
+            )
+            emit_runtime_event(
+                "step_completed",
+                step_id="planner",
+                agent="planner_agent",
+                status="success",
+            )
+        if planner_output.payload.task_type == "casual_conversation":
+            # A memory-record request (“帮我记一下”“以后每天晚上9点学习”) is
+            # still a casual conversation for delivery: Planner answers with a
+            # short confirmation.  But when Planner selected memory_agent, the
+            # newly stated durable fact must still be extracted, governed and
+            # persisted through the same governance pipeline as any business
+            # turn.  Pure small talk selects no agents and stays lightweight.
+            agent_outputs = [planner_output]
+            if "memory_agent" in planner_output.payload.selected_agents:
+                memory_agent = self.orchestrator.agent_registry.get("memory_agent")
+                memory_context = {
+                    **context,
+                    "step_id": "memory",
+                    "dependency_outputs": {},
+                }
+                emit_runtime_event(
+                    "step_started",
+                    step_id="memory",
+                    agent="memory_agent",
+                    depends_on=[],
+                    input_summary=public_context_summary,
+                )
+                memory_output = await memory_agent.run(memory_context)
+                self.raise_if_run_cancelled(thread_id)
+                emit_runtime_event(
+                    "system_output",
+                    step_id="memory",
+                    agent="memory_agent",
+                    output=memory_output,
+                )
+                emit_runtime_event(
+                    "step_completed",
+                    step_id="memory",
+                    agent="memory_agent",
+                    status="success",
+                )
+                agent_outputs.append(memory_output)
+                memory_conflict_notice = self._persist_memory_governance(
+                    request=request,
+                    execution_id=execution_id,
+                    agent_outputs=agent_outputs,
+                )
+                if memory_conflict_notice is not None:
+                    self._deferred_memory_conflict_notice = memory_conflict_notice
+                else:
+                    self._deferred_memory_conflict_notice = None
+                self.raise_if_run_cancelled(thread_id)
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            self.raise_if_run_cancelled(thread_id)
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "agent_outputs": agent_outputs,
+                    "model_trace": self._model_trace(),
+                },
+            )
+            result = ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type="casual_conversation",
+                direct_response=planner_output.payload.casual_response,
+                agent_outputs=agent_outputs,
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+            )
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "completed",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self.raise_if_run_cancelled(thread_id)
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._save_assistant_message(
+                conversation_id,
+                request.learner_id,
+                persisted_messages,
+                result,
+                persist=conversation_source == "user",
+            )
+            return result
+        if planner_output.payload.task_type == "review_task_adjustment":
+            # 复习任务调整（减少/增加每日数量、取消、推迟）由用例内联确定性
+            # 执行：直接读写复习偏好与任务状态，不经过 orchestrator 图，也
+            # 不调用模型生成正文。回复由真实变更数据拼装，避免编造结果。
+            result = await self._execute_review_task_adjustment(
+                request=request,
+                case_id=case_id,
+                execution_id=execution_id,
+                conversation_id=conversation_id,
+                thread_id=thread_id,
+                conversation_source=conversation_source,
+                persisted_messages=persisted_messages,
+                context=context,
+                planner_output=planner_output,
+            )
+            return result
+        if (
+            planner_output.payload.task_type == "learning_plan"
+            and planner_output.payload.plan_action == "reuse"
+        ):
+            # The reuse fast path is intentionally executed without invoking
+            # the orchestrator, but it is still a real two-node workflow. Emit
+            # the compiled graph before running the nodes so the browser sees
+            # the same authoritative execution-path contract as normal runs.
+            reuse_plan = PlannerAgent.build_plan(
+                planner_output.payload,
+                memory_required=bool(context.get("memory_required")),
+                provider_timeout_seconds=getattr(
+                    self.orchestrator,
+                    "provider_timeout_seconds",
+                    None,
+                ),
+            )
+            self._emit_compiled_graph(reuse_plan)
+            context["task_type"] = "learning_plan"
+            context["plan_scope"] = planner_output.payload.plan_scope
+            _FAILURE_STEP_CONTEXT.set("plan_reuse")
+            # Reusing a persisted plan is read-only for the plan service, but
+            # it still goes through Memory Agent. Memory reads current
+            # long/short-term facts, extracts any newly stated durable facts,
+            # and governs conflicts on every business turn. The system-owned
+            # memory_required flag only controls whether Memory also runs the
+            # context-compression sub-step.
+            memory_agent = self.orchestrator.agent_registry.get("memory_agent")
+            memory_context = {
+                **context,
+                "step_id": "memory",
+                "dependency_outputs": {},
+            }
+            emit_runtime_event(
+                "step_started", step_id="memory", agent="memory_agent", depends_on=[]
+            )
+            memory_output = await memory_agent.run(memory_context)
+            self.raise_if_run_cancelled(thread_id)
+            emit_runtime_event(
+                "system_output",
+                step_id="memory",
+                agent="memory_agent",
+                output=memory_output,
+            )
+            emit_runtime_event(
+                "step_completed", step_id="memory", agent="memory_agent", status="success"
+            )
+            plan_review: dict[str, Any] = {}
+            if self.workshop_runtime is not None and hasattr(
+                self.workshop_runtime, "run_plan_review"
+            ):
+                try:
+                    plan_review = await asyncio.to_thread(
+                        self.workshop_runtime.run_plan_review,
+                        request.learner_id,
+                        plan_context={
+                            "long_term_plan": current_long_term_plan,
+                            "short_term_plan": current_short_term_plan,
+                            "learning_task": current_learning_task,
+                        },
+                        trigger_type="on_demand",
+                    )
+                except Exception as exc:
+                    emit_runtime_event(
+                        "plan_review_unavailable",
+                        error_type=type(exc).__name__,
+                    )
+                    self.raise_if_run_cancelled(thread_id)
+            learning_plan = self._existing_plan_result(
+                planner_output.payload.plan_scope,
+                current_long_term_plan=current_long_term_plan,
+                current_short_term_plan=current_short_term_plan,
+                current_learning_task=current_learning_task,
+                plan_review=plan_review,
+            )
+            service_context = {
+                **context,
+                "step_id": "learning_plan",
+                "dependency_outputs": {"memory": memory_output},
+            }
+            emit_runtime_event(
+                "step_started",
+                step_id="learning_plan",
+                agent="learning_plan_service",
+                depends_on=["memory"],
+            )
+            service_output = envelope(
+                service_context,
+                "learning_plan_service",
+                "learning_plan_reuse",
+                learning_plan,
+            )
+            self.raise_if_run_cancelled(thread_id)
+            emit_runtime_event(
+                "step_completed",
+                step_id="learning_plan",
+                agent="learning_plan_service",
+                status="success",
+            )
+            # Memory is still executed and emitted in the collaboration trace
+            # on every business turn.  Keep the historical reuse response
+            # contract compact: the published agent_outputs list contains the
+            # planner decision and the service result, while the full Memory
+            # envelope remains available in the runtime events/model trace.
+            agent_outputs = [planner_output, service_output]
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            self.raise_if_run_cancelled(thread_id)
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "agent_outputs": agent_outputs,
+                    "learning_plan": learning_plan,
+                    "plan_review": plan_review,
+                    "model_trace": self._model_trace(),
+                },
+            )
+            result = ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type="learning_plan",
+                agent_outputs=agent_outputs,
+                learning_plan=learning_plan,
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+            )
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "completed",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self.raise_if_run_cancelled(thread_id)
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._save_assistant_message(
+                conversation_id,
+                request.learner_id,
+                persisted_messages,
+                result,
+                persist=conversation_source == "user",
+            )
+            return result
+        _FAILURE_STEP_CONTEXT.set("paper_blueprint" if smart_paper_v2 else "planner")
+        execution_plan = (
+            build_smart_paper_execution_plan(
+                memory_required=bool(context.get("memory_required")),
+                provider_timeout_seconds=getattr(
+                    self.orchestrator,
+                    "provider_timeout_seconds",
+                    None,
+                ),
+            )
+            if smart_paper_v2
+            else PlannerAgent.build_plan(
+                planner_output.payload,
+                memory_required=bool(context.get("memory_required")),
+                provider_timeout_seconds=getattr(
+                    self.orchestrator,
+                    "provider_timeout_seconds",
+                    None,
+                ),
+            )
+        )
+        context["task_type"] = planner_output.payload.task_type
+        context["plan_scope"] = planner_output.payload.plan_scope
+        # Keep the scope selected for the original business request separate
+        # from any temporary scope used while satisfying a prerequisite.  A
+        # resumed child plan (daily_task/short_term) must return to this value
+        # after its parent has been materialized.
+        context["requested_plan_scope"] = planner_output.payload.plan_scope
+        context["planner_plan_action"] = planner_output.payload.plan_action
+        context["requires_learning_plan_output"] = bool(
+            planner_output.payload.requires_learning_plan_output
+        )
+        context["external_information_request"] = bool(
+            planner_output.payload.external_information_request
+        )
+        context["question_explanation_request"] = bool(
+            planner_output.payload.question_explanation_request
+        )
+        context["emotional_support_request"] = bool(
+            planner_output.payload.emotional_support_request
+        )
+        context["learner_data_query_kind"] = planner_output.payload.query_kind
+        if (
+            planner_output.payload.task_type == "paper_generation"
+            and not context.get("learner_data_query_kind")
+        ):
+            # 组卷链路中 Diagnosis 以 learner_data_query 语义读取学习进度：
+            # 模型未给出明确 query_kind 时，按用户最常用的“学习进度”语义
+            # 读取，避免空字符串触发工具集外的兜底分支。
+            context["learner_data_query_kind"] = (
+                "next_learning"
+                if smart_paper_v2
+                and str((request.exam_constraints or {}).get("paper_kind") or "")
+                == "adaptive"
+                else "mastery_status"
+                if smart_paper_v2
+                else "progress_summary"
+            )
+        context["planner_requires_clarification"] = (
+            planner_output.payload.requires_clarification
+        )
+        context["planner_clarification_question"] = (
+            planner_output.payload.clarification_question
+        )
+        context["planner_routing_reason"] = planner_output.payload.routing_reason
+        self._emit_compiled_graph(
+            execution_plan,
+            include_planner=not smart_paper_v2,
+        )
+        _FAILURE_STEP_CONTEXT.set("orchestrator")
+        execution = await self.orchestrator.execute(
+            execution_plan,
+            context,
+            thread_id=thread_id,
+        )
+        self._record_failure_case(
+            execution_id=execution_id,
+            learner_id=request.learner_id,
+            conversation_id=thread_id,
+            task_type=planner_output.payload.task_type,
+            execution=execution,
+            request_text=request.user_request,
+        )
+        if execution.status == "interrupted":
+            interrupted = WorkflowInterruptedResult(
+                thread_id=thread_id,
+                execution_id=execution_id,
+                task_type=planner_output.payload.task_type,
+                interrupt=execution.interrupt or {},
+                completed_steps=list(execution.outputs),
+                agent_outputs=[
+                    planner_output,
+                    *[
+                        output
+                        for output in execution.outputs.values()
+                        if isinstance(output, AgentEnvelope)
+                    ],
+                ],
+                model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
+            )
+            self._continuations[thread_id] = _WorkflowContinuation(
+                request=request,
+                case_id=case_id,
+                execution_id=execution_id,
+                execution_plan=execution_plan,
+                planner_output=planner_output,
+                context=context,
+            )
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "interrupted",
+                    "thread_id": thread_id,
+                    "interrupt": interrupted.interrupt,
+                    "completed_steps": interrupted.completed_steps,
+                    "execution_id": execution_id,
+                    "task_type": interrupted.task_type,
+                    "coordination": interrupted.coordination,
+                    "continuation": self._continuation_payload(
+                        self._continuations[thread_id]
+                    ),
+                },
+            )
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._save_assistant_message(
+                conversation_id,
+                request.learner_id,
+                persisted_messages,
+                interrupted,
+                persist=conversation_source == "user",
+            )
+            return interrupted
+        if execution.status == "waiting_human_review":
+            result = self._human_review_result(
+                execution_id=execution_id,
+                task_type=planner_output.payload.task_type,
+                execution=execution,
+            )
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "waiting_human_review",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "human_review_context": {
+                        "request": request.model_dump(mode="json"),
+                        "execution_plan": execution_plan.model_dump(mode="json"),
+                    },
+                    "continuation": None,
+                },
+            )
+            self._save_assistant_message(
+                conversation_id,
+                request.learner_id,
+                persisted_messages,
+                result,
+                persist=conversation_source == "user",
+            )
+            return result
+        if execution.status != "success":
+            detail = execution.error_message or self._execution_failure_detail(execution)
+            if "blocked path candidate" in detail:
+                raise ValueError(detail)
+            raise WorkflowExecutionError(detail, execution)
+        _FAILURE_STEP_CONTEXT.set("finalization")
+        self.raise_if_run_cancelled(thread_id)
+        result = self._finalize_execution(
+            request=request,
+            case_id=case_id,
+            execution_id=execution_id,
+            execution_plan=execution_plan,
+            execution=execution,
+            planner_output=planner_output,
+            cancellation_check=lambda: self.raise_if_run_cancelled(thread_id),
+        )
+        _FAILURE_STEP_CONTEXT.set("persistence")
+        self._remember_run(
+            thread_id,
+            {
+                "status": "completed",
+                "thread_id": thread_id,
+                "result": result,
+                "continuation": None,
+            },
+        )
+        self.raise_if_run_cancelled(thread_id)
+        self._save_assistant_message(
+            conversation_id,
+            request.learner_id,
+            persisted_messages,
+            result,
+            persist=conversation_source == "user",
+        )
+        return result
+
+    async def resume(
+        self,
+        thread_id: str,
+        request: WorkflowResumeRequest,
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+        failure_step_token = _FAILURE_STEP_CONTEXT.set(None)
+        record_debug_trace("run_resumed", request=request)
+        record_debug_trace("run_started", resumed=True, user_request=request.answer)
+        try:
+            if self.model_trace_recorder:
+                # Mirror the execute() reset: each HTTP request runs in a
+                # fresh asyncio context, and LangGraph resumes node closures
+                # inside a copied context (set_config_context).  Without an
+                # explicit reset here the recorder's ContextVar stays unset
+                # in this request, so model calls recorded during the
+                # checkpoint resume are lost and the assistant message never
+                # persists model_input/model_output/model_transport events.
+                self.model_trace_recorder.reset()
+            _FAILURE_STEP_CONTEXT.set("resume_restore")
+            return await self._resume_started_run(thread_id, request)
+        except asyncio.CancelledError:
+            record_debug_trace("run_cancelled", status="cancelled")
+            raise
+        except Exception as exc:
+            self._record_run_failure(thread_id, exc)
+            record_debug_trace(
+                "run_failed",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                run_state=self.get_run_state(thread_id),
+            )
+            raise
+        finally:
+            _FAILURE_STEP_CONTEXT.reset(failure_step_token)
+
+    async def _resume_started_run(
+        self,
+        thread_id: str,
+        request: WorkflowResumeRequest,
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+        self.raise_if_run_cancelled(thread_id)
+        continuation = self._continuations.get(thread_id)
+        if continuation is None:
+            continuation = self._restore_continuation(thread_id)
+            if continuation is not None:
+                self._continuations[thread_id] = continuation
+        if continuation is None:
+            raise KeyError(f"没有可恢复的 LangGraph 会话：{thread_id}")
+        request_workspace = current_exam_workspace(continuation.request.learner_id)
+        checkpoint_scope = str(
+            continuation.context.get("exam_scope_id") or LEGACY_EXAM_SCOPE
+        )
+        current_scope = (
+            request_workspace.storage_scope
+            if request_workspace is not None
+            else LEGACY_EXAM_SCOPE
+        )
+        if checkpoint_scope != current_scope:
+            # Never reinterpret an existing graph under another certificate.
+            # Its plan reads, writebacks and conversation ownership were all
+            # frozen under checkpoint_scope when the graph first interrupted.
+            self._continuations.pop(thread_id, None)
+            try:
+                await self.orchestrator.abandon_thread(thread_id)
+            except Exception:
+                pass
+            raise ExamWorkspaceChangedError(
+                checkpoint_scope=checkpoint_scope,
+                current_scope=current_scope,
+            )
+        _FAILURE_STEP_CONTEXT.set("run_state")
+        self._remember_run(thread_id, {"status": "running", "thread_id": thread_id})
+        _FAILURE_STEP_CONTEXT.set("conversation")
+        self.raise_if_run_cancelled(thread_id)
+        conversation_id = continuation.request.conversation_id or thread_id
+        persisted_messages = self.conversation_repository.get_messages(
+            conversation_id, continuation.request.learner_id
+        )
+        persisted_messages.append(
+            {
+                "message_id": f"{conversation_id}:message:{len(persisted_messages) + 1}",
+                "learner_id": continuation.request.learner_id,
+                "role": "user",
+                "content": request.answer,
+            }
+        )
+        self.conversation_repository.save_messages(
+            conversation_id, continuation.request.learner_id, persisted_messages
+        )
+        self.raise_if_run_cancelled(thread_id)
+        # The durable conversation is the source of truth after a resume.  A
+        # checkpointed LangGraph node may still hold the context from the
+        # interrupted turn, so write the normalized history through to the
+        # same root context before *any* resume branch (profile, route,
+        # plan-scope or prerequisite) is evaluated.  This keeps every
+        # downstream agent on the same original request + clarification
+        # history instead of silently falling back to stale messages.
+        continuation.context["messages"] = [
+            {
+                **item,
+                "message_id": item.get("message_id")
+                or f"{conversation_id}:message:{index + 1}",
+                "learner_id": item.get("learner_id")
+                or continuation.request.learner_id,
+            }
+            for index, item in enumerate(persisted_messages)
+            if isinstance(item, dict)
+        ]
+        # Refresh the durable summary on resume as well: the interrupted run
+        # may have persisted a new digest while this thread waited, and the
+        # resumed nodes must read compressed history instead of the full
+        # conversation.
+        resumed_summary = self.conversation_repository.get_latest_context_summary(
+            conversation_id, continuation.request.learner_id
+        )
+        if resumed_summary:
+            continuation.context["compressed_conversation_summary"] = (
+                sanitize_compressed_dialogue_summary(
+                    (resumed_summary or {}).get("summary", "")
+                )
+            )
+            covered_ids = set(
+                str(item.get("ref_id", ""))
+                for item in (resumed_summary or {}).get("source_refs", []) or []
+                if isinstance(item, dict) and str(item.get("ref_id", "")).strip()
+            )
+            if covered_ids:
+                continuation.context["compressed_conversation_covered_message_ids"] = (
+                    sorted(covered_ids)
+                )
+        continuation.context["latest_resume_answer"] = request.answer.strip()
+        if request.current_page:
+            continuation.context["current_page_context"] = (
+                await self._read_current_page_context(
+                    request.current_page,
+                    agent="planner_agent",
+                )
+            )
+        resume_payload = request.model_dump(mode="json", exclude_none=True)
+        run_state = self.get_run_state(thread_id) or {}
+        interrupt_payload = run_state.get("interrupt") or {}
+
+        # A child planning request may be paused by Diagnosis because its
+        # parent layer is missing (for example daily_task -> short_term).
+        # The answer is a confirmation for the already selected workflow, not
+        # a new planning request.  Materialize the missing parent first, then
+        # resume the original graph with its original scope.  This keeps the
+        # user's original request and all prior agent outputs intact while
+        # preventing the child Diagnosis node from being forced into the
+        # parent's scope and asking the same question again.
+        # Once a parent graph has been opened, subsequent answers belong to
+        # that parent until it completes.  Do not let the outer child graph's
+        # interrupt type (profile_completion/route_resolution/etc.) divert the
+        # answer into the generic resume handlers.
+        has_pending_parent = bool(
+            isinstance(continuation.context.get("pending_prerequisite"), dict)
+            and continuation.context["pending_prerequisite"].get("thread_id")
+        )
+        is_course_status_resume = bool(
+            interrupt_payload.get("interrupt_type") == "planning_prerequisite"
+            and interrupt_payload.get("prerequisite_kind")
+            == "course_status_confirmation"
+        )
+
+        def has_plan_id(value: Any) -> bool:
+            if isinstance(value, dict):
+                return bool(str(value.get("plan_id") or "").strip())
+            return bool(str(getattr(value, "plan_id", "") or "").strip())
+
+        if is_course_status_resume:
+            required_courses = list(dict.fromkeys(
+                str(item).strip().strip("《》")
+                for item in interrupt_payload.get(
+                    "required_prerequisite_courses", []
+                )
+                if str(item).strip()
+            ))
+            if not required_courses:
+                raise RuntimeError("前置课程确认中断缺少可信课程列表")
+            has_long_term = has_plan_id(
+                continuation.context.get("current_long_term_plan")
+            )
+            has_short_term = has_plan_id(
+                continuation.context.get("current_short_term_plan")
+            )
+            if has_long_term and has_short_term:
+                # Do not interpret the answer here. Diagnosis refreshes the
+                # bounded prerequisite evidence from the durable conversation
+                # and decides satisfied/unmet/unknown. This marker only selects
+                # the already-authorized course-status resume branch.
+                continuation.context["prerequisite_resume_pending"] = True
+                continuation.context["required_prerequisite_courses"] = (
+                    required_courses
+                )
+                continuation.context["prerequisite_task_mode"] = (
+                    "daily_task_only"
+                )
+                continuation.context["plan_scope"] = "daily_task"
+                continuation.context["requested_plan_scope"] = "daily_task"
+                continuation.context["continued_plan_scope"] = "daily_task"
+                continuation.context["plan_scope_hint"] = "daily_task"
+                resume_payload["plan_scope"] = "daily_task"
+            else:
+                # A parent may have disappeared while the user was answering.
+                # Re-enter the existing parent materialization path rather than
+                # publishing a daily task against a stale or missing parent.
+                interrupt_payload = {
+                    **interrupt_payload,
+                    "prerequisite_kind": "parent_plan_missing",
+                    "requested_scope": (
+                        "long_term" if not has_long_term else "short_term"
+                    ),
+                    "original_scope": "daily_task",
+                }
+                is_course_status_resume = False
+        if (
+            (
+                interrupt_payload.get("interrupt_type")
+                == "planning_prerequisite"
+                and not is_course_status_resume
+            )
+            or has_pending_parent
+        ):
+            try:
+                _FAILURE_STEP_CONTEXT.set("prerequisite_plan")
+                prerequisite_resume_answer = await self._materialize_planning_prerequisite(
+                    continuation=continuation,
+                    answer=request.answer,
+                    interrupt_payload=interrupt_payload,
+                    persisted_messages=persisted_messages,
+                    thread_id=thread_id,
+                )
+            except _PrerequisiteInterrupted as pending:
+                continuation.context["pending_prerequisite"] = {
+                    "thread_id": pending.thread_id,
+                    "scope": pending.scope,
+                    "confirmation": pending.confirmation,
+                    "interrupt": pending.interrupt,
+                }
+                interrupted = WorkflowInterruptedResult(
+                    thread_id=thread_id,
+                    execution_id=continuation.execution_id,
+                    task_type=continuation.planner_output.payload.task_type,
+                    interrupt=pending.interrupt,
+                    completed_steps=[],
+                    agent_outputs=[continuation.planner_output],
+                    model_trace=self._model_trace(),
+                    coordination=CoordinationSummary(),
+                )
+                self._remember_run(
+                    thread_id,
+                    {
+                        "status": "interrupted",
+                        "thread_id": thread_id,
+                        "interrupt": pending.interrupt,
+                        "completed_steps": interrupted.completed_steps,
+                        "execution_id": continuation.execution_id,
+                        "task_type": interrupted.task_type,
+                        "coordination": interrupted.coordination,
+                        "continuation": self._continuation_payload(continuation),
+                    },
+                )
+                self._save_assistant_message(
+                    conversation_id,
+                    continuation.request.learner_id,
+                    persisted_messages,
+                    interrupted,
+                )
+                return interrupted
+            if prerequisite_resume_answer:
+                # The answer that confirmed the original child request (for
+                # example “可以”) must be sent to the paused child graph
+                # after the parent has finished.  The current answer may have
+                # been a second answer to a parent-profile question.
+                resume_payload["answer"] = prerequisite_resume_answer
+            original_scope = continuation.context.get("requested_plan_scope")
+            if original_scope in {"long_term", "short_term", "daily_task"}:
+                resume_payload["plan_scope"] = original_scope
+                continuation.context["plan_scope"] = original_scope
+                continuation.context["continued_plan_scope"] = original_scope
+                continuation.context["plan_scope_hint"] = original_scope
+        if (
+            "plan_scope" not in resume_payload
+            and self._is_plan_scope_clarification(interrupt_payload)
+        ):
+            resume_payload["clarification_kind"] = "plan_scope"
+            _FAILURE_STEP_CONTEXT.set("planner_resume_resolution")
+            resolved_scope, followup_question, is_new_task = (
+                await self._resolve_resume_plan_scope(
+                    continuation=continuation,
+                    answer=request.answer,
+                    persisted_messages=persisted_messages,
+                    interrupt_payload=interrupt_payload,
+                )
+            )
+            if is_new_task:
+                # 2026-08-23: 用户消息不是对层级追问的回答，而是新的独立
+                # 请求（例如旧 run 等待层级时又发来组卷请求）。继续旧
+                # clarify 循环会让用户看到“思维链是新任务、正文却是旧追问”
+                # 的矛盾。放弃旧 checkpoint，把新消息作为全新请求执行。
+                _FAILURE_STEP_CONTEXT.set("conversation")
+                self._continuations.pop(thread_id, None)
+                try:
+                    await self.orchestrator.abandon_thread(thread_id)
+                except Exception:
+                    pass
+                return await self._execute_started_run(
+                    request=ReviewCardRequest(
+                        learner_id=continuation.request.learner_id,
+                        user_request=request.answer,
+                        available_minutes=continuation.request.available_minutes,
+                        thread_id=thread_id,
+                        conversation_id=continuation.request.conversation_id
+                        or thread_id,
+                        current_page=request.current_page,
+                    ),
+                    thread_id=thread_id,
+                    conversation_id=continuation.request.conversation_id
+                    or thread_id,
+                    conversation_source="user",
+                    execution_id=continuation.execution_id,
+                    case_id=continuation.case_id,
+                )
+            if resolved_scope is not None:
+                resume_payload["plan_scope"] = resolved_scope
+            elif followup_question:
+                continuation.context["planner_clarification_question"] = (
+                    followup_question
+                )
+        if interrupt_payload.get("interrupt_type") == "profile_completion":
+            _FAILURE_STEP_CONTEXT.set("profile_writeback")
+            self.raise_if_run_cancelled(thread_id)
+            pending_fields = {
+                str(field)
+                for field in interrupt_payload.get("profile_fields") or []
+                if str(field).strip()
+            }
+            profile_updates = dict(request.profile_updates)
+            if not profile_updates and len(pending_fields) == 1:
+                profile_updates[next(iter(pending_fields))] = request.answer.strip()
+            self.data_permission_gateway.authorize(
+                agent="memory_agent",
+                domain="learner_profile",
+                action="write",
+                fields=set(profile_updates),
+                confirmed_fields=pending_fields,
+            )
+            if self.profile_update_writer is None:
+                raise RuntimeError("profile writeback is unavailable for this workflow")
+            await asyncio.to_thread(
+                self.profile_update_writer,
+                continuation.request.learner_id,
+                profile_updates,
+                continuation.execution_id,
+            )
+            self.raise_if_run_cancelled(thread_id)
+            resume_payload["profile_updates"] = profile_updates
+        elif (
+            interrupt_payload.get("interrupt_type") == "route_resolution"
+            and self.profile_memory_extractor is not None
+        ):
+            _FAILURE_STEP_CONTEXT.set("memory")
+            extracted_profile = await asyncio.to_thread(
+                self.profile_memory_extractor,
+                continuation.request.learner_id,
+                request.answer,
+                continuation.execution_id,
+            )
+            if isinstance(extracted_profile, dict):
+                allowed_profile_fields = {
+                    "display_name",
+                    "learner_group",
+                    "learning_goal",
+                    "learning_background",
+                    "time_constraints",
+                }
+                continuation.context.setdefault("user_profile", {}).update(
+                    {
+                        key: value
+                        for key, value in extracted_profile.items()
+                        if key in allowed_profile_fields
+                        and value not in (None, "", [], {})
+                    }
+                )
+        _FAILURE_STEP_CONTEXT.set("orchestrator")
+        execution = await self.orchestrator.resume(
+            thread_id,
+            resume_payload,
+            plan=continuation.execution_plan,
+            context=continuation.context,
+        )
+        self.raise_if_run_cancelled(thread_id)
+        self._record_failure_case(
+            execution_id=continuation.execution_id,
+            learner_id=continuation.request.learner_id,
+            conversation_id=thread_id,
+            task_type=continuation.planner_output.payload.task_type,
+            execution=execution,
+            request_text=continuation.request.user_request,
+        )
+        if execution.status == "interrupted":
+            interrupted = WorkflowInterruptedResult(
+                thread_id=thread_id,
+                execution_id=continuation.execution_id,
+                task_type=continuation.planner_output.payload.task_type,
+                interrupt=execution.interrupt or {},
+                completed_steps=list(execution.outputs),
+                agent_outputs=[
+                    continuation.planner_output,
+                    *[
+                        output
+                        for output in execution.outputs.values()
+                        if isinstance(output, AgentEnvelope)
+                    ],
+                ],
+                model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
+            )
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "interrupted",
+                    "thread_id": thread_id,
+                    "interrupt": interrupted.interrupt,
+                    "completed_steps": interrupted.completed_steps,
+                    "execution_id": continuation.execution_id,
+                    "task_type": interrupted.task_type,
+                    "coordination": interrupted.coordination,
+                    "continuation": self._continuation_payload(continuation),
+                },
+            )
+            self.raise_if_run_cancelled(thread_id)
+            self._save_assistant_message(
+                conversation_id,
+                continuation.request.learner_id,
+                persisted_messages,
+                interrupted,
+            )
+            return interrupted
+        if execution.status == "waiting_human_review":
+            result = self._human_review_result(
+                execution_id=continuation.execution_id,
+                task_type=continuation.planner_output.payload.task_type,
+                execution=execution,
+            )
+            self._continuations.pop(thread_id, None)
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "waiting_human_review",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self.raise_if_run_cancelled(thread_id)
+            self._save_assistant_message(
+                conversation_id,
+                continuation.request.learner_id,
+                persisted_messages,
+                result,
+            )
+            return result
+        if execution.status != "success":
+            detail = execution.error_message or self._execution_failure_detail(execution)
+            raise WorkflowExecutionError(detail, execution)
+        _FAILURE_STEP_CONTEXT.set("finalization")
+        self.raise_if_run_cancelled(thread_id)
+        result = self._finalize_execution(
+            request=continuation.request,
+            case_id=continuation.case_id,
+            execution_id=continuation.execution_id,
+            execution_plan=continuation.execution_plan,
+            execution=execution,
+            planner_output=continuation.planner_output,
+            cancellation_check=lambda: self.raise_if_run_cancelled(thread_id),
+        )
+        self._continuations.pop(thread_id, None)
+        _FAILURE_STEP_CONTEXT.set("persistence")
+        self._remember_run(
+            thread_id,
+            {
+                "status": "completed",
+                "thread_id": thread_id,
+                "result": result,
+                "continuation": None,
+            },
+        )
+        self.raise_if_run_cancelled(thread_id)
+        self._save_assistant_message(
+            conversation_id,
+            continuation.request.learner_id,
+            persisted_messages,
+            result,
+        )
+        return result
+
+    async def _materialize_planning_prerequisite(
+        self,
+        *,
+        continuation: _WorkflowContinuation,
+        answer: str,
+        interrupt_payload: dict[str, Any],
+        persisted_messages: list[dict[str, Any]],
+        thread_id: str,
+    ) -> str | None:
+        """Create a missing parent plan before resuming a child plan.
+
+        Planner has already selected the business task and Diagnosis has
+        already identified the missing parent.  We therefore reuse that
+        decision rather than classifying the confirmation with keywords or
+        launching a second, unrelated conversation.  The parent run receives
+        the complete original context, the clarification, the conversation
+        history and the same learner data.  Its published result is written
+        through to the child continuation context before the checkpoint is
+        resumed.
+        """
+        pending = continuation.context.get("pending_prerequisite")
+        pending_scope = (
+            str(pending.get("scope") or "").strip()
+            if isinstance(pending, dict)
+            else ""
+        )
+        parent_scope = str(
+            pending_scope or interrupt_payload.get("requested_scope") or ""
+        ).strip()
+        child_scope = str(
+            continuation.context.get("requested_plan_scope")
+            or interrupt_payload.get("original_scope")
+            or continuation.context.get("plan_scope")
+            or ""
+        ).strip()
+        if parent_scope not in {"long_term", "short_term"}:
+            return None
+        cancellation_check = lambda: self.raise_if_run_cancelled(thread_id)
+        cancellation_check()
+        continuation.context.setdefault("requested_plan_scope", child_scope)
+        continuation.context["latest_resume_answer"] = str(answer or "").strip()
+        continuation.context["messages"] = [
+            {
+                **item,
+                "message_id": item.get("message_id")
+                or f"{continuation.request.conversation_id or continuation.execution_id}:message:{index + 1}",
+                "learner_id": item.get("learner_id")
+                or continuation.request.learner_id,
+            }
+            for index, item in enumerate(persisted_messages)
+            if isinstance(item, dict)
+        ]
+
+        # Preserve the original user wording and add the answer as a bounded
+        # fact.  Downstream agents see both fields via build_model_context.
+        original_request = str(
+            continuation.context.get("original_user_request")
+            or continuation.context.get("user_request")
+            or ""
+        ).strip()
+        continuation.context["user_request"] = "\n".join(
+            item
+            for item in (
+                original_request,
+                f"用户已确认先建立{('长期规划' if parent_scope == 'long_term' else '短期计划')}：{str(answer).strip()}",
+            )
+            if item
+        )
+        parent_context = dict(continuation.context)
+        confirmation = str(answer or "").strip()
+        parent_context["task_type"] = "learning_plan"
+        parent_context["prerequisite_confirmation"] = confirmation
+        parent_context["interruptible"] = True
+        emit_runtime_event(
+            "prerequisite_plan_started",
+            parent_scope=parent_scope,
+            child_scope=child_scope,
+            original_request=original_request,
+        )
+        async def materialize(scope: str) -> Any:
+            """Materialize one scope, recursively satisfying its parent."""
+            cancellation_check()
+            parent_decision = continuation.planner_output.payload.model_copy(
+                update={
+                    "task_type": "learning_plan",
+                    "plan_scope": scope,
+                    "plan_action": "create_or_update",
+                    "requires_clarification": False,
+                    "clarification_question": None,
+                    "requires_audit": True,
+                    "selected_agents": [
+                        "memory_agent",
+                        "default_route_resolver",
+                        "diagnosis_agent",
+                        "audit_agent",
+                        "learning_plan_service",
+                    ],
+                }
+            )
+            parent_decision = PlannerAgent.complete_required_selection(
+                parent_decision.model_copy(deep=True)
+            )
+            plan = PlannerAgent.build_plan(
+                parent_decision,
+                memory_required=bool(parent_context.get("memory_required")),
+                provider_timeout_seconds=getattr(
+                    self.orchestrator,
+                    "provider_timeout_seconds",
+                    None,
+                ),
+            )
+            run_thread = f"{continuation.execution_id}:prerequisite:{scope}"
+            parent_context["plan_scope"] = scope
+            parent_context["requested_plan_scope"] = scope
+            parent_context["continued_plan_scope"] = scope
+            parent_context["plan_scope_hint"] = scope
+            parent_context["prerequisite_parent_scope"] = scope
+            execution_result = await self.orchestrator.execute(
+                plan, parent_context, thread_id=run_thread
+            )
+            cancellation_check()
+            if execution_result.status == "interrupted":
+                nested = execution_result.interrupt or {}
+                if nested.get("interrupt_type") != "planning_prerequisite":
+                    # Keep the parent checkpoint alive and surface its own
+                    # question to the same conversation.  The next answer is
+                    # routed back to this parent graph; it is not sent to the
+                    # child graph and it does not trigger a fresh Planner run.
+                    raise _PrerequisiteInterrupted(
+                        thread_id=run_thread,
+                        interrupt=nested,
+                        scope=scope,
+                        confirmation=confirmation,
+                    )
+                nested_parent = str(nested.get("requested_scope") or "").strip()
+                if nested_parent not in {"long_term", "short_term"}:
+                    raise RuntimeError(f"前置{scope}计划缺少可识别的父级计划")
+                await materialize(nested_parent)
+                cancellation_check()
+                # The recursive parent may have written a newly published
+                # long-term plan into the continuation.  Refresh the copied
+                # context used by the still-paused child graph before its
+                # checkpoint is resumed.
+                parent_context.update(continuation.context)
+                parent_context["plan_scope"] = scope
+                parent_context["requested_plan_scope"] = scope
+                parent_context["continued_plan_scope"] = scope
+                execution_result = await self.orchestrator.resume(
+                    run_thread,
+                    {"answer": confirmation, "plan_scope": scope},
+                    plan=plan,
+                    context=parent_context,
+                )
+                cancellation_check()
+            if execution_result.status != "success":
+                detail = (
+                    execution_result.error_message
+                    or self._execution_failure_detail(execution_result)
+                    or "父级计划未能发布"
+                )
+                raise RuntimeError(f"前置{scope}计划生成失败：{detail}")
+            parent_output = execution_result.outputs.get("learning_plan")
+            cancellation_check()
+            parent_result = getattr(parent_output, "payload", parent_output)
+            if parent_result is None:
+                raise RuntimeError("前置计划生成未返回学习计划结果")
+            if scope == "long_term":
+                plan_record = getattr(parent_result, "long_term_plan", None)
+                if plan_record is None:
+                    raise RuntimeError("前置长期规划未发布")
+                continuation.context["current_long_term_plan"] = plan_record.model_dump(mode="json")
+            else:
+                plan_record = getattr(parent_result, "short_term_plan", None)
+                if plan_record is None:
+                    raise RuntimeError("前置短期计划未发布")
+                continuation.context["current_short_term_plan"] = plan_record.model_dump(mode="json")
+            return plan_record
+
+        if isinstance(pending, dict) and pending.get("thread_id"):
+            pending_thread = str(pending["thread_id"])
+            pending_scope = str(pending.get("scope") or parent_scope)
+            parent_context = dict(continuation.context)
+            parent_context["plan_scope"] = pending_scope
+            parent_context["requested_plan_scope"] = pending_scope
+            parent_context["continued_plan_scope"] = pending_scope
+            parent_context["prerequisite_parent_scope"] = pending_scope
+            pending_interrupt = pending.get("interrupt") or {}
+            pending_answer = str(answer or "").strip()
+            if pending_interrupt.get("interrupt_type") == "profile_completion":
+                profile_fields = [
+                    str(field).strip()
+                    for field in (pending_interrupt.get("profile_fields") or [])
+                    if str(field).strip()
+                ]
+                profile_updates = (
+                    {profile_fields[0]: pending_answer}
+                    if len(profile_fields) == 1 and pending_answer
+                    else {}
+                )
+                if profile_updates and self.profile_update_writer is not None:
+                    cancellation_check()
+                    self.data_permission_gateway.authorize(
+                        agent="memory_agent",
+                        domain="learner_profile",
+                        action="write",
+                        fields=set(profile_updates),
+                        confirmed_fields=set(profile_fields),
+                    )
+                    await asyncio.to_thread(
+                        self.profile_update_writer,
+                        continuation.request.learner_id,
+                        profile_updates,
+                        continuation.execution_id,
+                    )
+                    cancellation_check()
+                    parent_context.setdefault("user_profile", {}).update(profile_updates)
+                    continuation.context.setdefault("user_profile", {}).update(profile_updates)
+            parent_context["messages"] = list(persisted_messages)
+            resumed_parent = await self.orchestrator.resume(
+                pending_thread,
+                {
+                    "answer": pending_answer,
+                    "plan_scope": pending_scope,
+                    "profile_updates": (
+                        {profile_fields[0]: pending_answer}
+                        if pending_interrupt.get("interrupt_type") == "profile_completion"
+                        and len(profile_fields) == 1
+                        and pending_answer
+                        else {}
+                    ),
+                },
+                context=parent_context,
+            )
+            cancellation_check()
+            if resumed_parent.status == "interrupted":
+                continuation.context["pending_prerequisite"] = {
+                    "thread_id": pending_thread,
+                    "scope": pending_scope,
+                    "confirmation": str(
+                        pending.get("confirmation") or ""
+                    ).strip(),
+                    "interrupt": resumed_parent.interrupt or {},
+                }
+                raise _PrerequisiteInterrupted(
+                    thread_id=pending_thread,
+                    interrupt=resumed_parent.interrupt or {},
+                    scope=pending_scope,
+                    confirmation=str(pending.get("confirmation") or "").strip(),
+                )
+            if resumed_parent.status != "success":
+                raise RuntimeError(
+                    resumed_parent.error_message or "前置计划未能继续"
+                )
+            parent_output = resumed_parent.outputs.get("learning_plan")
+            cancellation_check()
+            parent_result = getattr(parent_output, "payload", parent_output)
+            plan_record = (
+                getattr(parent_result, "long_term_plan", None)
+                if pending_scope == "long_term"
+                else getattr(parent_result, "short_term_plan", None)
+            )
+            if plan_record is None:
+                raise RuntimeError("前置计划生成未返回学习计划结果")
+            continuation.context.pop("pending_prerequisite", None)
+            if pending_scope == "long_term":
+                continuation.context["current_long_term_plan"] = plan_record.model_dump(mode="json")
+            else:
+                continuation.context["current_short_term_plan"] = plan_record.model_dump(mode="json")
+            return str(pending.get("confirmation") or "").strip() or None
+
+        plan = await materialize(parent_scope)
+        continuation.context["plan_scope"] = child_scope or continuation.context.get(
+            "requested_plan_scope", "daily_task"
+        )
+        continuation.context["task_type"] = "learning_plan"
+        emit_runtime_event(
+            "prerequisite_plan_completed",
+            parent_scope=parent_scope,
+            child_scope=child_scope,
+            plan_id=getattr(plan, "plan_id", None),
+        )
+        return None
+
+    @staticmethod
+    def _is_plan_scope_clarification(interrupt_payload: dict[str, Any]) -> bool:
+        if interrupt_payload.get("interrupt_type") == "plan_scope_resolution":
+            return True
+        if interrupt_payload.get("requested_scope") != "unspecified":
+            return False
+        questions = [
+            str(item)
+            for item in (interrupt_payload.get("questions") or [])
+            if str(item).strip()
+        ]
+        return any(
+            all(label in question for label in ("长期规划", "短期计划", "当日任务"))
+            for question in questions
+        )
+
+    async def _resolve_resume_plan_scope(
+        self,
+        *,
+        continuation: _WorkflowContinuation,
+        answer: str,
+        persisted_messages: list[dict[str, Any]],
+        interrupt_payload: dict[str, Any],
+    ) -> tuple[
+        Literal["long_term", "short_term", "daily_task"] | None,
+        str | None,
+        bool,
+    ]:
+        """Let Planner interpret a clarification answer in conversation context.
+
+        Returns ``(resolved_scope, followup_question, is_new_task)``.  When the
+        user's message is not an answer to the layer question but a brand-new
+        request (for example another paper-generation request while the old
+        run waits for a plan-layer clarification), ``is_new_task`` is True and
+        the caller must abandon the stale checkpoint and start a fresh run
+        instead of resuming the old clarify loop.
+        """
+
+        planner = self.orchestrator.agent_registry.get("planner_agent")
+        original_request = str(
+            continuation.context.get("original_user_request")
+            or continuation.context.get("user_request")
+            or ""
+        ).strip()
+        questions = [
+            str(item).strip()
+            for item in (interrupt_payload.get("questions") or [])
+            if str(item).strip()
+        ]
+        resolution_context = {
+            **continuation.context,
+            "step_id": "planner_resume_resolution",
+            "user_request": "\n".join(
+                item
+                for item in (
+                    original_request,
+                    f"上一轮追问：{questions[0]}" if questions else "",
+                    f"用户回答：{answer.strip()}",
+                )
+                if item
+            ),
+            "messages": persisted_messages,
+            "plan_scope": None,
+            "plan_scope_hint": infer_plan_scope(answer),
+            "continued_plan_scope": None,
+        }
+        emit_runtime_event(
+            "step_started",
+            step_id="planner_resume_resolution",
+            agent="planner_agent",
+            depends_on=[],
+        )
+        try:
+            planner_output = await planner.run(resolution_context)
+            emit_runtime_event(
+                "system_output",
+                step_id="planner_resume_resolution",
+                agent="planner_agent",
+                output=planner_output,
+            )
+            resolved_scope = planner_output.payload.plan_scope
+            if (
+                planner_output.payload.task_type == "learning_plan"
+                and resolved_scope in {"long_term", "short_term", "daily_task"}
+            ):
+                emit_runtime_event(
+                    "step_completed",
+                    step_id="planner_resume_resolution",
+                    agent="planner_agent",
+                    status="success",
+                )
+                return resolved_scope, None, False
+            if planner_output.payload.requires_clarification:
+                question = str(
+                    planner_output.payload.clarification_question or ""
+                ).strip()
+                if question:
+                    return None, question, False
+            # 2026-08-23: 用户回答不是规划层级，而是新的独立请求（例如
+            # 旧 run 在等待“制定哪一层计划”时用户又发来组卷请求）。此时
+            # 继续旧 clarify 循环会让用户看到“思维链是新任务、正文却是旧
+            # 追问”的矛盾。放弃旧 checkpoint，把新消息作为全新请求执行。
+            if planner_output.payload.task_type != "learning_plan":
+                return None, None, True
+        except Exception as exc:
+            emit_runtime_event(
+                "step_failed",
+                step_id="planner_resume_resolution",
+                agent="planner_agent",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+        # Fail-safe only: normal clarification answers are interpreted by Planner.
+        fallback_scope = infer_plan_scope(answer)
+        if fallback_scope in {"long_term", "short_term", "daily_task"}:
+            return fallback_scope, None, False
+        return None, None, False
+
+    def _save_assistant_message(
+        self,
+        conversation_id: str,
+        learner_id: str,
+        messages: list[dict[str, Any]],
+        result: (
+            ReviewCardResult
+            | WorkflowInterruptedResult
+            | WorkflowHumanReviewResult
+        ),
+        *,
+        persist: bool = True,
+    ) -> None:
+        # 系统自动任务（system_operation）只保留轻量会话：请求消息已由
+        # _execute_started_run 落库，这里跳过 assistant 回复与上下文摘要，
+        # 避免在用户对话历史之外制造无消费方的副本。
+        if not persist:
+            return
+        content = sanitize_conversation_content(workflow_result_to_markdown(result))
+        notice = getattr(self, "_deferred_memory_conflict_notice", None)
+        if isinstance(result, ReviewCardResult) and notice:
+            conflict_lines = []
+            for conflict in notice.get("conflicts") or []:
+                proposed = str(conflict.get("proposed_memory") or "").strip()
+                reason = str(conflict.get("reason") or "").strip()
+                if proposed and reason:
+                    conflict_lines.append(f"{proposed}（{reason}）")
+                elif proposed:
+                    conflict_lines.append(proposed)
+                elif reason:
+                    conflict_lines.append(reason)
+            if conflict_lines:
+                reminder = (
+                    "系统消息：检测到学习记忆记录存在不一致（"
+                    + "；".join(conflict_lines[:3])
+                    + "）。本次回答不受影响；如需调整，可在设置页的冲突清单中确认或修改，"
+                    "多智能体会在后台完成更新。"
+                )
+                content = f"{content}\n\n{reminder}"
+        actions = [
+            action.model_dump(mode="json")
+            for action in getattr(result, "ui_actions", [])
+        ]
+        assistant_message: dict[str, Any] = {"role": "assistant", "content": content}
+        if actions:
+            assistant_message["actions"] = actions
+        runtime_events = drain_recording_sink()
+        durable_receipt = self._persisted_trace_events(result)
+        trace_events = self._merge_persisted_trace_events(
+            runtime_events,
+            durable_receipt,
+        )
+        if trace_events:
+            assistant_message["trace_events"] = trace_events
+        # Assign message ids with the exact same rule the workflow uses for
+        # agent context (``{conversation_id}:message:{index+1}``).  The
+        # repository honors a supplied id, so the persisted rows carry the
+        # same ids the Memory Agent recorded in the summary source refs.
+        # Without this, in-flight messages fall back to fingerprint ids and
+        # the next run can never match them against the covered set, which
+        # silently disables incremental compression.
+        saved_messages = [
+            {
+                **item,
+                "message_id": (
+                    item.get("message_id")
+                    or f"{conversation_id}:message:{index + 1}"
+                ),
+            }
+            for index, item in enumerate([*messages, assistant_message])
+        ]
+        self.conversation_repository.save_messages(
+            conversation_id,
+            learner_id,
+            saved_messages,
+        )
+        # Persist the freshest dialogue summary produced by this run so the
+        # next turn loads the compressed history instead of the full
+        # conversation.  Memory Agent only refreshes the summary when new
+        # uncovered messages exceed the compression threshold, so this write
+        # is skipped on turns where no compression ran.
+        memory_output = next(
+            (
+                item
+                for item in getattr(result, "agent_outputs", []) or []
+                if getattr(item, "producer", "") == "memory_agent"
+            ),
+            None,
+        )
+        context_summary = getattr(
+            getattr(memory_output, "payload", None), "context_summary", None
+        )
+        if context_summary is not None:
+            self.conversation_repository.save_context_summary(
+                conversation_id,
+                learner_id,
+                str(getattr(result, "execution_id", "") or ""),
+                context_summary.model_dump(mode="json"),
+            )
+
+    # 失败文案与 api/app.py 的 safe_failure_message 保持一致（避免把内部
+    # 异常详情直接展示给学习者）。
+    _FAILURE_USER_MESSAGES: dict[str, str] = {
+        "knowledge_timeout": "知识检索超时，已保存当前会话，请稍后重试。",
+        "knowledge_step_failed": "知识检索未能完成，请稍后重试。",
+        "paper_blueprint_timeout": "试卷蓝图生成超时，请稍后重试。",
+        "model_timeout": "模型调用超时，请稍后重试。",
+        "model_invalid_output": "模型输出未能通过解析，请重新生成。",
+        "workflow_timeout": "本次处理超时，已保存当前会话，请稍后重试。",
+        "plan_compilation_failed": "学习规划未能通过结构化校验，请稍后重试。",
+        "audit_step_timeout": "内容审核超时，已保存当前会话，请稍后重试。",
+        "audit_step_failed": "内容审核未能完成，请稍后重试。",
+        "daily_task_publication_failed": "今日任务发布未能完成，请稍后重试。",
+        "paper_generation_failed": "试卷生成未能完成，请稍后重试。",
+        "persistence_failed": "结果保存失败，请稍后重试。",
+        "model_empty_response": "模型暂时没有返回内容，请再试一次。",
+        "model_transport_error": "模型连接暂时不稳定，请稍后重试。",
+        "exam_workspace_changed": (
+            "考试目标已切换，旧任务不能继续；"
+            "请在当前考试下重新发起该请求。"
+        ),
+    }
+
+    def save_failure_message(
+        self,
+        conversation_id: str,
+        learner_id: str,
+        *,
+        error_code: str | None = None,
+    ) -> None:
+        """失败路径也在会话中落一条 assistant 消息。
+
+        2026-08-16: 组卷失败后刷新会话只看到用户消息（“直接没了”），因为
+        失败路径不保存任何 assistant 消息。此处复用全量写回语义：读现有
+        消息 → 追加一条带 error_code 元数据的失败回执 → save_messages
+        （repository 按 message_id 跳过已存在的行，幂等）。
+        """
+        if not conversation_id or not learner_id:
+            return
+        try:
+            existing = self.conversation_repository.get_messages(
+                conversation_id, learner_id
+            )
+        except Exception:
+            return
+        content = self._FAILURE_USER_MESSAGES.get(
+            str(error_code or ""), "这次处理没有成功完成，请稍后重试。"
+        )
+        # 幂等保护：同一会话若「最后一条消息」已是本次失败回执（execute
+        # except 与 SSE failure 双路径可能先后触发），跳过避免重复追加。
+        # 仅检查最后一条：重试（新 user 消息在最后）后再失败时必须追加
+        # 新回执；message_id 使用唯一 id（固定 id 会让「重新生成后又失败」
+        # 的同 error_code 回执覆盖旧回执，前端 restorePendingRun 拉后端
+        # 消息时把本地占位气泡替换掉，用户看到“气泡消失”）。
+        if existing and existing[-1].get("content") == content:
+            return
+        failure_message: dict[str, Any] = {
+            # 唯一 message_id：重复失败（如重新生成后再失败）也必须有独立
+            # 回执，避免前端恢复流程用后端消息覆盖本地气泡时“消失”。
+            "message_id": f"{conversation_id}:message:failure:{uuid4().hex}",
+            "role": "assistant",
+            "content": content,
+            "metadata": {
+                "failure": True,
+                "error_code": str(error_code or "workflow_failed"),
+            },
+        }
+        saved_messages = [
+            {
+                **item,
+                "message_id": (
+                    item.get("message_id")
+                    or f"{conversation_id}:message:{index + 1}"
+                ),
+            }
+            for index, item in enumerate([*existing, failure_message])
+        ]
+        try:
+            self.conversation_repository.save_messages(
+                conversation_id,
+                learner_id,
+                saved_messages,
+            )
+        except Exception:
+            pass
+
+    @staticmethod
+    def _trace_event_key(event: dict[str, Any]) -> tuple[Any, ...]:
+        """Return a stable identity for lifecycle events from both sinks."""
+        event_name = str(event.get("event") or "")
+        if event_name in {"reasoning_delta", "agent_reasoning_delta"}:
+            return (
+                event_name,
+                event.get("agent"),
+                event.get("step_id"),
+                event.get("ts"),
+                event.get("delta"),
+            )
+        if event_name in {"model_input", "model_output", "model_transport", "model_failed"}:
+            return (event_name, event.get("call_id"), event.get("agent"))
+        return (
+            event_name,
+            event.get("agent"),
+            event.get("step_id") or event.get("audit_step_id"),
+            event.get("status"),
+            event.get("kind"),
+            event.get("output_phase"),
+            event.get("text"),
+        )
+
+    @classmethod
+    def _merge_persisted_trace_events(
+        cls,
+        runtime_events: list[dict[str, Any]],
+        durable_events: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Merge live and durable receipts without replaying lifecycle events."""
+        merged: list[dict[str, Any]] = []
+        seen: set[tuple[Any, ...]] = set()
+        for event in [*runtime_events, *durable_events]:
+            if not isinstance(event, dict):
+                continue
+            key = cls._trace_event_key(event)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(event)
+        indexed = list(enumerate(merged))
+        indexed.sort(key=lambda pair: (
+            pair[1].get("ts") is None,
+            pair[1].get("ts") if pair[1].get("ts") is not None else pair[0],
+            pair[0],
+        ))
+        return [event for _, event in indexed]
+
+    @staticmethod
+    def _planner_formal_output(planner_output: AgentEnvelope[Any]) -> str:
+        """Show what Planner's model returned and what execution adopted."""
+
+        payload = planner_output.payload
+        adopted = (
+            payload.model_dump(mode="json")
+            if hasattr(payload, "model_dump")
+            else dict(payload)
+            if isinstance(payload, dict)
+            else {}
+        )
+        model_final = str(
+            getattr(payload, "model_final_output_text", None) or ""
+        ).strip()
+        sections: list[str] = []
+        if model_final:
+            sections.extend([
+                "### 模型最后一轮原始正式输出",
+                "````json\n"
+                + str(_sanitize(model_final))
+                + "\n````",
+            ])
+        sections.extend([
+            "### 系统最终采用结果",
+            build_public_agent_output(
+                "planner_agent", {"payload": adopted}
+            ),
+        ])
+        return "\n\n".join(item for item in sections if item)
+
+    @staticmethod
+    def _persisted_trace_events(
+        result: ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult,
+    ) -> list[dict[str, Any]]:
+        """Build a durable, browser-safe collaboration receipt.
+
+        The formal conversation remains prose-only.  These events are copied
+        into message metadata so refreshing the page does not erase the
+        "查看过程" affordance. Raw prompts, transport payloads and compiler
+        inputs remain server-side and are never persisted into chat history.
+
+        The receipt stores lifecycle metadata plus complete sanitized formal
+        business outputs. Planner additionally keeps its final provider
+        response so a refreshed conversation can distinguish the model's
+        decision from the application-adopted contract.
+        """
+        result_status = str(getattr(result, "status", "success") or "success")
+        terminal_event = {
+            "success": "run_completed",
+            "waiting_human_review": "run_waiting_human_review",
+            "interrupted": "run_interrupted",
+            "failed": "run_failed",
+        }.get(result_status, "run_failed")
+        events: list[dict[str, Any]] = []
+        for envelope in getattr(result, "agent_outputs", []) or []:
+            payload = getattr(envelope, "payload", None)
+            if hasattr(payload, "model_dump"):
+                payload = payload.model_dump(mode="json")
+            elif payload is None:
+                payload = {}
+            producer = getattr(envelope, "producer", "")
+            step_id = getattr(envelope, "step_id", "")
+            events.append({
+                "event": "step_completed",
+                "step_id": step_id,
+                "agent": producer,
+            })
+            public_output = (
+                PersonalizedReviewCardUseCase._planner_formal_output(envelope)
+                if producer == "planner_agent"
+                else build_public_agent_output(producer, {"payload": payload})
+            )
+            if public_output:
+                events.extend([
+                    {
+                        "event": "agent_output_started",
+                        "step_id": step_id,
+                        "agent": producer,
+                        "output_phase": "formal",
+                    },
+                    {
+                        "event": "agent_output_delta",
+                        "step_id": step_id,
+                        "agent": producer,
+                        "output_phase": "formal",
+                        "delta": public_output,
+                    },
+                    {
+                        "event": "agent_output_committed",
+                        "step_id": step_id,
+                        "agent": producer,
+                        "output_phase": "formal",
+                    },
+                ])
+        for trace in getattr(result, "model_trace", []) or []:
+            item = trace.model_dump(mode="json") if hasattr(trace, "model_dump") else dict(trace)
+            agent = item.get("agent", "model")
+            step_id = item.get("workflow_step_id") or agent
+            call_id = f"MODEL_CALL_{item.get('sequence', len(events))}"
+            if item.get("raw_input") is not None:
+                events.append({
+                    "event": "model_input",
+                    "agent": agent,
+                    "output_kind": (
+                        "compiler" if "compiler" in str(agent).lower() else "business"
+                    ),
+                    "step_id": step_id,
+                    "call_id": call_id,
+                })
+            if item.get("raw_output") is not None or item.get("raw_output_text") is not None:
+                events.append({
+                    "event": "model_output",
+                    "agent": agent,
+                    "output_kind": (
+                        "compiler" if "compiler" in str(agent).lower() else "business"
+                    ),
+                    "step_id": step_id,
+                    "call_id": call_id,
+                })
+            if item.get("transport_input") is not None or item.get("raw_output_text") is not None:
+                events.append({
+                    "event": "model_transport",
+                    "agent": agent,
+                    "output_kind": (
+                        "compiler" if "compiler" in str(agent).lower() else "business"
+                    ),
+                    "step_id": step_id,
+                    "call_id": call_id,
+                })
+        coordination = getattr(result, "coordination", None)
+        repair_trace = getattr(coordination, "repair_trace", []) if coordination else []
+        for repair in repair_trace or []:
+            item = repair.model_dump(mode="json") if hasattr(repair, "model_dump") else dict(repair)
+            persisted_status = item.get("final_audit_decision") or item.get(
+                "status", "completed"
+            )
+            events.append({
+                "event": "audit_revision_completed",
+                "status": persisted_status,
+                "audit_step_id": item.get("trigger_step_id", "audit"),
+                "location_labels": list(item.get("location_labels") or [])[:8],
+                "rerun_step_ids": list(item.get("rerun_step_ids") or [])[:12],
+            })
+        # The terminal event must be last.  A fixed leading run_completed made
+        # the browser close the trace, then replay later audit/step events as
+        # if they happened after completion.
+        events.append({"event": terminal_event, "status": result_status})
+        return [public_runtime_event(event) for event in events]
+
+    def get_run_state(self, thread_id: str) -> dict[str, Any] | None:
+        return self.run_state_repository.get(thread_id)
+
+    def claim_active_run(
+        self, learner_id: str, product_surface: str, thread_id: str
+    ) -> str:
+        return self.run_state_repository.claim_active_run(
+            learner_id, product_surface, thread_id
+        )
+
+    def recover_abandoned_active_runs(self) -> list[str]:
+        return self.run_state_repository.recover_abandoned_active_runs()
+
+    def request_run_cancellation(self, thread_id: str) -> dict[str, Any] | None:
+        return self.run_state_repository.request_cancellation(thread_id)
+
+    def mark_run_cancelled(self, thread_id: str) -> dict[str, Any] | None:
+        self._continuations.pop(thread_id, None)
+        return self.run_state_repository.mark_cancelled(thread_id)
+
+    def raise_if_run_cancelled(self, thread_id: str) -> None:
+        state = self.run_state_repository.get(thread_id) or {}
+        if state.get("status") in {"cancellation_requested", "cancelled"}:
+            raise asyncio.CancelledError()
+
+    def mark_run_started(
+        self,
+        thread_id: str,
+        learner_id: str,
+        *,
+        product_surface: str | None = None,
+    ) -> None:
+        """Reserve an owned run before an SSE response can be polled.
+
+        ``StreamingResponse`` starts the workflow only when its body iterator is
+        consumed.  The browser can query the status endpoint between receiving
+        the response headers and that first iteration, so ownership and running
+        state must exist at the route boundary rather than inside ``execute``.
+        Later workflow writes merge execution and case identifiers into this
+        same record.
+        """
+
+        state = {
+            "status": "running",
+            "thread_id": thread_id,
+            "learner_id": learner_id,
+        }
+        if product_surface:
+            state["product_surface"] = product_surface
+        self._remember_run(thread_id, state)
+
+    def mark_run_failed(
+        self,
+        thread_id: str,
+        message: str,
+        *,
+        error_type: str | None = None,
+        error_code: str | None = None,
+        retryable: bool | None = None,
+        failed_step: str | None = None,
+        persist_conversation_message: bool = True,
+    ) -> None:
+        self._continuations.pop(thread_id, None)
+        state = self.run_state_repository.get(thread_id) or {}
+        if state.get("status") in {"failed", "cancellation_requested", "cancelled"}:
+            return
+        error_type = str(error_type or state.get("error_type") or "workflow_failed")
+        error_code = str(error_code or state.get("error_code") or "workflow_failed")
+        self._remember_run(
+            thread_id,
+            {
+                "status": "failed",
+                "thread_id": thread_id,
+                "message": message,
+                "error_type": error_type,
+                "error_code": error_code,
+                "retryable": (
+                    bool(retryable)
+                    if retryable is not None
+                    else bool(state.get("retryable", False))
+                ),
+                "failed_step": failed_step or state.get("failed_step"),
+                "continuation": None,
+            },
+        )
+        # 失败回执落库到会话，避免刷新后对话只剩用户消息。
+        # （execute 的 except 路径已兜底；此处覆盖 SSE 层直接调
+        # mark_run_failed 的失败场景。）
+        if persist_conversation_message:
+            try:
+                self.save_failure_message(
+                    state.get("conversation_id") or thread_id,
+                    state.get("learner_id") or "",
+                    error_code=error_code,
+                )
+            except Exception:
+                pass
+
+    def _record_run_failure(self, thread_id: str, exc: BaseException) -> None:
+        message = str(exc).strip() or type(exc).__name__
+        if (self.run_state_repository.get(thread_id) or {}).get("status") == "failed":
+            return
+        model_diagnostics = self._failure_model_diagnostics(exc)
+        self.mark_run_failed(
+            thread_id,
+            message,
+            error_type=type(exc).__name__,
+            error_code=self._failure_code(exc),
+            retryable=self._is_retryable_failure(exc),
+            failed_step=self._failure_step(exc),
+            persist_conversation_message=not isinstance(
+                exc, ExamWorkspaceChangedError
+            ),
+        )
+        self._remember_run(
+            thread_id,
+            {
+                "failure_model_trace": [
+                    {
+                        "sequence": item.sequence,
+                        "agent": item.agent,
+                        "error_type": item.error_type,
+                        **(
+                            {"error_reason": item.error_reason}
+                            if item.error_reason
+                            else {}
+                        ),
+                        **(
+                            {"error_cause_type": item.error_cause_type}
+                            if item.error_cause_type
+                            else {}
+                        ),
+                        **(
+                            {"error_status_code": item.error_status_code}
+                            if item.error_status_code is not None
+                            else {}
+                        ),
+                        **(
+                            {"error_retry_count": item.error_retry_count}
+                            if item.error_retry_count is not None
+                            else {}
+                        ),
+                        **(
+                            {"error_transport_stage": item.error_transport_stage}
+                            if item.error_transport_stage
+                            else {}
+                        ),
+                        **(
+                            {"queue_wait_ms": item.queue_wait_ms}
+                            if item.queue_wait_ms is not None
+                            else {}
+                        ),
+                        **(
+                            {"provider_duration_ms": item.provider_duration_ms}
+                            if item.provider_duration_ms is not None
+                            else {}
+                        ),
+                        **(
+                            {"request_attempt_count": item.request_attempt_count}
+                            if item.request_attempt_count is not None
+                            else {}
+                        ),
+                        **(
+                            {
+                                "last_reasoning_at_monotonic": (
+                                    item.last_reasoning_at_monotonic
+                                )
+                            }
+                            if item.last_reasoning_at_monotonic is not None
+                            else {}
+                        ),
+                        **(
+                            {"reasoning_delta_count": item.reasoning_delta_count}
+                            if item.reasoning_delta_count is not None
+                            else {}
+                        ),
+                        **(
+                            {"response_chars": item.response_chars}
+                            if item.response_chars is not None
+                            else {}
+                        ),
+                        **(
+                            {"output_summary": self._failure_model_output_summary(item)}
+                            if self._failure_model_output_summary(item)
+                            else {}
+                        ),
+                    }
+                    for item in self._model_trace()
+                ][-12:]
+            },
+        )
+        if model_diagnostics:
+            self._remember_run(
+                thread_id,
+                {"failure_model_diagnostics": model_diagnostics},
+            )
+
+    @staticmethod
+    def _failure_model_diagnostics(exc: BaseException) -> dict[str, object]:
+        """Return a bounded, machine-generated model failure diagnostic."""
+
+        details = getattr(exc, "last_error_details", None)
+        if not isinstance(details, dict):
+            details = {}
+        result: dict[str, object] = {}
+        reason = str(getattr(exc, "reason", "") or details.get("reason") or "").strip().lower()
+        if reason and re.fullmatch(r"[a-z0-9_-]{1,80}", reason):
+            result["reason"] = reason
+        cause = exc.__cause__ or exc.__context__
+        if cause is not None:
+            result["cause_type"] = type(cause).__name__
+        status_code = getattr(exc, "status_code", None)
+        if status_code is None:
+            status_code = details.get("status_code")
+        try:
+            status_code = int(status_code)
+        except (TypeError, ValueError):
+            status_code = None
+        if status_code is not None and 100 <= status_code <= 599:
+            result["status_code"] = status_code
+        retry_count = details.get("retry_count")
+        try:
+            retry_count = int(retry_count)
+        except (TypeError, ValueError):
+            retry_count = None
+        if retry_count is not None and 0 <= retry_count <= 100:
+            result["retry_count"] = retry_count
+        transport_stage = str(details.get("transport_stage") or "").strip().lower()
+        if transport_stage in {
+            "connect",
+            "proxy",
+            "read",
+            "write",
+            "pool",
+            "protocol",
+            "http_response",
+            "timeout",
+            "network",
+        }:
+            result["transport_stage"] = transport_stage
+        for key, maximum in (
+            ("provider_duration_ms", 86_400_000),
+            ("request_attempt_count", 100),
+            ("reasoning_delta_count", 10_000_000),
+            ("response_chars", 100_000_000),
+        ):
+            value = getattr(exc, "last_timing_details", {})
+            value = value.get(key) if isinstance(value, dict) else None
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= parsed <= maximum:
+                result[key] = parsed
+        timing = getattr(exc, "last_timing_details", None)
+        last_reasoning_at = (
+            timing.get("last_reasoning_at_monotonic")
+            if isinstance(timing, dict)
+            else None
+        )
+        if isinstance(last_reasoning_at, (int, float)) and (
+            0 <= float(last_reasoning_at) <= 10_000_000_000
+        ):
+            result["last_reasoning_at_monotonic"] = float(last_reasoning_at)
+        step_timeout = getattr(
+            exc,
+            "step_timeout_seconds",
+            details.get("step_timeout_seconds"),
+        )
+        try:
+            step_timeout = float(step_timeout)
+        except (TypeError, ValueError):
+            step_timeout = None
+        if step_timeout is not None and 0 < step_timeout <= 86_400:
+            result["step_timeout_seconds"] = step_timeout
+        cancel_source = str(
+            getattr(exc, "cancel_source", "")
+            or details.get("cancel_source")
+            or ""
+        )
+        if cancel_source == "orchestrator_step_deadline":
+            result["cancel_source"] = cancel_source
+        return result
+
+    @staticmethod
+    def _failure_model_output_summary(item: ModelCallTrace) -> dict[str, object]:
+        """Keep actionable compiler diagnostics without persisting full prompts."""
+
+        if item.agent != "plan_contract_compiler" or not isinstance(item.raw_output, dict):
+            return {}
+        output = item.raw_output
+        summary: dict[str, object] = {
+            "status": str(output.get("status") or "unknown"),
+        }
+        issues = output.get("issues")
+        if isinstance(issues, list):
+            summary["issues"] = [
+                {
+                    "code": str(issue.get("code") or "unknown"),
+                    "field_path": str(issue.get("field_path") or "/"),
+                }
+                for issue in issues
+                if isinstance(issue, dict)
+            ][:12]
+        contract = output.get("contract")
+        if isinstance(contract, dict):
+            summary["scope"] = str(contract.get("scope") or "unknown")
+            summary["contract_fields"] = sorted(
+                str(key) for key in contract if key != "field_anchors"
+            )
+        return summary
+
+    @staticmethod
+    def _failure_code(exc: BaseException) -> str:
+        structured_code = str(getattr(exc, "error_code", "") or "").strip()
+        if structured_code:
+            return structured_code
+        message = str(exc).lower()
+        failed_step = PersonalizedReviewCardUseCase._failure_step(exc)
+        model_reason = str(getattr(exc, "reason", "") or "").lower()
+        if model_reason in {"transport_error", "connection_error"} or any(
+            marker in message
+            for marker in (
+                "connecterror",
+                "connectionerror",
+                "readerror",
+                "writeerror",
+                "pooltimeout",
+                "network error",
+                "transport error",
+            )
+        ):
+            return "model_transport_error"
+        if isinstance(exc, KeyError) and "恢复" in str(exc):
+            return "workflow_resume_unavailable"
+        if isinstance(exc, (TimeoutError, asyncio.TimeoutError)) or "timeout" in message or "timed out" in message:
+            if failed_step in {"audit", "audit_agent", "audit_long", "audit_short"}:
+                return "audit_step_timeout"
+            if failed_step in {"knowledge", "knowledge_base_agent"} or "knowledge" in message or "知识" in message:
+                return "knowledge_timeout"
+            if failed_step in {"paper_blueprint", "paper_blueprint_agent"}:
+                return "paper_blueprint_timeout"
+            if "model" in message or "transport" in message:
+                return "model_timeout"
+            return "workflow_timeout"
+        # 模型返回空内容（空响应/空流）属于瞬态模型问题，可重试；
+        # 单模型场景下这是最需要清晰提示与重试入口的一类失败。
+        if "empty" in message or "no content" in message:
+            return "model_empty_response"
+        # 模型输出无法解析为有效结构化 JSON（初答 + 一次修复均失败）是
+        # 瞬态模型质量问题，与知识检索本身无关。必须优先于按关键字归类：
+        # 例如 agent 名 knowledge_explanation_agent 中的 “knowledge” 会把
+        # expert 讲解步骤的失败误报为“知识检索未能完成”。
+        if "invalid structured output" in message or "invalid_json" in message:
+            return "model_invalid_output"
+        # These messages are emitted only by the bounded audit/repair state
+        # machine and therefore carry stronger provenance than a ContextVar
+        # fallback. The latter may contain the terminal phase of a previously
+        # completed direct test/helper call in the same Python context.
+        if any(
+            marker in message
+            for marker in (
+                "audit decision",
+                "audit findings could not be safely repaired",
+                "audit still requires review after the bounded repair",
+            )
+        ):
+            return "audit_step_failed"
+        if (
+            failed_step in {"learning_plan", "learning_plan_service"}
+            and "dailytaskprogresserror" in message
+        ):
+            return "daily_task_publication_failed"
+        # Failed-step is authoritative.  Persistence errors often include
+        # the word "knowledge" in a serialized trace; that must not mask the
+        # actual database/writeback failure.
+        if failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
+            return "persistence_failed"
+        if failed_step in {"knowledge", "knowledge_base_agent"} or "knowledge" in message:
+            return "knowledge_step_failed"
+        if (
+            failed_step in {"diagnosis", "diagnosis_agent", "diagnosis_long", "diagnosis_short"}
+            and (
+                "plan contract" in message
+                or "规划合同" in message
+                or "规划正文" in message
+                or "编译为合同" in message
+            )
+        ):
+            return "plan_compilation_failed"
+        if (
+            failed_step == "prerequisite_plan"
+            and (
+                "audit" in message
+                or "审核" in str(exc)
+                or "父级计划未能发布" in str(exc)
+            )
+        ):
+            return "audit_step_failed"
+        if (
+            failed_step in {"audit", "audit_agent"}
+            or "audit decision" in message
+            or "audit findings" in message
+            or "audit still requires" in message
+            or "审核" in str(exc)
+        ):
+            return "audit_step_failed"
+        if failed_step in {
+            "paper_blueprint",
+            "question_pool",
+            "paper_assembly",
+            "paper_audit",
+        }:
+            return "paper_generation_failed"
+        if failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
+            return "persistence_failed"
+        if any(term in message for term in ("database", "mysql", "持久化", "保存失败", "writeback")):
+            return "persistence_failed"
+        return "workflow_failed"
+
+    @staticmethod
+    def _is_retryable_failure(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        if isinstance(exc, (TimeoutError, asyncio.TimeoutError)):
+            return True
+        # LangGraph preserves the provider failure text in ExecutionResult,
+        # but the use case wraps that result in RuntimeError before persisting
+        # the run.  Recognize the bounded transient HTTP classes here so a
+        # provider 5xx/429 is not falsely stored as a non-retryable business
+        # failure.
+        if re.search(r"\bhttp\s+(?:429|5\d{2})\b", message):
+            return True
+        return any(
+            term in message
+            for term in (
+                "timeout",
+                "timed out",
+                "temporarily",
+                "connection",
+                "connecterror",
+                "readerror",
+                "writeerror",
+                "transport",
+                "empty",
+                "no content",
+                "invalid structured output",
+                "invalid_json",
+                "database",
+                "mysql",
+                "知识检索",
+                "审核",
+                "writeback",
+            )
+        )
+
+    @staticmethod
+    def _failure_step(exc: BaseException) -> str | None:
+        explicit_step = str(getattr(exc, "failed_step", "") or "").strip()
+        if explicit_step:
+            return explicit_step
+        match = re.search(r"步骤\s+([^（(\s]+)", str(exc))
+        if match:
+            return match.group(1)
+        return _FAILURE_STEP_CONTEXT.get()
+
+    def _continuation_payload(
+        self, continuation: _WorkflowContinuation
+    ) -> dict[str, Any]:
+        context = {
+            key: value
+            for key, value in continuation.context.items()
+            if key not in _RUNTIME_ONLY_CONTINUATION_CONTEXT_KEYS
+        }
+        return {
+            "request": continuation.request.model_dump(mode="json"),
+            "case_id": continuation.case_id,
+            "execution_id": continuation.execution_id,
+            "execution_plan": continuation.execution_plan.model_dump(mode="json"),
+            "planner_output": continuation.planner_output.model_dump(mode="json"),
+            "context": context,
+        }
+
+    def _restore_continuation(
+        self, thread_id: str
+    ) -> _WorkflowContinuation | None:
+        state = self.run_state_repository.get(thread_id) or {}
+        if state.get("status") not in {"interrupted", "running"}:
+            return None
+        payload = state.get("continuation")
+        if not isinstance(payload, dict):
+            return None
+        context = dict(payload.get("context") or {})
+        context["terminal_trace"] = self.terminal_trace
+        context["cancellation_check"] = (
+            lambda: self.raise_if_run_cancelled(thread_id)
+        )
+        return _WorkflowContinuation(
+            request=ReviewCardRequest.model_validate(payload.get("request") or {}),
+            case_id=str(payload.get("case_id") or state.get("case_id") or ""),
+            execution_id=str(
+                payload.get("execution_id") or state.get("execution_id") or ""
+            ),
+            execution_plan=ExecutionPlan.model_validate(
+                payload.get("execution_plan") or {}
+            ),
+            planner_output=AgentEnvelope[PlannerDecision].model_validate(
+                payload.get("planner_output") or {}
+            ),
+            context=context,
+        )
+
+    def _remember_run(self, thread_id: str, state: dict[str, Any]) -> None:
+        persisted_state = dict(state)
+        result = persisted_state.get("result")
+        coordination = getattr(result, "coordination", None)
+        if isinstance(coordination, CoordinationSummary):
+            persisted_state.setdefault("coordination", coordination.model_dump(mode="json"))
+        self.run_state_repository.save(thread_id, persisted_state)
+
+    @staticmethod
+    def _execution_coordination(execution: Any) -> CoordinationSummary:
+        return CoordinationSummary(
+            communication_trace=execution.communication_trace,
+            repair_trace=execution.repair_trace,
+        )
+
+    def _finalize_execution(
+        self,
+        *,
+        request: ReviewCardRequest,
+        case_id: str,
+        execution_id: str,
+        execution_plan: ExecutionPlan,
+        execution,
+        planner_output: AgentEnvelope[Any],
+        cancellation_check: Callable[[], None] | None = None,
+    ) -> ReviewCardResult:
+        if callable(cancellation_check):
+            cancellation_check()
+        workflow_outputs = [
+            output
+            for output in execution.outputs.values()
+            if isinstance(output, AgentEnvelope)
+        ]
+        is_smart_paper_v2 = execution_plan.plan_id == "PLAN_WORKSHOP_SMART_PAPER_V2"
+        agent_outputs = (
+            workflow_outputs
+            if is_smart_paper_v2
+            else [planner_output, *workflow_outputs]
+        )
+        if not is_smart_paper_v2:
+            if callable(cancellation_check):
+                cancellation_check()
+            memory_conflict_notice = self._persist_memory_governance(
+                request=request,
+                execution_id=execution_id,
+                agent_outputs=agent_outputs,
+                cancellation_check=cancellation_check,
+            )
+            if memory_conflict_notice is not None:
+                self._deferred_memory_conflict_notice = memory_conflict_notice
+            else:
+                self._deferred_memory_conflict_notice = None
+        learning_plan_output = execution.outputs.get("learning_plan")
+        learning_plan = (
+            getattr(learning_plan_output, "payload", None) if learning_plan_output else None
+        )
+        if planner_output.payload.task_type == "learner_data_query":
+            if callable(cancellation_check):
+                cancellation_check()
+            diagnosis_output = execution.outputs.get("diagnosis")
+            diagnosis = (
+                getattr(diagnosis_output, "payload", None)
+                if diagnosis_output is not None
+                else None
+            )
+            direct_response = str(
+                getattr(diagnosis, "summary", "")
+                or "暂时没有可用于回答的学习记录。"
+            )
+            learner_data = dict(getattr(diagnosis, "learner_data", {}) or {})
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            if callable(cancellation_check):
+                cancellation_check()
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "plan": execution_plan,
+                    "agent_outputs": agent_outputs,
+                    "learner_data": learner_data,
+                    "trace": execution.trace,
+                    "tool_trace": execution.tool_trace,
+                    "communication_trace": execution.communication_trace,
+                    "model_trace": self._model_trace(),
+                },
+            )
+            if callable(cancellation_check):
+                cancellation_check()
+            return ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type="learner_data_query",
+                direct_response=direct_response,
+                learner_data=learner_data,
+                agent_outputs=agent_outputs,
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
+            )
+        if planner_output.payload.task_type == "learning_plan":
+            if callable(cancellation_check):
+                cancellation_check()
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            if callable(cancellation_check):
+                cancellation_check()
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "plan": execution_plan,
+                    "agent_outputs": agent_outputs,
+                    "learning_plan": learning_plan,
+                    "trace": execution.trace,
+                    "tool_trace": execution.tool_trace,
+                    "communication_trace": execution.communication_trace,
+                    "model_trace": self._model_trace(),
+                },
+            )
+            if callable(cancellation_check):
+                cancellation_check()
+            return ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type=planner_output.payload.task_type,
+                agent_outputs=agent_outputs,
+                learning_plan=learning_plan,
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
+            )
+        if planner_output.payload.task_type == "paper_generation":
+            _FAILURE_STEP_CONTEXT.set("paper_blueprint")
+            return self._publish_paper_blueprint(
+                request=request,
+                case_id=case_id,
+                execution_id=execution_id,
+                execution_plan=execution_plan,
+                execution=execution,
+                planner_output=planner_output,
+                agent_outputs=agent_outputs,
+                cancellation_check=cancellation_check,
+            )
+        if planner_output.payload.task_type in {
+            "knowledge_explanation",
+            "general_learning_support",
+        }:
+            _FAILURE_STEP_CONTEXT.set("knowledge")
+            return self._publish_standalone_resource(
+                request=request,
+                case_id=case_id,
+                execution_id=execution_id,
+                execution_plan=execution_plan,
+                execution=execution,
+                planner_output=planner_output,
+                agent_outputs=agent_outputs,
+                cancellation_check=cancellation_check,
+            )
+        audit = execution.outputs["audit"].payload
+        if planner_output.payload.requires_learning_plan_output:
+            long_audit = execution.outputs["audit_long"].payload
+            short_audit = execution.outputs["audit_short"].payload
+            if getattr(learning_plan, "requires_clarification", False):
+                if callable(cancellation_check):
+                    cancellation_check()
+                snapshot_path = self.snapshot_exporter.export(
+                    case_id,
+                    execution_id,
+                    {
+                        "request": request,
+                        "plan": execution_plan,
+                        "agent_outputs": agent_outputs,
+                        "learning_plan": learning_plan,
+                        "audit_long": long_audit,
+                        "audit_short": short_audit,
+                        "audit_resource": audit,
+                        "publication_blocked": True,
+                    },
+                )
+                return ReviewCardResult(
+                    status="success",
+                    execution_id=execution_id,
+                    task_type=planner_output.payload.task_type,
+                    agent_outputs=agent_outputs,
+                    learning_plan=learning_plan,
+                    snapshot_path=snapshot_path,
+                    writeback_intents=[],
+                    model_trace=self._model_trace(),
+                    coordination=self._execution_coordination(execution),
+                )
+            if (
+                long_audit.decision != "pass"
+                or long_audit.subject_type != "long_term_plan"
+                or short_audit.decision != "pass"
+                or short_audit.subject_type != "short_term_plan"
+                or audit.subject_type != "resource"
+                or short_audit.parent_subject_digest != long_audit.subject_digest
+            ):
+                raise RuntimeError("combined publication requires three independent passing audits")
+        if audit.decision != "pass":
+            raise RuntimeError(f"resource was not approved: {audit.decision}")
+        resource = execution.outputs["expert"].payload
+        review_schedule = execution.outputs["schedule"].payload
+        if review_schedule.selected_task is None:
+            raise RuntimeError("review schedule did not select a task")
+        is_admitted = bool(
+            self.review_service
+            and self.review_service.has_completed_attempt(
+                request.learner_id,
+                review_schedule.selected_task.primary_kp_id,
+            )
+        )
+        review_task = review_schedule.selected_task.model_copy(
+            update={"status": "bound" if is_admitted else "awaiting_attempt"}
+        )
+        resource_version = ResourceVersion(
+            resource_id=f"RES_{uuid4().hex}",
+            source_draft_id=resource.resource_draft_id,
+            title=resource.title,
+            content=resource.content,
+            audit_result_id=audit.audit_result_id,
+            published_at=datetime.now(timezone.utc),
+        )
+        resource_binding = ReviewResourceBinding(
+            binding_id=f"BIND_{uuid4().hex}",
+            review_task_id=review_task.review_task_id,
+            resource_id=resource_version.resource_id,
+            resource_version=resource_version.resource_version,
+            audit_result_id=audit.audit_result_id,
+        )
+        writeback_intents = self._build_writeback_intents(
+            execution_id, audit, resource_version, review_task, resource_binding
+        )
+        _FAILURE_STEP_CONTEXT.set("persistence")
+        if self.writeback_executor:
+            if callable(cancellation_check):
+                cancellation_check()
+            self.writeback_executor.execute_batch(writeback_intents)
+            if callable(cancellation_check):
+                cancellation_check()
+        if self.review_service is not None:
+            if callable(cancellation_check):
+                cancellation_check()
+            self.review_service.record_delivery(
+                schedule=review_schedule,
+                task=review_task,
+                resource=resource_version,
+                binding=resource_binding,
+                prompt_abstract=request.user_request,
+            )
+            if callable(cancellation_check):
+                cancellation_check()
+        snapshot_path = self.snapshot_exporter.export(
+            case_id,
+            execution_id,
+            {
+                "request": request,
+                "plan": execution_plan,
+                "agent_outputs": agent_outputs,
+                "review_schedule": review_schedule,
+                "review_task": review_task,
+                "resource": resource,
+                "resource_version": resource_version,
+                "resource_binding": resource_binding,
+                "writeback_intents": writeback_intents,
+                "audit": audit,
+                "trace": execution.trace,
+                "tool_trace": execution.tool_trace,
+                "communication_trace": execution.communication_trace,
+                "model_trace": self._model_trace(),
+            },
+        )
+        if callable(cancellation_check):
+            cancellation_check()
+        return ReviewCardResult(
+            status="success",
+            execution_id=execution_id,
+            task_type=planner_output.payload.task_type,
+            agent_outputs=agent_outputs,
+            learning_plan=learning_plan,
+            review_schedule=review_schedule,
+            review_task=review_task,
+            resource=resource,
+            resource_version=resource_version,
+            resource_binding=resource_binding,
+            audit=audit,
+            snapshot_path=snapshot_path,
+            writeback_intents=writeback_intents,
+            model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
+        )
+
+    def _persist_memory_governance(
+        self,
+        *,
+        request: ReviewCardRequest,
+        execution_id: str,
+        agent_outputs: list[AgentEnvelope[Any]],
+        cancellation_check: Callable[[], None] | None = None,
+    ) -> dict[str, Any] | None:
+        """Persist memory governance, degrading unresolved conflicts.
+
+        Returns a ``memory_conflict_notice`` payload when a memory conflict
+        was deferred instead of hard-interrupting the graph (non-planning
+        tasks).  The notice is surfaced as a system message so the learner
+        can resolve the conflict from the conflict list at their own pace.
+        """
+        _FAILURE_STEP_CONTEXT.set("memory")
+        if self.memory_governance_writer is None:
+            return None
+        if callable(cancellation_check):
+            cancellation_check()
+        memory_output = next(
+            (item for item in reversed(agent_outputs) if item.producer == "memory_agent"),
+            None,
+        )
+        payload = getattr(memory_output, "payload", None)
+        if payload is None:
+            return None
+        candidates = [
+            {
+                "summary": candidate.summary,
+                "source_refs": [
+                    source.model_dump(mode="json") for source in candidate.source_refs
+                ],
+            }
+            for candidate in getattr(payload, "memory_candidates", [])
+        ]
+        auto_confirm_candidates = [
+            {
+                "summary": candidate.summary,
+                "source_refs": [
+                    source.model_dump(mode="json") for source in candidate.source_refs
+                ],
+            }
+            for candidate in getattr(payload, "auto_confirm_memories", [])
+        ]
+        governance = getattr(payload, "governance", None)
+        resolution = getattr(governance, "resolution", "none") if governance else "none"
+        conflicts = [
+            conflict.model_dump(mode="json")
+            for conflict in getattr(governance, "conflicts", [])
+        ] if governance else []
+        if resolution == "needs_clarification":
+            # The orchestrator deferred this conflict instead of interrupting
+            # the learner's current request (knowledge explanation, papers,
+            # review cards, casual chat).  Persist the extracted candidates
+            # so they appear in the conflict list, emit a system notification,
+            # and let the caller attach a non-blocking reminder to the reply.
+            if self.workshop_runtime is not None:
+                try:
+                    if callable(cancellation_check):
+                        cancellation_check()
+                    self.workshop_runtime.create_memory_conflict_notification(
+                        request.learner_id,
+                        execution_id=execution_id,
+                        conflicts=conflicts,
+                    )
+                except Exception:
+                    pass
+            try:
+                if callable(cancellation_check):
+                    cancellation_check()
+                self.memory_governance_writer(
+                    request.learner_id,
+                    execution_id=execution_id,
+                    candidates=candidates,
+                    auto_confirm_candidates=auto_confirm_candidates,
+                    resolution="none",
+                    conflicts=[],
+                )
+            except Exception:
+                pass
+            if callable(cancellation_check):
+                cancellation_check()
+            return {
+                "conflicts": conflicts,
+                "questions": list(
+                    getattr(governance, "clarification_questions", []) or []
+                ),
+            }
+        if callable(cancellation_check):
+            cancellation_check()
+        self.memory_governance_writer(
+            request.learner_id,
+            execution_id=execution_id,
+            candidates=candidates,
+            auto_confirm_candidates=auto_confirm_candidates,
+            resolution=resolution,
+            conflicts=conflicts,
+        )
+        if callable(cancellation_check):
+            cancellation_check()
+        return None
+
+    def _publish_paper_blueprint(
+        self,
+        *,
+        request: ReviewCardRequest,
+        case_id: str,
+        execution_id: str,
+        execution_plan,
+        execution,
+        planner_output,
+        agent_outputs: list[AgentEnvelope[Any]],
+        cancellation_check: Callable[[], None] | None = None,
+    ) -> ReviewCardResult:
+        _FAILURE_STEP_CONTEXT.set("paper_blueprint")
+        if callable(cancellation_check):
+            cancellation_check()
+        audit = execution.outputs["audit"].payload
+        if audit.decision != "pass":
+            raise RuntimeError(f"exam paper was not approved: {audit.decision}")
+        paper = execution.outputs["paper_assembly"].payload
+        blueprint = execution.outputs["paper_blueprint"].payload
+        candidate_pool = execution.outputs["question_pool"].payload
+        empty_reason = str(getattr(paper, "empty_reason", "") or "").strip()
+        if empty_reason:
+            # 空态占位卷：不发布到学习工坊、不创建资源版本，直接面向用户
+            # 给出可操作提示，避免前端展示“试卷生成未能完成”这类无信息量报错。
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "plan": execution_plan,
+                    "agent_outputs": agent_outputs,
+                    "paper_blueprint": blueprint,
+                    "question_candidate_pool": candidate_pool,
+                    "exam_paper_draft": paper,
+                    "audit": audit,
+                    "empty_reason": empty_reason,
+                    "trace": execution.trace,
+                    "tool_trace": execution.tool_trace,
+                    "communication_trace": execution.communication_trace,
+                    "model_trace": self._model_trace(),
+                },
+            )
+            return ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type=planner_output.payload.task_type,
+                direct_response=(
+                    "暂未找到与当前学习范围匹配的题目，本次没有生成试卷内容。"
+                    f"（{empty_reason}）你可以换个知识点，或稍后再试。"
+                ),
+                agent_outputs=agent_outputs,
+                audit=audit,
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
+            )
+        paper_publication: dict[str, Any] | None = None
+        workshop_operation_id = f"WORKSHOP_PAPER_{execution_id}"
+        workshop_publication_payload: dict[str, Any] | None = None
+        if self.workshop_runtime is not None:
+            self.data_permission_gateway.authorize(
+                agent="paper_assembly_agent",
+                domain="paper_workspace",
+                action="write",
+                fields={"paper", "blueprint", "evidence_pack", "execution_id"},
+            )
+            evidence_pack = candidate_pool
+            workshop_publication_payload = {
+                "operation_id": workshop_operation_id,
+                "artifact_type": "paper",
+                "learner_id": request.learner_id,
+                "audit_result_id": audit.audit_result_id,
+                "publication": {
+                    "paper": paper.model_dump(mode="json"),
+                    "blueprint": blueprint.model_dump(mode="json"),
+                    "evidence_pack": (
+                    evidence_pack.model_dump(mode="json")
+                    if hasattr(evidence_pack, "model_dump")
+                    else {}
+                ),
+                    "daily_task_item_id": request.daily_task_item_id,
+                },
+            }
+        publish_answers = self._paper_answers_requested(request)
+        paper_content: dict[str, Any] = {
+            "试卷说明": paper.instructions,
+            "试卷正文": [item.model_dump(mode="json") for item in paper.learner_questions()],
+        }
+        if paper.difficulty_source_summary is not None:
+            # Difficulty/source degradation is part of the learner-facing
+            # contract, not merely internal audit metadata.  Publishing the
+            # system-owned notice prevents generated gap questions or
+            # unlabeled formal questions from being mistaken for exact-level
+            # official-bank items.
+            paper_content["难度与来源说明"] = paper.difficulty_source_summary.notice
+        if publish_answers:
+            paper_content["参考答案"] = [
+                {
+                    "题号": item.sequence,
+                    "答案": item.question.reference_answer,
+                }
+                for item in paper.items
+            ]
+            paper_content["答案解析"] = [
+                {
+                    "题号": item.sequence,
+                    "解析": item.question.analysis or "暂无解析",
+                }
+                for item in paper.items
+            ]
+        paper_content.update(
+            {
+                "蓝图覆盖": paper.coverage_summary,
+                "待确认项": paper.unresolved_constraints,
+            }
+        )
+        resource = ResourceDraft(
+            resource_draft_id=paper.paper_draft_id,
+            title=paper.title,
+            content=paper_content,
+            estimated_minutes=paper.duration_minutes or request.available_minutes or 60,
+            safety_notes=[
+                (
+                    "答案与解析按用户要求独立发布，不与题干混排；内部检索信息仍不公开。"
+                    if publish_answers
+                    else "考生视图不包含答案、解析和内部检索信息。"
+                )
+            ],
+            question_consumption=QuestionConsumptionDecision(
+                use_question_candidates=True,
+                usage_reason="完整试卷仅从按蓝图检索的候选题池中选择。",
+                selected_question_ids=[item.question.question_id for item in paper.items],
+                resource_type="practice",
+            ),
+        )
+        resource_version = ResourceVersion(
+            resource_id=f"RES_{uuid4().hex}",
+            source_draft_id=resource.resource_draft_id,
+            title=resource.title,
+            content=resource.content,
+            audit_result_id=audit.audit_result_id,
+            published_at=datetime.now(timezone.utc),
+        )
+        writeback_intents = [
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=audit.audit_result_id,
+                effect_type="record_audit",
+                target_service="audit_service",
+                target_entity_type="audit_result",
+                payload={
+                    **audit.model_dump(mode="json"),
+                    "resource_id": resource_version.resource_id,
+                    "source_draft_id": resource.resource_draft_id,
+                },
+                idempotency_key=f"{execution_id}:audit:{audit.audit_result_id}",
+            ),
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=resource.resource_draft_id,
+                effect_type="publish_resource",
+                target_service="resource_service",
+                target_entity_type="resource_version",
+                payload=resource_version.model_dump(mode="json"),
+                preconditions=["audit_pass"],
+                idempotency_key=(
+                    f"{execution_id}:resource:{resource_version.resource_id}:"
+                    f"v{resource_version.resource_version}"
+                ),
+            ),
+        ]
+        if workshop_publication_payload is not None and self.writeback_executor:
+            writeback_intents.append(
+                WritebackIntent(
+                    intent_id=f"WBI_{uuid4().hex}",
+                    source_artifact_id=resource.resource_draft_id,
+                    effect_type="enqueue_workshop_publication",
+                    target_service="workshop_service",
+                    target_entity_type="paper",
+                    payload=workshop_publication_payload,
+                    preconditions=["audit_pass"],
+                    idempotency_key=f"{workshop_operation_id}:enqueue",
+                )
+            )
+        _FAILURE_STEP_CONTEXT.set("persistence")
+        if callable(cancellation_check):
+            cancellation_check()
+        if self.writeback_executor:
+            self.writeback_executor.execute_batch(writeback_intents)
+            if workshop_publication_payload is not None:
+                if callable(cancellation_check):
+                    cancellation_check()
+                paper_publication = self.writeback_executor.dispatch_workshop_publication(
+                    workshop_operation_id, self.workshop_runtime
+                )
+        elif workshop_publication_payload is not None:
+            if callable(cancellation_check):
+                cancellation_check()
+            publication = workshop_publication_payload["publication"]
+            paper_publication = self.workshop_runtime.publish_agent_paper(
+                request.learner_id,
+                execution_id=workshop_operation_id,
+                **publication,
+            )
+        _FAILURE_STEP_CONTEXT.set("snapshot")
+        if callable(cancellation_check):
+            cancellation_check()
+        snapshot_path = self.snapshot_exporter.export(
+            case_id,
+            execution_id,
+            {
+                "request": request,
+                "plan": execution_plan,
+                "agent_outputs": agent_outputs,
+                "paper_blueprint": blueprint,
+                "question_candidate_pool": candidate_pool,
+                "exam_paper_draft": paper,
+                "resource": resource,
+                "resource_version": resource_version,
+                "writeback_intents": writeback_intents,
+                "audit": audit,
+                "trace": execution.trace,
+                "tool_trace": execution.tool_trace,
+                "communication_trace": execution.communication_trace,
+                "model_trace": self._model_trace(),
+            },
+        )
+        return ReviewCardResult(
+            status="success",
+            execution_id=execution_id,
+            task_type=planner_output.payload.task_type,
+            agent_outputs=agent_outputs,
+            resource=resource,
+            resource_version=resource_version,
+            audit=audit,
+            snapshot_path=snapshot_path,
+            writeback_intents=writeback_intents,
+            model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
+            ui_actions=(
+                [
+                    UiAction(
+                        label="开始答题",
+                        destination="workshop.paper",
+                        params={"paper_id": str(paper_publication["paper_id"])},
+                    )
+                ]
+                if paper_publication and paper_publication.get("paper_id")
+                else []
+            ),
+        )
+
+    @staticmethod
+    def _paper_answers_requested(request: ReviewCardRequest) -> bool:
+        user_request = request.user_request.replace(" ", "")
+        if any(
+            phrase in user_request
+            for phrase in ("不需要答案", "不要答案", "隐藏答案", "不提供答案")
+        ):
+            return False
+        if any(keyword in user_request for keyword in ("答案", "解析", "评分说明")):
+            return True
+        requirement = str(
+            request.exam_constraints.get("answer_and_rubric_requirement") or ""
+        ).strip()
+        return bool(requirement) and not any(
+            phrase in requirement for phrase in ("不需要", "不要", "隐藏", "不提供")
+        )
+
+    def _publish_standalone_resource(
+        self,
+        *,
+        request: ReviewCardRequest,
+        case_id: str,
+        execution_id: str,
+        execution_plan,
+        execution,
+        planner_output,
+        agent_outputs: list[AgentEnvelope[Any]],
+        cancellation_check: Callable[[], None] | None = None,
+    ) -> ReviewCardResult:
+        _FAILURE_STEP_CONTEXT.set("knowledge")
+        if callable(cancellation_check):
+            cancellation_check()
+        audit = execution.outputs["audit"].payload
+        if audit.decision != "pass":
+            raise RuntimeError(f"standalone resource was not approved: {audit.decision}")
+        resource = execution.outputs["expert"].payload
+        resource_version = ResourceVersion(
+            resource_id=f"RES_{uuid4().hex}",
+            source_draft_id=resource.resource_draft_id,
+            title=resource.title,
+            content=resource.content,
+            audit_result_id=audit.audit_result_id,
+            published_at=datetime.now(timezone.utc),
+        )
+        writeback_intents = [
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=audit.audit_result_id,
+                effect_type="record_audit",
+                target_service="audit_service",
+                target_entity_type="audit_result",
+                payload={
+                    **audit.model_dump(mode="json"),
+                    "resource_id": resource_version.resource_id,
+                },
+                idempotency_key=f"{execution_id}:audit:{audit.audit_result_id}",
+            ),
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=resource.resource_draft_id,
+                effect_type="publish_resource",
+                target_service="resource_service",
+                target_entity_type="resource_version",
+                payload=resource_version.model_dump(mode="json"),
+                preconditions=["audit_pass"],
+                idempotency_key=(
+                    f"{execution_id}:resource:{resource_version.resource_id}:"
+                    f"v{resource_version.resource_version}"
+                ),
+            ),
+        ]
+        _FAILURE_STEP_CONTEXT.set("persistence")
+        if callable(cancellation_check):
+            cancellation_check()
+        if self.writeback_executor:
+            self.writeback_executor.execute_batch(writeback_intents)
+        _FAILURE_STEP_CONTEXT.set("snapshot")
+        if callable(cancellation_check):
+            cancellation_check()
+        snapshot_path = self.snapshot_exporter.export(
+            case_id,
+            execution_id,
+            {
+                "request": request,
+                "plan": execution_plan,
+                "agent_outputs": agent_outputs,
+                "resource": resource,
+                "resource_version": resource_version,
+                "audit": audit,
+                "writeback_intents": writeback_intents,
+                "trace": execution.trace,
+                "tool_trace": execution.tool_trace,
+                "communication_trace": execution.communication_trace,
+                "model_trace": self._model_trace(),
+            },
+        )
+        return ReviewCardResult(
+            status="success",
+            execution_id=execution_id,
+            task_type=planner_output.payload.task_type,
+            agent_outputs=agent_outputs,
+            resource=resource,
+            resource_version=resource_version,
+            audit=audit,
+            snapshot_path=snapshot_path,
+            writeback_intents=writeback_intents,
+            model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
+            ui_actions=[],
+        )
+
+    async def _read_current_page_context(
+        self,
+        snapshot: dict[str, Any] | None,
+        *,
+        agent: str,
+    ) -> dict[str, Any]:
+        if not snapshot:
+            return {}
+        try:
+            result = await self.orchestrator.tool_registry.invoke(
+                "read_current_page",
+                agent,
+                safe_input_summary={
+                    "page_type": str(snapshot.get("page_type") or "unknown")[:80],
+                    "visible_text_chars": len(str(snapshot.get("visible_text") or "")),
+                },
+                snapshot=snapshot,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            emit_runtime_event(
+                "current_page_unavailable",
+                tool_name="read_current_page",
+                error_type=type(exc).__name__,
+            )
+            return {}
+        emit_runtime_event(
+            "current_page_read",
+            tool_name="read_current_page",
+            page_type=str(result.get("page_type") or "unknown")[:80],
+            available=bool(result.get("available")),
+            truncated=bool(result.get("truncated")),
+            security_flags=list(result.get("security_flags") or []),
+        )
+        return result
+
+    async def _load_behavior_context(self, learner_id: str) -> dict[str, Any]:
+        if self.behavior_context_loader is None:
+            return {}
+        try:
+            value = await asyncio.to_thread(self.behavior_context_loader, learner_id)
+        except Exception as exc:
+            emit_runtime_event(
+                "behavior_context_unavailable",
+                source="frontend_backend",
+                error_type=type(exc).__name__,
+            )
+            return {}
+        if not isinstance(value, dict):
+            return {}
+        emit_runtime_event(
+            "behavior_context_loaded",
+            source=value.get("source", "frontend_backend"),
+            calculated_at=value.get("calculated_at"),
+            attempt_count=len(value.get("question_attempt", [])),
+            mastery_count=len(value.get("mastery", [])),
+        )
+        return value
+
+    async def _load_multiscale_planning_context(
+        self,
+        learner_id: str,
+        *,
+        plan_context: dict[str, Any],
+        scope: str,
+        legacy_state: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        state = dict(legacy_state)
+        if self.multiscale_state_loader is not None:
+            try:
+                loaded = await asyncio.to_thread(
+                    self.multiscale_state_loader,
+                    learner_id,
+                    plan_context=plan_context,
+                    window_days=30,
+                )
+                if isinstance(loaded, dict):
+                    state = loaded
+            except Exception as exc:
+                emit_runtime_event(
+                    "multiscale_learning_state_unavailable",
+                    error_type=type(exc).__name__,
+                )
+                state = {
+                    "schema_version": "1.0",
+                    "learner_id": learner_id,
+                    "macro": {},
+                    "meso": {},
+                    "micro": {},
+                    "data_quality": {
+                        "coverage": 0.0,
+                        "allow_cautious_path_adjustment": False,
+                        "limitations": [
+                            "多尺度状态来源暂时不可用，禁止高风险路径调整。"
+                        ],
+                    },
+                    "hard_constraints": [],
+                    "source_refs": [],
+                    "state_digest": "",
+                }
+
+        items: list[dict[str, Any]] = []
+        prerequisite_evidence: dict[str, Any] = {}
+        if self.path_candidate_loader is not None:
+            try:
+                loaded_candidates = await asyncio.to_thread(
+                    self.path_candidate_loader,
+                    learner_id,
+                    plan_context=plan_context,
+                    scope=scope,
+                    limit=30,
+                    include_blocked=True,
+                )
+                if isinstance(loaded_candidates, dict):
+                    raw_prerequisite_evidence = loaded_candidates.get(
+                        "prerequisite_evidence"
+                    )
+                    if isinstance(raw_prerequisite_evidence, dict):
+                        prerequisite_evidence = raw_prerequisite_evidence
+                    raw_items = loaded_candidates.get("items")
+                    if isinstance(raw_items, list):
+                        items = [
+                            item for item in raw_items if isinstance(item, dict)
+                        ]
+            except Exception as exc:
+                emit_runtime_event(
+                    "path_candidates_unavailable",
+                    error_type=type(exc).__name__,
+                )
+        return state, {
+            "state_digest": state.get("state_digest"),
+            "prerequisite_evidence": prerequisite_evidence,
+            "eligible": [item for item in items if item.get("eligible") is True],
+            "blocked": [item for item in items if item.get("eligible") is not True],
+        }
+
+    @staticmethod
+    def _planner_multiscale_summary(
+        state: dict[str, Any],
+        *,
+        current_long_term_plan: dict[str, Any],
+        current_short_term_plan: dict[str, Any],
+    ) -> dict[str, Any]:
+        meso = state.get("meso") if isinstance(state.get("meso"), dict) else {}
+        due = meso.get("due_review_knowledge_points")
+        constraints = state.get("hard_constraints")
+        return {
+            "has_long_term_plan": bool(current_long_term_plan),
+            "has_short_term_plan": bool(current_short_term_plan),
+            "due_review_count": len(due) if isinstance(due, list) else 0,
+            "data_quality": (
+                state.get("data_quality")
+                if isinstance(state.get("data_quality"), dict)
+                else {}
+            ),
+            "hard_constraint_summary": [
+                {
+                    key: item.get(key)
+                    for key in ("key", "passed", "reason")
+                    if key in item
+                }
+                for item in constraints
+                if isinstance(item, dict)
+            ]
+            if isinstance(constraints, list)
+            else [],
+        }
+
+    @staticmethod
+    def _existing_plan_result(
+        plan_scope: str | None,
+        *,
+        current_long_term_plan: dict[str, Any],
+        current_short_term_plan: dict[str, Any],
+        current_learning_task: dict[str, Any],
+        plan_review: dict[str, Any] | None = None,
+    ) -> LearningPlanResult | LearningPlanClarificationResult:
+        review = dict(plan_review or {})
+        outcome = str(review.get("outcome") or "on_track")
+        summary = str(review.get("summary") or "").strip()
+        suggested = outcome not in {"", "on_track"}
+        if suggested:
+            force_prompt = (
+                f"{summary} 当前计划暂不自动覆盖；如需采用该建议，请在消息中心确认，"
+                "或明确回复“强制修改”并说明要调整的层级。"
+            )
+        else:
+            force_prompt = (
+                "当前计划仍可继续执行，系统不会重复生成。"
+                "如需修改，请明确回复“强制修改长期规划”“强制修改短期计划”"
+                "或“强制更新今日任务”，并说明变化。"
+            )
+        common = {
+            "generated_scope": plan_scope,
+            "reused_existing": True,
+            "replan_review": review,
+            "force_replan_prompt": force_prompt,
+        }
+        if plan_scope == "daily_task" and current_learning_task:
+            return LearningPlanResult(
+                learning_task=LearningTask.model_validate(current_learning_task),
+                **common,
+            )
+        if plan_scope == "short_term" and current_short_term_plan:
+            return LearningPlanResult(
+                short_term_plan=ShortTermPlan.model_validate(current_short_term_plan),
+                **common,
+            )
+        if plan_scope == "long_term" and current_long_term_plan:
+            return LearningPlanResult(
+                long_term_plan=LongTermPlan.model_validate(current_long_term_plan),
+                **common,
+            )
+        # Defensive fallback: reuse must never surface as a hard workflow
+        # failure when the requested layer has no persisted version.  The
+        # planner already guards against this, but a restored checkpoint or a
+        # concurrent invalidation can still make the layer disappear between
+        # planning and execution; answer with a clarification instead.
+        labels = {
+            "long_term": "长期规划",
+            "short_term": "短期计划",
+            "daily_task": "当日任务",
+        }
+        return LearningPlanClarificationResult(
+            clarification_questions=[
+                f"当前还没有可沿用的{labels.get(plan_scope, '学习计划')}。"
+                "请确认是否要重新制定，我会在确认后立即生成。"
+            ],
+            reason=(
+                "你请求沿用的计划层级当前没有有效版本，"
+                "需要先确认目标后再生成。"
+            ),
+            requested_scope=(
+                plan_scope
+                if plan_scope in {"long_term", "short_term", "daily_task"}
+                else "unspecified"
+            ),
+        )
+
+    @classmethod
+    def _merge_context_dict(
+        cls, request_value: dict[str, Any], server_value: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Merge nested context while keeping persisted server facts authoritative."""
+
+        merged = dict(request_value or {})
+        for key, value in (server_value or {}).items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = cls._merge_context_dict(merged[key], value)
+            elif value not in (None, "", [], {}):
+                merged[key] = value
+        return merged
+
+    @staticmethod
+    def _has_meaningful_profile(profile: dict[str, Any]) -> bool:
+        """Distinguish an actual learner profile from an empty database shell."""
+
+        ignored = {"user_id", "learner_id", "created_at", "updated_at"}
+        return any(
+            key not in ignored and value not in (None, "", [], {})
+            for key, value in (profile or {}).items()
+        )
+
+    def _emit_compiled_graph(
+        self, plan: ExecutionPlan, *, include_planner: bool = True
+    ) -> None:
+        """Expose the actual runtime DAG without leaking graph state or payloads."""
+        levels = plan.topological_levels()
+        if include_planner:
+            levels = [["planner"], *levels]
+        nodes = [
+            *(
+                [
+                    {
+                        "step_id": "planner",
+                        "agent": "planner_agent",
+                        "action": "route_request",
+                        "max_retries": 0,
+                    }
+                ]
+                if include_planner
+                else []
+            ),
+            *[
+                {
+                    "step_id": step.step_id,
+                    "agent": step.agent,
+                    "action": step.action,
+                    "max_retries": step.max_retries,
+                }
+                for step in plan.steps
+            ],
+        ]
+        root_steps = [step.step_id for step in plan.steps if not step.depends_on]
+        edges = (
+            [
+                {"source": "planner", "target": step_id, "kind": "dependency"}
+                for step_id in root_steps
+            ]
+            if include_planner
+            else []
+        )
+        edges.extend(
+            {
+                "source": dependency,
+                "target": step.step_id,
+                "kind": "dependency",
+            }
+            for step in plan.steps
+            for dependency in step.depends_on
+        )
+        control_edges = []
+        audit_step = next(
+            (step for step in plan.steps if step.agent == "audit_agent"), None
+        )
+        if audit_step is not None:
+            revision_target = next(
+                (
+                    dependency
+                    for dependency in audit_step.depends_on
+                    if dependency in {"expert", "paper_assembly"}
+                ),
+                None,
+            )
+            if revision_target:
+                control_edges.append(
+                    {
+                        "source": audit_step.step_id,
+                        "target": revision_target,
+                        "kind": "revision",
+                        "label": "审核返修",
+                    }
+                )
+        parallel_groups = [level for level in levels if len(level) > 1]
+        emit_runtime_event(
+            "graph_compiled",
+            engine=getattr(self.orchestrator, "engine_name", "legacy"),
+            graph_name=f"competition_{plan.task_type}",
+            task_type=plan.task_type,
+            nodes=nodes,
+            edges=edges,
+            control_edges=control_edges,
+            levels=levels,
+            parallel_groups=parallel_groups,
+            capabilities={
+                "dynamic_routing": True,
+                "parallel_execution": bool(parallel_groups),
+                "retryable_nodes": sum(
+                    1 for step in plan.steps if step.max_retries > 0
+                ),
+                "controlled_revision": bool(control_edges),
+            },
+        )
+
+    def _model_trace(self) -> list[ModelCallTrace]:
+        return self.model_trace_recorder.items if self.model_trace_recorder else []
+
+    def _record_failure_case(
+        self,
+        *,
+        execution_id: str,
+        learner_id: str,
+        conversation_id: str | None = None,
+        task_type: str,
+        execution,
+        request_text: str | None = None,
+    ) -> None:
+        """Persist an audit/repair case into the failure library.
+
+        Every execution whose audit did not pass on the first try — including
+        cases that were released unchanged (non-red-line findings) — is
+        recorded so the system can learn which failure modes are frequent,
+        which repairs succeed, and which cases were escalated.  Recording is
+        best-effort: a storage failure must never fail the user-facing run.
+        """
+        try:
+            audits = [
+                output.payload
+                for output in execution.outputs.values()
+                if isinstance(getattr(output, "payload", None), AuditResult)
+            ]
+            repair_trace = list(getattr(execution, "repair_trace", []) or [])
+            if not audits and not repair_trace:
+                return
+            audit = audits[-1] if audits else None
+            decision = getattr(audit, "decision", "unknown") if audit else "unknown"
+            findings = list(getattr(audit, "findings", []) or []) if audit else []
+            structured_findings = (
+                list(getattr(audit, "structured_findings", []) or [])
+                if audit
+                else []
+            )
+            issue_types = list(dict.fromkeys(
+                [
+                    *(issue.issue_type for issue in structured_findings),
+                    *(
+                        issue_type
+                        for record in repair_trace
+                        for issue_type in record.issue_types
+                    ),
+                ]
+            ))
+            # A case only deserves a durable row when something was actually
+            # found: a non-pass decision, structured findings, or a repair run.
+            if (
+                decision == "pass"
+                and not issue_types
+                and not repair_trace
+                and not findings
+            ):
+                return
+            repair_payload = None
+            if repair_trace:
+                last = repair_trace[-1]
+                repair_payload = {
+                    "repair_id": last.repair_id,
+                    "trigger_step_id": last.trigger_step_id,
+                    "rerun_step_ids": list(last.rerun_step_ids),
+                    "preserved_step_ids": list(last.preserved_step_ids),
+                    "rounds": len(repair_trace),
+                    "final_audit_decision": last.final_audit_decision,
+                    "status": last.status,
+                }
+            input_digest = hashlib.sha256(
+                str(request_text or "").encode("utf-8")
+            ).hexdigest()[:64]
+            case = AuditFailureCase(
+                case_id=f"FC_{uuid4().hex}",
+                execution_id=execution_id,
+                learner_id=learner_id,
+                task_type=task_type,
+                audit_result_id=(
+                    getattr(audit, "audit_result_id", "")
+                    if audit
+                    else ""
+                ),
+                decision=decision,
+                released=(decision == "pass"),
+                issue_types=issue_types,
+                findings=findings,
+                repair_json=repair_payload,
+                input_digest=input_digest,
+            )
+            self.failure_case_repository.save(case)
+            if self.feedback_governance_service is not None:
+                feedback_source = (
+                    "human_review"
+                    if getattr(execution, "status", "") == "waiting_human_review"
+                    else "audit"
+                )
+                source_issues = structured_findings or []
+                if source_issues:
+                    for issue in source_issues:
+                        issue_origin = str(getattr(issue, "origin", "legacy") or "legacy")
+                        deterministic_observation = issue_origin == "deterministic"
+                        locations = list(getattr(issue, "locations", []) or [])
+                        field_path = (
+                            str(getattr(locations[0], "location_key", ""))
+                            if locations
+                            else ""
+                        )
+                        feedback = self.feedback_governance_service.record_automatic_feedback(
+                            source_type=feedback_source,
+                            execution_id=execution_id,
+                            conversation_id=conversation_id,
+                            learner_id=learner_id,
+                            task_type=task_type,
+                            issue_type=str(getattr(issue, "issue_type", "unresolved")),
+                            summary=str(getattr(issue, "message", "")),
+                            source_case_id=case.case_id,
+                            target_agent=None,
+                            owner_step_id=str(
+                                getattr(issue, "owner_step_id", "")
+                                or getattr(issue, "origin_step_id", "")
+                            ) or None,
+                            field_path=field_path,
+                            constraint_category=str(
+                                getattr(issue, "policy_id", "general") or "general"
+                            ),
+                            severity=(
+                                "blocking"
+                                if bool(getattr(issue, "blocking", True))
+                                else "warning"
+                            ),
+                            # Deterministic gates are system-owned facts.  A
+                            # semantic Audit finding remains a model
+                            # observation and must be approved in the admin
+                            # feedback desk before it can affect a signature.
+                            trust_level=(
+                                "high" if deterministic_observation else "medium"
+                            ),
+                            status=(
+                                "validated" if deterministic_observation else "pending"
+                            ),
+                        )
+                        if (
+                            feedback is not None
+                            and feedback.status == "validated"
+                            and self.failure_signature_service is not None
+                        ):
+                            self.failure_signature_service.ingest(feedback)
+                else:
+                    for issue_type in issue_types or ["unresolved"]:
+                        feedback = self.feedback_governance_service.record_automatic_feedback(
+                            source_type=(
+                                "human_review"
+                                if feedback_source == "human_review"
+                                else "repair" if repair_trace else "audit"
+                            ),
+                            execution_id=execution_id,
+                            conversation_id=conversation_id,
+                            learner_id=learner_id,
+                            task_type=task_type,
+                            issue_type=issue_type,
+                            summary="；".join(findings)[:2000] or "审核未首次通过",
+                            source_case_id=case.case_id,
+                            trust_level="medium",
+                            status="pending",
+                        )
+                        if (
+                            feedback is not None
+                            and feedback.status == "validated"
+                            and self.failure_signature_service is not None
+                        ):
+                            self.failure_signature_service.ingest(feedback)
+        except Exception:  # noqa: BLE001 - failure library must never break the run
+            if self.terminal_trace is not None:
+                self.terminal_trace.error(
+                    "failure_case", detail="failure library persistence failed"
+                )
+
+    def _human_review_result(
+        self,
+        *,
+        execution_id: str,
+        task_type: str,
+        execution,
+    ) -> WorkflowHumanReviewResult:
+        audits = [
+            output.payload
+            for output in execution.outputs.values()
+            if isinstance(getattr(output, "payload", None), AuditResult)
+        ]
+        audit = next(
+            (item for item in reversed(audits) if item.decision != "pass"),
+            audits[-1] if audits else None,
+        )
+        if not isinstance(audit, AuditResult):
+            raise RuntimeError("human review status requires an audit result")
+        review = audit.model_copy(update={"decision": "needs_human_review"})
+        paper_output = execution.outputs.get("paper_assembly")
+        paper = getattr(paper_output, "payload", None)
+        preview: dict[str, Any] = {}
+        if task_type == "paper_generation" and paper is not None:
+            preview = {
+                "artifact_type": "paper_draft",
+                "title": str(getattr(paper, "title", "") or "待复核试卷"),
+                "instructions": str(getattr(paper, "instructions", "") or ""),
+                "question_count": len(list(getattr(paper, "items", []) or [])),
+                "questions": [
+                    item.model_dump(mode="json")
+                    for item in list(
+                        getattr(paper, "learner_questions", lambda: [])()
+                    )
+                ],
+                "publication_status": "blocked_pending_admin_review",
+                "can_answer": False,
+            }
+        return WorkflowHumanReviewResult(
+            review_id=f"HR_{execution_id}",
+            execution_id=execution_id,
+            task_type=task_type,
+            review=review,
+            preview=preview,
+            completed_steps=list(execution.outputs),
+            agent_outputs=[
+                output
+                for output in execution.outputs.values()
+                if isinstance(output, AgentEnvelope)
+            ],
+            model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
+        )
+
+    def resolve_smart_paper_human_review(
+        self,
+        thread_id: str,
+        *,
+        action: str,
+        reviewer_id: str,
+        note: str,
+    ) -> ReviewCardResult | dict[str, Any]:
+        """Resolve a persisted smart-paper review without reopening the model graph."""
+
+        state = self.run_state_repository.get(thread_id)
+        if not state or state.get("status") != "waiting_human_review":
+            raise KeyError(thread_id)
+        stored_result = WorkflowHumanReviewResult.model_validate(state.get("result") or {})
+        if stored_result.task_type != "paper_generation":
+            raise ValueError("当前人工复核项不是智能组卷任务")
+        safe_note = re.sub(
+            r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", str(note or "")
+        ).strip()[:2000]
+        if len(safe_note) < 3:
+            raise ValueError("请填写人工复核说明")
+        if action == "reject":
+            rejected = {
+                "status": "human_review_rejected",
+                "thread_id": thread_id,
+                "execution_id": stored_result.execution_id,
+                "task_type": stored_result.task_type,
+                "review_id": stored_result.review_id,
+                "reviewer_id": reviewer_id,
+                "review_note": safe_note,
+                "result": stored_result.model_dump(mode="json"),
+                "continuation": None,
+            }
+            self._remember_run(thread_id, rejected)
+            return rejected
+        if action != "approve_publish":
+            raise ValueError("不支持的人工复核操作")
+
+        deterministic_blockers = [
+            issue
+            for issue in stored_result.review.structured_findings
+            if bool(getattr(issue, "blocking", True))
+            and str(getattr(issue, "origin", "") or "") == "deterministic"
+        ]
+        if deterministic_blockers:
+            raise ValueError("确定性硬约束仍未满足，不能通过人工确认绕过发布门禁")
+
+        review_context = dict(state.get("human_review_context") or {})
+        request = ReviewCardRequest.model_validate(review_context.get("request") or {})
+        execution_plan = ExecutionPlan.model_validate(
+            review_context.get("execution_plan") or build_smart_paper_execution_plan()
+        )
+        raw_outputs = {
+            output.step_id: output.model_dump(mode="json")
+            for output in stored_result.agent_outputs
+        }
+        required_steps = {"paper_blueprint", "question_pool", "paper_assembly"}
+        if not required_steps.issubset(raw_outputs):
+            raise ValueError("待复核试卷缺少可发布的结构化产物")
+        outputs: dict[str, AgentEnvelope[Any]] = {
+            "paper_blueprint": AgentEnvelope[PaperBlueprint].model_validate(
+                raw_outputs["paper_blueprint"]
+            ),
+            "question_pool": AgentEnvelope[QuestionCandidatePool].model_validate(
+                raw_outputs["question_pool"]
+            ),
+            "paper_assembly": AgentEnvelope[ExamPaperDraft].model_validate(
+                raw_outputs["paper_assembly"]
+            ),
+        }
+        approved_audit = stored_result.review.model_copy(
+            update={
+                "audit_result_id": f"AUDIT_HUMAN_{uuid4().hex}",
+                "decision": "pass",
+                "audit_report": (
+                    f"管理员 {reviewer_id} 完成人工复核并确认发布。\n"
+                    f"复核说明：{safe_note}\n\n{stored_result.review.audit_report}"
+                )[:12000],
+            }
+        )
+        base_output = outputs["paper_assembly"]
+        human_review_envelope_context = {
+            "case_id": base_output.case_id,
+            "trace_id": base_output.trace_id,
+            "request_id": base_output.request_id,
+            "execution_id": stored_result.execution_id,
+            "task_type": "paper_generation",
+            "learner_id": request.learner_id,
+        }
+        outputs["audit"] = envelope(
+            {
+                **human_review_envelope_context,
+                "step_id": "audit",
+            },
+            "human_reviewer",
+            "audit_result",
+            approved_audit,
+        )
+        execution = SimpleNamespace(
+            outputs=outputs,
+            trace=[],
+            tool_trace=[],
+            communication_trace=[],
+            repair_trace=list(stored_result.coordination.repair_trace),
+        )
+        planner_output = envelope(
+            {
+                **human_review_envelope_context,
+                "step_id": "entrypoint",
+            },
+            "system_entrypoint",
+            "planner_decision",
+            PlannerDecision(
+                task_type="paper_generation",
+                selected_agents=[
+                    "knowledge_base_agent",
+                    "expert_agent",
+                    "audit_agent",
+                ],
+                routing_reason="管理员对隔离的智能组卷草稿完成人工复核。",
+                risk_level="low",
+                requires_audit=True,
+            ),
+        )
+        result = self._publish_paper_blueprint(
+            request=request,
+            case_id=str(state.get("case_id") or f"CASE_{uuid4().hex}"),
+            execution_id=stored_result.execution_id,
+            execution_plan=execution_plan,
+            execution=execution,
+            planner_output=planner_output,
+            agent_outputs=list(outputs.values()),
+            cancellation_check=lambda: self.raise_if_run_cancelled(thread_id),
+        )
+        self._remember_run(
+            thread_id,
+            {
+                "status": "completed",
+                "thread_id": thread_id,
+                "result": result,
+                "reviewer_id": reviewer_id,
+                "review_note": safe_note,
+                "human_review_context": None,
+                "continuation": None,
+            },
+        )
+        return result
+
+    @staticmethod
+    def _execution_failure_detail(execution) -> str:
+        audit = execution.outputs.get("audit")
+        audit_payload = getattr(audit, "payload", None)
+        decision = getattr(audit_payload, "decision", None)
+        findings = getattr(audit_payload, "findings", [])
+        if decision:
+            finding_summary = "; ".join(str(item) for item in findings[:2])
+            return f"audit decision={decision}" + (f"; findings={finding_summary}" if finding_summary else "")
+        return execution.status
+
+    @staticmethod
+    def _build_writeback_intents(
+        execution_id: str,
+        audit: AuditResult,
+        resource: ResourceVersion,
+        task: ReviewTask,
+        binding: ReviewResourceBinding,
+    ) -> list[WritebackIntent]:
+        return [
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=audit.audit_result_id,
+                effect_type="record_audit",
+                target_service="audit_service",
+                target_entity_type="audit_result",
+                payload={
+                    **audit.model_dump(mode="json"),
+                    "resource_id": resource.resource_id,
+                    "source_draft_id": resource.source_draft_id,
+                },
+                idempotency_key=f"{execution_id}:audit:{audit.audit_result_id}",
+            ),
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=resource.source_draft_id,
+                effect_type="publish_resource",
+                target_service="resource_service",
+                target_entity_type="resource_version",
+                payload=resource.model_dump(mode="json"),
+                preconditions=["audit_pass"],
+                idempotency_key=f"{execution_id}:resource:{resource.resource_id}:v{resource.resource_version}",
+            ),
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=task.review_task_id,
+                effect_type="upsert_review_task",
+                target_service="review_scheduler_service",
+                target_entity_type="review_task",
+                payload=task.model_dump(mode="json"),
+                idempotency_key=f"{execution_id}:review-task:{task.review_task_id}",
+            ),
+            WritebackIntent(
+                intent_id=f"WBI_{uuid4().hex}",
+                source_artifact_id=binding.binding_id,
+                effect_type="bind_review_resource",
+                target_service="resource_service",
+                target_entity_type="review_resource_binding",
+                payload=binding.model_dump(mode="json"),
+                preconditions=["audit_pass"],
+                idempotency_key=f"{execution_id}:binding:{binding.binding_id}",
+            ),
+        ]

@@ -1,0 +1,91 @@
+.community-learning-cta {
+  position: relative;
+  z-index: 2;
+  display: inline-grid;
+  isolation: isolate;
+  overflow: visible;
+  place-items: center;
+}
+
+.community-learning-cta > canvas {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: 600px;
+  height: 600px;
+  max-width: none;
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms cubic-bezier(.23,1,.32,1);
+}
+
+.community-learning-cta[data-active="true"] > canvas { opacity: 1; }
+
+.community-learning-cta > button {
+  position: relative;
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.58);
+  border-radius: 999px;
+  padding: 0 14px;
+  color: #fff;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.18), transparent 42%),
+    linear-gradient(135deg, #159b6b, #08785c 72%);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.46),
+    inset 0 -1px rgba(24,49,42,.2),
+    0 7px 18px rgba(8,120,92,.2);
+  font-size: .72rem;
+  font-weight: 760;
+  cursor: pointer;
+  transform: translate3d(0,0,0) scale(1);
+  transition:
+    transform 120ms cubic-bezier(.23,1,.32,1),
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.community-learning-cta__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 28%, rgba(255,255,255,.34) 48%, transparent 68%);
+  transform: translate3d(-115%,0,0) skewX(-12deg);
+  transition: transform 420ms cubic-bezier(.23,1,.32,1);
+  pointer-events: none;
+}
+
+.community-learning-cta > button > svg,
+.community-learning-cta > button > span:last-child { position: relative; z-index: 1; }
+.community-learning-cta > button:active { transform: translate3d(0,0,0) scale(.97); }
+.community-learning-cta > button:focus-visible { outline: 3px solid rgba(21,155,107,.24); outline-offset: 3px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .community-learning-cta > button:hover {
+    border-color: rgba(255,255,255,.88);
+    box-shadow:
+      inset 0 1px rgba(255,255,255,.56),
+      inset 0 -1px rgba(24,49,42,.18),
+      0 10px 24px rgba(8,120,92,.27),
+      0 0 0 5px rgba(21,155,107,.08);
+  }
+  .community-learning-cta > button:hover .community-learning-cta__shine { transform: translate3d(115%,0,0) skewX(-12deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .community-learning-cta > canvas { display: none; }
+  .community-learning-cta[data-active="true"] > button {
+    box-shadow: inset 0 1px rgba(255,255,255,.52), 0 8px 20px rgba(8,120,92,.24), 0 0 0 5px rgba(21,155,107,.08);
+  }
+  .community-learning-cta__shine { display: none; }
+}
+
+@media (hover: none), (max-width: 700px) {
+  .community-learning-cta > canvas { display: none; }
+}

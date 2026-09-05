@@ -1,0 +1,537 @@
+{
+  "template_id": "8a087ba277ab-5f37e1dcd3",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0037",
+      "question_type": "single_choice",
+      "question_content": "患者，女性，30 岁，易疲劳，怕冷，少汗，动作缓慢，食欲减退而体重增加，记忆力减退，反应迟钝，精神抑郁，嗜睡。实验室检查显示：FT4 降低，TSH 升高。现症：神疲乏力，少气懒言，畏寒肢冷，腰膝酸软，闭经，舌质淡暗，苔白，脉沉细而缓。该患者治疗应选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "附子理中丸"
+        },
+        {
+          "option_id": "B",
+          "content": "左归丸"
+        },
+        {
+          "option_id": "C",
+          "content": "右归丸"
+        },
+        {
+          "option_id": "D",
+          "content": "真武汤合苓桂术甘汤"
+        },
+        {
+          "option_id": "E",
+          "content": "大补元煎合四君子汤"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“易疲劳，怕冷，少汗，动作缓慢，食欲减退而体重增加，记忆力减退，反应迟钝，精神抑郁，嗜睡。实验室检查显示：FT4降低，TSH升高”诊断为甲状腺功能减退症，根据“神疲乏力，少气懒言，畏寒肢冷，腰膝酸软，闭经，舌质淡暗，苔白，脉沉细而缓”辨证为心肾阳虚证，治法为温补心肾，利水消肿。选方为真武汤合苓桂术甘汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 37,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0038",
+      "question_type": "single_choice",
+      "question_content": "患者, 男性, 69 岁。COPD 病史 4 年, 1 年前出现咳嗽、咳痰、喘息、憋闷, 夜间憋喘, 常出现夜间阵发性呼吸困难。查体: 口唇发绀, 颈静脉怒张, 下肢水肿, 心音遥远, 三尖瓣区舒张期杂音, 心率 97 次/分, 律不齐, 双肺哮鸣音及肺底湿性啰音。近 1 周, 因气温骤降咳嗽、咳痰、憋喘症状加重, 该患者现阶段关键的治疗措施是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "改善呼吸功能"
+        },
+        {
+          "option_id": "B",
+          "content": "利尿减轻心脏负荷"
+        },
+        {
+          "option_id": "C",
+          "content": "控制呼吸道感染"
+        },
+        {
+          "option_id": "D",
+          "content": "控制心律失常"
+        },
+        {
+          "option_id": "E",
+          "content": "给予洋地黄制剂"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者 COPD 病史，以及症状和体征，诊断为慢性肺源性心脏病，患者 “因气温骤降咳嗽、咳痰、憋喘症状加重”，说明患者处于急性加重期，故现阶段关键的治疗措施是控制呼吸道感染。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 38,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0039",
+      "question_type": "single_choice",
+      "question_content": "患者，女，72 岁。因 “不稳定型心绞痛” 入院。为了解患者的心功能，护士应特别关注的辅助检查是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "分级平板运动"
+        },
+        {
+          "option_id": "B",
+          "content": "心电图"
+        },
+        {
+          "option_id": "C",
+          "content": "X 线胸片"
+        },
+        {
+          "option_id": "D",
+          "content": "心脏 CT"
+        },
+        {
+          "option_id": "E",
+          "content": "超声心动图"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "该患者因“不稳定型心绞痛”入院，心电图是发现心肌缺血，诊断心绞痛最常用的检查方法。变异型心绞痛发作时可见相关导联ST段抬高，缓解后恢复。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 39,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0040",
+      "question_type": "single_choice",
+      "question_content": "患者，女，65 岁，冬天煤炉取暖过夜。清晨被家人发现昏迷不醒急送医院。查体：口唇樱桃红色。COHb 数值为 33% 。该患者治疗宜采用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脑营养物质"
+        },
+        {
+          "option_id": "B",
+          "content": "维生素 C 输注"
+        },
+        {
+          "option_id": "C",
+          "content": "地塞米松输注"
+        },
+        {
+          "option_id": "D",
+          "content": "高压氧舱"
+        },
+        {
+          "option_id": "E",
+          "content": "甘露醇输注"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者的病史、症状以及 CoHb 的结果，诊断为急性一氧化碳中毒。对中、重度 CO 中毒，如有条件应尽早采取高压氧治疗。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0041",
+      "question_type": "single_choice",
+      "question_content": "患者，女，68岁，糖尿病史4年，平素口服降糖药使血糖控制在 $8.6\\mathrm{mmol / L}$ 左右。昨天开始出现乏力、恶心呕吐。烦躁，今晨出现昏迷，查空腹血糖 $19.4 \\mathrm{mmol} / \\mathrm{L}$ ，PH 7.32，BE $-4 \\mathrm{mmol} / \\mathrm{L}$ ，血钠 $148 \\mathrm{mmol} / \\mathrm{L}$ ，尿糖++，尿酮++。呼吸有烂苹果味。该患者首选的治疗为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "口服降糖药"
+        },
+        {
+          "option_id": "B",
+          "content": "注射胰岛素"
+        },
+        {
+          "option_id": "C",
+          "content": "补液"
+        },
+        {
+          "option_id": "D",
+          "content": "补钾"
+        },
+        {
+          "option_id": "E",
+          "content": "纠正酸碱平衡失调"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "患者糖尿病病史4年，根据症状和体征，诊断为糖尿病酮症酸中毒，本病治疗首选补液。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 41,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0042",
+      "question_type": "single_choice",
+      "question_content": "患者, 女, 30 岁, 两手指近端指间关节肿胀变形 2 年, 现症: 低热, 关节红肿灼热疼痛, 形寒肢凉, 阴雨天疼痛加重, 得温则舒, 舌质红, 苔白, 脉数。查类风湿因子 (+), X 光片: 关节端骨质疏松、关节间隙变窄。该患者治疗选方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "独活寄生汤"
+        },
+        {
+          "option_id": "B",
+          "content": "四妙丸"
+        },
+        {
+          "option_id": "C",
+          "content": "桂枝芍药知母汤"
+        },
+        {
+          "option_id": "D",
+          "content": "丁氏清络饮"
+        },
+        {
+          "option_id": "E",
+          "content": "清瘟败毒饮"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者“两手指近端指间关节肿胀变形2年，查类风湿因子 $(+)$ ，X光片：关节端骨质疏松、关节间隙变窄”诊断为类风湿关节炎，根据“低热，关节红肿灼热疼痛，形寒肢凉，阴雨天疼痛加重，得温则舒，舌质红，苔白，脉数”辨证为寒热错杂证，治法为祛风散寒，清热化湿，选方为桂枝芍药知母汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 42,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0043",
+      "question_type": "single_choice",
+      "question_content": "患者，男，62岁。近半年因家里装修，过度劳累，饮食不规律，出现多饮、多食、多尿，体重减轻 $4\\mathrm{kg}$ 。现症：烦渴多饮，口干舌燥，尿频量多，多汗。舌边尖红，苔薄黄，脉洪数。辅助检查：空腹血糖 $9.4\\mathrm{mmol / L}$ ，尿糖 $(+++)$ 。血浆胰岛素水平升高。该患者的中医证型是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴虚燥热证 肺热津伤证"
+        },
+        {
+          "option_id": "B",
+          "content": "阴虚燥热证 胃热炽盛证"
+        },
+        {
+          "option_id": "C",
+          "content": "阴虚燥热证 肾阴亏虚证"
+        },
+        {
+          "option_id": "D",
+          "content": "阴阳两虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "气阴两虚证"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据患者“出现多饮、多食、多尿，体重减轻 $4 \\mathrm{~kg}$ 空腹血糖 $9.4 \\mathrm{mmol} / \\mathrm{L}$ ，尿糖（+++）。血浆胰岛素水平升高”考虑为糖尿病，根据“烦渴多饮，口干舌燥，尿频量多，多汗。舌边尖红，苔薄黄，脉洪数”，辨证为阴虚燥热证上消（肺热津伤证）。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 更多医考干货 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 可扫码关注微信公众平台 11-中药相同功效药物 12-中药学30味中药药理作用总 结 13-方剂学常考重点总结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 43,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0044",
+      "question_type": "single_choice",
+      "question_content": "患者，男，44岁，肝硬化病史7年，近几日情绪抑郁，爱发火，昨日突然出现出现吐血，X线显示食管、胃底静脉曲张破裂，现症：吐血色红，口苦胁痛，心烦易怒，寐少梦多，舌质红绛，脉弦数。该患者的治疗选方是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "柴胡疏肝散"
+        },
+        {
+          "option_id": "B",
+          "content": "百合固金汤"
+        },
+        {
+          "option_id": "C",
+          "content": "桑杏汤"
+        },
+        {
+          "option_id": "D",
+          "content": "龙胆泻肝汤"
+        },
+        {
+          "option_id": "E",
+          "content": "泻白散合黛蛤散"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“肝硬化病史7年，昨日突然出现出现吐血，X线显示食管、胃底静脉曲张破裂”辨病为吐血，根据“近几日情绪抑郁，爱发火，吐血色红，口苦胁痛，心烦易怒，寐少梦多，舌质红绛，脉弦数”辨证为肝火犯胃证，治法为泻肝清胃，凉血止血，选方为龙胆泻肝汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 44,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0045",
+      "question_type": "single_choice",
+      "question_content": "患者，男，54 岁。1 年来自觉上腹胀，胃纳减退，消瘦 5kg。5 天前开始胃痛，遂就诊。左锁骨上可触及一直径约 2cm 淋巴结，质硬。腹平软，中上腹部压痛，无肌紧张及反跳痛，肝脾肋下未及。上消化道钡餐检查示：胃黏膜皱襞中断，胃壁僵硬，未见蠕动波，凸入胃腔内的充盈缺损。考虑该患者的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消化性溃疡"
+        },
+        {
+          "option_id": "B",
+          "content": "慢性胃炎急性发作"
+        },
+        {
+          "option_id": "C",
+          "content": "胃泌素瘤"
+        },
+        {
+          "option_id": "D",
+          "content": "急性阑尾炎"
+        },
+        {
+          "option_id": "E",
+          "content": "胃癌"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据患者的症状、体征与检查结果，考虑为胃癌。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 45,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0046",
+      "question_type": "single_choice",
+      "question_content": "患者，男，61 岁。2 年前无明显诱因出现右上腹持续性钝痛，偶感乏力，食欲不振，近 3 个月体重下降约 3kg，遂来就诊。现症：腹大胀满，积块膨隆，形体羸瘦，潮热盗汗，头晕耳鸣，腰膝酸软，两胁隐隐作痛，小便短赤，大便干结。腹部膨隆，腹壁静脉曲张，移动性浊音阳性。肝脏于右肋缘下可触及，质硬，有触痛，脾脏肿大，双下肢凹陷性水肿。舌红少苔，脉细数。肝功能：ALT 108IU/L，AST 124IU/L，AFP 620umol/L。B 超：肝右叶实质性占位性病变。该患者的西医诊断与中医证型是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝硬化失代偿期 肝肾阴虚证"
+        },
+        {
+          "option_id": "B",
+          "content": "原发性肝癌 肝肾阴虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "肝硬化代偿期 肝脾血瘀证"
+        },
+        {
+          "option_id": "D",
+          "content": "病毒性肝炎 阴虚火旺证"
+        },
+        {
+          "option_id": "E",
+          "content": "继发性肝癌 湿热瘀毒证"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据患者“2年前无明显诱因出现右上腹持续性钝痛，偶感乏力，食欲不振，近3个月体重下降约 $3\\mathrm{kg}$ 。肝脏于右肋缘下可触及，质硬”，结合肝功能以及AFP、B超结果，考虑为原发性肝癌。根据“腹大胀满，积块膨隆，形体羸瘦，潮热盗汗，头晕耳鸣，腰膝酸软，两胁隐隐作痛，小便短赤，大便干结。舌红少苔，脉细数”辨证为肝肾阴虚证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 46,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0047",
+      "question_type": "single_choice",
+      "question_content": "男童，6 岁，经常吃饭时突发双眼凝视前方，饭碗摔到地上，呼之不应，约十秒钟自行好转，脑电图示棘慢波，诊断为癫痫。该男孩最可能的发作类型是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "全面强直一阵挛发作"
+        },
+        {
+          "option_id": "B",
+          "content": "典型失神发作"
+        },
+        {
+          "option_id": "C",
+          "content": "单纯部分性发作"
+        },
+        {
+          "option_id": "D",
+          "content": "复杂部分性发作"
+        },
+        {
+          "option_id": "E",
+          "content": "强直性发作"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "典型失神发作（小发作）：见于 $5\\sim 14$ 岁儿童。表现为意识短暂丧失。突然终止原来的活动或中断谈话，双 总结 目凝视，手中所持物件失握跌落，眼睑、口角或上肢出现颤动，发作后无记忆。发作终止立即清醒。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 47,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0048",
+      "question_type": "single_choice",
+      "question_content": "高血压患者，血压 $170 / 100\\mathrm{mmHg}$ ，合并糖尿病，查尿蛋白阳性，降压药宜首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "利尿剂"
+        },
+        {
+          "option_id": "B",
+          "content": "$\\beta$ 受体阻滞剂"
+        },
+        {
+          "option_id": "C",
+          "content": "ACEI+ARB"
+        },
+        {
+          "option_id": "D",
+          "content": "ACEI+CCB"
+        },
+        {
+          "option_id": "E",
+          "content": "CCB+ $\\beta$ 受体阻滞剂"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "合并糖尿病，尿蛋白阳性的高血压患者，降压药首选ACEI或ARB类药物，患者收缩压 $>160\\mathrm{mmHg}$ 或舒张压 $>100\\mathrm{mmHg}$ ，可直接启动两种药物联合治疗，该患者符合，ACEI+CCB作为优先推荐的组合，故选D。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 48,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0049",
+      "question_type": "single_choice",
+      "question_content": "患者, 男, 50 岁, 身高 $170 \\mathrm{~cm}$ , 体重 $85 \\mathrm{~kg}$ , 体检发现血清总胆固醇含量为 $7.6 \\mathrm{mmol} / \\mathrm{L}$ , 血甘油三酯正常。现症: 多食, 消谷善饥, 脘腹胀满, 面色红润, 口干口苦, 胃脘灼痛、嘈杂, 舌红苔黄腻, 脉弦滑。该患者治疗的首选用药组合是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阿托伐他汀 保和丸合小承气汤"
+        },
+        {
+          "option_id": "B",
+          "content": "普罗布考 大承气汤"
+        },
+        {
+          "option_id": "C",
+          "content": "非诺贝特 导痰汤"
+        },
+        {
+          "option_id": "D",
+          "content": "普伐他汀 枳实导滞丸"
+        },
+        {
+          "option_id": "E",
+          "content": "氯吡格雷 血府逐瘀汤合失笑散"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据患者 “身高 $170 \\mathrm{~cm}$ , 体重 $85 \\mathrm{~kg}$ ”, 血清总胆固醇含量为 $7.6 \\mathrm{mmol} / \\mathrm{L} > 5.2 \\mathrm{mmol} / \\mathrm{L}$ , 考虑为高胆固醇血症, 治疗首选他汀类。根据 “多食, 消谷善饥, 脘腹胀满, 面色红润, 口干口苦, 胃脘灼痛、嘈杂, 舌红苔黄腻, 脉弦滑” 辨证为胃热滞脾证, 治法为清胃泄热, 选方为保和丸合小承气汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 49,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5f37e1dcd3-q0050",
+      "question_type": "single_choice",
+      "question_content": "患者, 男性, 16 岁, 嗓子痛, 咳嗽乏力 2 周, 食欲下降, X 线胸片左下肺多形态性浸润影, 呈节段性分布, 选择用药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "青霉素"
+        },
+        {
+          "option_id": "B",
+          "content": "环丙沙星"
+        },
+        {
+          "option_id": "C",
+          "content": "阿奇霉素"
+        },
+        {
+          "option_id": "D",
+          "content": "庆大霉素"
+        },
+        {
+          "option_id": "E",
+          "content": "头孢菌素"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者表现，考虑诊断为支原体肺炎，大环内酯类抗菌药为首选，常用红霉素、罗红霉素和阿奇霉素等。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴记忆歌诀汇总 更多医考干货 11-中药相同功效药物 12-中药学30味中药药理作用总 结 13-方剂学常考重点总结 可扫码关注微信公众平台",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+        "number": 50,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

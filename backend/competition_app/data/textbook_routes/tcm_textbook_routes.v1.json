@@ -1,0 +1,182 @@
+{
+  "catalog_version": "1.0.0",
+  "sources": [
+    {
+      "source_id": "user-textbook-routes-md-2026-07-19",
+      "source_type": "expert_curated_curriculum",
+      "title": "中医药教材默认路线-最简版.md"
+    },
+    {
+      "source_id": "user-textbook-routes-json-2026-07-19",
+      "source_type": "expert_curated_curriculum",
+      "title": "中医药教材默认路线-最简版.json"
+    }
+  ],
+  "bindings": [
+    {"exam_route_id": "tcm_physician_standard_degree", "textbook_route_id": "textbook_integrated_clinical", "keywords": ["中西医结合"], "default": false},
+    {"exam_route_id": "tcm_physician_standard_degree", "textbook_route_id": "textbook_tcm_physician", "keywords": [], "default": true},
+    {"exam_route_id": "health_technical_title_tcm_clinical", "textbook_route_id": "textbook_acupuncture_tuina", "keywords": ["针灸", "推拿"], "default": false},
+    {"exam_route_id": "health_technical_title_tcm_clinical", "textbook_route_id": "textbook_tcm_orthopedics", "keywords": ["骨伤", "正骨", "筋伤"], "default": false},
+    {"exam_route_id": "health_technical_title_tcm_clinical", "textbook_route_id": "textbook_integrated_clinical", "keywords": ["中西医结合"], "default": false},
+    {"exam_route_id": "licensed_pharmacist_tcm", "textbook_route_id": "textbook_tcm_pharmacy", "keywords": [], "default": true},
+    {"exam_route_id": "health_technical_title_tcm_pharmacy", "textbook_route_id": "textbook_tcm_pharmacy", "keywords": [], "default": true},
+    {"exam_route_id": "occupational_skill_tcm_healthcare", "textbook_route_id": "textbook_health_preservation", "keywords": [], "default": true}
+  ],
+  "routes": [
+    {
+      "route_id": "textbook_tcm_physician",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "中医执业医师",
+      "aliases": ["中医执业助理医师", "中医医师资格"],
+      "reviewed_by": "user_curated_route_2026_07_19",
+      "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
+      "prerequisites": [
+        {"course": "中医诊断学", "before_stage_id": "stage-2", "reason": "进入中药、方剂与经典学习前需要能够识别基本证候。"}
+      ],
+      "equivalence_groups": [
+        {"canonical": "人体解剖学", "alternatives": ["系统解剖学"], "policy": "选择一本作主教材，另一本只补差。"},
+        {"canonical": "生理学", "alternatives": ["生理学基础"], "policy": "选择一个版本作主教材。"},
+        {"canonical": "病理学", "alternatives": ["病理学基础"], "policy": "选择一个版本作主教材。"}
+      ],
+      "stages": [
+        {"stage_id": "stage-1", "order": 1, "name": "中医基础与文化语言", "objective": "建立中医基础概念、文化史脉络和医古文阅读基础。", "books": ["《中医学基础》", "《中医文化学》", "《中国医学史》", "《医古文》"], "exit_evidence": ["完成中医基础概念图并独立释读一段基础医古文"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-2", "order": 2, "name": "中药方剂与经典基础", "objective": "建立药性、治法、方剂配伍与内经基础理论之间的联系。", "books": ["《临床中药学》", "《方剂学》", "《内经选读》"], "exit_evidence": ["完成一组证候—治法—方药辨析并说明配伍依据"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-3", "order": 3, "name": "经典与现代医学基础", "objective": "连接中医经典辨证体系与现代医学基础知识。", "books": ["《伤寒论选读》", "《金匮要略》", "《温病学》", "《人体解剖学》", "《生理学》", "《病理学》", "《药理学》", "《预防医学》"], "exit_evidence": ["完成经典条文辨析和现代医学基础综合测验"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-4", "order": 4, "name": "现代临床框架", "objective": "掌握诊断学及内外科常见疾病的现代临床框架。", "books": ["《诊断学》", "《内科学》", "《外科学》"], "exit_evidence": ["完成一份常见病病例的诊断思路和鉴别要点"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-5", "order": 5, "name": "学术流派与文献提升", "objective": "形成各家学说、文献检索与本草典籍综合阅读能力。", "books": ["《中医各家学说》", "《中医文献学》", "《本草典籍选读》"], "exit_evidence": ["提交一份有出处的学术观点比较和本草文献札记"], "source_refs": ["user-textbook-routes-json-2026-07-19"]}
+      ]
+    },
+    {
+      "route_id": "textbook_acupuncture_tuina",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "针灸推拿",
+      "aliases": ["针灸", "推拿", "针灸推拿职称"],
+      "reviewed_by": "user_curated_route_2026_07_19",
+      "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
+      "prerequisites": [
+        {"course": "中医诊断学", "before_stage_id": "stage-4", "reason": "进入治疗学前需要完成基本辨证能力核验。"}
+      ],
+      "equivalence_groups": [
+        {"canonical": "人体解剖学", "alternatives": ["系统解剖学"], "policy": "选择一本作主教材，另一本只补差。"}
+      ],
+      "stages": [
+        {"stage_id": "stage-1", "order": 1, "name": "形态与中医基础", "objective": "建立人体结构、中医基础和推拿功法的共同底座。", "books": ["《人体解剖学》", "《中医学基础》", "《推拿功法学》"], "exit_evidence": ["完成重点体表标志定位和中医基础概念测验"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-2", "order": 2, "name": "经络腧穴与推拿手法", "objective": "掌握经络腧穴定位、推拿基本理论和核心手法。", "books": ["《经络腧穴学》", "《推拿学》", "《推拿手法学》"], "exit_evidence": ["完成腧穴定位抽查和规范手法演示记录"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-3", "order": 3, "name": "针灸技术与实验基础", "objective": "掌握刺灸方法、针灸理论、医籍依据与实验观察方法。", "books": ["《刺法灸法学》", "《针灸学》", "《针灸医籍选读》", "《实验针灸学》"], "exit_evidence": ["完成刺灸操作流程口述、医籍依据辨析和实验结果解读"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-4", "order": 4, "name": "针推治疗与实验训练", "objective": "将辨证、穴位和手法用于常见病教学情境。", "books": ["《针灸治疗学》", "《推拿治疗学》", "《实验针灸学实验指导》"], "exit_evidence": ["完成一个教学病例的针推方案和操作考核"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-5", "order": 5, "name": "专科与学术流派", "objective": "拓展小儿推拿与针灸学术流派辨析能力。", "books": ["《小儿推拿学》", "《各家针灸学说》"], "exit_evidence": ["完成小儿推拿情境辨析和两家针灸学说比较"], "source_refs": ["user-textbook-routes-json-2026-07-19"]}
+      ]
+    },
+    {
+      "route_id": "textbook_tcm_orthopedics",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "中医骨伤",
+      "aliases": ["中医骨伤职称", "骨伤", "正骨"],
+      "reviewed_by": "user_curated_route_2026_07_19",
+      "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
+      "prerequisites": [
+        {"course": "中医诊断学", "before_stage_id": "stage-2", "reason": "进入中医骨伤专科基础前需要基本辨证能力。"}
+      ],
+      "equivalence_groups": [
+        {"canonical": "系统解剖学", "alternatives": ["人体解剖学"], "policy": "选择一本作主教材，另一本只补差。"},
+        {"canonical": "生理学基础", "alternatives": ["生理学"], "policy": "选择一个版本作主教材。"},
+        {"canonical": "病理学基础", "alternatives": ["病理学"], "policy": "选择一个版本作主教材。"}
+      ],
+      "stages": [
+        {"stage_id": "stage-1", "order": 1, "name": "现代医学基础", "objective": "建立骨伤学习所需的结构、功能、病理和诊断基础。", "books": ["《系统解剖学》", "《生理学基础》", "《病理学基础》", "《诊断学》"], "exit_evidence": ["完成运动系统结构定位和基础诊断综合测验"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-2", "order": 2, "name": "骨伤基础与影像", "objective": "掌握中医骨伤基本理论和常用影像判读框架。", "books": ["《中医骨伤科学基础》", "《骨伤影像学》"], "exit_evidence": ["完成一组骨伤影像定位及中医病机说明"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-3", "order": 3, "name": "正骨筋伤与专科整合", "objective": "整合骨折、脱位、筋伤的辨识与教学处置逻辑。", "books": ["《中医正骨学》", "《中医筋伤学》", "《中医骨伤科学》"], "exit_evidence": ["完成骨折与筋伤教学病例辨析及操作要点口述"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-4", "order": 4, "name": "中西医结合骨伤", "objective": "形成中西医结合骨伤评估和方案比较能力。", "books": ["《中西医结合骨伤科学》"], "exit_evidence": ["完成一份中西医结合骨伤病例分析"], "source_refs": ["user-textbook-routes-json-2026-07-19"]}
+      ]
+    },
+    {
+      "route_id": "textbook_tcm_pharmacy",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "中药学",
+      "aliases": ["中药执业药师", "中药职称", "主管中药师"],
+      "reviewed_by": "user_curated_route_2026_07_19",
+      "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
+      "prerequisites": [
+        {"course": "无机化学", "before_stage_id": "stage-1", "reason": "无机化学实验必须有对应理论基础。"},
+        {"course": "有机化学", "before_stage_id": "stage-1", "reason": "有机化学实验必须有对应理论基础。"},
+        {"course": "细胞生物学", "before_stage_id": "stage-2", "reason": "细胞生物学实验必须有对应理论基础。"},
+        {"course": "分析化学", "before_stage_id": "stage-5", "reason": "进入中药分析前需要分析化学理论基础。"}
+      ],
+      "equivalence_groups": [],
+      "stages": [
+        {"stage_id": "stage-1", "order": 1, "name": "化学实验与中医基础", "objective": "建立中药学所需的基础化学实验能力和中医理论语言。", "books": ["《无机化学实验》", "《中医学基础》", "《有机化学实验》"], "exit_evidence": ["完成规范实验记录并通过中医基础概念测验"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-2", "order": 2, "name": "生命科学与药用植物基础", "objective": "建立生命科学、药用植物和文献检索基础。", "books": ["《细胞生物学实验》", "《生物化学》", "《药用植物学》", "《药学文献检索》"], "exit_evidence": ["完成药用植物识别记录和一次可复现的文献检索"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-3", "order": 3, "name": "中药方剂与资源", "objective": "掌握临床中药、方剂配伍和中药资源的核心联系。", "books": ["《临床中药学》", "《方剂学》", "《中药资源学》"], "exit_evidence": ["完成药物功效—方剂配伍—资源来源综合辨析"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-4", "order": 4, "name": "鉴定与栽培", "objective": "掌握中药鉴定依据和药用植物栽培关键环节。", "books": ["《中药鉴定学》", "《药用植物栽培学》"], "exit_evidence": ["完成一组药材鉴定记录和栽培要点说明"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-5", "order": 5, "name": "制剂质量药理与管理", "objective": "整合炮制、制剂、分析、药理和药事管理知识。", "books": ["《中药炮制学》", "《中药药剂学》", "《中药分析》", "《中药药理学》", "《药事管理学》"], "exit_evidence": ["完成一个中药产品从炮制到质量、药理和法规的综合案例"], "source_refs": ["user-textbook-routes-json-2026-07-19"]}
+      ]
+    },
+    {
+      "route_id": "textbook_integrated_clinical",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "中西医结合临床",
+      "aliases": ["中西医结合执业医师", "中西医结合职称"],
+      "reviewed_by": "user_curated_route_2026_07_19",
+      "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
+      "prerequisites": [
+        {"course": "中医诊断学", "before_stage_id": "stage-2", "reason": "进入方剂和经典辨证前需要中医诊断基础。"},
+        {"course": "中药学（基础中药）", "before_stage_id": "stage-2", "reason": "进入方剂学前需要基础中药知识。"}
+      ],
+      "equivalence_groups": [
+        {"canonical": "人体解剖学", "alternatives": ["系统解剖学"], "policy": "选择一本作主教材，另一本只补差。"},
+        {"canonical": "生理学", "alternatives": ["生理学基础"], "policy": "选择一个版本作主教材。"},
+        {"canonical": "病理学", "alternatives": ["病理学基础"], "policy": "选择一个版本作主教材。"}
+      ],
+      "stages": [
+        {"stage_id": "stage-1", "order": 1, "name": "中西医共同基础", "objective": "建立中医理论与现代医学形态、功能、免疫、病理和药理基础。", "books": ["《中医学基础》", "《人体解剖学》", "《生理学》", "《免疫学基础与病原生物学》", "《病理学》", "《药理学》"], "exit_evidence": ["完成中西医基础概念对照图和综合测验"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-2", "order": 2, "name": "诊断临床与中医经典", "objective": "并行建立现代诊疗框架、方剂治法和经典辨证体系。", "books": ["《诊断学》", "《内科学》", "《外科学》", "《方剂学》", "《伤寒论选读》", "《金匮要略》", "《温病学》"], "exit_evidence": ["完成一个病例的中西医诊断、辨证和治法分析"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-3", "order": 3, "name": "中西医结合专科", "objective": "将共同基础迁移到主要临床专科。", "books": ["《中西医结合内科学》", "《中西医结合外科学》", "《中西医结合妇产科学》", "《中西医结合儿科学》", "《中西医结合眼科学》", "《中西医结合耳鼻咽喉科学》", "《中西医结合口腔科学》", "《中西医结合骨伤科学》"], "exit_evidence": ["完成两个不同专科的中西医结合病例比较"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-4", "order": 4, "name": "肿瘤专科提升", "objective": "形成中西医结合肿瘤教学病例的综合分析能力。", "books": ["《中西医结合肿瘤学》"], "exit_evidence": ["完成一份中西医结合肿瘤教学病例分析"], "source_refs": ["user-textbook-routes-json-2026-07-19"]}
+      ]
+    },
+    {
+      "route_id": "textbook_nursing",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "护理",
+      "aliases": ["中医护理", "护理考试", "护士考试"],
+      "reviewed_by": "user_curated_route_2026_07_19",
+      "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
+      "prerequisites": [
+        {"course": "基础护理学/中医护理学基础", "before_stage_id": "stage-2", "reason": "进入护理评估和临床护理前需要基础护理能力。"}
+      ],
+      "equivalence_groups": [],
+      "stages": [
+        {"stage_id": "stage-1", "order": 1, "name": "护理人文与生命科学基础", "objective": "建立护理伦理、人文和现代生命科学基础。", "books": ["《护理伦理学》", "《护理美学》", "《人体解剖学》", "《生理学》", "《生物化学》", "《免疫学基础与病原生物学》"], "exit_evidence": ["完成护理伦理情境分析和生命科学基础测验"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-2", "order": 2, "name": "疾病药理心理与中医概论", "objective": "建立疾病、药理、心理和中医护理所需的基本框架。", "books": ["《病理学》", "《药理学》", "《护理心理学》", "《中医学概论》"], "exit_evidence": ["完成一个护理情境的病理、用药、心理和中医因素分析"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-3", "order": 3, "name": "健康评估与群体护理", "objective": "掌握健康评估、预防和社区护理框架。", "books": ["《健康评估》", "《预防医学》", "《社区护理学》"], "exit_evidence": ["提交一份结构化健康评估和社区干预要点"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-4", "order": 4, "name": "主要临床护理专科", "objective": "整合中医临床、外科、妇产、康复和老年护理。", "books": ["《中医临床护理学》", "《外科护理学》", "《妇产科护理学》", "《康复护理学》", "《老年护理学》"], "exit_evidence": ["完成两个不同人群的临床护理计划比较"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-5", "order": 5, "name": "儿科与五官护理", "objective": "掌握儿科及五官科常见护理问题。", "books": ["《儿科护理学》", "《五官科护理学》"], "exit_evidence": ["完成儿科与五官科各一个护理情境分析"], "source_refs": ["user-textbook-routes-json-2026-07-19"]}
+      ]
+    },
+    {
+      "route_id": "textbook_health_preservation",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "中医养生与治未病",
+      "aliases": ["中医养生", "治未病", "养生考试"],
+      "reviewed_by": "user_curated_route_2026_07_19",
+      "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
+      "prerequisites": [
+        {"course": "中医诊断学", "before_stage_id": "stage-3", "reason": "进入治未病分层和食疗辨析前需要基本辨证能力。"}
+      ],
+      "equivalence_groups": [],
+      "stages": [
+        {"stage_id": "stage-1", "order": 1, "name": "文化历史与基础理论", "objective": "建立中医养生所需的文化、历史、基础理论和预防医学框架。", "books": ["《中医文化学》", "《中国医学史》", "《中医学基础》", "《预防医学》"], "exit_evidence": ["完成中医养生观念的历史脉络和基础理论说明"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-2", "order": 2, "name": "养生方法与气功", "objective": "掌握中医养生方法体系和气功基础规范。", "books": ["《中医养生学》", "《中医气功学》"], "exit_evidence": ["提交一份养生方法分类说明和安全边界清单"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-3", "order": 3, "name": "治未病与食疗", "objective": "建立治未病分层思路和食疗辨析能力。", "books": ["《中医治未病学概论》", "《中医食疗学》"], "exit_evidence": ["完成一个教学情境的治未病分层和食疗原则分析"], "source_refs": ["user-textbook-routes-json-2026-07-19"]},
+        {"stage_id": "stage-4", "order": 4, "name": "经典学说与文献提升", "objective": "从经典、各家学说和文献角度深化养生与治未病理解。", "books": ["《内经选读》", "《中医各家学说》", "《中医文献学》"], "exit_evidence": ["提交一份有文献出处的养生学说比较"], "source_refs": ["user-textbook-routes-json-2026-07-19"]}
+      ]
+    }
+  ]
+}

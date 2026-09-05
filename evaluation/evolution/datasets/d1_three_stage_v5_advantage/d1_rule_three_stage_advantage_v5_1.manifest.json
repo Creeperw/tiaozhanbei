@@ -1,0 +1,59 @@
+{
+  "schema_version": "d1-three-stage-manifest-1.1",
+  "dataset_id": "d1_three_stage_v5_advantage",
+  "version": "5.1.0",
+  "supersedes_for_new_runs": "d1_three_stage_v5@5.0.0",
+  "historical_v5_files_modified": false,
+  "target_rule_family": "model_authored_conflict_authority_boundary",
+  "pre_registered_target_population": "learner-visible synthesis of two same-topic materials containing direct logical incompatibility, with no authority/version metadata that permits selecting one claim as correct",
+  "enrichment_rationale": "discovery identified unsupported conflict resolution; final targets are mechanism-proximal cases where the model-authored strategy can act directly",
+  "effect_claim_boundary": "enriched direct-conflict synthesis population only; no claim of average improvement across all platform tasks",
+  "case_selection_completed_before_execution": true,
+  "authored_target_inventory_count": 80,
+  "selected_target_budget_count": 76,
+  "target_selection_method": "first_76_in_frozen_source_order_before_execution",
+  "authored_boundary_inventory_count": 21,
+  "selected_boundary_budget_count": 20,
+  "boundary_selection_method": "first_20_in_frozen_source_order_before_execution",
+  "result_based_case_removal_allowed": false,
+  "qualification_observed_effect_used_for_selection": false,
+  "runtime_gold_separated": true,
+  "judge_independence": false,
+  "gold_independently_human_reviewed": false,
+  "annotation_status": "synthetic_evaluation_fixture_pending_independent_human_review",
+  "stages": {
+    "discovery": {
+      "case_count": 8,
+      "use": "baseline-only candidate discovery; excluded from effect estimates"
+    },
+    "qualification": {
+      "case_count": 8,
+      "use": "technical, isolation and measurement gate only; excluded from effect estimates"
+    },
+    "final_ab": {
+      "case_count": 100,
+      "paired_generation_count": 200,
+      "groups": {
+        "target_fault": 60,
+        "compatible_boundary": 20,
+        "ordinary_control": 20
+      },
+      "pair_orders": {
+        "AB": 50,
+        "BA": 50
+      },
+      "primary_endpoint": "learner_visible_semantic_net_rescue_rate"
+    }
+  },
+  "formal_environment_write_allowed": false,
+  "production_registration_allowed": false,
+  "production_activation_allowed": false,
+  "cross_stage_prompt_and_material_overlap": 0,
+  "prompt_rendering_style_count": 8,
+  "files": {
+    "d1_rule_discovery_advantage_v5_1.jsonl": "617c7ccbe3acb3d57886cae6838002d407e27cdb93d686dd57f830a0190ef184",
+    "d1_rule_qualification_advantage_v5_1.jsonl": "348cf3e2220c7237b1c479502063682a0af461d90ea8f89eef55b01a9a111855",
+    "d1_rule_final_ab_advantage_v5_1.jsonl": "4f17fd34d805ff7f627aaf645fecc872319454f85e08646c6b7efbf3b87e2b4d",
+    "d1_rule_three_stage_advantage_v5_1.gold.jsonl": "0fcd0bf9abcf37e231958c3be0c0479a7d255340abb542b2038f2aa494c98528"
+  }
+}

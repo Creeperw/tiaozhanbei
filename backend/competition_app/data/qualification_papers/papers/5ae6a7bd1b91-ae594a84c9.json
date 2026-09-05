@@ -1,0 +1,2277 @@
+{
+  "template_id": "5ae6a7bd1b91-ae594a84c9",
+  "questions": [
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0001",
+      "question_type": "single_choice",
+      "question_content": "两药均既能治感冒，又能治肝气郁滞证的是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "金银花、连翘"
+        },
+        {
+          "option_id": "B",
+          "content": "薄荷、柴胡"
+        },
+        {
+          "option_id": "C",
+          "content": "桑叶、菊花"
+        },
+        {
+          "option_id": "D",
+          "content": "大青叶、薄荷"
+        },
+        {
+          "option_id": "E",
+          "content": "柴胡、蝉蜕 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0002",
+      "question_type": "single_choice",
+      "question_content": "某男，24岁。感冒 5日，症见咽喉肿痛、咳喘、痰多、喉中如水鸡声，舌红、苔黄腻。证属热结痰瘀，宜选用的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "青黛"
+        },
+        {
+          "option_id": "B",
+          "content": "白头翁"
+        },
+        {
+          "option_id": "C",
+          "content": "射干"
+        },
+        {
+          "option_id": "D",
+          "content": "鱼腥草"
+        },
+        {
+          "option_id": "E",
+          "content": "石膏 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0003",
+      "question_type": "single_choice",
+      "question_content": "大黄泻热通便力强，素有“将军”之号。关于大黄用法与使用注意的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "泻下宜生用"
+        },
+        {
+          "option_id": "B",
+          "content": "哺乳期妇女应慎服"
+        },
+        {
+          "option_id": "C",
+          "content": "酒大黄多用于上部火热证"
+        },
+        {
+          "option_id": "D",
+          "content": "制大黄多用于血热出血证"
+        },
+        {
+          "option_id": "E",
+          "content": "阴虚者不可妄用 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0004",
+      "question_type": "single_choice",
+      "question_content": "既能祛风通络，又能凉血消肿的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "海风藤"
+        },
+        {
+          "option_id": "B",
+          "content": "徐长卿"
+        },
+        {
+          "option_id": "C",
+          "content": "青风藤"
+        },
+        {
+          "option_id": "D",
+          "content": "络石藤"
+        },
+        {
+          "option_id": "E",
+          "content": "伸筋草 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 4,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0005",
+      "question_type": "single_choice",
+      "question_content": "某男，35岁。食欲不振 5日，症见口中甜腻，舌质淡红、苔薄黄而腻。证属湿热阻滞中焦， 宜选用的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "草豆蔻"
+        },
+        {
+          "option_id": "B",
+          "content": "佩兰"
+        },
+        {
+          "option_id": "C",
+          "content": "广藿香"
+        },
+        {
+          "option_id": "D",
+          "content": "肉豆蔻"
+        },
+        {
+          "option_id": "E",
+          "content": "白豆蔻 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 5,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0006",
+      "question_type": "single_choice",
+      "question_content": "具有清热排脓、除痹功效的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白芷"
+        },
+        {
+          "option_id": "B",
+          "content": "天花粉"
+        },
+        {
+          "option_id": "C",
+          "content": "薏苡仁"
+        },
+        {
+          "option_id": "D",
+          "content": "土茯苓"
+        },
+        {
+          "option_id": "E",
+          "content": "白鲜皮 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0007",
+      "question_type": "single_choice",
+      "question_content": "肉桂的功效不包括（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补火助阳"
+        },
+        {
+          "option_id": "B",
+          "content": "引火归元"
+        },
+        {
+          "option_id": "C",
+          "content": "温通经脉"
+        },
+        {
+          "option_id": "D",
+          "content": "散寒止痛"
+        },
+        {
+          "option_id": "E",
+          "content": "温肺化饮 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0008",
+      "question_type": "single_choice",
+      "question_content": "生用专行气滞，煨熟用实肠止泻的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "木香"
+        },
+        {
+          "option_id": "B",
+          "content": "葛根"
+        },
+        {
+          "option_id": "C",
+          "content": "白术"
+        },
+        {
+          "option_id": "D",
+          "content": "薤白"
+        },
+        {
+          "option_id": "E",
+          "content": "砂仁 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0009",
+      "question_type": "single_choice",
+      "question_content": "某男，5岁。素患遗尿，近日又见饮食积滞。宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "山楂"
+        },
+        {
+          "option_id": "B",
+          "content": "莱菔子"
+        },
+        {
+          "option_id": "C",
+          "content": "鸡内金"
+        },
+        {
+          "option_id": "D",
+          "content": "刘寄奴"
+        },
+        {
+          "option_id": "E",
+          "content": "青皮 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0010",
+      "question_type": "single_choice",
+      "question_content": "不入煎剂的是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "槟榔"
+        },
+        {
+          "option_id": "B",
+          "content": "使君子"
+        },
+        {
+          "option_id": "C",
+          "content": "川楝子"
+        },
+        {
+          "option_id": "D",
+          "content": "鹤草芽"
+        },
+        {
+          "option_id": "E",
+          "content": "榧子 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0011",
+      "question_type": "single_choice",
+      "question_content": "某女，36 岁。症见月经淋沥不净、少腹轻度刺痛、有血块。证属瘀血阻滞，血不归经，宜选用的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "仙鹤草"
+        },
+        {
+          "option_id": "B",
+          "content": "鸡冠花"
+        },
+        {
+          "option_id": "C",
+          "content": "月季花"
+        },
+        {
+          "option_id": "D",
+          "content": "茜草"
+        },
+        {
+          "option_id": "E",
+          "content": "棕榈炭 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0012",
+      "question_type": "single_choice",
+      "question_content": "善治血热出血、妇女倒经的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "郁金"
+        },
+        {
+          "option_id": "B",
+          "content": "牛膝"
+        },
+        {
+          "option_id": "C",
+          "content": "虎杖"
+        },
+        {
+          "option_id": "D",
+          "content": "大蓟"
+        },
+        {
+          "option_id": "E",
+          "content": "地榆 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0013",
+      "question_type": "single_choice",
+      "question_content": "治疗痞块、顽痰久咳宜选用（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "礞石"
+        },
+        {
+          "option_id": "B",
+          "content": "海蛤壳"
+        },
+        {
+          "option_id": "C",
+          "content": "黄药子"
+        },
+        {
+          "option_id": "D",
+          "content": "海浮石"
+        },
+        {
+          "option_id": "E",
+          "content": "瓦楞子 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0014",
+      "question_type": "single_choice",
+      "question_content": "朱砂入丸散的用量是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "0.002\\~0.004B.0.03\\~0.05gC.0.6\\~0.9g"
+        },
+        {
+          "option_id": "D",
+          "content": "0.1\\~0.5g"
+        },
+        {
+          "option_id": "E",
+          "content": "1\\~3g 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0015",
+      "question_type": "single_choice",
+      "question_content": "某女，58岁。近 1月来时觉头晕目眩，2日前又见目赤、风疹痒。宜选用的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "珍珠母"
+        },
+        {
+          "option_id": "B",
+          "content": "防风"
+        },
+        {
+          "option_id": "C",
+          "content": "决明子"
+        },
+        {
+          "option_id": "D",
+          "content": "蒺藜"
+        },
+        {
+          "option_id": "E",
+          "content": "石决明 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0016",
+      "question_type": "single_choice",
+      "question_content": "苏合香除能止痛外，又能（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒"
+        },
+        {
+          "option_id": "B",
+          "content": "化湿和胃"
+        },
+        {
+          "option_id": "C",
+          "content": "开窍辟秽"
+        },
+        {
+          "option_id": "D",
+          "content": "行气活血"
+        },
+        {
+          "option_id": "E",
+          "content": "开窍宁神 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 16,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0017",
+      "question_type": "single_choice",
+      "question_content": "某女，47岁。素患气阴两虚之消渴，又见肾虚之尿频、带下。宜选用的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "西洋参"
+        },
+        {
+          "option_id": "B",
+          "content": "山药"
+        },
+        {
+          "option_id": "C",
+          "content": "黄精"
+        },
+        {
+          "option_id": "D",
+          "content": "哈蟆油"
+        },
+        {
+          "option_id": "E",
+          "content": "枸杞子 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 17,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0018",
+      "question_type": "single_choice",
+      "question_content": "某女，33岁，患湿热带下，又见疮癣作痒。治当清热燥湿止带，宜选用的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "赤石脂"
+        },
+        {
+          "option_id": "B",
+          "content": "椿皮"
+        },
+        {
+          "option_id": "C",
+          "content": "芡实"
+        },
+        {
+          "option_id": "D",
+          "content": "莲子肉"
+        },
+        {
+          "option_id": "E",
+          "content": "海螵蛸 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 18,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0019",
+      "question_type": "single_choice",
+      "question_content": "既能治胸中痰饮，又能治疟疾的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "藜芦"
+        },
+        {
+          "option_id": "B",
+          "content": "草果"
+        },
+        {
+          "option_id": "C",
+          "content": "雄黄"
+        },
+        {
+          "option_id": "D",
+          "content": "瓜蒂"
+        },
+        {
+          "option_id": "E",
+          "content": "常山 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 19,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0020",
+      "question_type": "single_choice",
+      "question_content": "蛇床子除能燥湿祛风、杀虫止痒外，又能（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补火通便"
+        },
+        {
+          "option_id": "B",
+          "content": "敛疮生肌"
+        },
+        {
+          "option_id": "C",
+          "content": "固精缩尿"
+        },
+        {
+          "option_id": "D",
+          "content": "止血止泻"
+        },
+        {
+          "option_id": "E",
+          "content": "温肾壮阳 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 20,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0021",
+      "question_type": "single_choice",
+      "question_content": "某女，26岁。症见头痛发热、恶寒身痛、鼻流清涕、咳嗽咽干。证属风寒感冒，治当疏风散寒、解表清热，宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "感冒清热颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "表实感冒颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "荆防颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "桂枝合剂"
+        },
+        {
+          "option_id": "E",
+          "content": "双黄连合剂 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 21,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0022",
+      "question_type": "single_choice",
+      "question_content": "关于防风通圣丸配伍意义的说法，错误的是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "通利二便分消里热"
+        },
+        {
+          "option_id": "B",
+          "content": "行气活血同行"
+        },
+        {
+          "option_id": "C",
+          "content": "发汗而不伤正"
+        },
+        {
+          "option_id": "D",
+          "content": "清下而不伤里"
+        },
+        {
+          "option_id": "E",
+          "content": "汗下清利共施 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 22,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0023",
+      "question_type": "single_choice",
+      "question_content": "西黄丸中佐药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麝香"
+        },
+        {
+          "option_id": "B",
+          "content": "牛黄"
+        },
+        {
+          "option_id": "C",
+          "content": "雄黄"
+        },
+        {
+          "option_id": "D",
+          "content": "乳香"
+        },
+        {
+          "option_id": "E",
+          "content": "没药 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 23,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0024",
+      "question_type": "single_choice",
+      "question_content": "通宣理肺丸的功能是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "解表散寒，宣肺止咳"
+        },
+        {
+          "option_id": "B",
+          "content": "宣肺散寒，止咳祛痰"
+        },
+        {
+          "option_id": "C",
+          "content": "清肺润燥，化痰止咳"
+        },
+        {
+          "option_id": "D",
+          "content": "清热化痰，宣肺止咳"
+        },
+        {
+          "option_id": "E",
+          "content": "辛凉宣泄，清肺平喘 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 24,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0025",
+      "question_type": "single_choice",
+      "question_content": "某男，50岁。正值初秋，感冒 1周，现症见咳嗽、痰黄而黏不易咳出、胸闷气促、久咳不止、声哑喉痛。证属燥热蕴肺，宜选用的成药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "橘红丸"
+        },
+        {
+          "option_id": "B",
+          "content": "川贝止咳露"
+        },
+        {
+          "option_id": "C",
+          "content": "养阴清肺膏"
+        },
+        {
+          "option_id": "D",
+          "content": "二母宁嗽丸"
+        },
+        {
+          "option_id": "E",
+          "content": "蛇胆川贝软胶囊 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 25,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0026",
+      "question_type": "single_choice",
+      "question_content": "某男，40岁。症见遗精滑泄、神疲乏力、四肢酸软、腰酸耳鸣。治当固肾涩精，宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "缩泉丸"
+        },
+        {
+          "option_id": "B",
+          "content": "左归丸"
+        },
+        {
+          "option_id": "C",
+          "content": "四神丸"
+        },
+        {
+          "option_id": "D",
+          "content": "右归丸"
+        },
+        {
+          "option_id": "E",
+          "content": "金锁固精丸 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 26,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0027",
+      "question_type": "single_choice",
+      "question_content": "玉泉丸功能是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热养阴，生津止渴"
+        },
+        {
+          "option_id": "B",
+          "content": "滋肾养阴，益气生津"
+        },
+        {
+          "option_id": "C",
+          "content": "益气养阴，健脾补肾"
+        },
+        {
+          "option_id": "D",
+          "content": "温肾补精，补气养血"
+        },
+        {
+          "option_id": "E",
+          "content": "滋阴清热，补肾益肺 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 27,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0028",
+      "question_type": "single_choice",
+      "question_content": "七宝美髯丸的注意事项不包括（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴虚火旺者慎用"
+        },
+        {
+          "option_id": "B",
+          "content": "孕妇慎用"
+        },
+        {
+          "option_id": "C",
+          "content": "脾胃虚弱者慎用"
+        },
+        {
+          "option_id": "D",
+          "content": "感冒者慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "服药期间，忌食辛辣、油腻食物 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 28,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0029",
+      "question_type": "single_choice",
+      "question_content": "安宫牛黄丸善治热病，邪入心包，高热惊厥，神昏谵语。关于安宫牛黄丸药物组成、功能及注意事项的说法正确的是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "功能是清热解毒，止痉安神"
+        },
+        {
+          "option_id": "B",
+          "content": "方中君药为牛黄、朱砂"
+        },
+        {
+          "option_id": "C",
+          "content": "寒闭神昏者不宜使用"
+        },
+        {
+          "option_id": "D",
+          "content": "孕妇禁用"
+        },
+        {
+          "option_id": "E",
+          "content": "脱证者慎用 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 29,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0030",
+      "question_type": "single_choice",
+      "question_content": "某男，67岁。素患脑动脉硬化病，刻下症见头晕头痛、耳鸣，舌质黯红、脉沉涩。宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血塞通颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "消栓通络胶囊"
+        },
+        {
+          "option_id": "C",
+          "content": "逐瘀通脉胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "消栓胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "人参再造丸 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 30,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0031",
+      "question_type": "single_choice",
+      "question_content": "某女，51岁。近 2月来心悸健忘、失眠多梦、大便干燥。证属心阴不足，宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "柏子养心丸"
+        },
+        {
+          "option_id": "B",
+          "content": "枣仁安神液"
+        },
+        {
+          "option_id": "C",
+          "content": "人参归脾丸"
+        },
+        {
+          "option_id": "D",
+          "content": "朱砂安神丸"
+        },
+        {
+          "option_id": "E",
+          "content": "天王补心丸 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 31,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0032",
+      "question_type": "single_choice",
+      "question_content": "肾炎康复片和肾炎四味片均具有的功能是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "养阴，补肾"
+        },
+        {
+          "option_id": "B",
+          "content": "益气，健脾"
+        },
+        {
+          "option_id": "C",
+          "content": "益气，通淋"
+        },
+        {
+          "option_id": "D",
+          "content": "养阴，健脾"
+        },
+        {
+          "option_id": "E",
+          "content": "益气，补肾 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 32,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0033",
+      "question_type": "single_choice",
+      "question_content": "香连化滞丸的主治是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "水湿内停所致的呕逆泄泻"
+        },
+        {
+          "option_id": "B",
+          "content": "饮食积滞所致的脘腹胀痛"
+        },
+        {
+          "option_id": "C",
+          "content": "气滞湿阻所致的水肿"
+        },
+        {
+          "option_id": "D",
+          "content": "水瘀互结所致的癃闭"
+        },
+        {
+          "option_id": "E",
+          "content": "大肠湿热所致的大便脓血 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 33,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0034",
+      "question_type": "single_choice",
+      "question_content": "颈复康颗粒功能是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "活血通络，散风止痛"
+        },
+        {
+          "option_id": "B",
+          "content": "养血舒筋，祛风止痛"
+        },
+        {
+          "option_id": "C",
+          "content": "清热祛湿，活血通络"
+        },
+        {
+          "option_id": "D",
+          "content": "滋补肝肾，强筋壮骨"
+        },
+        {
+          "option_id": "E",
+          "content": "温经散寒，通络止痛 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0035",
+      "question_type": "single_choice",
+      "question_content": "某女，24岁。粉刺反复发作，近日症见颜面、胸背粉刺疙瘩，皮肤红赤发粉，宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牛黄醒消丸"
+        },
+        {
+          "option_id": "B",
+          "content": "清胃黄连丸"
+        },
+        {
+          "option_id": "C",
+          "content": "连翘败毒丸"
+        },
+        {
+          "option_id": "D",
+          "content": "牛黄解毒丸"
+        },
+        {
+          "option_id": "E",
+          "content": "当归苦参丸 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0036",
+      "question_type": "single_choice",
+      "question_content": "更年安片的功能是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补气养血，宁心安神"
+        },
+        {
+          "option_id": "B",
+          "content": "益气养血，活血调经"
+        },
+        {
+          "option_id": "C",
+          "content": "滋阴清热，除烦安神"
+        },
+        {
+          "option_id": "D",
+          "content": "疏肝理气，养血调经"
+        },
+        {
+          "option_id": "E",
+          "content": "理气养血，暖宫调经正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 36,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0037",
+      "question_type": "single_choice",
+      "question_content": "小儿化毒散的功能是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒，活血消肿"
+        },
+        {
+          "option_id": "B",
+          "content": "清热利咽，解毒止痛"
+        },
+        {
+          "option_id": "C",
+          "content": "散风清热，解毒散结"
+        },
+        {
+          "option_id": "D",
+          "content": "解表宣肺，止咳化痰"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，化痰利咽 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 37,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0038",
+      "question_type": "single_choice",
+      "question_content": "某男，42岁。症见目赤肿痛、视物昏暗、羞明流泪。证属肝火旺盛，治当泻火明目，宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "明目上清片"
+        },
+        {
+          "option_id": "B",
+          "content": "锡类散"
+        },
+        {
+          "option_id": "C",
+          "content": "黄连羊肝丸"
+        },
+        {
+          "option_id": "D",
+          "content": "牛黄上清丸"
+        },
+        {
+          "option_id": "E",
+          "content": "障眼明片 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 38,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0039",
+      "question_type": "single_choice",
+      "question_content": "鼻渊舒口服液功能是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "益气固表，祛风通窍"
+        },
+        {
+          "option_id": "B",
+          "content": "活血祛风，宣肺通窍"
+        },
+        {
+          "option_id": "C",
+          "content": "疏风清热，祛湿通窍"
+        },
+        {
+          "option_id": "D",
+          "content": "芳香化浊，清热通窍"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，宣肺通窍正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 39,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0040",
+      "question_type": "single_choice",
+      "question_content": "因组方中含有马钱子，不可过量服用或持久服用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "接骨七厘片"
+        },
+        {
+          "option_id": "B",
+          "content": "七厘散"
+        },
+        {
+          "option_id": "C",
+          "content": "接骨丸"
+        },
+        {
+          "option_id": "D",
+          "content": "跌打丸"
+        },
+        {
+          "option_id": "E",
+          "content": "活血止痛散 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0101",
+      "question_type": "single_choice",
+      "question_content": "上方中芒硝的用法,正确的是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "先煎"
+        },
+        {
+          "option_id": "B",
+          "content": "包煎"
+        },
+        {
+          "option_id": "C",
+          "content": "后下"
+        },
+        {
+          "option_id": "D",
+          "content": "冲服"
+        },
+        {
+          "option_id": "E",
+          "content": "另煎 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 101,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0102",
+      "question_type": "single_choice",
+      "question_content": "服药3日后,诸症减轻,但仍见大便干结,腹部胀满。宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归龙荟丸"
+        },
+        {
+          "option_id": "B",
+          "content": "苁蓉通便口服液"
+        },
+        {
+          "option_id": "C",
+          "content": "舟车丸"
+        },
+        {
+          "option_id": "D",
+          "content": "增液口服液"
+        },
+        {
+          "option_id": "E",
+          "content": "麻仁软胶囊 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 102,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0103",
+      "question_type": "single_choice",
+      "question_content": "所选成药的佐药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白芍（炒）、枳实（炒）"
+        },
+        {
+          "option_id": "B",
+          "content": "枳实（炒）、厚朴（姜制）"
+        },
+        {
+          "option_id": "C",
+          "content": "大黄、枳实（炒）"
+        },
+        {
+          "option_id": "D",
+          "content": "大黄、厚朴（姜制）"
+        },
+        {
+          "option_id": "E",
+          "content": "苦杏仁、白芍（炒） 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 103,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0104",
+      "question_type": "single_choice",
+      "question_content": "方中均能升阳举陷，为治中气下陷诸证所常用的配伍组合是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄芪、白术和甘草"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芪、甘草和当归"
+        },
+        {
+          "option_id": "C",
+          "content": "黄芪、党参和白术"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芪、升麻和柴胡"
+        },
+        {
+          "option_id": "E",
+          "content": "党参、白术和升麻 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 104,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0105",
+      "question_type": "single_choice",
+      "question_content": "方中白术炒用的目的是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "增强补气健脾之力"
+        },
+        {
+          "option_id": "B",
+          "content": "增强升举之力"
+        },
+        {
+          "option_id": "C",
+          "content": "增强止汗之力"
+        },
+        {
+          "option_id": "D",
+          "content": "增强燥湿利水之力"
+        },
+        {
+          "option_id": "E",
+          "content": "缓和药性 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 105,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0106",
+      "question_type": "single_choice",
+      "question_content": "炙甘草在方中除能调和诸药外，还能（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "益气补中"
+        },
+        {
+          "option_id": "B",
+          "content": "缓急止痛"
+        },
+        {
+          "option_id": "C",
+          "content": "解毒"
+        },
+        {
+          "option_id": "D",
+          "content": "健脾消食"
+        },
+        {
+          "option_id": "E",
+          "content": "行气消胀 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 106,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0107",
+      "question_type": "single_choice",
+      "question_content": "经治疗后肛门下坠症状消失，体倦乏力缓解，但仍腹胀便溏、消化不良。宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "六君子丸"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾消食丸"
+        },
+        {
+          "option_id": "C",
+          "content": "小建中合剂"
+        },
+        {
+          "option_id": "D",
+          "content": "六味安消散"
+        },
+        {
+          "option_id": "E",
+          "content": "启脾丸 正确"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 107,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0108",
+      "question_type": "single_choice",
+      "question_content": "服药3日后，患者咳嗽减轻，形寒背冷未改善。医师拟加用散寒之品，但不宜加入上方的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "吴茱萸"
+        },
+        {
+          "option_id": "B",
+          "content": "干姜"
+        },
+        {
+          "option_id": "C",
+          "content": "附子"
+        },
+        {
+          "option_id": "D",
+          "content": "桂枝"
+        },
+        {
+          "option_id": "E",
+          "content": "细辛 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 108,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0109",
+      "question_type": "single_choice",
+      "question_content": "患者服药后痰量减少，但自觉痰稠难咯。医师拟增强温肺祛痰，利气散结之功，宜加用的药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "化橘红"
+        },
+        {
+          "option_id": "B",
+          "content": "芥子"
+        },
+        {
+          "option_id": "C",
+          "content": "白附子"
+        },
+        {
+          "option_id": "D",
+          "content": "天南星"
+        },
+        {
+          "option_id": "E",
+          "content": "川贝母 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 109,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0110",
+      "question_type": "single_choice",
+      "question_content": "经治疗后患者咳嗽已愈，但自行过服温补品，现时有气短、咽干、盗汗、小便频数。宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "七味都气丸"
+        },
+        {
+          "option_id": "B",
+          "content": "固本咳喘片"
+        },
+        {
+          "option_id": "C",
+          "content": "苏子降气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "人参保肺丸"
+        },
+        {
+          "option_id": "E",
+          "content": "蛤蚧定喘丸 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 110,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0111",
+      "question_type": "single_choice",
+      "question_content": "牛黄至宝丸的功能有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒"
+        },
+        {
+          "option_id": "B",
+          "content": "镇痉开窍"
+        },
+        {
+          "option_id": "C",
+          "content": "泻火通便"
+        },
+        {
+          "option_id": "D",
+          "content": "消肿散结"
+        },
+        {
+          "option_id": "E",
+          "content": "散瘀止痛 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 111,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0112",
+      "question_type": "single_choice",
+      "question_content": "磁石的功效有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "镇静安神"
+        },
+        {
+          "option_id": "B",
+          "content": "平肝潜阳"
+        },
+        {
+          "option_id": "C",
+          "content": "清热解毒"
+        },
+        {
+          "option_id": "D",
+          "content": "聪耳明目"
+        },
+        {
+          "option_id": "E",
+          "content": "纳气平喘 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 112,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0113",
+      "question_type": "single_choice",
+      "question_content": "具有行气、消积功效的药有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "三棱"
+        },
+        {
+          "option_id": "B",
+          "content": "姜黄"
+        },
+        {
+          "option_id": "C",
+          "content": "莪术"
+        },
+        {
+          "option_id": "D",
+          "content": "薤白"
+        },
+        {
+          "option_id": "E",
+          "content": "小茴香 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 113,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0114",
+      "question_type": "single_choice",
+      "question_content": "华佗再造丸的功能有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "活血化瘀"
+        },
+        {
+          "option_id": "B",
+          "content": "舒筋活络"
+        },
+        {
+          "option_id": "C",
+          "content": "化痰通络"
+        },
+        {
+          "option_id": "D",
+          "content": "行气止痛"
+        },
+        {
+          "option_id": "E",
+          "content": "息风镇痉 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 114,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0115",
+      "question_type": "single_choice",
+      "question_content": "既能养肺阴又能益胃生津的药有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麦冬"
+        },
+        {
+          "option_id": "B",
+          "content": "南沙参"
+        },
+        {
+          "option_id": "C",
+          "content": "玉竹"
+        },
+        {
+          "option_id": "D",
+          "content": "北沙参"
+        },
+        {
+          "option_id": "E",
+          "content": "石斛 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 115,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0116",
+      "question_type": "single_choice",
+      "question_content": "天麻与钩藤共同的功效有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "祛风通络"
+        },
+        {
+          "option_id": "B",
+          "content": "凉血解毒"
+        },
+        {
+          "option_id": "C",
+          "content": "息风止痉"
+        },
+        {
+          "option_id": "D",
+          "content": "平抑肝阳"
+        },
+        {
+          "option_id": "E",
+          "content": "化痰散结 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 116,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0117",
+      "question_type": "single_choice",
+      "question_content": "正天丸的注意事项有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇慎用"
+        },
+        {
+          "option_id": "B",
+          "content": "高血压慎用"
+        },
+        {
+          "option_id": "C",
+          "content": "过敏体质者慎用"
+        },
+        {
+          "option_id": "D",
+          "content": "哺乳期妇女慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "宜饭前服用 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 117,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0118",
+      "question_type": "single_choice",
+      "question_content": "关于蕲蛇性能特点的说法，正确的有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药性甘平，归肝经"
+        },
+        {
+          "option_id": "B",
+          "content": "内走脏腑，外达皮肤"
+        },
+        {
+          "option_id": "C",
+          "content": "治痹证无论寒热皆宜"
+        },
+        {
+          "option_id": "D",
+          "content": "祛风通络，治风湿痹痛，中风半身不遂"
+        },
+        {
+          "option_id": "E",
+          "content": "定惊止痉，治急、慢惊风 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 118,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0119",
+      "question_type": "single_choice",
+      "question_content": "重楼的使用注意有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇忌服"
+        },
+        {
+          "option_id": "B",
+          "content": "体虚者忌服"
+        },
+        {
+          "option_id": "C",
+          "content": "月经过多者忌服"
+        },
+        {
+          "option_id": "D",
+          "content": "无实火热毒者忌服"
+        },
+        {
+          "option_id": "E",
+          "content": "阴疽者忌服 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 119,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-ae594a84c9-q0120",
+      "question_type": "single_choice",
+      "question_content": "关于小青龙糖浆药物组成及配伍意义的说法，正确的有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "五味子滋肾敛肺止咳，为佐药"
+        },
+        {
+          "option_id": "B",
+          "content": "细辛、生姜温化痰饮，共为臣药"
+        },
+        {
+          "option_id": "C",
+          "content": "法半夏燥湿化痰、和胃降逆，为佐药"
+        },
+        {
+          "option_id": "D",
+          "content": "白芍养血敛阴，为佐药"
+        },
+        {
+          "option_id": "E",
+          "content": "麻黄、苦杏仁宣肺降气、止咳平喘，共为君药 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+        "number": 120,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

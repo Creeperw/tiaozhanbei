@@ -1,0 +1,566 @@
+import pytest
+
+from competition_app.application.container import ApplicationContainer
+from competition_app.application.personalized_review_card import (
+    PersonalizedReviewCardUseCase,
+    ReviewCardRequest,
+)
+from competition_app.config import Settings
+from competition_app.contracts.learning_plan import LearningPlanClarificationResult
+from competition_app.exam_scope import bind_exam_workspace, reset_exam_workspace
+
+
+def request(*, message: str, workflow: str = "auto") -> ReviewCardRequest:
+    return ReviewCardRequest(
+        learner_id="ROUTING_USER_1",
+        user_request=message,
+        available_minutes=15,
+        messages=[{"message_id": "ROUTING_MSG_1", "role": "user", "content": message}],
+    )
+
+
+def test_missing_reuse_layer_returns_typed_clarification_instead_of_crashing() -> None:
+    result = PersonalizedReviewCardUseCase._existing_plan_result(
+        "daily_task",
+        current_long_term_plan={},
+        current_short_term_plan={},
+        current_learning_task={},
+    )
+
+    assert isinstance(result, LearningPlanClarificationResult)
+    assert result.requires_clarification is True
+    assert result.requested_scope == "daily_task"
+    assert "当前还没有可沿用的当日任务" in result.clarification_questions[0]
+
+
+@pytest.mark.asyncio
+async def test_plain_greeting_is_a_lightweight_conversation_without_business_agents(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(request(message="你好"))
+
+    assert result.status == "success"
+    assert result.task_type == "casual_conversation"
+    assert result.direct_response == (
+        "你好！我是时珍智训智能助教。你想先聊聊当前学习情况，还是直接开始一项学习任务？"
+    )
+    assert [item.producer for item in result.agent_outputs] == ["planner_agent"]
+    assert result.model_trace
+    assert result.model_trace[0].agent == "planner_agent"
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.audit is None
+
+
+@pytest.mark.asyncio
+async def test_memory_record_request_runs_memory_agent_and_persists_governance(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    memory_writes = []
+    container.review_card_use_case.memory_governance_writer = (
+        lambda learner_id, **kwargs: memory_writes.append((learner_id, kwargs)) or {}
+    )
+
+    result = await container.review_card_use_case.execute(
+        request(message="我以后每天晚上9点开始学习，帮我记一下")
+    )
+
+    assert result.status == "success"
+    assert result.task_type == "casual_conversation"
+    assert "已记住" in result.direct_response
+    # Planner + Memory both participated: the durable fact must be extracted.
+    assert [item.producer for item in result.agent_outputs] == [
+        "planner_agent",
+        "memory_agent",
+    ]
+    assert memory_writes, "memory governance must be persisted for a memory-record request"
+    assert "memory_agent" in {
+        item.producer for item in result.agent_outputs
+    }
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.audit is None
+
+
+@pytest.mark.asyncio
+async def test_planner_routes_plan_request_through_plan_audit_without_expert(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        request(message="请帮我制定本周四君子汤复习计划")
+    )
+
+    producers = {item.producer for item in result.agent_outputs}
+    assert result.task_type == "learning_plan"
+    assert producers == {
+        "planner_agent",
+        "memory_agent",
+        "default_route_resolver",
+        "knowledge_base_agent",
+        "diagnosis_agent",
+        "audit_agent",
+        "learning_plan_service",
+    }
+    assert result.learning_plan is not None
+    assert result.resource is None
+    plan_audit = next(
+        item for item in result.agent_outputs if item.producer == "audit_agent"
+    )
+    assert plan_audit.payload.decision == "pass"
+    assert result.review_task is None
+
+
+@pytest.mark.asyncio
+async def test_server_behavior_context_is_loaded_before_diagnosis(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    captured = {}
+    original = container.review_card_use_case.orchestrator.agent_registry.get(
+        "diagnosis_agent"
+    )
+
+    class CapturingDiagnosisAgent:
+        async def run(self, context):
+            captured.update(context)
+            return await original.run(context)
+
+    container.review_card_use_case.orchestrator.agent_registry._agents[
+        "diagnosis_agent"
+    ] = CapturingDiagnosisAgent()
+    container.review_card_use_case.behavior_context_loader = lambda learner_id: {
+        "source": "frontend_backend",
+        "calculated_at": "2026-07-21T08:00:00+08:00",
+        "learning_profile": {
+            "current_status": {
+                "status_code": "T2",
+                "status_name": "节奏恢复",
+                "confidence": 0.91,
+                "evidence": ["服务端近七日行为"],
+            }
+        },
+        "system_data": {"task_completion_rate": {"value": 0.43}},
+        "question_attempt": [
+            {
+                "attempt_id": "SERVER_ATTEMPT_1",
+                "user_id": learner_id,
+                "question_id": "Q_1",
+                "is_correct": False,
+            }
+        ],
+    }
+
+    await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="BEHAVIOR_USER_1",
+            user_request="请结合我的学习状态制定本周学习计划",
+            learning_profile={"current_status": {"status_code": "FORGED"}},
+            system_data={"task_completion_rate": {"value": 1.0}},
+        )
+    )
+
+    assert captured["learning_profile"]["current_status"]["status_code"] == "T2"
+    assert captured["system_data"]["task_completion_rate"]["value"] == 0.43
+    assert captured["question_attempts"][0]["attempt_id"] == "SERVER_ATTEMPT_1"
+    assert captured["behavior_context_source"] == "frontend_backend"
+
+
+@pytest.mark.asyncio
+async def test_short_term_formula_focus_keeps_persisted_exam_route(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    container.review_card_use_case.behavior_context_loader = lambda _: {
+        "source": "frontend_backend",
+        "user_profile": {
+            "learning_goal": "中医执业医师资格考试",
+            "learning_background": "零基础",
+            "time_constraints": "每天30分钟",
+            "daily_available_minutes": 30,
+            "goals": {
+                "goal_type": "credential",
+                "goal_name": "中医执业医师资格考试",
+            },
+        },
+        "learning_target": {
+            "target_type": "certification",
+            "exam_track_id": "EXAM_2025_TCM_PHYSICIAN",
+            "exam_name": "中医执业医师资格考试",
+            "is_active": True,
+            "is_locked": True,
+        },
+        "question_attempt": [],
+    }
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            thread_id="THREAD_FORMULA_FOCUS_EXAM",
+            conversation_id="CONV_FORMULA_FOCUS_EXAM",
+            learner_id="LEARNER_FORMULA_FOCUS_EXAM",
+            user_request=(
+                "请为我制定一个未来7天的方剂学短期学习计划，"
+                "重点学习四君子汤、参苓白术散和理中丸"
+            ),
+        )
+    )
+
+    route = next(
+        output.payload
+        for output in result.agent_outputs
+        if output.producer == "default_route_resolver"
+    )
+    assert route.planning_status == "approved_route"
+    assert route.goal_type == "credential"
+    assert route.goal_name == "中医执业医师资格考试"
+    assert route.route_id == "tcm_physician_standard_degree"
+    assert route.match_reason == "active_learning_target"
+
+
+@pytest.mark.asyncio
+async def test_empty_server_attempts_reject_client_forged_queue_admission(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    container.review_card_use_case.behavior_context_loader = lambda learner_id: {
+        "source": "frontend_backend",
+        "question_attempt": [],
+    }
+
+    await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="BEHAVIOR_USER_2",
+            user_request="请生成四君子汤复习卡",
+            question_attempt=[{
+                "attempt_id": "FORGED_ATTEMPT_1",
+                "kp_ids": ["KP_FJ_001"],
+                "is_correct": True,
+                "score": 100,
+                "answered_at": "2026-07-21T08:00:00Z",
+            }],
+        )
+    )
+
+    assert container.review_service.get_queue("BEHAVIOR_USER_2").entries == []
+
+
+@pytest.mark.asyncio
+async def test_workflow_keeps_request_exam_scope_when_behavior_target_is_stale(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    learner_id = "EXAM_SWITCH_USER_1"
+    conversation_id = "CONV_NEW_EXAM_WORKSPACE"
+    container.review_card_use_case.behavior_context_loader = lambda _: {
+        "source": "frontend_backend",
+        "learning_target": {
+            "exam_track_id": "EXAM_OLD",
+            "exam_name": "旧证书",
+        },
+        "question_attempt": [],
+    }
+    token = bind_exam_workspace(
+        learner_id,
+        {"exam_track_id": "EXAM_NEW", "exam_name": "新证书"},
+    )
+    try:
+        await container.review_card_use_case.execute(
+            ReviewCardRequest(
+                learner_id=learner_id,
+                conversation_id=conversation_id,
+                user_request="请讲解四君子汤",
+            )
+        )
+        owner = container.review_card_use_case.conversation_repository.sessions[conversation_id]
+        assert owner["exam_track_id"] == "EXAM_NEW"
+    finally:
+        reset_exam_workspace(token)
+
+
+@pytest.mark.asyncio
+async def test_planner_routes_resource_request_through_expert_and_audit(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        request(message="请生成一张可以直接学习的四君子汤复习卡")
+    )
+
+    producers = {item.producer for item in result.agent_outputs}
+    assert result.task_type == "personalized_review_card"
+    assert "default_route_resolver" in producers
+    assert "expert_agent" in producers
+    assert "audit_agent" in producers
+    assert result.resource is not None
+    assert result.audit is not None
+
+
+@pytest.mark.asyncio
+async def test_followup_knowledge_request_reuses_server_conversation_history(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    captured = {}
+    original = container.review_card_use_case.orchestrator.agent_registry.get("knowledge_base_agent")
+
+    class CapturingKnowledgeAgent:
+        async def run(self, context):
+            captured["messages"] = list(context.get("messages", []))
+            return await original.run({**context, "user_request": "四君子汤"})
+
+    container.review_card_use_case.orchestrator.agent_registry._agents["knowledge_base_agent"] = CapturingKnowledgeAgent()
+    await container.review_card_use_case.execute(ReviewCardRequest(
+        learner_id="CONTEXT_USER_1",
+        conversation_id="CONTEXT_CONVERSATION_1",
+        user_request="给我讲解一下感冒的证型有哪几种",
+    ))
+    await container.review_card_use_case.execute(ReviewCardRequest(
+        learner_id="CONTEXT_USER_1",
+        conversation_id="CONTEXT_CONVERSATION_1",
+        user_request="这些证型分别怎么治疗？",
+    ))
+
+    contents = [item["content"] for item in captured["messages"]]
+    assert "给我讲解一下感冒的证型有哪几种" in contents
+    assert "这些证型分别怎么治疗？" in contents
+    assert all(item.get("message_id") for item in captured["messages"])
+
+
+@pytest.mark.asyncio
+async def test_long_conversation_forces_memory_compression_before_knowledge(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    result = await container.review_card_use_case.execute(ReviewCardRequest(
+        learner_id="CONTEXT_USER_2",
+        conversation_id="CONTEXT_CONVERSATION_2",
+        user_request="请解释四君子汤是什么？",
+        messages=[{
+            "role": "user",
+            "content": "感冒证型学习背景：" + "风寒、风热、暑湿。" * 500,
+        }],
+    ))
+    producers = [item.producer for item in result.agent_outputs]
+    assert "memory_agent" in producers
+    assert producers.index("memory_agent") < producers.index("knowledge_base_agent")
+
+
+@pytest.mark.asyncio
+async def test_combined_plan_and_card_does_not_publish_unaudited_plan(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        request(message="请结合我的学习状态，为四君子汤制定一份本周学习计划，需要生成学习卡片。")
+    )
+
+    producers = {item.producer for item in result.agent_outputs}
+    assert result.task_type == "personalized_review_card"
+    assert {
+        "default_route_resolver", "learning_plan_service", "expert_agent", "audit_agent"
+    }.issubset(producers)
+    assert result.learning_plan is not None
+    assert result.learning_plan.requires_clarification is True
+    assert result.learning_plan.requested_scope == "unspecified"
+    assert "三审" in result.learning_plan.reason
+    assert result.resource is None
+    assert result.resource_version is None
+    assert result.writeback_intents == []
+    planning_service = container.review_card_use_case.orchestrator.agent_registry.get(
+        "learning_plan_service"
+    ).service
+    assert planning_service.get_current("ROUTING_USER_1") is None
+
+
+@pytest.mark.asyncio
+async def test_learning_status_request_reads_data_without_rewriting_plans(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    existing_long = {
+        "plan_id": "LONG_OLD",
+        "content": (
+            "【最终目标】已有长期规划。"
+            "【能力路径与阶段】基础→应用。"
+            "【阶段里程碑】完成阶段验收；截止待确认。"
+            "【资源预算】投入待确认。"
+            "【重规划条件】目标或时间变化时调整。"
+            "【保温底线】每周一次回忆。"
+        ),
+        "version": 3,
+        "status": "active",
+    }
+    existing_short = {
+        "plan_id": "SHORT_OLD",
+        "content": (
+            "【当前主目标】已有短期规划。"
+            "【长期目标保温】每周一次回忆。"
+            "【时间分配】时间待确认。"
+            "【具体任务块】完成回忆，产出口述结果，完成标准为完整复述。"
+            "【复习任务】完成后复盘。"
+            "【反馈指标】记录完成率。"
+        ),
+        "version": 5,
+        "status": "active",
+    }
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="STATUS_REUSE_1",
+            user_request="我最近的学习状态如何？",
+            available_minutes=15,
+            user_profile={"goals": {"short_term_goal": "本周掌握当前主题"}},
+            long_term_plan=existing_long,
+            short_term_plan=existing_short,
+        )
+    )
+
+    assert result.task_type == "learner_data_query"
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.review_task is None
+    assert result.direct_response
+    assert "复习卡" not in result.direct_response
+    diagnosis = next(item for item in result.agent_outputs if item.producer == "diagnosis_agent")
+    assert {item.producer for item in result.agent_outputs} == {
+        "planner_agent", "memory_agent", "diagnosis_agent"
+    }
+    assert diagnosis.payload.learning_plan_proposal is None
+    assert diagnosis.payload.learner_data["query_kind"] == "progress_summary"
+
+
+@pytest.mark.asyncio
+async def test_next_learning_query_returns_guidance_without_publishing_short_term_plan(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="NEXT_LEARNING_1",
+            user_request="我最近需要学习些什么？",
+            available_minutes=20,
+        )
+    )
+
+    assert result.task_type == "learner_data_query"
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.direct_response
+    diagnosis = next(
+        item for item in result.agent_outputs if item.producer == "diagnosis_agent"
+    )
+    assert diagnosis.payload.learner_data["query_kind"] == "next_learning"
+    assert diagnosis.payload.learner_data["sources"] == [
+        "get_current_plan_progress",
+        "get_mastery_snapshot",
+        "get_recent_learning_summary",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_planner_routes_exam_paper_request_to_blueprint_chain(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="PAPER_USER_1",
+            user_request="请围绕四君子汤生成一份60分钟练习试卷蓝图",
+            available_minutes=60,
+            exam_constraints={
+                "exam_type": "章节练习",
+                "duration_minutes": 60,
+                "total_score": 100,
+            },
+        )
+    )
+
+    assert result.task_type == "paper_generation"
+    assert {item.producer for item in result.agent_outputs} == {
+        "planner_agent", "memory_agent", "diagnosis_agent",
+        "knowledge_base_agent", "expert_agent", "audit_agent"
+    }
+    diagnosis = next(
+        item for item in result.agent_outputs if item.producer == "diagnosis_agent"
+    )
+    assert diagnosis.payload.learner_data["query_kind"] == "progress_summary"
+    assert result.learning_plan is None
+    assert result.review_task is None
+    assert result.resource is not None
+    assert result.resource.title == "四君子汤章节练习试卷"
+    assert result.resource.content["试卷正文"]
+    assert result.resource.content["难度与来源说明"]
+    assert "answer_key" not in result.resource.content
+    assert "explanations" not in result.resource.content
+    assert result.resource_version is not None
+    assert result.audit.decision == "pass"
+
+
+@pytest.mark.asyncio
+async def test_bound_paper_request_forwards_daily_task_item_id_to_publication(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    class RecordingWorkshopRuntime:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def publish_agent_paper(self, learner_id, **kwargs):
+            self.calls.append((learner_id, kwargs))
+            return {"paper_id": "PAPER_BOUND", "status": "published"}
+
+    runtime = RecordingWorkshopRuntime()
+    container.review_card_use_case.workshop_runtime = runtime
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="PAPER_BOUND_USER",
+            user_request="请围绕四君子汤生成一份60分钟练习试卷蓝图",
+            available_minutes=60,
+            daily_task_item_id="ITEM_BOUND",
+        )
+    )
+
+    assert runtime.calls[0][0] == "PAPER_BOUND_USER"
+    assert runtime.calls[0][1]["daily_task_item_id"] == "ITEM_BOUND"
+    assert runtime.calls[0][1]["evidence_pack"]["pool_id"]
+    assert runtime.calls[0][1]["evidence_pack"]["units"]
+    assert result.ui_actions[0].params["paper_id"] == "PAPER_BOUND"
+
+
+@pytest.mark.asyncio
+async def test_paper_publishes_separate_answers_when_user_requests_them(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="PAPER_USER_WITH_ANSWERS",
+            user_request=(
+                "请围绕四君子汤生成一份2道填空题的试卷，覆盖组成和功效主治，"
+                "必须提供答案和解析。"
+            ),
+            available_minutes=30,
+        )
+    )
+
+    assert result.task_type == "paper_generation"
+    assert result.audit.decision == "pass"
+    assert len(result.resource.content["试卷正文"]) == 2
+    assert len(result.resource.content["参考答案"]) == 2
+    assert len(result.resource.content["答案解析"]) == 2
+    assert all(item["答案"] for item in result.resource.content["参考答案"])
+    assert all(item["解析"] for item in result.resource.content["答案解析"])
+    assert "内部检索信息仍不公开" in result.resource.safety_notes[0]
+
+
+@pytest.mark.asyncio
+async def test_planner_routes_plain_explanation_without_learning_plan(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="EXPLAIN_USER_1",
+            user_request="给我讲一讲四君子汤",
+            available_minutes=15,
+        )
+    )
+
+    assert result.task_type == "knowledge_explanation"
+    assert {item.producer for item in result.agent_outputs} == {
+        "planner_agent", "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
+    }
+    assert result.learning_plan is None
+    assert result.review_task is None
+    assert result.resource_binding is None
+    assert result.resource is not None
+    assert "知识讲解" in result.resource.content
+    assert "配套练习" not in result.resource.content
+    assert "思考" in result.resource.content["知识讲解"]
+    assert {intent.effect_type for intent in result.writeback_intents} == {
+        "record_audit", "publish_resource"
+    }

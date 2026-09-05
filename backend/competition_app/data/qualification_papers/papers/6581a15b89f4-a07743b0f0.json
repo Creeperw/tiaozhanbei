@@ -1,0 +1,575 @@
+{
+  "template_id": "6581a15b89f4-a07743b0f0",
+  "questions": [
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0006",
+      "question_type": "single_choice",
+      "question_content": "下列哪项属于食管癌津亏热结证用方的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "二陈汤加减"
+        },
+        {
+          "option_id": "B",
+          "content": "大补元煎加减"
+        },
+        {
+          "option_id": "C",
+          "content": "五汁安中饮加味"
+        },
+        {
+          "option_id": "D",
+          "content": "启膈散合逍遥散加减"
+        },
+        {
+          "option_id": "E",
+          "content": "桃红四物汤合犀角地黄汤加减"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "食管癌津亏热结证选方为五汁安中饮。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0007",
+      "question_type": "single_choice",
+      "question_content": "以下不属于子宫在中医中的称谓的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胞宫"
+        },
+        {
+          "option_id": "B",
+          "content": "子脏"
+        },
+        {
+          "option_id": "C",
+          "content": "子处"
+        },
+        {
+          "option_id": "D",
+          "content": "女子胞"
+        },
+        {
+          "option_id": "E",
+          "content": "龙门"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "子宫又称为女子胞、胞宫、胞脏、子脏、子处、血室。龙门为西医中的阴道口与处女膜。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0008",
+      "question_type": "single_choice",
+      "question_content": "胎儿附属物不包括",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "羊水"
+        },
+        {
+          "option_id": "B",
+          "content": "胎膜"
+        },
+        {
+          "option_id": "C",
+          "content": "胎盘"
+        },
+        {
+          "option_id": "D",
+          "content": "脐带"
+        },
+        {
+          "option_id": "E",
+          "content": "蜕膜 参考"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "胎儿附属物的组成：胎盘、胎膜、脐带和羊水。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0009",
+      "question_type": "single_choice",
+      "question_content": "卵泡早期分泌量少, 其后逐渐增高, 排卵前达高峰, 以后降低, 黄体期再度增高。符合上述变化的激素是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "促卵泡素"
+        },
+        {
+          "option_id": "B",
+          "content": "促黄体素"
+        },
+        {
+          "option_id": "C",
+          "content": "雌激素"
+        },
+        {
+          "option_id": "D",
+          "content": "泌乳素"
+        },
+        {
+          "option_id": "E",
+          "content": "孕激素"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "雌激素：卵泡开始发育时，雌激素分泌量很少，月经第7日卵泡分泌雌激素量迅速增加，排卵前达高峰。排卵后1～2日，黄体开始分泌雌激素使循环中的雌激素又逐渐上升。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0010",
+      "question_type": "single_choice",
+      "question_content": "在产后三审中，验津液之盛衰的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "乳汁的多少"
+        },
+        {
+          "option_id": "B",
+          "content": "饮食的多少"
+        },
+        {
+          "option_id": "C",
+          "content": "小腹的痛与不痛"
+        },
+        {
+          "option_id": "D",
+          "content": "大便的通与不通"
+        },
+        {
+          "option_id": "E",
+          "content": "小便的利与不利 懒人医考整理"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "产后病的辨证应注重“产后三审”，即一审小腹痛与不痛，以辨恶露有无停滞；二审大便通与不通，以验津液之盛衰；三审乳汁与饮食多少，以察胃气的强弱。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0011",
+      "question_type": "single_choice",
+      "question_content": "以下哪项是异位妊娠的基本病机",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾气亏虚"
+        },
+        {
+          "option_id": "B",
+          "content": "湿热下注"
+        },
+        {
+          "option_id": "C",
+          "content": "瘀血阻滞冲任胞宫"
+        },
+        {
+          "option_id": "D",
+          "content": "冲任不固，带脉失约"
+        },
+        {
+          "option_id": "E",
+          "content": "少腹血瘀实证"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "异位妊娠的基本病机是少腹血瘀实证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0012",
+      "question_type": "single_choice",
+      "question_content": "以下属于外阴阴道假丝酵母菌病的西医治疗是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "口服甲硝唑"
+        },
+        {
+          "option_id": "B",
+          "content": "2%克林霉素软膏"
+        },
+        {
+          "option_id": "C",
+          "content": "口服己烯雌酚"
+        },
+        {
+          "option_id": "D",
+          "content": "口服伊曲康唑、氟康唑"
+        },
+        {
+          "option_id": "E",
+          "content": "口服尼尔雌醇"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "伊曲康唑、氟康唑可用于治疗外阴阴道假丝酵母菌病。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0013",
+      "question_type": "single_choice",
+      "question_content": "正常 8 个月小儿体重约",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "9kg"
+        },
+        {
+          "option_id": "B",
+          "content": "8kg"
+        },
+        {
+          "option_id": "C",
+          "content": "7kg"
+        },
+        {
+          "option_id": "D",
+          "content": "10kg"
+        },
+        {
+          "option_id": "E",
+          "content": "11kg"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "7～12月龄婴儿体总计算：6（kg）+月龄×0.25（kg）。故根据公式换算，正常8个月小儿体重约为 $6+8\\times0.25=8kg$ 。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0014",
+      "question_type": "single_choice",
+      "question_content": "鹅口疮的病原体是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "柯萨奇病毒"
+        },
+        {
+          "option_id": "B",
+          "content": "白色念珠菌"
+        },
+        {
+          "option_id": "C",
+          "content": "葡萄球菌"
+        },
+        {
+          "option_id": "D",
+          "content": "流感杆菌"
+        },
+        {
+          "option_id": "E",
+          "content": "链球菌"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "白色念珠菌感染能够引起鹅口疮，多见于营养不良、慢性腹泻、长期使用广谱抗生素或激素的患儿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0015",
+      "question_type": "single_choice",
+      "question_content": "下列脏腑与厌食关系密切的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾与膀胱"
+        },
+        {
+          "option_id": "B",
+          "content": "肝胆"
+        },
+        {
+          "option_id": "C",
+          "content": "脾胃"
+        },
+        {
+          "option_id": "D",
+          "content": "心与小肠"
+        },
+        {
+          "option_id": "E",
+          "content": "肺与大肠"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "厌食多由喂养不当、他病伤脾、先天不足、情志失调引起，其病变脏腑主要在脾胃。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0016",
+      "question_type": "single_choice",
+      "question_content": "关于小儿望诊的说法错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "面呈黑色，主寒证、肾虚、痛证、瘀证、水饮内停"
+        },
+        {
+          "option_id": "B",
+          "content": "头方发少、囟门迟闭，可见于佝偻病"
+        },
+        {
+          "option_id": "C",
+          "content": "肛门瘙痒，入夜尤甚，多为蛲虫侵扰"
+        },
+        {
+          "option_id": "D",
+          "content": "端坐喘促，痰鸣哮吼，多为哮喘"
+        },
+        {
+          "option_id": "E",
+          "content": "口腔、舌部黏膜破溃糜烂，满口白屑，状如雪花，多见于麻疹黏膜斑"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "口腔、舌部黏膜破溃糜烂，满口白屑，状如雪花，多见于鹅口疮。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 16,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0017",
+      "question_type": "single_choice",
+      "question_content": "小儿发生壮热、昏迷、抽搐之惊风、疫毒痢、暑温等疾病，多与下列那些脏腑关系最密切",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝、肾"
+        },
+        {
+          "option_id": "B",
+          "content": "肺、脾"
+        },
+        {
+          "option_id": "C",
+          "content": "脾、肾"
+        },
+        {
+          "option_id": "D",
+          "content": "心、肝"
+        },
+        {
+          "option_id": "E",
+          "content": "肺、脾、肾"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "由于小儿心肝发育未臻成熟，心怯神弱、肝气未盛，外邪一旦侵袭，易于枭张入里，化毒化火，犯肝而生风、犯心而生惊，故易发生心肝病证，如壮热、昏迷、抽搐之惊风、疫毒痢、暑温等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 17,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0018",
+      "question_type": "single_choice",
+      "question_content": "关于病毒性心肌炎的中医病因病机，说法错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小儿素体正气亏虚是发病之内因"
+        },
+        {
+          "option_id": "B",
+          "content": "耗气伤阴、血脉阻滞为主要病理变化"
+        },
+        {
+          "option_id": "C",
+          "content": "病理产物为瘀血、痰浊"
+        },
+        {
+          "option_id": "D",
+          "content": "病变部位主要在心，常涉及脾、肾"
+        },
+        {
+          "option_id": "E",
+          "content": "发病外因为温热邪毒侵袭 懒人医考整理"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "病毒性心肌炎病变部位主要在心，常涉及肺、脾、肾。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 18,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0019",
+      "question_type": "single_choice",
+      "question_content": "慢性支气管炎的诊断要点是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "咳嗽、咳痰每年持续1个月，持续2年以上者"
+        },
+        {
+          "option_id": "B",
+          "content": "咳嗽、咳痰每年持续2个月，持续2年以上者"
+        },
+        {
+          "option_id": "C",
+          "content": "咳嗽、咳痰每年持续3个月，持续2年以上者"
+        },
+        {
+          "option_id": "D",
+          "content": "咳嗽、咳痰每年持续3个月，持续3年以上者"
+        },
+        {
+          "option_id": "E",
+          "content": "咳嗽、咳痰每年持续3个月，持续1年以上者"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "慢性支气管炎临床上以咳嗽、咳痰为主要症状或伴有喘息，每年发病持续3个月，并连续2年或以上。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 19,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-a07743b0f0-q0020",
+      "question_type": "single_choice",
+      "question_content": "下列降压药中，适用于高血压伴前列腺增生患者的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "$\\alpha$ 受体阻滞剂"
+        },
+        {
+          "option_id": "B",
+          "content": "$\\beta$ 受体阻滞剂"
+        },
+        {
+          "option_id": "C",
+          "content": "ACEI 类"
+        },
+        {
+          "option_id": "D",
+          "content": "CCB"
+        },
+        {
+          "option_id": "E",
+          "content": "利尿剂"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "适用于高血压伴前列腺增生患者的降压药是 $\\alpha$ 受体阻滞剂。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+        "number": 20,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

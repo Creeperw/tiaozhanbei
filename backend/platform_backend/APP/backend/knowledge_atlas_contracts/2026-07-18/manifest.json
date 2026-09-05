@@ -1,0 +1,121 @@
+{
+  "$schema": "./manifest.schema.json",
+  "schema_version": "1.0.0",
+  "asset_version": "2026-07-18",
+  "source_package": "division of labor/知识星球视频知识库_前端交接包_2026-07-18",
+  "selected_payload": {
+    "file_count": 19653,
+    "total_bytes": 2025974396
+  },
+  "validated_counts": {
+    "routes": 3,
+    "level_1_textbooks": 83,
+    "level_2_topics": 4535,
+    "knowledge_points": 73777,
+    "questions": 93111,
+    "questions_with_kp_ids": 71102,
+    "questions_without_kp_ids": 22009,
+    "source_chunks": 73170,
+    "images": 15468,
+    "source_excel_files": 5,
+    "source_records": 96,
+    "valid_unique_bvids": 95,
+    "video_pages": 3867,
+    "subtitle_pages": 3093,
+    "no_subtitle_pages": 774,
+    "semantic_segments": 58641,
+    "matched_segments": 31411
+  },
+  "components": [
+    {
+      "name": "backend_delivery",
+      "source": "知识库管理组件/data/backend_delivery",
+      "root": "data",
+      "target": "backend_delivery",
+      "file_count": 15490,
+      "total_bytes": 1349929756,
+      "tree_sha256": "05146e4b18af01e3006012d0a284a385d5729eb1983b97acd67ae0f51ee99dc4",
+      "sample_files": [
+        "01_question_bank/formatted_questions.json",
+        "03_pipeline_chunks/source_chunks.jsonl",
+        "04_knowledge_points/final_knowledge_points.json",
+        "05_bridge/kp_chunk_links.jsonl",
+        "07_exam_bridge/exam_catalog_nodes.jsonl",
+        "07_exam_bridge/kp_exam_matches.jsonl",
+        "08_exam_learning_path_2025/manifest.jsonl"
+      ],
+      "sample_sha256": {
+        "01_question_bank/formatted_questions.json": "32dd2bff9995b303ca1c10e6922664db5551c019310a01cb3ad5af393a6f516d",
+        "03_pipeline_chunks/source_chunks.jsonl": "ee19ba63c4c3fb50fc64f021513a8c31dc123b83cba691b7c45c08205a987f1b",
+        "04_knowledge_points/final_knowledge_points.json": "d0d805b23f2a83f1c9de1f46c72dac24f4847201feb311f9c50faed758306190",
+        "05_bridge/kp_chunk_links.jsonl": "077dcf98860422c8d2bff84a4179d10b2b1d44295217e0ad44195de69f5af038",
+        "07_exam_bridge/exam_catalog_nodes.jsonl": "b8ae544c0e76f948e486da68552d2b519734a417046a2aca33a115ba9b5fb57f",
+        "07_exam_bridge/kp_exam_matches.jsonl": "3ee7bc534afcd44f29add14cac7f17e72f2855104b2025e50338dabc63e6adfb",
+        "08_exam_learning_path_2025/manifest.jsonl": "3774ec571046a920635fa437b6a30f1136160a481ffb0c6cd373bd4eb8e6265f"
+      }
+    },
+    {
+      "name": "video_full_batch",
+      "source": "bilibili_video_page/runtime/full_batch",
+      "root": "video",
+      "target": "full_batch",
+      "file_count": 99,
+      "total_bytes": 353702617,
+      "tree_sha256": "1e5043703096071d73b645c9dab9113e7855fa19de9056c9229bace59602e5e1",
+      "sample_files": [
+        "harvest_summary.json",
+        "inventory.json",
+        "manifest.json",
+        "sources/BV11h7q6tEdy.json"
+      ],
+      "sample_sha256": {
+        "harvest_summary.json": "6699787dd6dee3c93c1462b4b6bc96eddb2f997ecbea0254d3a4dc77230737dd",
+        "inventory.json": "16cc1c42c3490e58b2f0300366c3aa11eb3fddf4cec8021599bc1db745a5899a",
+        "manifest.json": "9759e7d9f3d0bfcfff88350c7d94a5801f1c6197446d2f8930f3c2b7e25c7913",
+        "sources/BV11h7q6tEdy.json": "5db42ac9b86ab39ce342fe9256e79cb2eeee7da5cef1bfc8ceb1a3839b927456"
+      }
+    },
+    {
+      "name": "video_full_batch_results",
+      "source": "bilibili_video_page/runtime/full_batch_results",
+      "root": "video",
+      "target": "full_batch_results",
+      "file_count": 4059,
+      "total_bytes": 322282705,
+      "tree_sha256": "c907dddb63b8c6e57ed6cbe7d0e96bebe466768d7166dac95b3f8d2474fd25dc",
+      "sample_files": [
+        "catalog.json",
+        "run_summary.json",
+        "BV11h7q6tEdy/classification_result.json"
+      ],
+      "sample_sha256": {
+        "catalog.json": "b078cc7dbbadb0aba494775238f2230fefcfc45ff940ff9b3306ff604208cebe",
+        "run_summary.json": "c3aa25207d2c6a80c10852791186b043a0df416cdfa066f955b1f226527c70e0",
+        "BV11h7q6tEdy/classification_result.json": "f95acd4253a0bb69a7f51000e425817ac666922bde25fcf0452e929a4773acb7"
+      }
+    },
+    {
+      "name": "video_source_excel",
+      "source": "bilibili_video_page/DATA/预处理",
+      "root": "video",
+      "target": "source_excel",
+      "file_count": 5,
+      "total_bytes": 59318,
+      "tree_sha256": "2887545d478e3f390d2711bef2b553349c39996b656a36686fa7dd03d2609661",
+      "sample_files": [
+        "B站视频资源 (2).xlsx",
+        "B站视频资源 (3).xlsx",
+        "B站视频资源(1).xlsx",
+        "B站视频资源(2).xlsx",
+        "B站视频资源.xlsx"
+      ],
+      "sample_sha256": {
+        "B站视频资源 (2).xlsx": "24fda21c36b2f841733a2c43a7e08c8e498a609b36efc2e38ba4a740d165a381",
+        "B站视频资源 (3).xlsx": "8507c7bde9791ebfd54d8b44ee374bb48000915fa5d452ee31c1bf1c0990beb9",
+        "B站视频资源(1).xlsx": "0e2211b32e971d643146496198c71a21c8acf4470f2d30d076ea5152f201520c",
+        "B站视频资源(2).xlsx": "4307f22e58d85b57f2c9e9f423e2d6c5c65354e273a6ca5b021eee1590f0c12e",
+        "B站视频资源.xlsx": "69a9b6409dc7d9d0392c301d116a226e72071c7a0d60b63870c2b4ec7793cf43"
+      }
+    }
+  ]
+}

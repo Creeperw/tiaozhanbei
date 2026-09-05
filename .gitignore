@@ -1,0 +1,296 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+!/frontend/llm/src/lib/
+!/frontend/llm/src/lib/*.js
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#   Usually these files are written by a python script from a template
+#   before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+# Pipfile.lock
+
+# UV
+#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+# uv.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+# poetry.lock
+# poetry.toml
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
+#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
+# pdm.lock
+# pdm.toml
+.pdm-python
+.pdm-build/
+
+# pixi
+#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
+# pixi.lock
+#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
+#   in the .venv directory. It is recommended not to include this directory in version control.
+.pixi
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# Redis
+*.rdb
+*.aof
+*.pid
+
+# RabbitMQ
+mnesia/
+rabbitmq/
+rabbitmq-data/
+
+# ActiveMQ
+activemq-data/
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.envrc
+.venv
+.venv-*/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Local runtime state
+/health_agent.db
+/backend/competition_app/runtime/
+!/backend/competition_app/runtime/
+/backend/competition_app/runtime/*
+!/backend/competition_app/runtime/*.py
+/frontend/llm/test-results/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#   and can be added to the global gitignore or merged into this file.  For a more nuclear
+#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
+# .idea/
+
+# Abstra
+#   Abstra is an AI-powered process automation framework.
+#   Ignore directories containing user credentials, local state, and settings.
+#   Learn more at https://abstra.io/docs
+.abstra/
+
+# Shizhen backend local configuration and runtime artifacts
+.env.local
+.env.*.local
+backend/competition_app/snapshots/
+backend/competition_app/runtime/frontend_backend/
+backend/competition/backend-handoff-20260720/APP/backend/runtime/
+backend/competition/backend-handoff-20260720/APP/backend/user_questions/
+backend/competition/backend-handoff-20260720/.run/
+backend/platform_backend/APP/backend/runtime/
+backend/platform_backend/APP/backend/user_questions/
+backend/platform_backend/.run/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Large knowledge assets are mounted outside Git
+/runtime/
+/assets/
+/vdb_store/
+/知识星球视频知识库_前端交接包_2026-07-18/
+backend/competition/vdb_store
+backend/competition/vdb_store/
+backend/competition/题库与知识点库（原始）/
+backend/competition/知识星球视频知识库_前端交接包_*
+backend/competition/知识星球视频知识库_前端交接包_*/
+backend/competition/zhongyi-learning-planning
+backend/competition/zhongyi-learning-planning/
+backend/competition/textbook_pdfs/
+
+# Visual Studio Code
+#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#   you could uncomment the following to ignore the entire vscode folder
+# .vscode/
+# Temporary file for partial code execution
+tempCodeRunnerFile.py
+
+# Ruff stuff:
+.ruff_cache/
+
+# PyPI configuration file
+.pypirc
+
+# Marimo
+marimo/_static/
+marimo/_lsp/
+__marimo__/
+
+# Streamlit
+.streamlit/secrets.toml
+# User-scoped workshop note uploads are runtime data.
+backend/competition_app/data/workshop_note_images/
+
+# Local delivery archives, logs and disposable test artifacts.
+/release_packages/
+/.runlogs/
+/tmp/
+# Local MySQL data directory (kept out of Git; removed from index in merge)
+.local-mysql/
+
+# ===== TreeKG 知识图谱流水线 =====
+# BERT 模型文件（太大）
+TreeKG-main/src/HiddenKG/model/*
+!TreeKG-main/src/HiddenKG/model/main.py
+# 生成的 HTML 可视化（output 目录下的）
+**/output/**/*.html
+**/data/**/*.html
+# 大型中间处理文件（可重新生成）
+*dedup_result.json
+*aggr_entities.json
+*conv_entities.json
+*final_knowledge_points_merged.json
+TreeKG-main/integration/runtime/
+
+# ===== evaluation_delivery 评测环境 =====
+# 运行产物默认不入库；仅保留本次在线 20 条验收的精简交付证据。
+evaluation_delivery/outputs/*
+!evaluation_delivery/outputs/accountability_online20/
+evaluation_delivery/outputs/accountability_online20/*
+!evaluation_delivery/outputs/accountability_online20/accountability_online20_20260811T065325Z.jsonl
+!evaluation_delivery/outputs/accountability_online20/accountability_online20_20260811T065325Z_metrics.json
+!evaluation_delivery/outputs/accountability_fault_online20/
+evaluation_delivery/outputs/accountability_fault_online20/*
+!evaluation_delivery/outputs/accountability_fault_online20/accountability_fault_online20_final_20260811T092121Z.jsonl
+!evaluation_delivery/outputs/accountability_fault_online20/accountability_fault_online20_final_20260811T092121Z_metrics.json
+# 评测判定通道密钥
+evaluation_delivery/eval.env

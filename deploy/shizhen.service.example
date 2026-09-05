@@ -1,0 +1,23 @@
+[Unit]
+Description=Shizhen training application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=shizhen
+Group=shizhen
+WorkingDirectory=/srv/shizhen/app
+EnvironmentFile=/etc/shizhen/app.env
+Environment=COMPETITION_ENV_FILE=/etc/shizhen/app.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/conda/envs/torch/bin/python /srv/shizhen/app/scripts/serve_production.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=120
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

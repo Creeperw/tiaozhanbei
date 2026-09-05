@@ -1,0 +1,585 @@
+.registration-journey {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 12% 16%, rgba(167, 243, 208, 0.42), transparent 24rem),
+    radial-gradient(circle at 88% 82%, rgba(153, 246, 228, 0.28), transparent 26rem),
+    #f4fbf7;
+  color: #0f172a;
+}
+
+.registration-journey::before {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(5, 150, 105, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(5, 150, 105, 0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  pointer-events: none;
+}
+
+.registration-journey__header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  width: min(1400px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 20px 0 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.registration-journey__brand {
+  display: flex;
+  align-items: center;
+  color: #064e3b;
+}
+
+.registration-journey__brand > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.registration-journey__brand strong {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.registration-journey__brand small {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.registration-journey__exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #dbe7e1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px 16px;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.registration-journey__exit:hover {
+  border-color: #6ee7b7;
+  background: white;
+  color: #047857;
+}
+
+.registration-journey__main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(1240px, calc(100% - 40px));
+  min-height: calc(100vh - 76px);
+  margin: 0 auto;
+  padding: 22px 0 46px;
+  align-items: center;
+  justify-content: center;
+  grid-template-columns: minmax(0, 720px) minmax(220px, 320px);
+  gap: clamp(28px, 3vw, 44px);
+}
+
+.registration-journey__guide {
+  position: sticky;
+  top: max(78px, calc(50vh - 255px));
+  display: flex;
+  width: 100%;
+  height: clamp(410px, 66vh, 510px);
+  min-height: 410px;
+  align-items: flex-end;
+  justify-content: center;
+  align-self: center;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.registration-journey__guide::after {
+  position: absolute;
+  right: 8%;
+  bottom: 4%;
+  left: 8%;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(6, 95, 70, 0.13);
+  content: '';
+  filter: blur(12px);
+}
+
+.registration-journey__mascot {
+  position: relative;
+  z-index: 1;
+  width: clamp(170px, 20vw, 235px);
+  max-width: 90%;
+  max-height: min(350px, 46vh);
+  object-fit: contain;
+  filter: drop-shadow(0 24px 26px rgba(6, 78, 59, 0.16));
+  user-select: none;
+}
+
+.registration-journey__speech {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  width: min(260px, 96%);
+  border: 1.5px solid #a7f3d0;
+  border-radius: 24px 24px 7px 24px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 14px 16px;
+  color: #065f46;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.75;
+  box-shadow: 0 18px 42px rgba(16, 185, 129, 0.12);
+}
+
+.registration-journey__speech::after {
+  position: absolute;
+  bottom: -12px;
+  right: 24px;
+  width: 22px;
+  height: 22px;
+  border-right: 1.5px solid #a7f3d0;
+  border-bottom: 1.5px solid #a7f3d0;
+  background: white;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.registration-journey__panel {
+  width: 100%;
+  max-width: 720px;
+  margin: 0;
+  justify-self: center;
+  grid-column: 1;
+  grid-row: 1;
+  border: 1px solid rgba(209, 250, 229, 0.95);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: clamp(30px, 3vw, 42px);
+  box-shadow: 0 28px 70px rgba(6, 95, 70, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+.registration-journey__progress-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.registration-journey__progress {
+  height: 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2eee8;
+}
+
+.registration-journey__progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #10b981, #059669);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.38);
+  transition: width 300ms ease;
+}
+
+.registration-journey__progress-row > strong {
+  color: #64748b;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.registration-journey__heading {
+  min-height: 118px;
+  margin-top: 24px;
+}
+
+.registration-journey__heading > span {
+  color: #059669;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.registration-journey__heading h1 {
+  margin: 9px 0 0;
+  color: #052e27;
+  font-size: clamp(1.65rem, 2.5vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.18;
+}
+
+.registration-journey__heading p {
+  margin: 9px 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.75;
+}
+
+.registration-journey__form {
+  display: grid;
+  margin-top: 20px;
+  gap: 13px;
+}
+
+.registration-journey__field {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.registration-journey__field span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.registration-journey__field small {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.registration-journey__input-wrap {
+  position: relative;
+}
+
+.registration-journey__input-wrap svg {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  color: #94a3b8;
+  transform: translateY(-50%);
+}
+
+.registration-journey__input {
+  width: 100%;
+  border: 1.5px solid #d7e9df;
+  border-radius: 15px;
+  background: #f8fcfa;
+  padding: 12px 15px 12px 45px;
+  color: #0f172a;
+  font-size: 0.95rem;
+  outline: 0;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.registration-journey__input:focus {
+  border-color: #34d399;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(167, 243, 208, 0.45);
+}
+
+.registration-journey__input:disabled {
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.registration-journey__locked {
+  display: flex;
+  margin-top: 18px;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid #a7f3d0;
+  border-radius: 18px;
+  background: #ecfdf5;
+  padding: 15px 17px;
+  color: #065f46;
+}
+
+.registration-journey__locked strong,
+.registration-journey__locked span {
+  display: block;
+}
+
+.registration-journey__locked span {
+  margin-top: 2px;
+  color: #047857;
+  font-size: 0.8rem;
+}
+
+.registration-journey__options {
+  display: grid;
+  margin-top: 18px;
+  gap: 9px;
+}
+
+.registration-journey__custom {
+  margin-top: 18px;
+}
+
+.registration-journey__custom-input {
+  display: block;
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  border: 1.5px solid #dce9e2;
+  border-radius: 15px;
+  background: #fff;
+  padding: 13px 15px;
+  color: #334155;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  font-family: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.registration-journey__custom-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(167, 243, 208, 0.4);
+}
+
+.registration-journey__custom-input::placeholder {
+  color: #94a3b8;
+}
+
+.registration-journey__option {
+  display: grid;
+  width: 100%;
+  min-height: 50px;
+  border: 1.5px solid #dce9e2;
+  border-radius: 15px;
+  background: #fff;
+  padding: 10px 14px;
+  align-items: center;
+  grid-template-columns: 32px 1fr 21px;
+  gap: 11px;
+  color: #334155;
+  text-align: left;
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.registration-journey__option:hover {
+  border-color: #6ee7b7;
+  box-shadow: 0 8px 22px rgba(16, 185, 129, 0.08);
+  transform: translateY(-1px);
+}
+
+.registration-journey__option[data-selected='true'] {
+  border-color: #10b981;
+  background: #ecfdf5;
+  box-shadow: 0 0 0 3px rgba(167, 243, 208, 0.4);
+  color: #065f46;
+}
+
+.registration-journey__option-index {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 11px;
+  background: #f1f5f3;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.registration-journey__option[data-selected='true'] .registration-journey__option-index {
+  background: #10b981;
+  color: white;
+}
+
+.registration-journey__option-label {
+  font-size: 0.84rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.registration-journey__option-check {
+  color: #10b981;
+  opacity: 0;
+}
+
+.registration-journey__option[data-selected='true'] .registration-journey__option-check {
+  opacity: 1;
+}
+
+.registration-journey__error,
+.registration-journey__notice {
+  margin-top: 18px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.registration-journey__error {
+  border: 1px solid #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.registration-journey__notice {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.registration-journey__actions {
+  display: grid;
+  margin-top: 20px;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+}
+
+.registration-journey__back,
+.registration-journey__primary {
+  min-height: 44px;
+  border-radius: 14px;
+  padding: 0 19px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  transition: transform 150ms ease, opacity 150ms ease, box-shadow 150ms ease;
+}
+
+.registration-journey__back {
+  border: 1px solid #dbe7e1;
+  background: white;
+  color: #475569;
+}
+
+.registration-journey__primary {
+  border: 0;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: white;
+  box-shadow: 0 12px 24px rgba(5, 150, 105, 0.18);
+}
+
+.registration-journey__back:hover,
+.registration-journey__primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.registration-journey__primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.registration-journey__skip {
+  display: block;
+  margin: 13px auto 0;
+  border: 0;
+  background: transparent;
+  padding: 5px 10px;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.registration-journey__skip:hover {
+  color: #047857;
+}
+
+@media (max-width: 780px) {
+  .registration-journey__header {
+    width: min(100% - 28px, 680px);
+    padding-top: 18px;
+  }
+
+  .registration-journey__brand small {
+    display: none;
+  }
+
+  .registration-journey__main {
+    width: min(100% - 28px, 680px);
+    min-height: auto;
+    padding-top: 18px;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .registration-journey__guide {
+    position: relative;
+    top: auto;
+    width: 100%;
+    height: 150px;
+    min-height: 150px;
+    align-items: flex-end;
+    justify-content: flex-start;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .registration-journey__mascot {
+    width: 112px;
+    max-height: 150px;
+    margin-left: 12px;
+  }
+
+  .registration-journey__guide::after {
+    right: auto;
+    bottom: 0;
+    left: 4px;
+    width: 126px;
+    height: 22px;
+  }
+
+  .registration-journey__speech {
+    top: 12px;
+    right: 0;
+    width: calc(100% - 138px);
+    border-radius: 20px 20px 20px 7px;
+    padding: 13px 15px;
+    font-size: 0.8rem;
+  }
+
+  .registration-journey__panel {
+    max-width: none;
+    margin-top: 0;
+    grid-column: 1;
+    grid-row: 2;
+    border-radius: 26px;
+    padding: 24px 20px;
+  }
+
+  .registration-journey__heading {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .registration-journey__exit {
+    width: 42px;
+    height: 42px;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+    color: transparent;
+    white-space: nowrap;
+  }
+
+  .registration-journey__exit svg {
+    flex: 0 0 auto;
+    color: #475569;
+  }
+
+  .registration-journey__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-journey__back {
+    order: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .registration-journey *,
+  .registration-journey *::before,
+  .registration-journey *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

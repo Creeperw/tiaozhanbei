@@ -1,0 +1,361 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CheckCircle2,
+  Circle,
+  Compass,
+  Flame,
+  Lock,
+  PlayCircle,
+} from 'lucide-react';
+import { clampSemanticScale } from './learningTreeModel';
+
+const ORBIT_WIDTH = 1000;
+const ORBIT_HEIGHT = 640;
+const ORBIT_ASPECT_RATIO = ORBIT_WIDTH / ORBIT_HEIGHT;
+const TARGET_RENDERED_ORBIT_RATIO = 1.25;
+
+const statusMeta = {
+  completed: { label: '已完成', Icon: CheckCircle2, tone: 'completed' },
+  in_progress: { label: '学习中', Icon: Flame, tone: 'in-progress' },
+  next: { label: '下一阶段', Icon: PlayCircle, tone: 'next' },
+  locked: { label: '待解锁', Icon: Lock, tone: 'locked' },
+  unassessed: { label: '尚未评估', Icon: Circle, tone: 'unassessed' },
+};
+
+function nodeId(node) {
+  return String(node?.membership_id || node?.node_id || node?.id || '');
+}
+
+function sequenceRank(node, index) {
+  const order = Number(node?.order);
+  return Number.isFinite(order) && order > 0 ? order : index + 1;
+}
+
+function orderLearningNodes(nodes, edges) {
+  const indexedNodes = nodes.map((node, index) => ({ node, index, id: nodeId(node) }));
+  const byId = new Map(indexedNodes.map((item) => [item.id, item]));
+  const compareItems = (left, right) => (
+    sequenceRank(left.node, left.index) - sequenceRank(right.node, right.index)
+    || left.index - right.index
+  );
+  const sequenceEdges = edges.filter((edge) => (
+    edge?.kind !== 'rib' && byId.has(String(edge?.from || '')) && byId.has(String(edge?.to || ''))
+  ));
+  const targets = new Set(sequenceEdges.map((edge) => String(edge.to)));
+  const outgoing = new Map();
+  sequenceEdges.forEach((edge) => {
+    const from = String(edge.from);
+    const to = String(edge.to);
+    outgoing.set(from, [...(outgoing.get(from) || []), to]);
+  });
+  outgoing.forEach((ids, from) => {
+    outgoing.set(from, ids.sort((left, right) => compareItems(byId.get(left), byId.get(right))));
+  });
+
+  const roots = indexedNodes.filter((item) => !targets.has(item.id)).sort(compareItems);
+  const ordered = [];
+  const visited = new Set();
+  let current = roots[0] || indexedNodes.slice().sort(compareItems)[0];
+  while (current && !visited.has(current.id)) {
+    ordered.push(current.node);
+    visited.add(current.id);
+    const nextId = (outgoing.get(current.id) || []).find((id) => !visited.has(id));
+    current = nextId ? byId.get(nextId) : null;
+  }
+
+  indexedNodes
+    .filter((item) => !visited.has(item.id))
+    .sort(compareItems)
+    .forEach((item) => ordered.push(item.node));
+  return ordered;
+}
+
+function getOrbitMetrics(nodeCount, stageAspectRatio) {
+  const compact = nodeCount >= 8;
+  const radiusY = compact ? 240 : nodeCount <= 4 ? 220 : 240;
+  const desiredRadiusX = radiusY
+    * TARGET_RENDERED_ORBIT_RATIO
+    * ORBIT_ASPECT_RATIO
+    / Math.max(1, stageAspectRatio);
+  return {
+    width: ORBIT_WIDTH,
+    height: ORBIT_HEIGHT,
+    centerX: ORBIT_WIDTH / 2,
+    centerY: ORBIT_HEIGHT / 2 + 4,
+    radiusX: Math.max(compact ? 268 : 150, Math.min(compact ? 300 : 290, desiredRadiusX)),
+    radiusY,
+    nodeWidth: compact ? 162 : nodeCount >= 7 ? 164 : 176,
+    nodeHeight: compact ? 64 : 74,
+  };
+}
+
+function getOrbitPosition(index, total, metrics) {
+  const angle = total <= 1 ? -Math.PI / 2 : -Math.PI / 2 + (Math.PI * 2 * index) / total;
+  return {
+    x: metrics.centerX + Math.cos(angle) * metrics.radiusX,
+    y: metrics.centerY + Math.sin(angle) * metrics.radiusY,
+    angle,
+  };
+}
+
+function orbitArc(from, to, metrics) {
+  return `M ${from.x} ${from.y} A ${metrics.radiusX} ${metrics.radiusY} 0 0 1 ${to.x} ${to.y}`;
+}
+
+function connectorEnd(position, metrics) {
+  const nodeHalfWidth = metrics.nodeWidth / 2;
+  const nodeHalfHeight = metrics.nodeHeight / 2;
+  const directionX = position.x - metrics.centerX;
+  const directionY = position.y - metrics.centerY;
+  const distance = Math.max(1, Math.hypot(directionX, directionY));
+  const horizontalRatio = Math.abs(directionX) / distance;
+  const verticalRatio = Math.abs(directionY) / distance;
+  const inset = Math.max(nodeHalfWidth * horizontalRatio, nodeHalfHeight * verticalRatio) + 16;
+  return {
+    x: position.x - (directionX / distance) * inset,
+    y: position.y - (directionY / distance) * inset,
+  };
+}
+
+function stageFor(index, currentIndex) {
+  if (index === currentIndex) return 'current';
+  return index < currentIndex ? 'past' : 'future';
+}
+
+function nodeProgressValue(node) {
+  // 已完成节点按 100% 计；进行中节点优先用真实掌握度（average_mastery 已是
+  // 0–100 的百分比），缺失时回退到 progress（0–1 归一化）或 0（刚开始学）。
+  if (node?.status === 'completed') return 1;
+  if (node?.status === 'in_progress') {
+    const mastery = Number(node?.average_mastery);
+    if (Number.isFinite(mastery) && mastery > 0) return Math.max(0, Math.min(100, mastery)) / 100;
+    const progress = Number(node?.progress);
+    if (Number.isFinite(progress) && progress > 0) return Math.max(0, Math.min(1, progress));
+    return 0;
+  }
+  return 0;
+}
+
+function progressFor(nodes) {
+  if (!nodes.length) return 0;
+  const total = nodes.reduce((sum, node) => sum + nodeProgressValue(node), 0);
+  return Math.max(0, Math.min(100, Math.round((total / nodes.length) * 100)));
+}
+
+export default function LearningPathOverview({
+  nodes,
+  edges,
+  selectedId,
+  onSelect,
+  onDrill,
+  onClearSelection,
+  directDrill = false,
+  summaryLabel = '顺序学习路径',
+  homeCompact = false,
+}) {
+  const stageRef = useRef(null);
+  const [stageAspectRatio, setStageAspectRatio] = useState(2);
+  const orderedNodes = useMemo(() => orderLearningNodes(nodes, edges), [edges, nodes]);
+  const metrics = useMemo(
+    () => getOrbitMetrics(orderedNodes.length, stageAspectRatio),
+    [orderedNodes.length, stageAspectRatio],
+  );
+  const positions = useMemo(() => Object.fromEntries(
+    orderedNodes.map((node, index) => [nodeId(node), getOrbitPosition(index, orderedNodes.length, metrics)]),
+  ), [metrics, orderedNodes]);
+  const effectiveCurrentId = orderedNodes.find((node) => node.status === 'in_progress') && nodeId(orderedNodes.find((node) => node.status === 'in_progress'))
+    || orderedNodes.find((node) => node.status === 'next') && nodeId(orderedNodes.find((node) => node.status === 'next'))
+    || orderedNodes.find((node) => !['completed', 'locked'].includes(node.status)) && nodeId(orderedNodes.find((node) => !['completed', 'locked'].includes(node.status)))
+    || nodeId(orderedNodes.at(-1));
+  const currentIndex = Math.max(0, orderedNodes.findIndex((node) => nodeId(node) === effectiveCurrentId));
+  const progress = progressFor(orderedNodes);
+  const currentNode = orderedNodes[currentIndex];
+  const displayScale = clampSemanticScale(1);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return undefined;
+
+    const updateAspectRatio = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        setStageAspectRatio((current) => {
+          const next = width / height;
+          return Math.abs(current - next) > 0.01 ? next : current;
+        });
+      }
+    };
+
+    updateAspectRatio();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateAspectRatio);
+      return () => window.removeEventListener('resize', updateAspectRatio);
+    }
+
+    const observer = new ResizeObserver(updateAspectRatio);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      className="learning-path-overview learning-path-orbit"
+      aria-label="一级知识学习路径"
+      data-scale={displayScale}
+      data-layout="orbit"
+      data-node-count={orderedNodes.length}
+      data-current-order={currentIndex + 1}
+    >
+      <header className="learning-path-orbit__summary">
+        <div>
+          <span>{!homeCompact && <Compass aria-hidden="true" size={16} />}{summaryLabel}</span>
+          <strong>中医药知识体系</strong>
+          <p>{directDrill ? '按阶段依次进入教材与知识点' : '沿导引环逐步掌握中医核心知识'}</p>
+        </div>
+        <div className="learning-path-orbit__current" aria-label={`当前学习阶段：${currentNode?.title || '待开始'}`}>
+          <span>当前进度</span>
+          <strong>{currentNode ? `第 ${String(currentIndex + 1).padStart(2, '0')} 阶段` : '待开始'}</strong>
+        </div>
+      </header>
+      <div
+        ref={stageRef}
+        className="learning-path-overview__stage learning-path-orbit__stage"
+        style={{
+          '--orbit-node-width': `${metrics.nodeWidth}px`,
+          '--orbit-node-height': `${metrics.nodeHeight}px`,
+        }}
+        onClick={(event) => {
+          if (event.target.closest?.('.learning-path-orbit__node')) return;
+          onClearSelection?.();
+        }}
+      >
+        <svg
+          aria-hidden="true"
+          className="learning-path-orbit__canvas"
+          viewBox={`0 0 ${metrics.width} ${metrics.height}`}
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <radialGradient id="learning-path-orbit-core" cx="50%" cy="42%" r="65%">
+              <stop offset="0%" stopColor="#f5fff9" />
+              <stop offset="100%" stopColor="#dff6ea" />
+            </radialGradient>
+            <linearGradient id="learning-path-orbit-progress" x1="0%" x2="100%" y1="0%" y2="100%">
+              <stop offset="0%" stopColor="#118b68" />
+              <stop offset="100%" stopColor="#5ecaa5" />
+            </linearGradient>
+          </defs>
+          <ellipse
+            className="learning-path-orbit__track"
+            cx={metrics.centerX}
+            cy={metrics.centerY}
+            rx={metrics.radiusX}
+            ry={metrics.radiusY}
+          />
+          {orderedNodes.map((node) => {
+            const position = positions[nodeId(node)];
+            const end = connectorEnd(position, metrics);
+            return (
+              <line
+                key={`spoke-${nodeId(node)}`}
+                className={`learning-path-orbit__spoke is-${stageFor(orderedNodes.indexOf(node), currentIndex)}`}
+                x1={metrics.centerX}
+                x2={end.x}
+                y1={metrics.centerY}
+                y2={end.y}
+              />
+            );
+          })}
+          {orderedNodes.length > 1 && orderedNodes.map((node, index) => {
+            const nextNode = orderedNodes[(index + 1) % orderedNodes.length];
+            const from = positions[nodeId(node)];
+            const to = positions[nodeId(nextNode)];
+            const state = index < currentIndex ? 'completed' : index === currentIndex ? 'current' : 'upcoming';
+            return (
+              <path
+                key={`sequence-${nodeId(node)}-${nodeId(nextNode)}`}
+                data-testid="learning-path-orbit-segment"
+                data-state={state}
+                className="learning-path-orbit__sequence"
+                d={orbitArc(from, to, metrics)}
+              />
+            );
+          })}
+          {orderedNodes.length > 0 && (
+            <circle
+              className="learning-path-orbit__start-dot"
+              cx={positions[nodeId(orderedNodes[0])]?.x}
+              cy={positions[nodeId(orderedNodes[0])]?.y}
+              r="6"
+            />
+          )}
+        </svg>
+
+        <div className="learning-path-orbit__core" aria-label={`总体学习进度 ${progress}%`}>
+          <svg aria-hidden="true" viewBox="0 0 120 120">
+            <circle className="learning-path-orbit__core-track" cx="60" cy="60" r="49" pathLength="100" />
+            <circle
+              className="learning-path-orbit__core-progress"
+              cx="60"
+              cy="60"
+              r="49"
+              pathLength="100"
+              style={{ strokeDasharray: `${progress} ${100 - progress}` }}
+            />
+          </svg>
+          <span>{progress}%</span>
+          <small>总体进度</small>
+          <em>{orderedNodes.filter((node) => node.status === 'completed').length} / {orderedNodes.length || 0} 阶段</em>
+        </div>
+
+        {orderedNodes.map((node, index) => {
+          const id = nodeId(node);
+          const position = positions[id];
+          const selected = selectedId === id;
+          const current = effectiveCurrentId === id;
+          const stage = stageFor(index, currentIndex);
+          const meta = statusMeta[node.status] || statusMeta.unassessed;
+          const Icon = meta.Icon;
+          const total = Number(node.total_count ?? node.child_count ?? 0);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-label={directDrill ? `进入${node.title}（第 ${index + 1} 阶段）` : `选择${node.title}，第 ${index + 1} 阶段，双击进入教材`}
+              aria-pressed={selected}
+              data-current={String(current)}
+              data-stage={stage}
+              data-order={index + 1}
+              className={`learning-path-orbit__node is-${meta.tone}${selected ? ' is-selected' : ''}`}
+              style={{
+                left: `${(position.x / metrics.width) * 100}%`,
+                top: `${(position.y / metrics.height) * 100}%`,
+              }}
+              onClick={() => onSelect(node)}
+              onDoubleClick={(event) => {
+                event.preventDefault();
+                onDrill(node);
+              }}
+              title={node.title}
+            >
+              <span className="learning-path-orbit__order">{String(index + 1).padStart(2, '0')}</span>
+              <span className="learning-path-orbit__title"><Icon aria-hidden="true" size={16} /><b>{node.title}</b></span>
+              <small>{meta.label}{total ? ` · ${total}项` : ''}</small>
+              {node.status === 'in_progress' && node.average_mastery != null && (
+                <span className="learning-path-orbit__progress" aria-label={`掌握度 ${node.average_mastery}%`}>
+                  <i style={{ width: `${Math.max(0, Math.min(100, node.average_mastery))}%` }} />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <footer className="learning-path-orbit__legend" aria-label="知识点状态说明">
+        <span><i className="is-completed" />已完成</span>
+        <span><i className="is-progress" />学习中</span>
+        <span><i className="is-locked" />待解锁</span>
+      </footer>
+    </div>
+  );
+}

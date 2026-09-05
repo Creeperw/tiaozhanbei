@@ -1,0 +1,575 @@
+{
+  "template_id": "8a087ba277ab-2488a1e7d5",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0001",
+      "question_type": "single_choice",
+      "question_content": "《素问·脉要精微论》所说“四变之动，脉与之上下”，主要反映了",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "人体自身的完整性"
+        },
+        {
+          "option_id": "B",
+          "content": "人与自然环境的统一性"
+        },
+        {
+          "option_id": "C",
+          "content": "人与社会环境的统一性"
+        },
+        {
+          "option_id": "D",
+          "content": "形神一体观"
+        },
+        {
+          "option_id": "E",
+          "content": "辨证论治"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "这句话的意思是说由于四时的变化，人体阴阳气血也随之发生相应的变化，因此反映的是人与自然环境的关系。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0002",
+      "question_type": "single_choice",
+      "question_content": "中医学关于“证”的概念是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "对阴阳气血失调临床表现的概括"
+        },
+        {
+          "option_id": "B",
+          "content": "一个完整的异常生命过程"
+        },
+        {
+          "option_id": "C",
+          "content": "对疾病表现症状的综合概括"
+        },
+        {
+          "option_id": "D",
+          "content": "对疾病症状与体征的分析概括"
+        },
+        {
+          "option_id": "E",
+          "content": "对疾病发展过程中某一阶段的病理概括"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "证, 是疾病过程中某一阶段或某一类型的病理概括, 一般由一组相对固定的、有内在联系的、能揭示疾病某一阶段或某一类型病变本质的症状和体征构成。例如, 气虚型感冒、肺痈的成痈期均属于 “证”。<nl>",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0003",
+      "question_type": "single_choice",
+      "question_content": "“无阳则阴无以生, 无阴则阳无以化” 是说明",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴阳的相互对立"
+        },
+        {
+          "option_id": "B",
+          "content": "阴阳互根互用"
+        },
+        {
+          "option_id": "C",
+          "content": "阴阳的相互消长"
+        },
+        {
+          "option_id": "D",
+          "content": "阴阳相互转化"
+        },
+        {
+          "option_id": "E",
+          "content": "阴阳的相互平衡"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "这句话说明阴是阳的生化之源，阳是阴的生成之力，故体现了阴阳的互根互用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0004",
+      "question_type": "single_choice",
+      "question_content": "依据五行学说，“土壅木郁”体现的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "子病及母"
+        },
+        {
+          "option_id": "B",
+          "content": "相乘传变"
+        },
+        {
+          "option_id": "C",
+          "content": "母病及子"
+        },
+        {
+          "option_id": "D",
+          "content": "相侮传变"
+        },
+        {
+          "option_id": "E",
+          "content": "乘侮制化"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "肝属木，木克土，但是当脾脏发生病理性亢奋时，肝木不但不能制约脾土，反被脾士所制。所以，土壅木郁，体现的关系是相侮传变。<nl>",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 4,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0005",
+      "question_type": "single_choice",
+      "question_content": "五脏中与血液生成无关的脏是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾"
+        },
+        {
+          "option_id": "B",
+          "content": "肝"
+        },
+        {
+          "option_id": "C",
+          "content": "肺"
+        },
+        {
+          "option_id": "D",
+          "content": "脾"
+        },
+        {
+          "option_id": "E",
+          "content": "心"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "脾胃是气血的化生之源。心肺：脾胃运化水谷精微所化生的营气和津液，与肺吸入的清气相结合，贯注心脉，在心气的作用下变化而成为红色血液。肾：精和血之间还存在着相互资生和转化的关系，“精血同源”之说。故肾、肺、脾、心均与血液的生成相关。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 5,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0006",
+      "question_type": "single_choice",
+      "question_content": "下列选项中，为五脏阳气根本的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝阳"
+        },
+        {
+          "option_id": "B",
+          "content": "心阳"
+        },
+        {
+          "option_id": "C",
+          "content": "脾阳"
+        },
+        {
+          "option_id": "D",
+          "content": "肺阳"
+        },
+        {
+          "option_id": "E",
+          "content": "肾阳"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肾阴肾阳又称为“五脏阴阳之本”。肾阳具有温煦、推动、兴奋、宣散的特性，为全身诸阳之本，“五脏之阳气，非此不能发”。肾阳充盛，则各脏腑之阳均得到温煦，各形体官窍的功能活动均得以促进和推动，各种生理活动得以正常发挥，同时机体代谢旺盛，产热增加，精神振奋。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0007",
+      "question_type": "single_choice",
+      "question_content": "肝促进男子排精、女子排卵和月经，体现了肝",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "主疏泄"
+        },
+        {
+          "option_id": "B",
+          "content": "主升发"
+        },
+        {
+          "option_id": "C",
+          "content": "主藏血"
+        },
+        {
+          "option_id": "D",
+          "content": "为刚脏"
+        },
+        {
+          "option_id": "E",
+          "content": "藏魂"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "肝主疏泄：①促进血液与津液的运行输布；②促进脾胃运化和胆汁分泌排泄；③调畅情志；④促进男子排精与女子排卵行经。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0008",
+      "question_type": "single_choice",
+      "question_content": "“肾者，胃之关也”主要是针对",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾主宰水液代谢的作用"
+        },
+        {
+          "option_id": "B",
+          "content": "肾中精气的蒸腾气化作用"
+        },
+        {
+          "option_id": "C",
+          "content": "肾司二便的作用"
+        },
+        {
+          "option_id": "D",
+          "content": "肾的固摄作用"
+        },
+        {
+          "option_id": "E",
+          "content": "肾为一身阳气之根"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "这句话说的是水肿病的发病机理。人体内的水液代谢，首先来源于胃受纳的饮食水谷，再通过脾的转输，肺的宣发肃降，通调水道和肾的蒸腾气化等多个脏腑共同参与下而完成。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0009",
+      "question_type": "single_choice",
+      "question_content": "“乙癸同源” 应归属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心与肺"
+        },
+        {
+          "option_id": "B",
+          "content": "心与肾"
+        },
+        {
+          "option_id": "C",
+          "content": "肝与肾"
+        },
+        {
+          "option_id": "D",
+          "content": "肝与脾"
+        },
+        {
+          "option_id": "E",
+          "content": "肺与脾"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "肝肾之间的关系，有 “肝肾同源” 或 “乙癸同源” 之称。主要表现在，精血同源、藏泄互用以及阴阳互滋互制等方面。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0010",
+      "question_type": "single_choice",
+      "question_content": "肺与大肠的表里关系主要体现在",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺气宣发布津于大肠"
+        },
+        {
+          "option_id": "B",
+          "content": "肺气肃降输送水液于大肠"
+        },
+        {
+          "option_id": "C",
+          "content": "肺气肃降以助大肠之传导 懒人医考整理"
+        },
+        {
+          "option_id": "D",
+          "content": "宗气充足以助大肠之传导"
+        },
+        {
+          "option_id": "E",
+          "content": "肺主治节，调节大肠的功能"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "在生理上，肺气的下降可以推动大肠的传导，有助于糟粕下行。而大肠传导正常，腑气通畅，亦有利于肺气的下降。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0011",
+      "question_type": "single_choice",
+      "question_content": "可用“离、入、出、合”来概括其循行特点的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "十五别络"
+        },
+        {
+          "option_id": "B",
+          "content": "十二经别"
+        },
+        {
+          "option_id": "C",
+          "content": "十二经筋"
+        },
+        {
+          "option_id": "D",
+          "content": "十二经脉"
+        },
+        {
+          "option_id": "E",
+          "content": "奇经八脉"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "十二经别，多分布于肘膝、脏腑、躯干、颈项及头部。其循行分布特点，可用“离、入、出、合”来加以概括。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0012",
+      "question_type": "single_choice",
+      "question_content": "既至目外眦，又至目内眦的经脉是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "手少阳三焦经"
+        },
+        {
+          "option_id": "B",
+          "content": "足少阳胆经"
+        },
+        {
+          "option_id": "C",
+          "content": "手太阳小肠经"
+        },
+        {
+          "option_id": "D",
+          "content": "手阳明大肠经"
+        },
+        {
+          "option_id": "E",
+          "content": "足太阳膀胱经"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "手太阳小肠分支：从缺盆出来，沿颈部上行到面颊，至目外眦后，退行进入耳中（听宫穴）。 分支：从面颊部分出，向上行于目眶下，至目内眦，交于足太阳膀胱经。 更多医考干货可扫码关注微信公众平台",
+      "kp_ids": [
+        "048191"
+      ],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0013",
+      "question_type": "single_choice",
+      "question_content": "下列关于五脏外合五体的叙述，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心合脉"
+        },
+        {
+          "option_id": "B",
+          "content": "肝合爪"
+        },
+        {
+          "option_id": "C",
+          "content": "脾合肉"
+        },
+        {
+          "option_id": "D",
+          "content": "肺合皮"
+        },
+        {
+          "option_id": "E",
+          "content": "肾合骨"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肝合筋。故 B 错误。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0014",
+      "question_type": "single_choice",
+      "question_content": "肾主纳气的主要生理作用是懒人医考整理",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "有助于元气的固摄"
+        },
+        {
+          "option_id": "B",
+          "content": "有助于精液的固摄"
+        },
+        {
+          "option_id": "C",
+          "content": "使肺之呼吸保持一定的深度"
+        },
+        {
+          "option_id": "D",
+          "content": "有助于元气的生成"
+        },
+        {
+          "option_id": "E",
+          "content": "有助于肺气的宣发"
+        }
+      ],
+      "answer": [],
+      "explanation": "肾主纳气是指肾具有摄纳肺所吸入的清气，保持吸气的深度，防止呼吸表浅的作用。人的呼吸运动，总为肺所主。但肺吸入之清气，必须下归于肾，由肾加以摄纳才能保持呼吸的深度，防止呼吸表浅。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 14,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-2488a1e7d5-q0015",
+      "question_type": "single_choice",
+      "question_content": "肝藏血与脾统血的共同生理功能是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "调节血量"
+        },
+        {
+          "option_id": "B",
+          "content": "统摄血液"
+        },
+        {
+          "option_id": "C",
+          "content": "贮藏血液"
+        },
+        {
+          "option_id": "D",
+          "content": "防止出血"
+        },
+        {
+          "option_id": "E",
+          "content": "化生血液"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "肝藏血与脾统血是固摄血液的重要因素。 是固摄血液的重要因素。懒人医考 LANRENYIKAO",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

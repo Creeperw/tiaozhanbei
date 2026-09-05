@@ -1,0 +1,30 @@
+{
+  "dataset_id": "semantic_conflict_closure_ab50_20260819",
+  "version": "2026-08-19.1",
+  "case_count": 50,
+  "paired_model_run_count": 100,
+  "case_groups": {
+    "target_fault": 30,
+    "non_regression_control": 15,
+    "targeting_negative_control": 5
+  },
+  "pair_orders": {
+    "AB": 25,
+    "BA": 25
+  },
+  "scenarios": {
+    "expert_conflict_pair_resolvable": 10,
+    "expert_conflict_pair_residual_after_repair": 10,
+    "expert_conflict_pair_expanded_rerun": 10,
+    "normal_dialogue_no_conflict": 15,
+    "no_conflict_normal_resource": 5
+  },
+  "target_rule": "semantic_conflict_pair_closure_v1",
+  "target_agent": "expert_agent",
+  "formal_environment_write_allowed": false,
+  "effect_claim_boundary": "formal_ab_ready_no_effect_claim_before_execution",
+  "files": {
+    "semantic_conflict_closure_ab50_20260819.jsonl": "e98471195ef6513806e9eace51e92fcee2e6c76d44ad18549a1c1fee4b13f531",
+    "semantic_conflict_closure_ab50_20260819.csv": "a8625d196dbda92733422be5d126da3057ea95a1a03dfcc4d678e278104e86e5"
+  }
+}

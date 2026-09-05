@@ -1,0 +1,959 @@
+{
+  "template_id": "8a087ba277ab-b254dc0395",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0001",
+      "question_type": "single_choice",
+      "question_content": "七情内伤，最易损伤的脏腑是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心、肺、肝"
+        },
+        {
+          "option_id": "B",
+          "content": "肺、脾、肾"
+        },
+        {
+          "option_id": "C",
+          "content": "肝、脾、肾"
+        },
+        {
+          "option_id": "D",
+          "content": "心、肝、脾"
+        },
+        {
+          "option_id": "E",
+          "content": "心、脾、肾"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "“怒伤肝”“喜伤心”“思伤脾”“忧伤肺”“恐伤肾”，数情交织，易伤心肝脾。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0002",
+      "question_type": "single_choice",
+      "question_content": "血的运行与哪脏无直接关系",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心"
+        },
+        {
+          "option_id": "B",
+          "content": "肺"
+        },
+        {
+          "option_id": "C",
+          "content": "肝"
+        },
+        {
+          "option_id": "D",
+          "content": "脾"
+        },
+        {
+          "option_id": "E",
+          "content": "肾"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "与血液运行相关脏腑（五脏中无肾）：心主血脉；肝主疏泄、肝藏血；脾主统血；肺朝百脉，助心行血。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0003",
+      "question_type": "single_choice",
+      "question_content": "下列选项中，维持个体体质特征相对稳定性的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "先天遗传性"
+        },
+        {
+          "option_id": "B",
+          "content": "群类趋同性"
+        },
+        {
+          "option_id": "C",
+          "content": "动态可变性"
+        },
+        {
+          "option_id": "D",
+          "content": "后天可调性"
+        },
+        {
+          "option_id": "E",
+          "content": "以上均非"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "遗传因素维持着个体体质特征的相对稳定，是决定体质形成和发展的基础。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0004",
+      "question_type": "single_choice",
+      "question_content": "“利小便即所以实大便”治法的依据是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾主运化水液"
+        },
+        {
+          "option_id": "B",
+          "content": "小肠主液"
+        },
+        {
+          "option_id": "C",
+          "content": "肺主通调水道"
+        },
+        {
+          "option_id": "D",
+          "content": "膀胱贮尿排尿"
+        },
+        {
+          "option_id": "E",
+          "content": "大肠主津"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "临床上，以“利小便所以实大便”的方法治疗泄泻，是“小肠主液”理论的具体应用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 4,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0005",
+      "question_type": "single_choice",
+      "question_content": "五行中，具有“从革”特性的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "金"
+        },
+        {
+          "option_id": "B",
+          "content": "木"
+        },
+        {
+          "option_id": "C",
+          "content": "水"
+        },
+        {
+          "option_id": "D",
+          "content": "火"
+        },
+        {
+          "option_id": "E",
+          "content": "土"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "五行特性：①木曰曲直：生长、升发、条达、舒畅；②火曰炎上：温热、上升、光明；③土爰稼穑：承载、生化、受纳；④金曰从革：沉降、肃杀、收敛；⑤水曰润下：滋润、下行、寒凉、闭藏。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 5,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0006",
+      "question_type": "single_choice",
+      "question_content": "与津液的输布排泄关系最密切的脏是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心肝肾"
+        },
+        {
+          "option_id": "B",
+          "content": "心肝脾"
+        },
+        {
+          "option_id": "C",
+          "content": "肺脾肾"
+        },
+        {
+          "option_id": "D",
+          "content": "心肺肾"
+        },
+        {
+          "option_id": "E",
+          "content": "肺肝肾"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "津液的输布主要是依靠脾、肺、肾、肝和三焦等脏腑生理机能的协调配合来完成的，主要的三个就是肺脾肾；津液的排泄主要通过排出尿液和汗液来完成，呼气和粪便也将带走一些水分，津液的排泄主要与肾、肺、脾的生理机能有关。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0007",
+      "question_type": "single_choice",
+      "question_content": "发之生长与脱落，润泽与枯槁，常与哪个脏腑相关",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心"
+        },
+        {
+          "option_id": "B",
+          "content": "肝"
+        },
+        {
+          "option_id": "C",
+          "content": "肾"
+        },
+        {
+          "option_id": "D",
+          "content": "胃"
+        },
+        {
+          "option_id": "E",
+          "content": "脾"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "肾之华在发。发的生长，赖血以养，故称“发为血之余”。但发的生机根源于肾。肾藏精，精化血，精血旺盛，则毛发粗壮而润泽，由于发为肾之外候，所以发之生长与脱落，润泽与枯槁，常能反映肾精的盛衰。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0008",
+      "question_type": "single_choice",
+      "question_content": "下列不属于养生原则的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "顺应自然"
+        },
+        {
+          "option_id": "B",
+          "content": "形神兼养"
+        },
+        {
+          "option_id": "C",
+          "content": "调养脾肾"
+        },
+        {
+          "option_id": "D",
+          "content": "因人而异"
+        },
+        {
+          "option_id": "E",
+          "content": "扶正祛邪"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "养生原则：①顺应自然；②形神兼养；③调养脾肾；④因人而异。",
+      "kp_ids": [
+        "029895",
+        "070763",
+        "005711"
+      ],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0009",
+      "question_type": "single_choice",
+      "question_content": "用寒远寒的治则属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "因时制宜"
+        },
+        {
+          "option_id": "B",
+          "content": "因地制宜"
+        },
+        {
+          "option_id": "C",
+          "content": "反治"
+        },
+        {
+          "option_id": "D",
+          "content": "急则治标"
+        },
+        {
+          "option_id": "E",
+          "content": "调整阴阳"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "因时制宜是根据时令气候特点，考虑用药的治则。《素问·六元正纪大论》所说：“用寒远寒，用凉远凉，用温远温，用热远热，食宜同法。” 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 8-中西医外妇儿首选类题目 7-中西医结合内科学首选类题目 9-经络系统常考总结 更多医考干货 10-特定穴 记忆歌诀汇总 可扫码关注微信公众平台 11-中药相同功效药物总结 13-方剂学常考重点总结 12-中药学 30味中药 药理作用总",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0010",
+      "question_type": "single_choice",
+      "question_content": "外感病初起时两经同时受邪而发病，称为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "徐发"
+        },
+        {
+          "option_id": "B",
+          "content": "继发"
+        },
+        {
+          "option_id": "C",
+          "content": "诱发"
+        },
+        {
+          "option_id": "D",
+          "content": "合病"
+        },
+        {
+          "option_id": "E",
+          "content": "复发"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "合病之说，首见于《伤寒论》。指外感病初起时两经同时受邪而发病。如太阳与少阳合病，太阳与阳明合病等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0011",
+      "question_type": "single_choice",
+      "question_content": "以下不属于胃的别称的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "太仓"
+        },
+        {
+          "option_id": "B",
+          "content": "十二经脉之海"
+        },
+        {
+          "option_id": "C",
+          "content": "水谷之海"
+        },
+        {
+          "option_id": "D",
+          "content": "水谷气血之海"
+        },
+        {
+          "option_id": "E",
+          "content": "五脏六腑之海"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "胃为“太仓”、“水谷之海”“水谷气血之海”、“五脏六腑之海”。冲脉为“十二经脉之海”、“五脏六腑之海”、“血海”。肝脏为“血海”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0012",
+      "question_type": "single_choice",
+      "question_content": "胃痛大出血病人，采取紧急止血的方法治疗，体现了",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "标本兼治"
+        },
+        {
+          "option_id": "B",
+          "content": "急则治标"
+        },
+        {
+          "option_id": "C",
+          "content": "攻补兼施"
+        },
+        {
+          "option_id": "D",
+          "content": "阴中求阳"
+        },
+        {
+          "option_id": "E",
+          "content": "先扶正后祛邪"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "大出血病人，由于大出血会危及生命，故不论何种原因的出血，均应采用“急则治其标”紧急止血，待血止，病情缓和后再治其本。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0013",
+      "question_type": "single_choice",
+      "question_content": "疾病过程中某一阶段或某一类型的病理概括，指的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疾病"
+        },
+        {
+          "option_id": "B",
+          "content": "证候"
+        },
+        {
+          "option_id": "C",
+          "content": "症状"
+        },
+        {
+          "option_id": "D",
+          "content": "病症"
+        },
+        {
+          "option_id": "E",
+          "content": "体征"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "证，即证候，是疾病过程中某一阶段或某一类型的病理概括，如风寒感冒、心血不足；成痈期。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0014",
+      "question_type": "single_choice",
+      "question_content": "肝病传脾属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "相侮传变"
+        },
+        {
+          "option_id": "B",
+          "content": "相乘传变"
+        },
+        {
+          "option_id": "C",
+          "content": "母病及子"
+        },
+        {
+          "option_id": "D",
+          "content": "子病犯母"
+        },
+        {
+          "option_id": "E",
+          "content": "制化传变"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肝（木）和脾（土）为相克关系，肝病传脾即为过克，为相乘传变。 13-方剂学常考重点总结 结 6-中西医结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0015",
+      "question_type": "single_choice",
+      "question_content": "下列属于心的生理功能的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "主藏血"
+        },
+        {
+          "option_id": "B",
+          "content": "主血脉"
+        },
+        {
+          "option_id": "C",
+          "content": "主运化"
+        },
+        {
+          "option_id": "D",
+          "content": "主统血"
+        },
+        {
+          "option_id": "E",
+          "content": "主疏泄"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肝主藏血；心主血脉；脾主运化；脾主统血；肝主疏泄。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0016",
+      "question_type": "single_choice",
+      "question_content": "下列各项，不属于六淫共同致病特点的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "外感性"
+        },
+        {
+          "option_id": "B",
+          "content": "季节性"
+        },
+        {
+          "option_id": "C",
+          "content": "相兼性"
+        },
+        {
+          "option_id": "D",
+          "content": "传染性"
+        },
+        {
+          "option_id": "E",
+          "content": "地域性"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "六淫的共同致病特点包括外感性、季节性、地域性、相兼性。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 16,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0017",
+      "question_type": "single_choice",
+      "question_content": "痰饮留滞于脏腑，可致脏腑气机失常，如肺失宣降、胃失和降，体现了",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痰饮阻滞气血运行"
+        },
+        {
+          "option_id": "B",
+          "content": "痰饮影响水液代谢"
+        },
+        {
+          "option_id": "C",
+          "content": "痰饮易于蒙蔽心神"
+        },
+        {
+          "option_id": "D",
+          "content": "痰饮致病广泛，变化多端"
+        },
+        {
+          "option_id": "E",
+          "content": "痰饮病位固定，病证繁多"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "痰饮阻滞气血运行：痰饮通常称为有形实邪，其随气流行，或停滞于经脉，或留滞于脏腑。若留滞于脏腑，可致脏腑气机失常。如肺失宣降而胸闷气喘、咳嗽吐痰等；胃失和降而恶心呕吐等；痹阻心脉而胸闷心痛等；痰结咽喉形成梅核气等。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货可扫码关注微信公众平台 合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 17,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0018",
+      "question_type": "single_choice",
+      "question_content": "发病的重要条件是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "邪气偏盛"
+        },
+        {
+          "option_id": "B",
+          "content": "正气不足"
+        },
+        {
+          "option_id": "C",
+          "content": "邪盛正衰"
+        },
+        {
+          "option_id": "D",
+          "content": "正虚邪恋"
+        },
+        {
+          "option_id": "E",
+          "content": "正盛邪恋"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "邪气是发病的重要条件：①邪气是疾病发生的原因；②邪气影响发病的性质、类型和特点；③邪气影响病情和病位；④某些情况下邪气主导疾病的发生。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 18,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0019",
+      "question_type": "single_choice",
+      "question_content": "胃脘痛患者常在其病理过程中出现大量呕血、黑便、反胃或腹部剧痛厥脱等，属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "继发"
+        },
+        {
+          "option_id": "B",
+          "content": "徐发"
+        },
+        {
+          "option_id": "C",
+          "content": "并病"
+        },
+        {
+          "option_id": "D",
+          "content": "合病"
+        },
+        {
+          "option_id": "E",
+          "content": "伏而后发"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "并病，指一经病证未罢又出现另一经病证的发病特点。也可指具体疾病的病后增病，即可视为并发症证。如胃脘痛并发大量出血、腹痛厥脱、反胃等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 19,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0020",
+      "question_type": "single_choice",
+      "question_content": "寒饮中阻患者，因寒饮停滞而化热，属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴阳消长"
+        },
+        {
+          "option_id": "B",
+          "content": "阴胜则阳病"
+        },
+        {
+          "option_id": "C",
+          "content": "阴阳格柜"
+        },
+        {
+          "option_id": "D",
+          "content": "阴阳转化"
+        },
+        {
+          "option_id": "E",
+          "content": "阴阳平衡"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "寒饮停滞而化热，是由寒转热，属于由阴转阳，即阴阳转化。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 20,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0021",
+      "question_type": "single_choice",
+      "question_content": "足太阴脾经与手少阴心经交接于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "目内眦"
+        },
+        {
+          "option_id": "B",
+          "content": "目外眦"
+        },
+        {
+          "option_id": "C",
+          "content": "心中"
+        },
+        {
+          "option_id": "D",
+          "content": "胸中"
+        },
+        {
+          "option_id": "E",
+          "content": "肺中"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "足手阴经在胸部交接：足太阴脾经与手少阴心经交接于心中；足少阴肾经与手厥阴心包经交接于胸中；足厥阴肝经与手太阴肺经交接于肺中。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 21,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0022",
+      "question_type": "single_choice",
+      "question_content": "在目的脏腑分属中，黑睛所属的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺"
+        },
+        {
+          "option_id": "B",
+          "content": "肾"
+        },
+        {
+          "option_id": "C",
+          "content": "肝"
+        },
+        {
+          "option_id": "D",
+          "content": "心"
+        },
+        {
+          "option_id": "E",
+          "content": "脾"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "目的脏腑分属： 目内眦及外眦属心，称“血轮”； 黑珠属肝，称“风轮”； 白睛属肺，称“气轮”； 瞳仁属肾，称“水轮”； 眼胞属脾，称“肉轮”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 22,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0023",
+      "question_type": "single_choice",
+      "question_content": "小儿邪气入络，指纹",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "达于气关 懒人医考整理"
+        },
+        {
+          "option_id": "B",
+          "content": "显于风关"
+        },
+        {
+          "option_id": "C",
+          "content": "达于命关"
+        },
+        {
+          "option_id": "D",
+          "content": "直达指端"
+        },
+        {
+          "option_id": "E",
+          "content": "透关射甲"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "三关测轻重：风关提示邪气入络；气关提示邪气入经；命关提示邪气入脏腑；指纹直达指端（称透关射甲）提示病情凶险，预后不良。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 23,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0024",
+      "question_type": "single_choice",
+      "question_content": "舌苔黏腻而厚，口中发甜者，属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痰浊内阻"
+        },
+        {
+          "option_id": "B",
+          "content": "寒湿内阻"
+        },
+        {
+          "option_id": "C",
+          "content": "脾胃湿热"
+        },
+        {
+          "option_id": "D",
+          "content": "脾虚湿困"
+        },
+        {
+          "option_id": "E",
+          "content": "痰热内蕴"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "舌苔薄腻，见于食积、脾虚湿困；舌苔白腻而滑，见于痰浊、寒湿内阻；舌苔黏腻而厚，口中发甜，见于脾胃湿热；舌苔黄腻而厚，见于痰热、湿热、暑湿等邪内蕴。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 24,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b254dc0395-q0025",
+      "question_type": "single_choice",
+      "question_content": "舌色淡白、有裂纹者主",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血虚"
+        },
+        {
+          "option_id": "B",
+          "content": "血寒"
+        },
+        {
+          "option_id": "C",
+          "content": "阴亏"
+        },
+        {
+          "option_id": "D",
+          "content": "脾虚"
+        },
+        {
+          "option_id": "E",
+          "content": "津伤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "裂纹舌主阴血亏损：①裂纹+舌红绛，主热盛伤津，或阴液虚损；②裂纹+舌淡白，主血虚不润；③舌淡白而胖嫩，边有齿痕而又有裂纹，主脾虚湿侵。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+        "number": 25,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

@@ -1,0 +1,3303 @@
+{
+  "template_id": "bd4f84f55760-86fd2af226",
+  "questions": [
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0001",
+      "question_type": "single_choice",
+      "question_content": "关于妇人脉说法错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "妇人闭经，脉象弦滑为痰湿阻于胞宫"
+        },
+        {
+          "option_id": "B",
+          "content": "妇人脉来滑数冲和为妊娠之征"
+        },
+        {
+          "option_id": "C",
+          "content": "妇人两尺脉搏动弱于寸脉为妊娠之征"
+        },
+        {
+          "option_id": "D",
+          "content": "妇人左关、尺脉忽洪大于右手是月经将至"
+        },
+        {
+          "option_id": "E",
+          "content": "妇人寸、关脉调和而尺脉弱或细涩多属月经不利"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "足太阴脾经，起于足大趾内侧端……至内踝尖上八寸处，交出足厥阴肝经之前……进入腹中，属脾，络胃。向上穿过膈肌，沿食道两旁，连舌本，散舌下。分支：从胃别出，上行通过膈肌，注入心中，交于手少阴心经。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 1,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0002",
+      "question_type": "single_choice",
+      "question_content": "左金丸里面配伍吴茱萸的意义错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "和胃降逆"
+        },
+        {
+          "option_id": "B",
+          "content": "温补肝肾"
+        },
+        {
+          "option_id": "C",
+          "content": "疏肝解郁"
+        },
+        {
+          "option_id": "D",
+          "content": "引黄连入肝经"
+        },
+        {
+          "option_id": "E",
+          "content": "制黄连之寒"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据题干诊断为积证，瘀血内结证，代表方剂：膈下逐瘀汤合六君子汤。3. 【答案】A 【解析】感冒的治法：祛风解表。取手太阴、手阳明经穴及督脉穴为主。4. 【答案】A 【解析】患者有慢阻肺病史十余年。胸部膨满，短气喘息辨为肺胀，根据舌暗，苔薄腻，脉滑，辨为痰浊壅肺证。证机概要：肺虚脾弱，痰浊内蕴，肺失宣降。治法：化痰降气，健脾益肺。代表方：苏子降气汤合三子养亲汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 2,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0003",
+      "question_type": "single_choice",
+      "question_content": "三七粉的冲服用量",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "1\\~6g"
+        },
+        {
+          "option_id": "B",
+          "content": "3\\~6g"
+        },
+        {
+          "option_id": "C",
+          "content": "1.5\\~3g"
+        },
+        {
+          "option_id": "D",
+          "content": "1\\~1.5g"
+        },
+        {
+          "option_id": "E",
+          "content": "1\\~3g"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "《素问·痹论》：“凡痹之客五藏者，肺痹者，烦满，喘而呕。心痹者，脉不通，烦则心下鼓，暴上气而喘，嗌干，善噫，厥气上则恐。肝痹者，夜卧则惊，多饮，数小便，上为引如怀。肾痹者，善胀，尻以代踵，脊以代头。脾痹者，四支解堕，发咳，呕汁，上为大塞。肠痹者，数饮而出不得，中气喘争，时发飧泄。胞痹者，少腹膀胱按之内痛，若沃以汤，涩于小便，上为清涕。”",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 3,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0004",
+      "question_type": "single_choice",
+      "question_content": "患者外感风寒，恶寒发热，头身疼痛，无汗，喘咳。治宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "细辛"
+        },
+        {
+          "option_id": "B",
+          "content": "桂枝"
+        },
+        {
+          "option_id": "C",
+          "content": "麻黄"
+        },
+        {
+          "option_id": "D",
+          "content": "杏仁"
+        },
+        {
+          "option_id": "E",
+          "content": "白前"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "在原色素斑处又出现同样皮损为固定型药疹。5.【答案】C 【解析】根据题干诊断为胎萎不长，脾肾不足证，选方寿胎丸合四君子汤。6. 【答案】D 【解析】人工流产的并发症包括人流综合征、子宫穿孔、人流不全、宫颈或宫颈管内口粘连、人流术后感染。不属于人工流产的并发症的是黄体破裂、宫颈黏连。 【答案】A 【解析】根据题干可辨证为肺脾肾虚证，选方人参五味子汤。 8. 【答案】C 【解析】血栓外痔好发于截石位3、9点。 【解析】根据题干诊断为绝经前后诸证，属阴虚证，选方左归丸。 【答案】C 【解析】汗证多属虚证，自汗以气虚阳虚为主；盗汗以阴虚、血虚为主。湿热迫蒸证为实热。11. 【答案】D 【解析】治疗妊娠恶阻痰滞证选方青竹茹汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 4,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0005",
+      "question_type": "single_choice",
+      "question_content": "“利小便所有实大便”的理论依据是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾主运化"
+        },
+        {
+          "option_id": "B",
+          "content": "小肠主液"
+        },
+        {
+          "option_id": "C",
+          "content": "肺主通调水道"
+        },
+        {
+          "option_id": "D",
+          "content": "小肠主受盛"
+        },
+        {
+          "option_id": "E",
+          "content": "小肠主化物"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据题干辨证为心悸水饮凌心证；选方苓桂术甘汤。8. 【答案】A 【解析】外关通阳维脉。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 5,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0006",
+      "question_type": "single_choice",
+      "question_content": "咳血方中敛肺的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "瓜蒌仁"
+        },
+        {
+          "option_id": "B",
+          "content": "山栀子"
+        },
+        {
+          "option_id": "C",
+          "content": "诃子"
+        },
+        {
+          "option_id": "D",
+          "content": "海粉"
+        },
+        {
+          "option_id": "E",
+          "content": "青黛"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "钙拮抗剂可用于治疗运动性哮喘，酮替芬对过敏性哮喘有效，曲尼司特、色甘酸钠主要用于哮喘的预防。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 6,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0007",
+      "question_type": "single_choice",
+      "question_content": "以下哪项不属于五味子的功效",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补肾"
+        },
+        {
+          "option_id": "B",
+          "content": "益气"
+        },
+        {
+          "option_id": "C",
+          "content": "固涩"
+        },
+        {
+          "option_id": "D",
+          "content": "止带 万题宝之考题卷-2023全集"
+        },
+        {
+          "option_id": "E",
+          "content": "宁心"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "肝细胞性黄疸常见病因包括病毒性肝炎、中毒性肝炎、肝硬化、肝癌、钩端螺旋体病、败血症、伤寒等。临床可见黄疸呈浅黄至深黄，有乏力、食欲下降、恶心呕吐、甚至出血等肝功能受损的症状及肝脾肿大等体征。实验室检查特点为血清结合及非结合胆红素均增多，尿中尿胆原通常增多，尿胆红素阳性，大便颜色通常改变不明显，有转氨酶升高等肝功能受损的表现。8. 【答案】A 一点笔记 【解析】抗流感病毒药物治疗中，奥司他韦(神经氨酸酶抑制剂)是目前最为理想的抗病毒药物，发病初期使用，能特异性抑制甲、乙型流感病毒的神经氨酸酶，从而抑制病毒的释放。9. 【答案】D 【解析】微循环灌注：①体表温度与肛温：正常时二者之间相差约 $0.5^{\\circ}C$ ，休克时增至 $1 \\sim 3^{\\circ}C$ ，二者相差值愈大，预后愈差；②红细胞比容；③甲皱微循环。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 7,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0008",
+      "question_type": "single_choice",
+      "question_content": "国务院卫生行政部门单独或者与国务院有关部门联合制定发布的规范性文件，称为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "卫生规章"
+        },
+        {
+          "option_id": "B",
+          "content": "卫生基本法律"
+        },
+        {
+          "option_id": "C",
+          "content": "卫生标准"
+        },
+        {
+          "option_id": "D",
+          "content": "卫生法律"
+        },
+        {
+          "option_id": "E",
+          "content": "卫生行政法规"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "卫生规章是国务院卫生行政部门单独或者与国务院有关部门联合制定发布的规范性文件，称为卫生部门规章。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 8,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0009",
+      "question_type": "single_choice",
+      "question_content": "不含有半夏、茯苓的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "贝母瓜蒌散"
+        },
+        {
+          "option_id": "B",
+          "content": "清气化痰丸"
+        },
+        {
+          "option_id": "C",
+          "content": "温胆汤"
+        },
+        {
+          "option_id": "D",
+          "content": "半夏白术天麻汤"
+        },
+        {
+          "option_id": "E",
+          "content": "保和丸"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "足临泣主治：①偏头痛、眩晕、目赤肿痛、目涩、耳鸣、耳聋等头面五官病证；②乳痈、乳胀、月经不调等妇科病证；③胁肋胀痛，足跗肿痛；④瘰疬；⑤疟疾。 【答案】D 【解析】治疗呕吐的主穴为内关、足三里、中脘。中脘为胃之募穴，加胃经合穴足三里可奏理气和胃之功，内关有宣上中二焦气机作用。合用治胃腑疾病。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 9,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0010",
+      "question_type": "single_choice",
+      "question_content": "六味地黄丸中，熟地和山萸肉的比例为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "7：1"
+        },
+        {
+          "option_id": "B",
+          "content": "6：1"
+        },
+        {
+          "option_id": "C",
+          "content": "5：1"
+        },
+        {
+          "option_id": "D",
+          "content": "3：1"
+        },
+        {
+          "option_id": "E",
+          "content": "2：1"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "癫痫典型失神发作又称为小发作，表现为突然发生和突然终止的意识丧失。多见于儿童或少年，突然短暂的意识丧失，停止当时的活动，呼之不应，两眼瞪视不动，持续5～30秒，无先兆和局部症状。可伴有简单的自动性动作，如擦鼻、咀嚼、吞咽等，手中持物可坠落，一般不会跌到。事后对发作不能回忆。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 10,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0011",
+      "question_type": "single_choice",
+      "question_content": "患者恶寒发热，无汗，头痛项强，肢体酸楚疼痛，口苦微渴，舌苔白，脉浮。治疗首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "九味羌活汤"
+        },
+        {
+          "option_id": "B",
+          "content": "小青龙汤"
+        },
+        {
+          "option_id": "C",
+          "content": "大青龙汤"
+        },
+        {
+          "option_id": "D",
+          "content": "桂枝汤"
+        },
+        {
+          "option_id": "E",
+          "content": "麻黄汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "普通感冒与时行感冒：普通感冒病情较轻，全身症状不重，少有传变。在气候变化时发病率可以升高，但无明显流行特点。若感冒1周以上不愈，发热不退或反见加重，应考虑感冒继发他病，传变入里。时行感冒病情较重，发病急，全身症状显著，可以发生传变，化热入里，继发或合并他病，具有广泛的传染性、流行性。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 11,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0012",
+      "question_type": "single_choice",
+      "question_content": "患者，男，30岁。2日以来发热恶寒，口苦，头身疼痛，口渴喜饮，烦躁，小便黄，大便干，脉浮数。其证候是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "表寒里热"
+        },
+        {
+          "option_id": "B",
+          "content": "表里俱热"
+        },
+        {
+          "option_id": "C",
+          "content": "真寒假热"
+        },
+        {
+          "option_id": "D",
+          "content": "表热里寒"
+        },
+        {
+          "option_id": "E",
+          "content": "真热假寒"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "治疗经间期出血肾阴虚证应首选两地汤合二至丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 12,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0013",
+      "question_type": "single_choice",
+      "question_content": "患者，男，32岁。近2日来咳嗽痰少，口干咽痛，烦渴引饮，大便秘结，舌红苔黄，脉细数。中药治疗可选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "青黛"
+        },
+        {
+          "option_id": "B",
+          "content": "薄荷"
+        },
+        {
+          "option_id": "C",
+          "content": "桑叶"
+        },
+        {
+          "option_id": "D",
+          "content": "菊花"
+        },
+        {
+          "option_id": "E",
+          "content": "芦根"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "乳岩特点是乳房部出现无痛、无热、皮色不变而质地坚硬的肿块，推之不移，表面不光滑，凹凸不平，或乳头溢血，晚期溃烂，凸如泛莲。是女性最常见的恶性肿瘤之一。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 13,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0014",
+      "question_type": "single_choice",
+      "question_content": "患者自主选择医院看病属于什么原则",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "不伤害原则"
+        },
+        {
+          "option_id": "B",
+          "content": "尊重原则"
+        },
+        {
+          "option_id": "C",
+          "content": "自主原则"
+        },
+        {
+          "option_id": "D",
+          "content": "公正原则"
+        },
+        {
+          "option_id": "E",
+          "content": "有利原则"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "Ⅰ期内痔：无明显自觉症状，痔核小，便时粪便带血，或滴血，量少，无痔核脱出，镜检痔核小，质软，色红；Ⅱ期内痔：周期性、无痛性便血，呈滴血或射血状，量较多，痔核较大，便时痔核能脱出肛外，便后能自行还纳；Ⅲ期内痔：便血少或无便血，痔核大，呈灰白色，便时痔核经常脱出肛外，甚至行走、咳嗽、喷嚏、站立时也会脱出肛门，不能自行还纳，须用手托、平卧休息或热敷后方能复位；Ⅳ期内痔：嵌顿性内痔平时或腹压稍大时痔核即脱出肛外，手托亦常不能复位，痔核经常位于肛外，易感染，形成水肿、糜烂和坏死，疼痛剧烈。指诊肛门括约肌松弛，肛内可触及较大、质硬的痔核。镜检见痔核表面纤维组织增生变厚呈灰白色。长期便血者可引起贫血。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 14,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0015",
+      "question_type": "single_choice",
+      "question_content": "人体的某些局部，可以看作是脏腑的“缩影”，这体现了中医诊断的哪一原理",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "以常衡变"
+        },
+        {
+          "option_id": "B",
+          "content": "司外揣内"
+        },
+        {
+          "option_id": "C",
+          "content": "四诊合参"
+        },
+        {
+          "option_id": "D",
+          "content": "整体审查"
+        },
+        {
+          "option_id": "E",
+          "content": "见微知著"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "中国九分法：将全身体表面积分为11个9等份。成人头、面、颈部为9%；双上肢为2×9%；躯干前后包括外阴部为3×9%；双下肢包括臀部为5×9%+1%=46%。三度四分法一般分为I°烧伤、浅II°烧伤、深II°烧伤和III°烧伤。浅II°烧伤：达真皮浅层，部分生发层健在；剧痛，感觉过敏，有水疱。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 15,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0016",
+      "question_type": "single_choice",
+      "question_content": "健脾丸的组成中不包含",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "陈皮"
+        },
+        {
+          "option_id": "B",
+          "content": "黄连"
+        },
+        {
+          "option_id": "C",
+          "content": "白术"
+        },
+        {
+          "option_id": "D",
+          "content": "半夏"
+        },
+        {
+          "option_id": "E",
+          "content": "茯苓"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "乳癖是以乳房有形状大小不一的肿块，疼痛，与月经周期相关为主要表现的乳腺组织的良性增生性疾病。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 16,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0017",
+      "question_type": "single_choice",
+      "question_content": "治疗肝郁血虚证患者，若肝郁化火，应加用何种药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "逍遥散，加丹皮"
+        },
+        {
+          "option_id": "B",
+          "content": "逍遥散，加郁金"
+        },
+        {
+          "option_id": "C",
+          "content": "逍遥散，加陈皮"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥散，加熟地"
+        },
+        {
+          "option_id": "E",
+          "content": "逍遥散，加香附"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据题干可辨病为疳证，属干疳证，选方八珍汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 17,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0018",
+      "question_type": "single_choice",
+      "question_content": "患者气短乏力，语声低微，小腹坠胀，便意频频。证属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气脱证"
+        },
+        {
+          "option_id": "B",
+          "content": "气陷证"
+        },
+        {
+          "option_id": "C",
+          "content": "气虚证"
+        },
+        {
+          "option_id": "D",
+          "content": "气滞证"
+        },
+        {
+          "option_id": "E",
+          "content": "气不固证"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "辨病为月经先后无定期肝郁证，选方逍遥散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 18,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0019",
+      "question_type": "single_choice",
+      "question_content": "关于望诊小儿指纹颜色，下列说法不正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小儿指纹紫红属里热证"
+        },
+        {
+          "option_id": "B",
+          "content": "小儿指纹色淡细主实证"
+        },
+        {
+          "option_id": "C",
+          "content": "小儿指纹鲜红属外感表证"
+        },
+        {
+          "option_id": "D",
+          "content": "小儿指纹色青属疼痛、惊风"
+        },
+        {
+          "option_id": "E",
+          "content": "小儿指纹紫黑为血络郁闭，属重病"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "注意力缺陷多动障碍痰火内扰证：多动多语，烦躁不宁，冲动任性，难以制约，兴趣多变，注意力不集中，胸中烦热，懊不眠，纳少口苦，便秘尿赤，舌质红，苔黄腻，脉滑数。代表方为黄连温胆汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 19,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0020",
+      "question_type": "single_choice",
+      "question_content": "以下哪项属妇产科要药，用治水瘀互阻水肿",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "益母草"
+        },
+        {
+          "option_id": "B",
+          "content": "桃仁"
+        },
+        {
+          "option_id": "C",
+          "content": "牛膝"
+        },
+        {
+          "option_id": "D",
+          "content": "泽兰"
+        },
+        {
+          "option_id": "E",
+          "content": "红花"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据题干可判断为尿石症—湿热蕴结证。治宜清热利湿，通淋排石，方选三金排石汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 20,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0021",
+      "question_type": "single_choice",
+      "question_content": "维持着个体体质的相对稳定性的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "动态可变性"
+        },
+        {
+          "option_id": "B",
+          "content": "后天可调性"
+        },
+        {
+          "option_id": "C",
+          "content": "连续可测性"
+        },
+        {
+          "option_id": "D",
+          "content": "相对稳定性"
+        },
+        {
+          "option_id": "E",
+          "content": "先天遗传性"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据题干诊断为痛经，属气滞血瘀证，选方膈下逐瘀汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 21,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0022",
+      "question_type": "single_choice",
+      "question_content": "草薢分清饮的组成中不包含",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "草薢"
+        },
+        {
+          "option_id": "B",
+          "content": "石菖蒲"
+        },
+        {
+          "option_id": "C",
+          "content": "乌药"
+        },
+        {
+          "option_id": "D",
+          "content": "山药"
+        },
+        {
+          "option_id": "E",
+          "content": "益智仁"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "红丝疔是发于四肢，皮肤呈红丝显露，迅速向上走窜的急性感染性疾病。其特点是先有手足疔疮或皮肤破损，红肿热痛，继则患肢内侧皮肤出现红丝一条或数条，迅速向躯干方向走窜，可伴恶寒发热等症状，邪毒重者可内攻脏腑，发生走黄。23. 【答案】A 【解析】与妇科疾病关系密切的脏腑是肝脾肾。24. 【答案】C 【解析】根据题干辨为肛痈火毒炽盛证，选方透脓散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 22,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0023",
+      "question_type": "single_choice",
+      "question_content": "酸枣仁汤主治",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴虚血少，神志不安"
+        },
+        {
+          "option_id": "B",
+          "content": "心火亢盛，阴血不足"
+        },
+        {
+          "option_id": "C",
+          "content": "肝血不足，虚热内扰"
+        },
+        {
+          "option_id": "D",
+          "content": "心悸失眠，夜多异梦"
+        },
+        {
+          "option_id": "E",
+          "content": "梦遗健忘，大便干结"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据题干可诊断为胁痛肝胆湿热证，若兼见发热、黄疸者，加茵陈、黄柏以清热利湿退黄。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 23,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0024",
+      "question_type": "single_choice",
+      "question_content": "是疾病过程中某一阶段或某一类型的病理概括，是病机的外在反映属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "病"
+        },
+        {
+          "option_id": "B",
+          "content": "证"
+        },
+        {
+          "option_id": "C",
+          "content": "症"
+        },
+        {
+          "option_id": "D",
+          "content": "病性"
+        },
+        {
+          "option_id": "E",
+          "content": "以上都不是"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "眩晕实证的针灸治疗主穴选用百会、风池、太冲、内关，痰湿中阻配头维、中脘、丰隆。25. 【答案】D 【解析】腰痛的基本刺灸方法毫针虚补实泻法。寒湿腰痛或肾虚腰痛加灸法；瘀血腰痛阿是穴用刺络拔罐；痛势较急者委中点刺放血。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 24,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0025",
+      "question_type": "single_choice",
+      "question_content": "以下哪个不是胃的别称",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "十二经脉之海"
+        },
+        {
+          "option_id": "B",
+          "content": "太仓"
+        },
+        {
+          "option_id": "C",
+          "content": "水谷气血之海"
+        },
+        {
+          "option_id": "D",
+          "content": "五脏六腑之海"
+        },
+        {
+          "option_id": "E",
+          "content": "水谷之海"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "辨病为肺炎喘嗽毒热闭肺证，选方：黄连解毒汤合麻杏石甘汤。 【答案】A 【解析】小儿出生时 2.3kg，身高 44cm，辨病为胎怯，肌肉瘦薄，四肢欠温，指甲软短，骨弱肢柔。辨证为胎怯肾精薄弱证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 25,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0026",
+      "question_type": "single_choice",
+      "question_content": "半夏厚朴汤的治疗功效为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "行气除满，温中燥湿"
+        },
+        {
+          "option_id": "B",
+          "content": "行气散结，降逆止呕"
+        },
+        {
+          "option_id": "C",
+          "content": "行气疏肝，散寒止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "通阳散结，行气祛痰"
+        },
+        {
+          "option_id": "E",
+          "content": "行气解郁"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "发汗、利尿、泻下逐水为治疗水肿的三条基本原则，具体应用视阴阳虚实不同而异。阳水以祛邪为主，应予发汗、利水或攻逐，同时配合清热解毒、理气化湿等法，阴水当以扶正为主，健脾温肾，同时配以利水、养阴、活血、祛瘀等法。对于虚实夹杂者，则当兼顾，或先攻后补，或攻补兼施。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 26,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0027",
+      "question_type": "single_choice",
+      "question_content": "患者，男。急性腹痛，里急后重，肛门灼热，下痢赤白，赤多白少，渴欲饮水，舌红苔黄，脉弦数。治疗可选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芍药汤"
+        },
+        {
+          "option_id": "B",
+          "content": "葛根芩连汤"
+        },
+        {
+          "option_id": "C",
+          "content": "黄连阿胶汤"
+        },
+        {
+          "option_id": "D",
+          "content": "藿香正气散"
+        },
+        {
+          "option_id": "E",
+          "content": "白头翁汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据题干诊断为食积便秘，选方：枳实导滞丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 27,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0029",
+      "question_type": "single_choice",
+      "question_content": "判断慢性萎缩性胃炎的萎缩程度，可借助哪种检查手段",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胃泌素"
+        },
+        {
+          "option_id": "B",
+          "content": "胃镜检查"
+        },
+        {
+          "option_id": "C",
+          "content": "Hp 检测"
+        },
+        {
+          "option_id": "D",
+          "content": "自身抗体检测"
+        },
+        {
+          "option_id": "E",
+          "content": "X 片"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "尿石症气血瘀滞证，选方为金铃子散合石韦散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 29,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0030",
+      "question_type": "single_choice",
+      "question_content": "《温热论》中温病初起的治疗特点为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "辛凉平剂"
+        },
+        {
+          "option_id": "B",
+          "content": "辛凉轻剂"
+        },
+        {
+          "option_id": "C",
+          "content": "辛凉重剂"
+        },
+        {
+          "option_id": "D",
+          "content": "和解剂"
+        },
+        {
+          "option_id": "E",
+          "content": "清热剂"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据题干辨病为脱肛湿热下注证，选方为萆薢渗湿汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 30,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0031",
+      "question_type": "single_choice",
+      "question_content": "以下哪一项会引起肺下界向下移动",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺不张"
+        },
+        {
+          "option_id": "B",
+          "content": "腹水"
+        },
+        {
+          "option_id": "C",
+          "content": "气胸"
+        },
+        {
+          "option_id": "D",
+          "content": "胸腔积液"
+        },
+        {
+          "option_id": "E",
+          "content": "阻塞性肺疾病"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "金黄油膏、玉露油膏适用于阳证肿疡、肛门周围痈疽等病。冲和膏适用于疮疡的半阴半阳证。疯油膏功能润燥杀虫止痒，适用于牛皮癣、慢性湿疮、皲裂等。生肌玉红膏功能活血祛腐、解毒止痛、润肤生肌收口，适用于一切溃疡腐肉未脱、新肉未生之时，或日久不能收口者。 【答案】C 【解析】略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 31,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0032",
+      "question_type": "single_choice",
+      "question_content": "血脱者会出现",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "目不明"
+        },
+        {
+          "option_id": "B",
+          "content": "耳聋"
+        },
+        {
+          "option_id": "C",
+          "content": "腋理开，汗大泄"
+        },
+        {
+          "option_id": "D",
+          "content": "色白，天然不泽"
+        },
+        {
+          "option_id": "E",
+          "content": "骨属屈伸不利"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "胃阴虚证是指阴液亏虚，胃失濡润、和降，以胃脘嘈杂，饥不欲食，脘腹痞胀、灼痛等为主要表现的虚热证候。胃气虚证是指胃气虚弱，胃失和降，以胃脘隐痛或痞胀、喜按，食少等主要表现的虚弱证候。胃痛是两者共有的表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 32,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0033",
+      "question_type": "single_choice",
+      "question_content": "伤寒患者，症状较轻，体温多在 $38^{\\circ} \\mathrm{C}$ 左右， $1 \\sim 2$ 周即可痊愈，其临床分型是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "轻型"
+        },
+        {
+          "option_id": "B",
+          "content": "迁延型"
+        },
+        {
+          "option_id": "C",
+          "content": "普通型"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥型"
+        },
+        {
+          "option_id": "E",
+          "content": "顿挫型"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据题干可辨为子肿气滞证，治法：理气行滞，除湿消肿。方药：天仙藤散或正气天香散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 33,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0034",
+      "question_type": "single_choice",
+      "question_content": "患者，女，34岁。妊娠39周，临近手术期行血生化检查，空腹血糖为7.4mmol/L，提示血糖偏高。为控制血糖，可以应用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胰岛素"
+        },
+        {
+          "option_id": "B",
+          "content": "阿卡波糖"
+        },
+        {
+          "option_id": "C",
+          "content": "二甲双胍"
+        },
+        {
+          "option_id": "D",
+          "content": "罗格列酮"
+        },
+        {
+          "option_id": "E",
+          "content": "瑞格列奈"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据题干诊断为内痔，脾虚气陷证，选方为补中益气汤。 【答案】A 【解析】根据题干诊断为月经后期，属气滞证，选方乌药汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 34,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0035",
+      "question_type": "single_choice",
+      "question_content": "目前治疗系统性红斑狼疮的基础药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "糖皮质激素"
+        },
+        {
+          "option_id": "B",
+          "content": "细胞毒药物"
+        },
+        {
+          "option_id": "C",
+          "content": "环孢素"
+        },
+        {
+          "option_id": "D",
+          "content": "雷公藤多甙"
+        },
+        {
+          "option_id": "E",
+          "content": "免疫球蛋白"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "独活和威灵仙均具祛风湿、止痛的功效，均能治疗风寒湿痹。36. 【答案】B 【解析】肾者，主蛰，封藏之本，精之处也，其华在发，其充在骨，为阴中之少阴，通于冬气。37. 【答案】A 【解析】生化汤功用：养血祛瘀，温经止痛。主治：血虚寒凝，瘀血阻滞证。产后恶露不行，小腹冷痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 35,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0036",
+      "question_type": "single_choice",
+      "question_content": "以下哪一项属于离子通道M2阻滞剂，且只对甲型流感有效",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "扎那米韦"
+        },
+        {
+          "option_id": "B",
+          "content": "阿司匹林"
+        },
+        {
+          "option_id": "C",
+          "content": "糖皮质激素"
+        },
+        {
+          "option_id": "D",
+          "content": "金刚烷胺"
+        },
+        {
+          "option_id": "E",
+          "content": "奥司他韦"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据题干可辨病为丹毒，属风热蕴毒证，选方普济消毒饮。37. 【答案】C 【解析】乳核是以乳中结核，状如鸡卵，表面光滑，边界清楚，推之能移，不痛，与月经周期无关为主要表现的肿瘤性疾病。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 36,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0037",
+      "question_type": "single_choice",
+      "question_content": "胸痛在体力活动后反而减轻，可能出现在",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心肌梗死"
+        },
+        {
+          "option_id": "B",
+          "content": "心脏神经症"
+        },
+        {
+          "option_id": "C",
+          "content": "心绞痛"
+        },
+        {
+          "option_id": "D",
+          "content": "胸膜炎"
+        },
+        {
+          "option_id": "E",
+          "content": "自发性气胸"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "心绞痛常因劳力后诱发，含服硝酸甘油可迅速缓解；心肌梗死的胸痛含服硝酸甘油不能缓解；心脏神经症的胸痛在体力活动后反而减轻；胸膜炎、自发性气胸的胸痛则可因深呼吸与咳嗽而加剧。 【答案】B 【解析】《伤寒论》371条：热利下重者，白头翁汤主之。热利指热性痢疾和腹泻而言。厥阴热利，热灼津伤，渴饮量多，喜冷饮。热毒内破大肠，下利脓血，里急后重，臭秽灼肛，小便黄赤短少，苔黄腻。病机为厥阴肝经湿热下迫大肠。治疗用白头翁汤清热燥湿，凉血解毒。39. 【答案】A 【解析】《金匮要略》：“妇人怀妊，腹中疗痛，当归芍药散主之。”疗痛指腹中急痛，亦可指绵绵作痛。妊娠妇人血虚肝郁，脾虚湿停，导致肝脾不和，出现腹痛。故治以当归芍药散养血柔肝，补脾利湿，最终达到调和肝脾的目的。 【答案】C 【解析】患者有慢性支气管炎病史，近期有喘憋、烦躁等表现，结合实验室检查可确定是慢性肺源性心脏病急性加重期合并呼吸衰竭，最主要的治疗措施是控制感染。41. 【答案】E 【一点笔记】 【解析】流感病毒分型中，H7亚型感染者症状较轻，H9N2和H10N7感染者仅出现一过性流感症状。42. 【答案】B 【解析】糖尿病诊断以静脉血浆血糖异常作为依据，应注意单纯空腹血糖正常不能排除糖尿病，应加验餐后血糖，必要时进行 OGTT。空腹血糖(FPG)≥7.0mmol/L。OGTT2 小时血糖≥11.1mmol/L。其余选项 FPG 和 OGTT 升高不共见。 【答案】A 【解析】医学人道主义是人道主义思想在医学领域中的具体体现，是将人道主义的标准和准则贯彻在医学实践领域所产生的医学价值标准和行动准则。医学人道主义的核心内容：①尊重病人的生命；②尊重病人的人格；③尊重病人的权利。 【答案】C 【解析】磺脲类口服药主要作用为刺激胰岛β细胞分泌胰岛素。临床上作为单药治疗主要用于新诊断的T2DM非肥胖患者、用饮食和运动治疗血糖控制不理想时。不良反应：①低血糖反应：最常见。②体重增加。③皮肤过敏反应。④消化系统症状。⑤心血管系统症状。45. 【答案】A 【解析】凡有肝病史的中年人，尤其是男性患者，如有不明原因的肝区疼痛、消瘦、进行性肝肿大，应做 AFP、B 超、CT 等有关检查，进而明确原发性肝癌诊断。 【答案】A 【解析】开瓣音(二尖瓣开放拍击音)见于二尖瓣狭窄而瓣膜弹性尚好时，是二尖瓣分离术适应证的重要参考条件。 【答案】D 【解析】在炎症的刺激下，自汇管区和肝包膜有大量纤维结缔组织增生，形成纤维束，从汇管区向另一汇管区或向肝小叶中央静脉延伸扩展，形成纤维间隔，包绕再生结节或将残存肝小叶重新改建分割成假小叶，一旦假小叶形成，标志病变已进展至肝硬化。 【答案】C 【解析】深压触诊：用于探测腹部深在病变部位或确定腹腔压痛点，如阑尾压痛点、胆囊压痛点等。检查反跳痛时，在深压的基础上迅速将手抬起，并询问患者疼痛感觉是否加重或观察患者面部是否有痛苦表情。49. 【答案】B 【解析】《伤寒论》316条：少阴病。二三日不已，至四五日，腹痛。小便不利，四肢沉重疼痛，自下利者，此为有水气。其人或咳，或小便利，或下利，或呕者，真武汤主之。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 37,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0038",
+      "question_type": "single_choice",
+      "question_content": "治疗阿米巴痢疾，排黏液性血便的患者，可使用的中药方剂为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "葛根芩连汤"
+        },
+        {
+          "option_id": "B",
+          "content": "白头翁汤"
+        },
+        {
+          "option_id": "C",
+          "content": "黄芩汤"
+        },
+        {
+          "option_id": "D",
+          "content": "枳实导滞丸"
+        },
+        {
+          "option_id": "E",
+          "content": "真人养脏汤"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "前列腺增生症多见于50岁以上的中老年男性，逐渐出现进行性尿频，夜间明显，并伴排尿困难，尿线变细。进行性排尿困难是前列腺增生最主要的症状；前列腺增大使腺体黏膜表面小血管和毛细血管充血、张力增大，当膀胱收缩或扩张时，血管张力改变，可发生镜下血尿或肉眼血尿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 38,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0039",
+      "question_type": "single_choice",
+      "question_content": "患者，女，28岁，怀孕后小腹拘急，绵绵作痛，急躁易怒，身体浮肿，胃纳欠佳。治疗当选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归芍药散"
+        },
+        {
+          "option_id": "B",
+          "content": "温经汤"
+        },
+        {
+          "option_id": "C",
+          "content": "桂枝茯苓丸"
+        },
+        {
+          "option_id": "D",
+          "content": "胶艾汤"
+        },
+        {
+          "option_id": "E",
+          "content": "半夏泻心汤"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "血瘀型产后恶露不绝的最佳选方是生化汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 39,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0040",
+      "question_type": "single_choice",
+      "question_content": "患者，男，78岁，患慢性支气管炎病30年，近两周咳嗽、喘憋加重，3天前出现睡眠习惯改变，昼睡夜醒，烦躁，精神恍惚。今早动脉血气分析 $\\mathrm{PaO_2}$ 为 $45\\mathrm{mmHg}$ ， $\\mathrm{PaCO_2}$ 为 $70\\mathrm{mmHg}$ 。血象：白细胞 $12\\times 109 / \\mathrm{L}$ ，中性粒细胞0.85。患者目前最主要的治疗是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "抗凝治疗"
+        },
+        {
+          "option_id": "B",
+          "content": "改善呼吸功能"
+        },
+        {
+          "option_id": "C",
+          "content": "控制感染"
+        },
+        {
+          "option_id": "D",
+          "content": "控制心律失常"
+        },
+        {
+          "option_id": "E",
+          "content": "应用糖皮质激素"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "A 为体表血络扩张，纵横丛集，触之如海绵状；B 为盘曲突起如蚯蚓状；C 为按之凹陷，放手凸起，状若有气；D 为软似绵、肿似馒，皮色不变、不紧不宽，如肉隆起；E 为坚硬如石，紧贴于骨，推之不移。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 40,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0041",
+      "question_type": "single_choice",
+      "question_content": "仅表现为一过性流感症状的是那种流感",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "H1N1"
+        },
+        {
+          "option_id": "B",
+          "content": "H5N1"
+        },
+        {
+          "option_id": "C",
+          "content": "H7N9"
+        },
+        {
+          "option_id": "D",
+          "content": "H9N5"
+        },
+        {
+          "option_id": "E",
+          "content": "H9N2"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据题干患者左下肢发冷、麻木、酸胀疼痛，辨病为脱疽寒湿阻络证，选方阳和汤。42. 【答案】C 【解析】A：疼痛、滴血；B：大便带血、黏液血便；C：无痛、滴血或射血；D：血便、黏液便、或脓血便；E：疼痛、流脓。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 41,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0042",
+      "question_type": "single_choice",
+      "question_content": "若空腹血糖 $9.8\\mathrm{mmol / L}$ ，餐后血糖在三小时后达到峰值，可见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾性糖尿"
+        },
+        {
+          "option_id": "B",
+          "content": "糖尿病"
+        },
+        {
+          "option_id": "C",
+          "content": "甲状腺功能亢进症"
+        },
+        {
+          "option_id": "D",
+          "content": "弥漫性肝病"
+        },
+        {
+          "option_id": "E",
+          "content": "急性应激状态"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "饮留胃肠是痰饮；饮留胁下是悬饮，饮溢肢体是溢饮；饮停心肺是支饮。43. 【答案】B 【解析】由本病例可知：该患者为厥证痰厥，证候：素有咳喘宿痰，多湿多痰，恼怒或剧烈咳嗽后突然昏厥，喉有痰声，或呕吐涎沫，呼吸气粗，舌苔白腻，脉沉滑。证机概要：肝郁肺痹，痰随气升，上闭清窍。治法：行气豁痰。代表方：导痰汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 42,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0043",
+      "question_type": "single_choice",
+      "question_content": "尊重病人生命、人格、权利，体现了",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "人道论"
+        },
+        {
+          "option_id": "B",
+          "content": "美德论"
+        },
+        {
+          "option_id": "C",
+          "content": "生命论"
+        },
+        {
+          "option_id": "D",
+          "content": "道义论"
+        },
+        {
+          "option_id": "E",
+          "content": "功利论"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "筋瘤劳倦伤气证的证候表现为：久站久行或劳累时瘤体增大，下坠不适感加重；常伴气短乏力，脘腹坠胀，腰酸；舌淡，苔薄白，脉细缓无力。治法：补中益气，活血舒筋。方药：补中益气汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 43,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0044",
+      "question_type": "single_choice",
+      "question_content": "针对糖尿病的治疗，使用磺脲类口服药最常见的不良反应为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "体重增加"
+        },
+        {
+          "option_id": "B",
+          "content": "心血管疾病"
+        },
+        {
+          "option_id": "C",
+          "content": "低血糖"
+        },
+        {
+          "option_id": "D",
+          "content": "肝功能损害"
+        },
+        {
+          "option_id": "E",
+          "content": "皮肤过敏症状"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "五迟五软肝肾亏损证的治法是补肾填髓，养肝强筋。45. 【答案】C 【解析】根据题干有肌内注射史，臀部结块，肿胀疼痛，皮肤灼热，中心红肿明显可诊断为臀痛。46. 【答案】A 【解析】失荣是发于颈部及耳之前后的岩肿，因其晚期气血亏乏，面容憔悴，形体消瘦，状如树木枝叶发枯，失去荣华而命名。相当于西医的颈部淋巴结转移癌和原发性恶性肿瘤。多见于40岁以上的男性，属古代外科四大绝症之一。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 44,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0045",
+      "question_type": "single_choice",
+      "question_content": "男性患者，40岁，慢性肝炎病史14年，近来腹胀、消瘦。查体：巩膜黄染，右上腹部触到拳头大、质硬、表面不光滑包块，最可能的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "原发性肝癌"
+        },
+        {
+          "option_id": "B",
+          "content": "慢性活动性肝炎"
+        },
+        {
+          "option_id": "C",
+          "content": "转移性肝癌"
+        },
+        {
+          "option_id": "D",
+          "content": "肝脓肿"
+        },
+        {
+          "option_id": "E",
+          "content": "肝硬化"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "呃逆频作，声音洪亮有力为呃逆胃火上逆证，代表方为竹叶石膏汤加减。46. 【答案】A 【解析】足临泣是输穴、八脉交会穴(通带脉)。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 45,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0046",
+      "question_type": "single_choice",
+      "question_content": "以下哪种心音见于二尖瓣狭窄而瓣膜弹性尚好时，是二尖瓣分离术适应证的重要参考条件",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "开瓣音"
+        },
+        {
+          "option_id": "B",
+          "content": "奔马律"
+        },
+        {
+          "option_id": "C",
+          "content": "喀喇音"
+        },
+        {
+          "option_id": "D",
+          "content": "心音分裂"
+        },
+        {
+          "option_id": "E",
+          "content": "心音增强"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 46,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0047",
+      "question_type": "single_choice",
+      "question_content": "弥漫性纤维组织增生及假小叶形成，伴明显炎症，可见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "慢性活动性肝炎"
+        },
+        {
+          "option_id": "B",
+          "content": "脂肪肝"
+        },
+        {
+          "option_id": "C",
+          "content": "肝癌"
+        },
+        {
+          "option_id": "D",
+          "content": "肝炎肝硬化"
+        },
+        {
+          "option_id": "E",
+          "content": "慢性迁延性肝炎"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "子宫的主要功能是产生排出月经；孕育分娩胎儿。另外还有排出余血浊液、分泌生理性带下的功能。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 47,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0048",
+      "question_type": "single_choice",
+      "question_content": "触诊胆囊压痛点应使用哪种方法",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "双手触诊"
+        },
+        {
+          "option_id": "B",
+          "content": "浅部触诊"
+        },
+        {
+          "option_id": "C",
+          "content": "深压触诊"
+        },
+        {
+          "option_id": "D",
+          "content": "深部滑行触诊"
+        },
+        {
+          "option_id": "E",
+          "content": "冲击触诊"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据题干辨病为妊娠恶阻病，属肝胃不和证，选方橘皮竹茹汤。49. 【答案】A 【解析】辨病为便秘，属食积便秘证，选方枳实导滞丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 48,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0049",
+      "question_type": "single_choice",
+      "question_content": "真武汤证的临床表现为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "下利清谷，里寒外热，手足厥逆，脉微欲绝，身反不恶寒，其人面色赤，或腹痛，或干呕，或咽痛，或利止脉不出者"
+        },
+        {
+          "option_id": "B",
+          "content": "腹痛，小便不利，四肢沉重疼痛，自下利者，此为有水气。其人或咳，或小便利，或下利，或呕者"
+        },
+        {
+          "option_id": "C",
+          "content": "四逆，其人或咳，或悸，或小便不利，或腹中痛，或泄利下重者"
+        },
+        {
+          "option_id": "D",
+          "content": "得之二三日以上，心中烦，不得卧"
+        },
+        {
+          "option_id": "E",
+          "content": "少阴病，始得之，反发热，脉沉者"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 49,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0050",
+      "question_type": "single_choice",
+      "question_content": "针对“斑出热不解”，需治以",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "辛甘"
+        },
+        {
+          "option_id": "B",
+          "content": "寒凉"
+        },
+        {
+          "option_id": "C",
+          "content": "辛凉"
+        },
+        {
+          "option_id": "D",
+          "content": "甘淡"
+        },
+        {
+          "option_id": "E",
+          "content": "甘寒"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "乳痈多见于产后3～4周的哺乳期妇女。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 50,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0051",
+      "question_type": "single_choice",
+      "question_content": "判定细菌对利福平耐药可以应用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "细菌图片检测"
+        },
+        {
+          "option_id": "B",
+          "content": "细菌培养"
+        },
+        {
+          "option_id": "C",
+          "content": "耐药筛选试验"
+        },
+        {
+          "option_id": "D",
+          "content": "折点敏感试验"
+        },
+        {
+          "option_id": "E",
+          "content": "以 XpertMTB/RIF 为代表的盒式诊断技术"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据题干辨病为虫证，属虫瘕证，选方为驱蛔承气汤。52. 【答案】A 【解析】乳房检查的最佳时间为月经来潮后第7～10天；绝经期妇女可选择每月的固定日期。53. 【答案】A 【解析】根据题干，辨证为肾气不足型遗尿，治宜温补肾阳，固涩膀胱。故选菟丝子散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 51,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0052",
+      "question_type": "single_choice",
+      "question_content": "患者，女，32 岁。接触花粉后，突然鼻痒、打喷嚏，继之出现带哮鸣音的呼气性呼吸困难，喉中发出哮鸣音。为缓解其症状应首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "糖皮质激素"
+        },
+        {
+          "option_id": "B",
+          "content": "白三烯调节剂"
+        },
+        {
+          "option_id": "C",
+          "content": "钙拮抗剂"
+        },
+        {
+          "option_id": "D",
+          "content": "抗胆碱药物"
+        },
+        {
+          "option_id": "E",
+          "content": "β 2 受体激动剂"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "辨为哮病热哮证，肺热壅盛，痰吐稠黄，在原方基础上加海蛤壳、射干、知母、鱼腥草以清热化痰。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 52,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0053",
+      "question_type": "single_choice",
+      "question_content": "张仲景治病救人不分贵贱贫富，体现在",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "如临深渊、如履薄冰"
+        },
+        {
+          "option_id": "B",
+          "content": "孜孜汲汲，惟名利是务"
+        },
+        {
+          "option_id": "C",
+          "content": "详察形候，纤毫勿失，处判针药，无得参差"
+        },
+        {
+          "option_id": "D",
+          "content": "上以疗君亲之疾，下以救贫贱之厄"
+        },
+        {
+          "option_id": "E",
+          "content": "望之俨然，宽裕汪汪，不皎不昧"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据题干，患者近来往来寒热，三日一发，热少寒多，脉弦紧，可诊断为寒疟。54. 【答案】A 【解析】养老穴的定位在前臂后区，腕背横纹上1寸，尺骨头桡侧凹陷中，属于手太阳小肠经。55. 【答案】D 【解析】证属胸痹气阴两虚证。治宜益气养阴，活血通脉。代表方为生脉散合人参养荣汤加减。56. 【答案】B 【解析】头痛的选穴主穴：百会、风池、阿是穴、合谷。57. 【答案】B 【解析】患者失眠健忘，五心烦热，自汗盗汗，胸闷心烦，舌红少苔，脉细数或结代，为气阴两虚，治以益气养血，滋阴安神，用炙甘草汤加减。 【答案】C 【解析】狂证火盛阴伤证选方：二阴煎合琥珀养心丹。59. 【答案】B 【解析】黄疸胆腑郁热证，治宜疏肝泄热、利胆退黄。方用大柴胡汤。 【答案】B 【解析】肺痨肺阴亏损证临床表现：干咳，咳声短促，或咯少量黏痰，或痰中带有血丝，色鲜红，胸部隐隐闷痛，午后自觉手足心热，或见少量盗汗，皮肤干灼，口干咽燥。近期曾有与肺痨病人接触史。舌苔薄白，舌边尖红，脉细数。多是由于阴虚肺燥，肺失滋润，肺伤络损所致。治疗当以滋阴润肺。代表方：月华丸加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 53,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0054",
+      "question_type": "single_choice",
+      "question_content": "单侧眼睑闭合不全常见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甲状腺功能亢进症"
+        },
+        {
+          "option_id": "B",
+          "content": "甲状腺功能减退症"
+        },
+        {
+          "option_id": "C",
+          "content": "脑脓肿"
+        },
+        {
+          "option_id": "D",
+          "content": "血管神经性水肿"
+        },
+        {
+          "option_id": "E",
+          "content": "面神经麻痹"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "皮肉重垂胀急，深按凹陷，如烂棉不起，浅则光亮如水疱，破流黄水，浸淫皮肤为湿肿。55. 【答案】A 【解析】佝偻病的脾虚肝旺证的方剂是益脾镇惊散。 【答案】D 【解析】略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 54,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0055",
+      "question_type": "single_choice",
+      "question_content": "患者，女，50 岁。平素体健，体检曾查尿酸高。近日突然右踝关节红肿、疼痛，血尿酸 637 μmol/L，血肌酐正常。可诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "类风湿性关节炎"
+        },
+        {
+          "option_id": "B",
+          "content": "痛风性关节炎"
+        },
+        {
+          "option_id": "C",
+          "content": "风湿性关节炎"
+        },
+        {
+          "option_id": "D",
+          "content": "化脓性关节炎"
+        },
+        {
+          "option_id": "E",
+          "content": "创伤性关节炎"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "就疾病的发生发展过程而言，由阳转阴或由阴转阳的证候变化，也很常见。如寒饮中阻患者，本为阴证，但由于某种原因，寒饮可以从阳而化热，其临床表现亦可以由阴证转化为阳证。56. 【答案】D 【解析】补骨脂功效为补肾壮阳，纳气平喘，温脾止泻，外用消风祛斑。主治：肾阳不足，阳痿遗精，遗尿尿频，腰膝冷痛；脾肾阳虚，虚喘，五更泄泻；外用治白癜风，斑秃。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 55,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0056",
+      "question_type": "single_choice",
+      "question_content": "中腹壁反射消失常提示胸髓的病变部位在",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "11～12 节"
+        },
+        {
+          "option_id": "B",
+          "content": "9～10 节"
+        },
+        {
+          "option_id": "C",
+          "content": "7～8 节"
+        },
+        {
+          "option_id": "D",
+          "content": "锥体束"
+        },
+        {
+          "option_id": "E",
+          "content": "下腹部"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "腹壁反射：上部腹壁反射消失说明病变在胸髓7～8节；中部腹壁反射消失说明病变在胸髓9～10节；下部腹壁反射消失说明病变在胸髓11～12节；一侧腹壁反射消失，多见于同侧锥体束受损；上、中、下腹壁反射均消失见于昏迷或急腹症患者；肥胖、老年人、经产妇也可见腹壁反射消失。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 56,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0057",
+      "question_type": "single_choice",
+      "question_content": "患者反复找医生确认诊疗方案和检查结果，体现了患者的什么权利",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "知情同意权"
+        },
+        {
+          "option_id": "B",
+          "content": "疾病的认知权"
+        },
+        {
+          "option_id": "C",
+          "content": "要求保护隐私权"
+        },
+        {
+          "option_id": "D",
+          "content": "平等的医疗权"
+        },
+        {
+          "option_id": "E",
+          "content": "经济免责权"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "急则治标，缓则治本是崩漏的治疗原则。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 57,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0058",
+      "question_type": "single_choice",
+      "question_content": "患者，男，19岁。因疲乏、无力、心悸、烦躁、注意力不集中等症状就诊。血象表现为小细胞低色素性贫血。MCV低于80fL，MCHC低于32%，血清铁蛋白降低。可诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "缺铁性贫血"
+        },
+        {
+          "option_id": "B",
+          "content": "巨幼红细胞性贫血"
+        },
+        {
+          "option_id": "C",
+          "content": "再生障碍性贫血"
+        },
+        {
+          "option_id": "D",
+          "content": "骨髓病性贫血"
+        },
+        {
+          "option_id": "E",
+          "content": "铁粒幼细胞性贫血"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据题干诊断为胎怯肾精薄弱证，选方补肾地黄丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 58,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0059",
+      "question_type": "single_choice",
+      "question_content": "患者感冒3天，用解表剂发汗后好转，但又出现心下痞满，嗳气带有食臭味，腹中肠鸣，泻痢，舌淡苔白，脉弦滑。治疗应选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "生姜泻心汤"
+        },
+        {
+          "option_id": "B",
+          "content": "小建中汤"
+        },
+        {
+          "option_id": "C",
+          "content": "理中汤"
+        },
+        {
+          "option_id": "D",
+          "content": "厚朴生姜半夏甘草人参汤"
+        },
+        {
+          "option_id": "E",
+          "content": "茯苓桂枝白术甘草汤"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "本证红丝疔，红丝细者，宜用砭镰法，局部皮肤消毒后，以刀针沿红丝行走途径，寸寸挑断，并用拇指和食指轻捏针孔周围皮肤，微令出血，或在红丝尽头挑断，挑破处均盖贴太乙膏掺红灵丹。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 59,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0060",
+      "question_type": "single_choice",
+      "question_content": "乙脑极期的三大严重表现",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "高热、抽搐、意识障碍"
+        },
+        {
+          "option_id": "B",
+          "content": "高热、惊厥、意识障碍"
+        },
+        {
+          "option_id": "C",
+          "content": "高热、惊厥、呼吸衰竭"
+        },
+        {
+          "option_id": "D",
+          "content": "高热、抽搐、呼吸衰竭"
+        },
+        {
+          "option_id": "E",
+          "content": "抽搐、惊厥、呼吸衰竭"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "传染性单核细胞增多症以清热解毒、化痰祛瘀为基本治疗原则。61. 【答案】C 【解析】治疗传染性单核细胞增多症气营两燔证的首选方剂是普济消毒饮。62. 【答案】D 【解析】脱疽湿热毒盛证的代表方剂是四妙勇安汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 60,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0061",
+      "question_type": "single_choice",
+      "question_content": "动脉血栓性脑梗死最常见的原因为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血管炎"
+        },
+        {
+          "option_id": "B",
+          "content": "风湿性心脏病伴房颤"
+        },
+        {
+          "option_id": "C",
+          "content": "先天性动脉瘤"
+        },
+        {
+          "option_id": "D",
+          "content": "长骨骨折"
+        },
+        {
+          "option_id": "E",
+          "content": "动脉粥样硬化"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "攒竹主治：①头痛、面痛、眉棱骨痛、面瘫等头面病证。②眼睑瞤动、眼睑下垂、目视不明、流泪、目赤肿痛等眼疾。③呃逆。④急性腰扭伤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 61,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0062",
+      "question_type": "single_choice",
+      "question_content": "阶梯状气液平面常提示",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "结肠癌"
+        },
+        {
+          "option_id": "B",
+          "content": "肠管狭窄"
+        },
+        {
+          "option_id": "C",
+          "content": "溃疡性结肠炎"
+        },
+        {
+          "option_id": "D",
+          "content": "肠梗阻"
+        },
+        {
+          "option_id": "E",
+          "content": "胃肠道穿孔"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "眩晕，气血亏虚证，治法：补益气血，调养心脾；代表方：归脾汤加减。63. 【答案】B 【解析】肝经在颠顶部与督脉相会，膀胱经起始于内眼角，向上过额部，与督脉交汇于头顶。64. 【答案】D 【解析】内关穴为手厥阴心包经络穴，又是八脉交会穴之一，通于阴维脉。65. 【答案】A 【答案】A 【解析】聚证，食滞痰阻证。证候：腹胀或痛，腹部时有条索状物聚起，按之胀痛更甚，便秘，纳呆，舌苔腻，脉弦滑。治法：理气化痰，导滞散结。代表方：六磨汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 62,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0063",
+      "question_type": "single_choice",
+      "question_content": "患者，男，21岁。突然高热、鼻塞、流涕，咳嗽、头痛，经病原分离试验后确诊为人感染高致病性禽流感。已知该患者病情发展迅速，快速出现急性呼吸窘迫综合征，可推断该患者感染病毒亚型为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "H7N9"
+        },
+        {
+          "option_id": "B",
+          "content": "H1N1"
+        },
+        {
+          "option_id": "C",
+          "content": "H9N2"
+        },
+        {
+          "option_id": "D",
+          "content": "H10N7"
+        },
+        {
+          "option_id": "E",
+          "content": "H5N1"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "胎萎不长的主要机理是气血不足以荣养其胎，导致胎儿生长迟缓。主要病因有气血虚弱、脾肾不足、血寒宫冷。 【答案】B 【解析】证见颜色淡红，鳞屑减少，干燥皱裂，自觉瘙痒，辨为血虚风燥证。65. 【答案】A 【解析】湿疮血虚风燥证的证候表现为：病程久，反复发作，皮损色暗或色素沉着，或皮损粗糙肥厚，剧痒难忍，遇热或肥皂水洗后瘙痒加重；伴有口干不欲饮，纳差，腹胀；舌淡，苔白，脉弦细。治法：养血润肤，祛风止痒。方药：当归饮子或四物消风饮加丹参、鸡血藤、乌梢蛇。66. 【答案】E 【解析】肉瘿是瘿病中较常见的一种，其临床特点是颈前喉结一侧或两侧结块，柔韧而圆，如肉之团，随吞咽动作而上下移动，发展缓慢。好发于青年女性及中年人。相当于西医的甲状腺腺瘤或囊肿，属甲状腺的良性肿瘤。 【答案】B 【解析】根据题干辨为带下过少，肝肾亏损证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 63,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0066",
+      "question_type": "single_choice",
+      "question_content": "流行性出血热的“三痛”指的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "头痛、腰痛、眼眶痛"
+        },
+        {
+          "option_id": "B",
+          "content": "头痛、腹痛、腰痛"
+        },
+        {
+          "option_id": "C",
+          "content": "头痛、腹痛、眼眶痛"
+        },
+        {
+          "option_id": "D",
+          "content": "头痛、目痛、四肢痛"
+        },
+        {
+          "option_id": "E",
+          "content": "目痛、腰痛、四肢痛"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "流行性出血热发热期主要表现为感染中毒症状、毛细血管损伤和肾脏损害。起病急骤，突然畏寒、发热，体温在1～2日内可达39℃～40℃，热型多为弛张热或稽留热，一般持续3～7日。同时出现全身中毒症状，高度乏力，周身酸痛，常有典型的“三痛”：头痛、腰痛、眼眶痛，常伴较突出的胃肠道症状。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 66,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0067",
+      "question_type": "single_choice",
+      "question_content": "患者，男，28岁。有静脉注射毒品史5年，近2个月出现间歇性发热、咳嗽、伴乏力、食欲不振，体重明显下降。曾用抗生素治疗，但疗效欠佳。实验室检查示血常规：WBC4.1 $\\times 109 / \\mathrm{L}$ ，RBC4.6×1012/L。PLT151.1×109/L，CD4+T淋巴细胞计数为 $0.3\\times 109 / \\mathrm{L}$ ，大便真菌培养阳性。本病例最可能的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "败血症"
+        },
+        {
+          "option_id": "B",
+          "content": "艾滋病"
+        },
+        {
+          "option_id": "C",
+          "content": "疟疾"
+        },
+        {
+          "option_id": "D",
+          "content": "结核病"
+        },
+        {
+          "option_id": "E",
+          "content": "伤寒"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "内伤发热的病因是久病体虚、饮食劳倦、情志失调及外伤出血。68. 【答案】D 【解析】患者胸闷反复发作3年，辨为胸痹，证见痰多气短，肢体沉重为痰浊闭阻证。证机概要：痰浊盘踞，胸阳失展，气机痹阻，脉络阻滞。治法：通阳泄浊，豁痰宣痹。代表方：瓜蒌薤白半夏汤合涤痰汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 67,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0068",
+      "question_type": "single_choice",
+      "question_content": "太阴风温初起但热不恶寒而渴者，治以",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "桑菊饮"
+        },
+        {
+          "option_id": "B",
+          "content": "桂枝汤"
+        },
+        {
+          "option_id": "C",
+          "content": "银翘散"
+        },
+        {
+          "option_id": "D",
+          "content": "麻杏石甘汤"
+        },
+        {
+          "option_id": "E",
+          "content": "桑杏汤"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "生后 2～3 天出现黄疸，第 4～5 天加重，7～14 天消退的是生理性黄疸。 【答案】C 【解析】为明确子宫直肠凹陷积液的性质应选用后穹隆穿刺。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 68,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0069",
+      "question_type": "single_choice",
+      "question_content": "患者，男，45岁。突起呼吸困难，咳嗽，咳粉红色泡沫样痰，血压 $180 / 100\\mathrm{mmHg}$ ，肺部中下野可闻及湿啰音，听诊心音可能为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "收缩早期喀喇音"
+        },
+        {
+          "option_id": "B",
+          "content": "舒张期奔马律"
+        },
+        {
+          "option_id": "C",
+          "content": "肺动脉瓣区P2亢进"
+        },
+        {
+          "option_id": "D",
+          "content": "钟摆律"
+        },
+        {
+          "option_id": "E",
+          "content": "开瓣音"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "患者呼气时进针，吸气时出针为补法。患者吸气时进针，呼气时出针为泻法。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 69,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0077",
+      "question_type": "single_choice",
+      "question_content": "手足厥寒，或腰、股、腿、足、肩臂疼痛，口不渴，舌淡苔白，脉沉细或细而欲绝，治疗宜选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "参附汤"
+        },
+        {
+          "option_id": "B",
+          "content": "当归四逆汤"
+        },
+        {
+          "option_id": "C",
+          "content": "金匮肾气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "活血逐瘀汤"
+        },
+        {
+          "option_id": "E",
+          "content": "六味地黄汤"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据题干，患者反复咳喘30年，喘促短气可辨为喘证正虚喘脱证，选方：参附汤送服黑锡丹。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 77,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0078",
+      "question_type": "single_choice",
+      "question_content": "下列哪项不属于物理消毒法",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "高压蒸汽灭菌"
+        },
+        {
+          "option_id": "B",
+          "content": "杂环类气体消毒剂"
+        },
+        {
+          "option_id": "C",
+          "content": "火烧消毒"
+        },
+        {
+          "option_id": "D",
+          "content": "光照消毒法"
+        },
+        {
+          "option_id": "E",
+          "content": "微波消毒灭菌法"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "该文字是《标幽赋》对得气的描述。得气古称“气至”，近称“针感”，是指毫针刺入腧穴一定深度后，施以提插或捻转等行针手法，使针刺部位获得“经气”感应，谓之得气。针下是否得气，可以从患者对针刺的感觉和反应、医者对刺手指下的感觉等两方面加以判断。当针刺得气时，患者的针刺部位有酸、麻、胀、重等自觉反应，有时可出现局部的热、凉、痒、痛、蚁行等感觉，或呈现沿着一定的方向和部位传导和扩散现象。 【答案】C 【解析】治疗尿血肾虚火旺证选方为知柏地黄丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 78,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0079",
+      "question_type": "single_choice",
+      "question_content": "黄疸进行性加深，胆囊显著增大，但无压痛，见于什么疾病",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胆囊癌"
+        },
+        {
+          "option_id": "B",
+          "content": "胆囊炎"
+        },
+        {
+          "option_id": "C",
+          "content": "胰头癌"
+        },
+        {
+          "option_id": "D",
+          "content": "胰腺炎"
+        },
+        {
+          "option_id": "E",
+          "content": "胆结石"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 79,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0080",
+      "question_type": "single_choice",
+      "question_content": "以下关于 T 波的描述，哪一项不正确",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "T 波波形不对称"
+        },
+        {
+          "option_id": "B",
+          "content": "T 波为心室复极波"
+        },
+        {
+          "option_id": "C",
+          "content": "T 波呈宽大而光滑的波"
+        },
+        {
+          "option_id": "D",
+          "content": "方向与 QRS 主波方向相反"
+        },
+        {
+          "option_id": "E",
+          "content": "T 波高耸见于急性心肌梗死早期"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "患者表情呆滞，沉默寡言，记忆减退，口齿含糊为痴呆的表现，伴腰膝酸软为肾虚，食少纳呆，舌体胖大为脾虚的表现。辨为痴呆脾肾两虚证。证机概要：气血亏虚，肾精不足，髓海失养。治法：补肾健脾，益气生精。代表方：还少丹加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 80,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0081",
+      "question_type": "single_choice",
+      "question_content": "男性，30 岁。2 小时前劳动中突发上腹刀割样疼痛，迅速波及全腹。舟状腹，全腹膜刺激征，肝浊音界不清，肠鸣音消失。诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阑尾穿孔腹膜炎"
+        },
+        {
+          "option_id": "B",
+          "content": "胃十二指肠溃疡穿孔腹膜炎"
+        },
+        {
+          "option_id": "C",
+          "content": "胆囊穿孔腹膜炎"
+        },
+        {
+          "option_id": "D",
+          "content": "绞窄性肠梗阻"
+        },
+        {
+          "option_id": "E",
+          "content": "急性出血性胰腺炎"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "汗证肺卫不固证：汗出恶风，稍劳汗出尤甚，易于感冒，体倦乏力，面色少华，脉细弱，苔薄白。治法：益气固表。方药：桂枝加黄芪汤或玉屏风散加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 81,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0082",
+      "question_type": "single_choice",
+      "question_content": "患者，男，46 岁。高血压合并糖尿病，BP180/100mmHg，心率 65 次/分，尿蛋白 (+)，血肌酐正常。最适合选用的降压药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "β 受体阻滞药"
+        },
+        {
+          "option_id": "B",
+          "content": "α 受体阻滞药"
+        },
+        {
+          "option_id": "C",
+          "content": "利尿药"
+        },
+        {
+          "option_id": "D",
+          "content": "钙拮抗药"
+        },
+        {
+          "option_id": "E",
+          "content": "ACEI (卡托普利)"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "身热，微恶风，汗少，肢节酸重，头昏重胀而痛，心烦口渴，胸闷恶心，小便短赤，舌苔薄黄腻，脉濡数可辨证为感冒之暑湿伤表证。治宜清暑祛湿解表。方药为新加香薷饮加减。若暑热偏盛，可加黄连、山栀、黄芩、青蒿清暑泻热；湿困卫表，肢体酸重疼痛较甚，加豆卷、藿香、佩兰等芳化宣表。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 82,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0083",
+      "question_type": "single_choice",
+      "question_content": "“淫气于筋” 中 “气” 指",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "天地精气"
+        },
+        {
+          "option_id": "B",
+          "content": "六淫邪气"
+        },
+        {
+          "option_id": "C",
+          "content": "谷食之精气"
+        },
+        {
+          "option_id": "D",
+          "content": "卫气"
+        },
+        {
+          "option_id": "E",
+          "content": "宗气"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "腰部扭伤选穴：阿是穴、大肠俞、腰痛点、委中；督脉病证配水沟或后溪。84. 【答案】B 【解析】虚劳肾阳虚证：腰背酸痛，遗精，阳痿，多尿或不禁，面色苍白，畏寒肢冷，下利清谷或五更泻泄，舌质淡胖，有齿痕。证机概要：肾阳亏虚，失于温煦，固摄无权。治法：温补肾阳。代表方：右归丸加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 83,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0084",
+      "question_type": "single_choice",
+      "question_content": "甘苦合化的代表方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大承气汤"
+        },
+        {
+          "option_id": "B",
+          "content": "加减复脉汤"
+        },
+        {
+          "option_id": "C",
+          "content": "冬地三黄汤"
+        },
+        {
+          "option_id": "D",
+          "content": "三仁汤"
+        },
+        {
+          "option_id": "E",
+          "content": "增液承气汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据题干全身浮肿紧张，来势迅速，尿少，见肉眼血尿可变辨为急性肾小球肾炎。85. 【答案】C 【解析】略。 86. 【答案】C 【解析】根据患儿肢体面部浮肿，头痛眩晕，烦躁不安，视物模糊，口苦，恶心呕吐，甚至抽搐、昏迷，尿短赤，舌质红，苔黄糙，脉弦数，可判断患儿为水肿变证邪陷心肝证，代表方为龙胆泻肝汤合羚角钩藤汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 84,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0085",
+      "question_type": "single_choice",
+      "question_content": "患者，男性，66岁。劳累后胸骨后疼痛1年余，每周2～3次，含服硝酸甘油后迅速缓解。4小时前剧烈胸痛伴大汗，含服硝酸甘油20分钟不缓解。心电图示V1～V3导联ST段弓背向上抬高，可诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性前壁心肌梗死"
+        },
+        {
+          "option_id": "B",
+          "content": "急性下壁心肌梗死"
+        },
+        {
+          "option_id": "C",
+          "content": "急性前间壁心肌梗死"
+        },
+        {
+          "option_id": "D",
+          "content": "急性右室梗死"
+        },
+        {
+          "option_id": "E",
+          "content": "变异型心绞痛"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "太阳头痛配天柱、后溪、昆仑；阳明头痛配阳白、内庭；少阳头痛配率谷、外关、足临泣；厥阴头痛配四神聪、太冲、内关。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 85,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0086",
+      "question_type": "single_choice",
+      "question_content": "肺癌临床上出现压迫症状往往是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "远处转移引起的表现"
+        },
+        {
+          "option_id": "B",
+          "content": "肺外表现"
+        },
+        {
+          "option_id": "C",
+          "content": "肺外胸内扩散引起的表现"
+        },
+        {
+          "option_id": "D",
+          "content": "原发性肿瘤引起的表现"
+        },
+        {
+          "option_id": "E",
+          "content": "淋巴结侵袭表现"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "中风恢复期气虚络瘀证的选方：补阳还五汤。87. 【答案】A 【解析】消渴的基本病机是阴虚为本，燥热为标，故清热润燥，养阴生津为本病的治疗大法。88. 【答案】C 【解析】根据题干，患者阳事不举，精薄清冷，畏寒肢冷，面色晄白可辨为阳痿，命门火衰证，治法为：温肾壮阳。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 86,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0087",
+      "question_type": "single_choice",
+      "question_content": "大部分脑栓塞发病的原因是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蛛网膜下腔出血"
+        },
+        {
+          "option_id": "B",
+          "content": "肺静脉血栓"
+        },
+        {
+          "option_id": "C",
+          "content": "心源性栓子脱落"
+        },
+        {
+          "option_id": "D",
+          "content": "败血症"
+        },
+        {
+          "option_id": "E",
+          "content": "肺部感染"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "患儿手足心热，肢体拘挛或强直，时或抽搐，可辨病为慢惊风。88. 【答案】A 【解析】略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 87,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0088",
+      "question_type": "single_choice",
+      "question_content": "关于灭菌法的描述正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "杀灭包括细菌芽孢的一切微生物"
+        },
+        {
+          "option_id": "B",
+          "content": "紫外线灯照属于灭菌法"
+        },
+        {
+          "option_id": "C",
+          "content": "煮沸灭菌法温度最高"
+        },
+        {
+          "option_id": "D",
+          "content": "干热灭菌法可用于对衣物的灭菌"
+        },
+        {
+          "option_id": "E",
+          "content": "高压蒸汽灭菌法需持续20分钟"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 88,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0089",
+      "question_type": "single_choice",
+      "question_content": "患者，女，30岁。汗出恶风，身重肢肿，小便不利，舌淡苔白，脉浮。治疗应首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "五皮散"
+        },
+        {
+          "option_id": "B",
+          "content": "五苓散"
+        },
+        {
+          "option_id": "C",
+          "content": "玉屏风散"
+        },
+        {
+          "option_id": "D",
+          "content": "防己黄芪汤"
+        },
+        {
+          "option_id": "E",
+          "content": "猪苓汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "慢惊风阴虚风动：精神疲惫，形容憔悴，面色萎黄或时有潮红，虚烦低热，手足心热，易出汗，大便干结，肢体拘挛或强直，抽搐时轻时重，舌绛少津，苔少或无苔，脉细数。治法：育阴潜阳，滋肾养肝。代表方：大定风珠。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 89,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0098",
+      "question_type": "single_choice",
+      "question_content": "白细胞减少症的主要治疗措施是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "使用糖皮质激素"
+        },
+        {
+          "option_id": "B",
+          "content": "使用促粒细胞生成药物"
+        },
+        {
+          "option_id": "C",
+          "content": "病因治疗"
+        },
+        {
+          "option_id": "D",
+          "content": "休息"
+        },
+        {
+          "option_id": "E",
+          "content": "增加营养 (99～100题共用题干) 患者，女性，25岁。有甲状腺手术史，现怀孕24周，出现畏寒乏力、少汗、表情淡漠、关节疼痛等症状。实验室检查示T3、T4降低，TSH升高。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "小儿咳后有深吸气样鸡鸣声，为顿咳的临床特点。由小儿吐出痰涎或食物后可缓解，舌质红，苔黄，脉滑数，可辨为痰火阻肺证，治当泻肺清热、涤痰镇咳，方用桑白皮汤合葶苈大枣泻肺汤。 99. 【答案】B 【解析】略。 100. 【答案】B 【解析】略。 101. 【答案】D 【解析】根据题干，辨证为水肿变证之水毒内闭证；治宜辛开苦降，解毒利尿；故选温胆汤合附子泻心汤。 102. 【答案】D 【解析】略。 103. 【答案】D 【解析】略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 98,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0099",
+      "question_type": "single_choice",
+      "question_content": "该患者可诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "垂体瘤"
+        },
+        {
+          "option_id": "B",
+          "content": "甲状腺癌"
+        },
+        {
+          "option_id": "C",
+          "content": "妊娠期甲亢"
+        },
+        {
+          "option_id": "D",
+          "content": "甲状腺危象"
+        },
+        {
+          "option_id": "E",
+          "content": "妊娠期甲减"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "患者若关节肿胀甚者，加萆薢、五加皮以利水通络；若肌肤麻木不仁，加海桐皮、豨莶草以祛风通络；小便不利，浮肿，加茯苓、泽泻、车前子以利水祛湿；痰湿盛者，加半夏、南星。100. 【答案】A 【解析】肥胖症治疗应选取任脉穴、手足阳明、足太阴经穴为主。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 99,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0100",
+      "question_type": "single_choice",
+      "question_content": "治疗该患者，L-T4应控制在正常剂量的",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "30%～50%"
+        },
+        {
+          "option_id": "B",
+          "content": "20%～30%"
+        },
+        {
+          "option_id": "C",
+          "content": "30%～60%"
+        },
+        {
+          "option_id": "D",
+          "content": "50%～70%"
+        },
+        {
+          "option_id": "E",
+          "content": "20%～60% (101～103题共用题干) 患者，男，24岁。尿频、尿急、尿痛，发热寒战，查体出现肾区叩击痛，尿中白细胞40个/高倍视野，可见白细胞管型，尿β2微球蛋白升高。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "成年患者 L-T4 替代剂量范围在 50～200 μg/d，平均 125 μg/d，按体重计算，其剂量范围为 1.6～1.8 μg/(kg·d)，妊娠期女性应增加 30%～50%。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 100,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0101",
+      "question_type": "single_choice",
+      "question_content": "考虑该患者为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性肾盂肾炎"
+        },
+        {
+          "option_id": "B",
+          "content": "急性肾炎"
+        },
+        {
+          "option_id": "C",
+          "content": "慢性肾炎急性发作"
+        },
+        {
+          "option_id": "D",
+          "content": "膀胱炎"
+        },
+        {
+          "option_id": "E",
+          "content": "慢性肾盂肾炎"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据题干分析可知为脾胃虚弱证，配穴为脾俞，足三里。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 101,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0102",
+      "question_type": "single_choice",
+      "question_content": "为明确病因，应进行哪项检查",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "静脉肾盂造影"
+        },
+        {
+          "option_id": "B",
+          "content": "亚硝酸还原试验"
+        },
+        {
+          "option_id": "C",
+          "content": "中段尿细菌培养"
+        },
+        {
+          "option_id": "D",
+          "content": "终末段尿细菌培养"
+        },
+        {
+          "option_id": "E",
+          "content": "血肌酐检查"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "肥胖症的治法为：祛湿化痰，通经活络。 103. 【答案】B 【解析】恶寒发热，咯白色黏痰，脉浮数说明有表证；咳嗽，咯痰，胸痛为肺痈初期表现。104. 【答案】B 【解析】肺痈初期治法为疏风散热，清肺化痰。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 102,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0111",
+      "question_type": "single_choice",
+      "question_content": "该患者可诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "淡漠型甲亢"
+        },
+        {
+          "option_id": "B",
+          "content": "甲状腺危象"
+        },
+        {
+          "option_id": "C",
+          "content": "T3型甲亢"
+        },
+        {
+          "option_id": "D",
+          "content": "亚急性甲状腺炎"
+        },
+        {
+          "option_id": "E",
+          "content": "妊娠期甲亢"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "面瘫基本刺灸方法：面部腧穴均行平补平泻法，恢复期可加灸法。发病初期，面部腧穴手法不宜过重，针刺不宜过深，肢体远端腧穴行泻法且手法宜重；恢复期，足三里行补法，合谷、太冲行平补平泻法。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 111,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0112",
+      "question_type": "single_choice",
+      "question_content": "治疗该患者可选择",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "核素131I"
+        },
+        {
+          "option_id": "B",
+          "content": "甲状腺大部切除术"
+        },
+        {
+          "option_id": "C",
+          "content": "丙基硫氧嘧啶"
+        },
+        {
+          "option_id": "D",
+          "content": "大剂量心得安"
+        },
+        {
+          "option_id": "E",
+          "content": "左甲状腺素 B1型选择题 (113～114题共用备选"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "头痛的治法：调和气血，通络止痛。根据头痛部位循经取穴和取阿是穴为主。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 112,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-86fd2af226-q0065",
+      "question_type": "single_choice",
+      "question_content": "患者起湿疮十余年，皮损反复发作，足背及双肘部暗红斑块，粗糙肥厚，消退后留有色素沉着，剧痒难忍，遇热瘙痒加重，近日口干不欲饮，纳差，腹胀；舌淡，苔白，脉弦细。选方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归饮子"
+        },
+        {
+          "option_id": "B",
+          "content": "犀角地黄汤"
+        },
+        {
+          "option_id": "C",
+          "content": "桃红四物汤"
+        },
+        {
+          "option_id": "D",
+          "content": "清瘟败毒饮"
+        },
+        {
+          "option_id": "E",
+          "content": "草薢渗湿汤"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "川芎茶调散功效为疏风止痛。主治：外感风邪头痛。偏正头痛，或颠顶作痛，目眩鼻塞，或恶风发热，舌苔薄白，脉浮。66. 【答案】B 【解析】宗气聚于胸中，上出息道，贯注心脉及沿三焦下行的方式布散全身。67. 【答案】C 【解析】苏合香丸功效为芳香开窍，行气止痛。主治：寒闭证。突然昏倒，牙关紧闭，不省人事，苔白，脉迟。亦治心腹卒痛，甚则昏厥，属寒凝气滞者。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2023-全集\\full.md",
+        "number": 65,
+        "answer_source": "paired_material"
+      }
+    }
+  ]
+}

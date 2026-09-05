@@ -1,0 +1,571 @@
+{
+  "template_id": "8a087ba277ab-36cb96b296",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0001",
+      "question_type": "single_choice",
+      "question_content": "慢性支气管炎的诊断要点是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "咳嗽、咳痰每年持续 1 个月，持续 2 年以上者"
+        },
+        {
+          "option_id": "B",
+          "content": "咳嗽、咳痰每年持续 2 个月，持续 2 年以上者"
+        },
+        {
+          "option_id": "C",
+          "content": "咳嗽、咳痰每年持续 3 个月，持续 2 年以上者"
+        },
+        {
+          "option_id": "D",
+          "content": "咳嗽、咳痰每年持续 3 个月，持续 3 年以上者"
+        },
+        {
+          "option_id": "E",
+          "content": "咳嗽、咳痰每年持续 3 个月，持续 1 年以上者"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "慢性支气管炎临床上以咳嗽、咳痰为主要症状或伴有喘息，每年发病持续3个月，并连续2年或以上。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0002",
+      "question_type": "single_choice",
+      "question_content": "治疗支原体肺炎热陷心包证，应首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麻杏石甘汤与阿昔洛韦"
+        },
+        {
+          "option_id": "B",
+          "content": "桑菊饮与青霉素"
+        },
+        {
+          "option_id": "C",
+          "content": "清营汤合菖蒲郁金汤与红霉素"
+        },
+        {
+          "option_id": "D",
+          "content": "生脉散与左氧氟沙星"
+        },
+        {
+          "option_id": "E",
+          "content": "竹叶石膏汤与麦迪霉素"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "支原体肺炎热闭心神证的治疗以清热解毒，化痰开窍为主，方选清营汤合菖蒲郁金汤加减，西药中大环内酯类药物为首选，红霉素属于大环内酯类抗生素。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0003",
+      "question_type": "single_choice",
+      "question_content": "下列降压药中，适用于高血压伴前列腺增生患者的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "$\\alpha$ 受体阻滞剂"
+        },
+        {
+          "option_id": "B",
+          "content": "$\\beta$ 受体阻滞剂"
+        },
+        {
+          "option_id": "C",
+          "content": "ACEI类"
+        },
+        {
+          "option_id": "D",
+          "content": "CCBE.利尿剂"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "适用于高血压伴前列腺增生患者的降压药是 $\\alpha$ 受体阻滞剂。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0004",
+      "question_type": "single_choice",
+      "question_content": "下列各项中，不属于房性早搏心电图表现的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "提早出现的P'波，形态与窦性P波不同"
+        },
+        {
+          "option_id": "B",
+          "content": "代偿间歇不完全"
+        },
+        {
+          "option_id": "C",
+          "content": "QRS形态正常，亦可增宽（室内差异性传导）或未下传"
+        },
+        {
+          "option_id": "D",
+          "content": "P'-R>0.12秒"
+        },
+        {
+          "option_id": "E",
+          "content": "T波宽大，方向与QRS主波方向相反"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "房性早搏的心电图特征: ①提早出现的 P'波, 形态与窦性 P 波不同。②R-P'>0.12 秒。③QRS 形态正常, 亦可增宽 (室内差异性传导) 或未下传。④代偿间歇不完全。T 波宽大, 方向与 QRS 主波方向相反属于室性早搏的特点。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 4,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0005",
+      "question_type": "single_choice",
+      "question_content": "消化性溃疡最主要的症状是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "食欲减退"
+        },
+        {
+          "option_id": "B",
+          "content": "呕吐, 黑便"
+        },
+        {
+          "option_id": "C",
+          "content": "恶心, 呕吐"
+        },
+        {
+          "option_id": "D",
+          "content": "上腹疼痛"
+        },
+        {
+          "option_id": "E",
+          "content": "嗳气, 反酸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "典型消化性溃疡以周期性、节律性上腹痛为主要症状。 结 9-经络系统常考总结 3-中西医结合外科学辨证论治汇总",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 5,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0006",
+      "question_type": "single_choice",
+      "question_content": "溃疡性结肠炎病变特点是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "弥漫性、连续性"
+        },
+        {
+          "option_id": "B",
+          "content": "易感性、弥漫性"
+        },
+        {
+          "option_id": "C",
+          "content": "局限性、间断性"
+        },
+        {
+          "option_id": "D",
+          "content": "传染性、连续性"
+        },
+        {
+          "option_id": "E",
+          "content": "多发性、坏死性"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "溃疡性结肠炎病变主要位于直肠和乙状结肠，一般局限于大肠黏膜和黏膜下层，病变特点为弥漫性、连续性。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0007",
+      "question_type": "single_choice",
+      "question_content": "以下可诊断为肾病综合征的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蛋白尿 4.5g/24h，血浆白蛋白 28g/L"
+        },
+        {
+          "option_id": "B",
+          "content": "蛋白尿 2.7g/24h，血浆球蛋白 31g/L"
+        },
+        {
+          "option_id": "C",
+          "content": "蛋白尿 4.6g/24h，血浆球蛋白 25g/L"
+        },
+        {
+          "option_id": "D",
+          "content": "蛋白尿 2.7g/24h，血浆白蛋白 40g/L"
+        },
+        {
+          "option_id": "E",
+          "content": "蛋白尿 2.1g/24h，血浆总蛋白 64g/L"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "肾病综合征为一组常见于肾小球疾病的临床证候群。临床特征为: ①大量蛋白尿 (≥3.5g/24h)。②低白蛋白血症 (≤30g/L)。③水肿。④高脂血症。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0008",
+      "question_type": "single_choice",
+      "question_content": "尿路感染最常见的感染途径是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血行感染"
+        },
+        {
+          "option_id": "B",
+          "content": "直接感染"
+        },
+        {
+          "option_id": "C",
+          "content": "淋巴道感染"
+        },
+        {
+          "option_id": "D",
+          "content": "上行感染"
+        },
+        {
+          "option_id": "E",
+          "content": "下行感染"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "上行感染为尿路感染的主要途径，约占尿路感染的 $95\\%$ ，常见的病原菌为大肠杆菌。 更多医考干货可扫码关注微信公众平台 总结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0009",
+      "question_type": "single_choice",
+      "question_content": "缺铁性贫血在应用铁剂治疗多久后血红蛋白浓度可恢复正常",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "1周"
+        },
+        {
+          "option_id": "B",
+          "content": "1月"
+        },
+        {
+          "option_id": "C",
+          "content": "2月"
+        },
+        {
+          "option_id": "D",
+          "content": "6月"
+        },
+        {
+          "option_id": "E",
+          "content": "4月"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "口服铁剂后，先是外周血网织红细胞增多，高峰在开始服药后 5～10 天，2 周后血红蛋白浓度上升，一般 2 个月左右回复正常。铁剂治疗在血红蛋白恢复正常后至少持续 4～6 个月，待铁蛋白正常后停药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0010",
+      "question_type": "single_choice",
+      "question_content": "下列选项中，有助于再生障碍性贫血与急性白血病鉴别的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "网织红细胞减少"
+        },
+        {
+          "option_id": "B",
+          "content": "贫血苍白"
+        },
+        {
+          "option_id": "C",
+          "content": "皮肤黏膜出血"
+        },
+        {
+          "option_id": "D",
+          "content": "胸骨压痛"
+        },
+        {
+          "option_id": "E",
+          "content": "感染发热"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "再生障碍性贫血及急性白血病均可见贫血、感染、出血等临床表现，网织红细胞计数均减少。但急性白血病除上述症状外，还可见白血病细胞增殖浸润表现，如淋巴结和肝脾大、胸骨下端局部压痛、关节骨骼疼痛，眼球突出、复视或失明，牙龈增生、肿胀，局部皮肤隆起、变硬，呈紫蓝色皮肤结节，以及头痛、头晕、颈项强直、甚至抽搐、昏迷等。可见，胸骨压痛是急性白血病的临床表现而不是再障的临床表现。因此，胸骨压痛可作为二者的鉴别点。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0011",
+      "question_type": "single_choice",
+      "question_content": "反映甲状腺功能最重要的指标是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血清甲状腺激素的测定"
+        },
+        {
+          "option_id": "B",
+          "content": "血清 TSH 测定"
+        },
+        {
+          "option_id": "C",
+          "content": "$T_{3}$ 抑制试验"
+        },
+        {
+          "option_id": "D",
+          "content": "甲状腺摄 $^{131}$ I 率测定"
+        },
+        {
+          "option_id": "E",
+          "content": "促甲状腺激素释放激素兴奋试验"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "血清 TSH 测定较 $T_{3}$ 、 $T_{4}$ 灵敏度高，是反映甲状腺功能最有价值的指标，对亚临床型甲亢和亚临床型甲减的诊断及治疗监测均有重要意义。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0012",
+      "question_type": "single_choice",
+      "question_content": "鉴别1型和2型糖尿病的主要指标是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血浆胰岛素测定"
+        },
+        {
+          "option_id": "B",
+          "content": "糖化血红蛋白"
+        },
+        {
+          "option_id": "C",
+          "content": "葡萄糖耐量试验"
+        },
+        {
+          "option_id": "D",
+          "content": "空腹血糖"
+        },
+        {
+          "option_id": "E",
+          "content": "尿糖"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "1型糖尿病血浆胰岛素绝对值下降或没有分泌；2型糖尿病血浆胰岛素下降或者升高。A项正确。糖化血红蛋白是反映近 $2 \\sim 3$ 个月血糖水平的指标。葡萄糖耐量试验适用于当血糖高于正常范围而又未达到诊断糖尿病标准时。空腹血糖主要是糖尿病的诊断指标，不能鉴别1型和2型糖尿病。尿糖不能够诊断或鉴别糖尿病。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0013",
+      "question_type": "single_choice",
+      "question_content": "痛风诊断的金标准为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "关节液穿刺或痛风石活检证实为尿酸盐结晶"
+        },
+        {
+          "option_id": "B",
+          "content": "X线检查发现软组织肿胀"
+        },
+        {
+          "option_id": "C",
+          "content": "超声检查发现结石显影"
+        },
+        {
+          "option_id": "D",
+          "content": "四肢近端小关节呈对称性梭形肿胀畸形"
+        },
+        {
+          "option_id": "E",
+          "content": "关节囊液可培养出细菌"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "急性关节炎期，行关节穿刺抽取滑液，在偏振光显微镜下，滑液中或白细胞内有负性双折光针状尿酸盐结晶，阳性率约为 $90\\%$ 。穿刺或活检痛风石内容物，可发现同样形态的尿酸盐结晶。本项检 查具有确诊意义，为痛风诊断的“金标准”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0014",
+      "question_type": "single_choice",
+      "question_content": "下列各项中，不属于系统性红斑狼疮诊断依据的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "颧部红斑"
+        },
+        {
+          "option_id": "B",
+          "content": "非侵蚀性关节炎"
+        },
+        {
+          "option_id": "C",
+          "content": "光过敏"
+        },
+        {
+          "option_id": "D",
+          "content": "抗核抗体阳性"
+        },
+        {
+          "option_id": "E",
+          "content": "血沉加快"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "系统性红斑狼疮诊断标准：①颧部红斑。②盘状红斑。③光过敏。④口腔溃疡。⑤关节炎。⑥浆膜炎。⑦肾脏病变。⑧神经系统病变，癫痫发作或精神症状。⑨血液系统异常：溶血性贫血或血白细胞减少或淋巴细胞绝对值减少或血小板减少。⑩免疫学异常：狼疮细胞阳性，或抗dsDNA或抗Sm抗体阳性，或梅毒血清试验假阳性。⑪抗核抗体阳性。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-36cb96b296-q0015",
+      "question_type": "single_choice",
+      "question_content": "系统性红斑狼疮最常见的脏器损害是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺"
+        },
+        {
+          "option_id": "B",
+          "content": "肾"
+        },
+        {
+          "option_id": "C",
+          "content": "心"
+        },
+        {
+          "option_id": "D",
+          "content": "脾"
+        },
+        {
+          "option_id": "E",
+          "content": "肝"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "系统性红斑狼疮临床表现：狼疮肾炎是 SLE 最常见和严重的临床表现，可为无症状性蛋白尿和 /或血尿、高血压，甚至肾病综合征、急进性肾炎综合征等，病情可逐渐进展，晚期发生尿毒症，个别患者首诊即为慢性肾衰竭。肾衰竭是 SLE 死亡的常见原因。 懒人医考 LANRENYIKAO",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

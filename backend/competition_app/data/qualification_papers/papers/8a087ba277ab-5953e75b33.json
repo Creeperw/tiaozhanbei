@@ -1,0 +1,579 @@
+{
+  "template_id": "8a087ba277ab-5953e75b33",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0021",
+      "question_type": "single_choice",
+      "question_content": "“寒从中生”的主要病机是由于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寒邪从肌表而入，内传脏腑"
+        },
+        {
+          "option_id": "B",
+          "content": "寒邪直中脾胃，损伤阳气"
+        },
+        {
+          "option_id": "C",
+          "content": "恪食生冷，寒从中生"
+        },
+        {
+          "option_id": "D",
+          "content": "阳气虚衰，温煦气化功能减退"
+        },
+        {
+          "option_id": "E",
+          "content": "痰湿内阻，从阴化寒"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "“寒从中生”又称“内寒”，指机体阳气虚衰，温煦作用减退，阳不制阴而虚寒内生的病理变化。多因先天禀赋不足，阳气素虚，或久病伤阳，或外感寒邪，过食生冷，损伤阳气，以致阳气虚衰所致。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 21,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0022",
+      "question_type": "single_choice",
+      "question_content": "“塞因塞用”的治法，适用于治疗",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "表实时虚证"
+        },
+        {
+          "option_id": "B",
+          "content": "虚实夹杂证"
+        },
+        {
+          "option_id": "C",
+          "content": "真虚假实证"
+        },
+        {
+          "option_id": "D",
+          "content": "真实假虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "表虚里实证"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "塞因塞用，即以补开塞，是用补益药物来治疗具有闭塞不通症状的虚证。适用于“至虚有盛候”的真虚假实证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 22,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0023",
+      "question_type": "single_choice",
+      "question_content": "先天禀赋决定着体质的相对",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "可变性"
+        },
+        {
+          "option_id": "B",
+          "content": "连续性"
+        },
+        {
+          "option_id": "C",
+          "content": "复杂性"
+        },
+        {
+          "option_id": "D",
+          "content": "普遍性"
+        },
+        {
+          "option_id": "E",
+          "content": "稳定性"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "先天禀赋决定着个体体质的相对稳定性和个体体质的特异性, 后天各种环境因素、营养状况、饮食习惯、精神因素、年龄变化、疾病损害、针药治疗等, 又使得体质具有可变性。",
+      "kp_ids": [
+        "047088",
+        "061577",
+        "060331"
+      ],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 23,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0024",
+      "question_type": "single_choice",
+      "question_content": "下列不属绝汗临床表现的有",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "冷汗淋漓如水"
+        },
+        {
+          "option_id": "B",
+          "content": "四肢厥冷"
+        },
+        {
+          "option_id": "C",
+          "content": "面色苍白"
+        },
+        {
+          "option_id": "D",
+          "content": "战栗汗出"
+        },
+        {
+          "option_id": "E",
+          "content": "汗热而黏"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "绝汗指在病情危重的情况下，出现大汗不止的症状。常是亡阳或亡阴的表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 24,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0025",
+      "question_type": "single_choice",
+      "question_content": "痫病的病机是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气郁化火，痰火扰心"
+        },
+        {
+          "option_id": "B",
+          "content": "阳明热盛，扰乱神明"
+        },
+        {
+          "option_id": "C",
+          "content": "肝风挟痰，蒙蔽清窍"
+        },
+        {
+          "option_id": "D",
+          "content": "痰气郁结，蒙蔽心神"
+        },
+        {
+          "option_id": "E",
+          "content": "温病邪热入于心包 懒人医考整理"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "痫病多由于脏气失调，肝风夹痰上逆，蒙蔽清窍所致。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 25,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0026",
+      "question_type": "single_choice",
+      "question_content": "咽喉色鲜红娇嫩，肿痛不甚者原因为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺胃积热"
+        },
+        {
+          "option_id": "B",
+          "content": "痰湿停滞"
+        },
+        {
+          "option_id": "C",
+          "content": "寒凝咽喉"
+        },
+        {
+          "option_id": "D",
+          "content": "阴虚火旺"
+        },
+        {
+          "option_id": "E",
+          "content": "胃中有热"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "咽部嫩红，肿痛不显属阴虚证，多由肾水亏少、阴虚火旺所致。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 26,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0027",
+      "question_type": "single_choice",
+      "question_content": "大便夹有不消化的食物，酸腐臭秽者，多因",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大肠湿热"
+        },
+        {
+          "option_id": "B",
+          "content": "寒湿内盛"
+        },
+        {
+          "option_id": "C",
+          "content": "伤食积滞"
+        },
+        {
+          "option_id": "D",
+          "content": "脾胃虚弱"
+        },
+        {
+          "option_id": "E",
+          "content": "肝胃不和"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "大便中含有较多未消化食物的症状，多见于脾虚、肾虚或食滞胃肠的泄泻。酸腐臭秽者，多因伤食积滞。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 27,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0028",
+      "question_type": "single_choice",
+      "question_content": "鹤膝风的病因病机为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "风湿郁久化热"
+        },
+        {
+          "option_id": "B",
+          "content": "寒湿久留，气血亏虚"
+        },
+        {
+          "option_id": "C",
+          "content": "先天不足，或后天失养"
+        },
+        {
+          "option_id": "D",
+          "content": "经络痹阻，肢体失养"
+        },
+        {
+          "option_id": "E",
+          "content": "寒湿内侵，络脉血瘀"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "膝部肿大而股胫消瘦，称为“鹤膝风”，多因寒湿久留，气血亏虚所致。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 28,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0029",
+      "question_type": "single_choice",
+      "question_content": "主病为邪闭，厥证，痛极的脉是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "革脉"
+        },
+        {
+          "option_id": "B",
+          "content": "牢脉"
+        },
+        {
+          "option_id": "C",
+          "content": "紧脉"
+        },
+        {
+          "option_id": "D",
+          "content": "伏脉"
+        },
+        {
+          "option_id": "E",
+          "content": "弦脉"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "伏脉常见于邪闭、厥病和痛极的病人。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 29,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0030",
+      "question_type": "single_choice",
+      "question_content": "仲景《伤寒杂病论》中的三部诊法是指诊",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "人迎、寸口、太溪"
+        },
+        {
+          "option_id": "B",
+          "content": "寸口、太溪、趺阳"
+        },
+        {
+          "option_id": "C",
+          "content": "神门、寸口、太溪"
+        },
+        {
+          "option_id": "D",
+          "content": "人迎、寸口、趺阳"
+        },
+        {
+          "option_id": "E",
+          "content": "人迎、寸口、太冲"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "张仲景在《伤寒杂病论》中常用寸口、趺阳、太溪三部诊法。三部诊法是以诊寸口脉候脏腑 病变，诊跌阳脉候胃气，诊太溪脉候肾气。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 30,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0031",
+      "question_type": "single_choice",
+      "question_content": "表虚证的脉象主见",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "洪数"
+        },
+        {
+          "option_id": "B",
+          "content": "细弱"
+        },
+        {
+          "option_id": "C",
+          "content": "弦紧"
+        },
+        {
+          "option_id": "D",
+          "content": "浮缓"
+        },
+        {
+          "option_id": "E",
+          "content": "浮数"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "浮缓脉多见于风邪伤卫，营卫不和的太阳中风证，即表虚证。 更多医考干货可扫码关注微信公众平台",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 31,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0032",
+      "question_type": "single_choice",
+      "question_content": "不出现滑苔的病证是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾阳不振"
+        },
+        {
+          "option_id": "B",
+          "content": "痰饮内生"
+        },
+        {
+          "option_id": "C",
+          "content": "蓄水证"
+        },
+        {
+          "option_id": "D",
+          "content": "外感寒湿"
+        },
+        {
+          "option_id": "E",
+          "content": "血瘀气滞"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "因水湿之邪内聚，主寒证、主湿证、主痰饮。外感寒邪、湿邪，或脾阳不振，寒湿、痰饮内生，均可出现滑苔。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 32,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0033",
+      "question_type": "single_choice",
+      "question_content": "病人舌苔厚腻如积粉，多为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "食积内停"
+        },
+        {
+          "option_id": "B",
+          "content": "时邪挟热毒"
+        },
+        {
+          "option_id": "C",
+          "content": "痰饮上泛"
+        },
+        {
+          "option_id": "D",
+          "content": "痰湿化热"
+        },
+        {
+          "option_id": "E",
+          "content": "湿浊内盛"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "苔白如积粉，扪之不燥(称“积粉苔”)常见于瘟疫或内痈等病，系秽浊时邪与热毒相结而成。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 33,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0034",
+      "question_type": "single_choice",
+      "question_content": "病人热入营分，气分有湿，其舌象是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "舌红有裂纹，苔黄燥"
+        },
+        {
+          "option_id": "B",
+          "content": "舌红，苔黄腻"
+        },
+        {
+          "option_id": "C",
+          "content": "舌红绛，苔白滑腻"
+        },
+        {
+          "option_id": "D",
+          "content": "舌青紫，少苔"
+        },
+        {
+          "option_id": "E",
+          "content": "舌红绛，苔黄白"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "红绛舌白滑腻苔，舌色红绛属内热盛，而白滑腻苔又常见于寒湿内阻，分析其成因可能是由于外感热病，营分有热，故舌色红绛，但气分有湿则苔白滑而腻。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-5953e75b33-q0035",
+      "question_type": "single_choice",
+      "question_content": "身热初按热甚，久按热反轻者多属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "热在表"
+        },
+        {
+          "option_id": "B",
+          "content": "热在里"
+        },
+        {
+          "option_id": "C",
+          "content": "虚阳外越"
+        },
+        {
+          "option_id": "D",
+          "content": "阴虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "热在半表半里"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "身热初按热甚，久按热反转轻者为热在表。 医 懒人医考 LANRENYIKAO",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

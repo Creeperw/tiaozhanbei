@@ -1,0 +1,2347 @@
+# 前端接口参考
+
+本文面向时珍智训正式 React 前端，描述当前 `main` 分支可用的认证、对话、学习规划、学习工坊、知识库、复习与兼容业务接口。
+
+- 后端默认地址：`http://127.0.0.1:7860`
+- 正式主接口前缀：`/api/v1`
+- 迁移期业务接口前缀：`/api`
+- 主 OpenAPI：`GET /openapi.json`
+- Swagger UI：`GET /docs`
+- 兼容业务 OpenAPI：`GET /api/v1/platform/openapi.json`，需登录且启用兼容层
+
+本文记录的是前端集成规则和关键数据契约。字段级约束以运行中 OpenAPI 为最终依据。
+
+环境搭建、同源部署与升级见 [部署与升级指南](deployment.md)；数据库归属、迁移和备份恢复见
+[数据库运维指南](database-operations.md)。前端不得直接连接数据库或自行维护用户数据归属。
+
+## 1. 接口分层
+
+| 浏览器请求 | 后端归属 | 稳定性 | 使用原则 |
+|---|---|---|---|
+| `/api/v1/*` | `competition_app` 主后端 | 正式接口 | 新功能优先使用 |
+| `/api/*` | `backend-handoff` 兼容业务域 | 迁移接口 | 仅用于尚未迁移的页面 |
+| `/health` | 主后端 | 正式接口 | 无需登录的存活检查 |
+
+前端常量定义：
+
+```js
+export const API_BASE = '/api';
+export const MAIN_API_BASE = '/api/v1';
+export const AUTH_API_BASE = `${MAIN_API_BASE}/auth`;
+```
+
+开发环境中 Vite 按以下方式代理：
+
+- `/api/v1/*` 原样转发到 `http://127.0.0.1:7860`；
+- `/api/*` 去掉开头的 `/api` 后转发；
+- 生产环境由 FastAPI 同源托管前端，并将 `/api` 挂载到兼容业务域。
+
+前端不要硬编码 `7860`，也不要自行去掉 `/api`。业务代码只使用相对路径。
+
+## 2. 通用请求规则
+
+### 2.1 认证
+
+主后端使用名为 `competition_session` 的 HttpOnly Cookie。登录或注册成功后浏览器自动保存，前端不得把令牌写入 localStorage。
+
+所有受保护请求必须携带 Cookie：
+
+```js
+export async function fetchWithAuth(url, options = {}) {
+  const headers = { ...options.headers };
+  if (options.body !== undefined && !(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
+}
+```
+
+Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `AUTH_COOKIE_SECURE=true`。
+
+公开路径只有首页静态资源（包括兼容保留的 `/hero_word.txt`）、`/health`、`/openapi.json`、
+`/docs` 和 `/api/v1/auth/*`。其余接口默认需要登录。当前首页问候语由用户画像、当前学习阶段
+和资格目标组合生成，不依赖 `/hero_word.txt`；该静态文件仅供旧版前端兼容，缺失时不得影响业务数据加载。
+
+### 2.2 内容类型
+
+| 场景 | Content-Type |
+|---|---|
+| 普通 JSON | `application/json` |
+| 上传文件 | `multipart/form-data`，不要手动设置 boundary |
+| 原始文件导入 | 按接口说明直接发送二进制 body |
+| 对话流 | 响应为 `text/event-stream` |
+
+### 2.3 用户隔离
+
+用户身份以 Cookie 对应的服务端会话为准。
+
+- 前端不得通过 `learner_id`、`user_id` 切换用户；
+- 对话请求中的 `learner_id` 只是兼容必填字段，服务端会覆盖为当前登录用户；
+- 会话、规划、知识卡、试卷和复习队列均按当前登录用户隔离；
+- 访问其他用户的资源通常返回 `403` 或按不存在处理为 `404`。
+
+### 2.4 时间、分页和版本
+
+- 时间使用 ISO 8601 字符串，前端负责按本地时区展示；
+- 列表接口通常使用 `offset`、`limit`，返回 `items`、`total`；
+- 需要长期兼容的数据包包含 `schema_version`，前端应校验主版本并忽略未知字段；
+- `progress`、`mastery` 等比例字段范围为 `0` 到 `1`，展示时再乘以 100。
+
+### 2.5 错误响应
+
+一般错误：
+
+```json
+{
+  "detail": "面向用户或开发者的错误说明"
+}
+```
+
+参数校验错误：
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "field_name"],
+      "msg": "Field required",
+      "type": "missing"
+    }
+  ]
+}
+```
+
+| 状态码 | 含义 | 前端处理 |
+|---|---|---|
+| `400` | 请求业务格式错误 | 展示 `detail`，保留用户输入 |
+| `401` | 未登录或会话过期 | 清空本地登录态并跳转登录页 |
+| `403` | 权限不足 | 禁止重试，提示无权访问 |
+| `404` | 资源不存在或不属于当前用户 | 返回上一级并刷新列表 |
+| `409` | 状态冲突、重复 ID 或不可执行 | 展示冲突原因，不盲目重试 |
+| `410` | 一次性请求已过期或旧接口已停用 | 重新取题/重新进入新接口，不复用旧请求 |
+| `413` | 请求体过大 | 提示用户缩小上传或任务内容 |
+| `422` | 参数或业务校验未通过 | 定位字段或展示 `detail` |
+| `429` | 请求过快 | 读取 `Retry-After` 后再允许提交 |
+| `503` | 可选服务或正式知识库未启用 | 展示能力暂不可用，不伪造数据 |
+
+## 3. 认证与会话
+
+### 3.1 注册
+
+`POST /api/v1/auth/register`
+
+```json
+{
+  "username": "lin_student",
+  "password": "minimum-8-characters",
+  "display_name": "林同学"
+}
+```
+
+约束：用户名 3—64 字符且不能包含空白、`< > / \\`；密码 8—128 字符。
+
+成功返回 `201` 并设置 Cookie：
+
+```json
+{
+  "user": {
+    "user_id": "USER_xxx",
+    "username": "lin_student",
+    "display_name": "林同学",
+    "role": "user",
+    "status": "active",
+    "onboarding_required": false,
+    "created_at": "2026-07-21T12:00:00Z"
+  },
+  "expires_at": "2026-08-20T12:00:00Z"
+}
+```
+
+用户名重复返回 `409`。
+
+新注册普通用户的 `onboarding_required=false`。注册响应建立 Cookie 会话后，
+前端直接渲染系统首页，不再展示注册学情调查或首次登录门禁。
+
+已完成调查的用户再次打开“画像与记忆 → 学情调查”时，前端必须调用
+`GET /api/training/onboarding/status` 回填表单，不能显示一份空调查。核心回填字段包括
+`learner_group`、`major_or_role`、`tcm_foundation`、`target_exam_or_course`、
+`textbook_route_id`、`textbook_route_version` 与 `daily_available_minutes`。
+
+注册调查只提供 `cross_professional`（跨专业进阶）和 `academic`（学历教育）两个群体。
+历史 `public_interest` 数据仅保留读取兼容，不得再显示为新用户选项。
+
+学习/考试方向必须直接使用 `/api/v1/qualification-targets` 返回的五类资格考试，不得在前端
+复制名单或混入专业、职称、职业技能等级、考研和课程学习入口：
+
+1. 中医执业医师资格考试；
+2. 中医执业助理医师资格考试；
+3. 中西医结合执业医师资格考试；
+4. 中西医结合执业助理医师资格考试；
+5. 执业药师职业资格考试（中药学类）。
+
+保存调查时把资格身份和教材路线一起写入 `goals`：
+
+```json
+{
+  "learner_group": "academic",
+  "goals": {
+    "target_exam_or_course": "中医执业医师资格考试",
+    "target_type": "certification",
+    "exam_track_id": "EXAM_2025_TCM_PHYSICIAN",
+    "textbook_route_id": "textbook_tcm_physician",
+    "textbook_route_version": 1
+  },
+  "background": {
+    "education_major": "非医学专业",
+    "foundation_level": "零基础"
+  },
+  "preferences": {
+    "daily_available_minutes": 45
+  }
+}
+```
+
+`exam_track_id` 与 `textbook_route_id` 含义不同，前者标识官方资格考试，后者标识可复用的
+教材学习顺序。前端必须原样提交接口返回的两个字段。调查保存后，后端会同时建立可信的
+活动学习目标；Diagnosis 和规划智能体应直接读取该目标，不得再次追问“具体考试名称”。
+
+资格目录响应结构：
+
+```json
+{
+  "schema_version": "1.0",
+  "target_kind": "qualification_exam",
+  "items": [
+    {
+      "target_id": "integrated_assistant",
+      "official_name": "中西医结合执业助理医师资格考试",
+      "target_type": "certification",
+      "exam_track_id": "EXAM_2025_INTEGRATED_ASSISTANT",
+      "planning_route_id": "tcm_physician_standard_degree",
+      "textbook_route_id": "textbook_integrated_clinical",
+      "textbook_route_version": 1
+    }
+  ],
+  "total": 5
+}
+```
+
+`target_id` 仅供前端选中状态使用；落库与后续智能体判断以 `official_name`、
+`target_type`、`exam_track_id` 和教材路线字段为准。
+
+### 3.2 登录、退出和当前用户
+
+| 方法 | 路径 | 请求 | 返回 |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/login` | `{username, password}` | 与注册成功响应相同 |
+| `POST` | `/api/v1/auth/logout` | 无 | `{"status":"logged_out"}` |
+| `GET` | `/api/v1/auth/me` | 无 | `{"user": AuthUser}` |
+| `GET` | `/api/v1/auth/me/profile` | 无 | 当前用户及账户资料 |
+| `PATCH` | `/api/v1/auth/me/profile` | 可修改的账户资料字段 | 更新后的当前用户及账户资料 |
+| `PUT` | `/api/v1/auth/me/avatar` | `multipart/form-data`，字段名 `file` | 更新后的当前用户及账户资料 |
+| `GET` | `/api/v1/auth/me/avatar` | 无 | 当前用户头像文件；尚未设置时返回 `404` |
+
+资料和头像接口均只操作 Cookie 对应的当前用户。`GET/PATCH /profile` 返回
+`{"user": AuthUser, "profile": AccountProfile}`；`profile.avatar_url` 在已设置头像时包含
+带版本参数的同源私有地址。头像上传的格式、大小和内容校验以运行中 OpenAPI 与服务端
+校验结果为准，前端必须使用服务端返回的 `avatar_url`，不得自行拼接其他用户的资源路径。
+
+旧接口 `/token`、`/register`、`/send-code`、`/reset-password` 已停用并返回 `410`，新前端不得调用。
+
+#### 登录页交互契约
+
+- 未登录用户首先看到公开展示页，账号和密码字段只在用户点击登录入口后出现在模态弹层中；
+- “登录”“登录已有账号”打开登录模式，“开始学习”“开启智训之旅”打开注册模式；
+- 登录弹层可切换至注册，注册弹层可返回登录；“返回展示页”关闭弹层并将默认模式复位为登录；
+- 页面挂载时请求 `GET /health`，仅用于提示认证服务是否可达，不替代真正的登录校验；
+- Vite 开发环境必须将 `/health` 原样代理到主后端，生产环境由 FastAPI 同源响应；
+- 登录和注册请求继续使用 `credentials: "include"`，成功后以响应中的 `user` 更新前端状态；
+- 网络不可达时显示“认证服务尚未连接”，不得伪造登录成功或回退到旧认证接口；
+- 页面需适配移动端，弹层内容自身可滚动，不应产生横向页面溢出。
+
+### 3.3 对话会话
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/conversations` | 当前用户的会话列表 |
+| `POST` | `/api/v1/conversations` | 创建会话，请求 `{ "title": "新对话" }` |
+| `GET` | `/api/v1/conversations/{session_id}/messages` | 获取消息 |
+| `PATCH` | `/api/v1/conversations/{session_id}` | 重命名，请求 `{ "title": "方剂学习" }` |
+| `DELETE` | `/api/v1/conversations/{session_id}` | 删除会话及其消息 |
+
+消息结构：
+
+```json
+{
+  "id": "MESSAGE_xxx",
+  "role": "user",
+  "content": "请讲解四君子汤，并给我一道题。",
+  "timestamp": "2026-07-21T20:30:00"
+}
+```
+
+`role` 当前使用 `user`、`assistant`。前端应忽略将来增加的消息元数据。
+
+## 4. 多智能体对话与中断恢复
+
+### 4.1 发起流式任务
+
+`POST /api/v1/review-cards/stream`
+
+同一请求也可发送到 `POST /api/v1/review-cards` 并等待完整 JSON 结果。正式对话界面应优先使用流式接口；同步接口适用于调试、脚本调用和不需要展示执行过程的场景。
+
+最小请求：
+
+```json
+{
+  "thread_id": "THREAD_由前端生成的唯一ID",
+  "conversation_id": "CONV_xxx",
+  "learner_id": "authenticated-user",
+  "user_request": "请结合我的学习状态，给我制定一份长期学习规划。",
+  "available_minutes": 60,
+  "messages": [
+    {
+      "message_id": "MESSAGE_xxx",
+      "role": "user",
+      "content": "请结合我的学习状态，给我制定一份长期学习规划。"
+    }
+  ]
+}
+```
+
+`available_minutes` 范围为 1—1440。24 小时是预算上限，不表示系统必须安排满。
+
+`conversation_id` 是连续问答的上下文主键。服务端会合并该会话已持久化的消息，因此页面刷新后即使前端只提交当前问题，也不会丢失“这些证型”“上述内容”等指代所需的历史主题。阈值以内只向智能体提供最近对话；总字符数超过服务端阈值后，Planner 必须先编排 `memory_agent`，由记忆管理智能体生成不超过 2000 字的会话摘要，再把摘要交给后续知识检索、讲解或规划步骤。前端不得自行伪造压缩摘要。
+
+规划调研中的简短补充或纠正（例如“零基础”“每周 4 天”“不对，我要考执业医师资格证”）会继承该会话最近一次明确的规划层级。即使检查点已失效或页面刷新后前端改为发起新请求，服务端也会继续规划链路，不会把考试目标误送到教材知识点检索。用户明确提出讲解、组卷、知识卡或练习时则视为新任务，正常切换链路。
+
+规划层级规则：
+
+- 用户明确说“长期规划”“短期计划”“今天的任务”时，可传强约束 `plan_scope`；
+- 用户表达模糊时只传 `plan_scope_hint` 或不传，让模型判断；
+- 可选值：`long_term`、`short_term`、`daily_task`、`unspecified`；
+- 不要仅凭前端关键词强制设置 `plan_scope`。
+
+规划动作由后端 Planner 统一决定，取值为 `reuse`、`create_or_update` 或
+`clarify`。当用户只说“请结合我的学习状态制定学习计划”且已有有效计划时，
+后端不会再次询问层级，也不会生成新版本：优先返回当前短期计划；没有短期计划时
+返回当前长期规划。明确询问今日任务时复用当天仍有效的任务。只有用户明确说
+“强制修改”“重新制定”“调整”“更新”或表达计划不满意时，才进入对应层级的
+Diagnosis、Compiler、Audit 和发布链路。
+
+复用结果仍使用正式 `learning_plan` 契约，并额外返回：
+
+- `reused_existing=true`：前端应显示“继续执行当前版本”，不要显示“已生成新计划”；
+- `replan_review`：本次按学习监控数据及计划 `recovery_policy.trigger_conditions`
+  完成的规划复盘；数据不足时不会臆测触发；
+- `force_replan_prompt`：提示用户如何明确发起强制修改。
+
+复用不会改变计划 ID、版本和下层状态。若复盘建议调整，系统会同时创建
+`category=plan_review` 的消息中心通知，用户确认后再执行重规划。
+
+规划按钮启用前先读取统一前置状态：
+
+`GET /api/v1/planning/readiness?scope=long_term|short_term|daily_task`
+
+服务端会返回 `status`、`can_generate`、`required_action`、`reason_codes`、需要追问的 `questions`、缺少的画像字段和上层计划状态。状态可能为 `ready`、`needs_profile`、`needs_long_term_plan`、`needs_short_term_plan`、`stale_parent_plan`。长期规划在没有任何有效个人画像时逐项追问目标、基础和可持续时间；短期计划必须有当前长期规划；当日任务必须有当前短期计划。前端提示只用于提前解释，正式执行接口还会再次校验，不能通过绕开按钮跳过。
+
+前端不需要重复拼装用户画像、学习状态、已有计划和系统数据。登录态下服务端会读取可信数据。只有上传内容或用户刚刚明确确认、但尚未持久化的信息才需要随请求提交。
+
+用户询问“最近学了什么”“最近需要学什么/接下来该学什么”“做了多少题”
+“哪些知识点没掌握”“有哪些复习到期”
+或“计划进展到哪一步”时，Planner 返回 `task_type=learner_data_query`，并由
+Diagnosis 调用当前登录用户的只读数据工具。响应中：
+
+- `direct_response` / SSE 的 `assistant_message`：可直接显示的自然语言回答；
+- `learner_data.query_kind`：`recent_learning`、`next_learning`、`progress_summary`、
+  `mastery_status`、`review_status` 或 `plan_progress`；
+- `learner_data.window_days`：本次证据时间窗；
+- `learner_data.evidence_status`：是否存在可确认记录；
+- `learner_data.snapshot`：供后续页面扩展使用的紧凑只读投影。
+
+该链路不会生成知识卡、复习卡或新计划，也不选择 Knowledge、Expert、ReviewScheduler
+和 Audit。推荐曝光、资源点击、登录、签到、仅生成资源和进入复习队列均不算“已学习”；
+近期学习只纳入服务端记录的答题、试卷、案例、教材小节、资源完成和正式训练完成。
+前端不得提交或替换查询使用的用户 ID。
+
+`next_learning` 的 `learner_data.sources` 会列出本次组合使用的只读数据类别，
+`snapshot` 包含 `plan_progress`、`mastery_and_review` 和 `recent_learning`。
+聊天区只渲染 `assistant_message`；不得把它当成新短期计划，也不得刷新规划页面版本。
+若用户同时明确要求“根据薄弱点推荐需要做的题目/学习资源”，Planner 会改走
+`personalized_review_card` 资源链，响应按现有资源卡和跳转动作渲染。
+
+围绕一本教材或一个章节提出“学习要点、阅读重点、怎么学、帮我梳理”等开放式请求时，
+Planner 返回 `task_type=general_learning_support`。它仍使用 Knowledge、Expert、Audit
+保证证据和安全，但正文允许自然语言自由组织，不要求前端解析知识讲解固定栏目，也不会
+写入长期规划、短期计划或当日任务。单个概念、原理和区别的讲解仍归入
+`knowledge_explanation`。
+
+规划生成后统一读取：
+
+`GET /api/v1/learning-plans/current`
+
+该接口同时返回 `long_term.content`、`short_term.content` 和各自的 `structured` 字段，不需要
+前端从对话正文再次解析。`long_term.stage_progress[].indicators` 是阶段门禁：
+`pass_rule=all_exit_evidence_verified`，只有全部指标为 `satisfied` 时 `can_advance=true`。
+把本人已完成的正式今日任务绑定到某项批准路线指标时调用：
+
+`POST /api/v1/learning-plans/current/stages/{stage}/evidence`
+
+```json
+{
+  "requirement": "完成中医基础概念图并独立释读一段基础医古文",
+  "task_id": "TASK_xxx"
+}
+```
+
+后端会重新核验登录用户、当前计划、阶段原始 `exit_evidence`、任务归属和任务完成状态；
+任意自定义指标、未完成任务或其他用户任务均返回 `422`。短期计划的
+`acceptance_gate` 会展示周期验收标准；系统会汇总同一短期计划下的已完成今日任务，
+全部 `task_blocks` 都有完成记录时自动通过。当前长期阶段的全部 `exit_evidence` 通过后，
+系统自动选择下一阶段、失效旧短期计划和今日任务，并向消息中心写入阶段推进通知。
+
+### 4.2 SSE 帧
+
+响应头：
+
+```text
+Content-Type: text/event-stream
+Cache-Control: no-cache
+X-Accel-Buffering: no
+```
+
+每帧格式：
+
+```text
+data: {"event":"run_started","thread_id":"THREAD_xxx"}
+
+```
+
+前端必须按空行切帧，再解析以 `data: ` 开头的行；不要按单个网络 chunk 解析 JSON。
+
+常见事件：
+
+| 事件 | 作用 | 关键字段 |
+|---|---|---|
+| `run_started` | 新任务开始 | `thread_id`, `user_request` |
+| `graph_compiled` | LangGraph 路径确定 | `engine`, `levels`, `nodes`, `control_edges` |
+| `step_started` | 智能体步骤开始 | `step_id`, `agent` |
+| `model_input` | 模型输入记录 | `agent`, `raw_input` |
+| `model_delta` | 模型增量输出 | `agent`, `delta` |
+| `model_transport` | 模型传输记录 | 仅技术详情使用 |
+| `model_output` | 模型步骤输出 | `agent`, `output` |
+| `system_output` | 确定性服务输出 | `step_id`, `output` |
+| `web_search_status` | 网络检索状态 | `status`, `query`, `message` |
+| `step_completed` | 智能体步骤完成 | `step_id`, `agent` |
+| `graph_interrupted` | 图在追问节点暂停 | 中断节点信息 |
+| `run_interrupted` | 本次流的终止事件 | `result`, `assistant_message` |
+| `run_resumed` | 从检查点恢复 | `thread_id` |
+| `graph_resume_requested` | 已提交恢复信息 | 检查点信息 |
+| `graph_resumed` | 图恢复执行 | 节点信息 |
+| `run_completed` | 成功终止事件 | `result`, `assistant_message` |
+| `run_failed` | 失败终止事件 | `error_type`, `message`, `thread_id` |
+
+前端只把六个角色展示给用户：任务规划、记忆管理、学情诊断、知识库管理、专家、审核裁判。原始 `agent`、`step_id` 和工具调用放入可展开技术详情，不直接作为第七个智能体展示。
+
+收到 `graph_compiled` 后，前端必须立即按 `nodes[].step_id` 和 `nodes[].agent` 登记本次计划节点。节点尚未收到 `step_started` 时显示“等待执行”，不能显示“本次无需参与”；因此组卷图中的 `audit_agent` 会在审核真正开始前就明确列为参与节点。`run_completed` 到达后仍处于等待状态的计划节点统一收敛为已完成。
+
+### 4.3 终止事件
+
+成功：
+
+```json
+{
+  "event": "run_completed",
+  "result": {
+    "status": "success",
+    "ui_actions": []
+  },
+  "assistant_message": "面向用户的自然语言回答"
+}
+```
+
+需要追问：
+
+```json
+{
+  "event": "run_interrupted",
+  "result": {
+    "status": "interrupted",
+    "thread_id": "THREAD_xxx",
+    "interrupt": {
+      "step_id": "diagnosis",
+      "reason": "还需要确认学习基础",
+      "questions": ["你目前是否学过中医基础理论？"]
+    }
+  },
+  "assistant_message": "我还需要确认一点信息……"
+}
+```
+
+`assistant_message` 是正式自然语言投影，应作为聊天正文；`result` 是页面跳转、持久化和结构化渲染的数据源。不要把整个 `result` 直接打印到聊天气泡。
+
+### 4.4 恢复任务
+
+刷新或断线后先读取：
+
+`GET /api/v1/review-cards/runs/{thread_id}`
+
+若状态为 `interrupted`，提交：
+
+`POST /api/v1/review-cards/runs/{thread_id}/resume/stream`
+
+```json
+{
+  "answer": "我零基础，目标是中医执业医师资格考试。",
+  "profile_updates": {
+    "learning_background": "零基础",
+    "learning_goal": "中医执业医师资格考试"
+  }
+}
+```
+
+恢复必须复用原 `thread_id`，不能重新调用新任务接口。服务端会从 LangGraph 检查点继续，不重复已完成步骤。
+
+`answer` 是恢复接口的必填事实来源，`profile_updates` 是前端已经持有明确结构化字段时的可选辅助，
+不是必填项。对于只缺一个画像字段的 `profile_completion` 中断，前端可以直接提交
+`{"answer":"中医执业医师考试"}`；服务端会将答案写入本次待确认的 `learning_goal`。对于
+`route_resolution` 中断，Memory Agent 会从简短答案中提炼明确的目标、背景或时间事实并写入权威画像。
+前端不得把原问题、旧答案和新答案拼成一段新的规划请求，也不得自行修改路线 ID。
+
+`plan_scope` 仅在前端掌握了明确业务字段时可选传入。正常追问只提交 `answer` 即可：Diagnosis
+Agent 在中断负载的 `requested_scope` 中声明要补的计划层级，恢复节点以该字段为权威依据。例如，
+当日任务缺少短期计划时，用户回答“可以”会继续制定短期计划，不会因为前端未传 `plan_scope`
+而回退成长期计划。前端不得通过“可以/好的”等关键词自行猜测计划层级。
+
+当本次确认更新 `learning_goal` 或 `learning_background` 时，服务端会在同一检查点恢复过程中重新执行
+上游路线解析，再让 Diagnosis Agent 继续；教材路线内部的追问也属于路线依赖。已经确认
+五类受支持资格考试中的一个后，不应再次出现“请说明具体考试或专业方向”的同义追问。注册调查已经
+保存活动学习目标时，即使用户只说“制定长期计划”，也应直接采用该目标。当前产品不再为中医专长、
+传统医学师承、职称、职业技能、考研或纯课程目标启动默认规划。
+
+前端收到新的 `run_interrupted` 时，应以新响应中的 `questions`、`profile_fields` 和
+`interrupt_type` 覆盖旧追问卡；不要继续展示上一次中断文案。只有 `run_completed` 才清除该
+`thread_id` 的待恢复状态。
+
+前置课程追问同时接受肯定和否定答案。用户明确回答“没学过/未完成”后，该课程会作为
+`unmet_prerequisite_courses` 注入规划校验；长期规划必须把它纳入起始阶段，但不得再次追问
+同一课程。只有用户没有给出可判定答案时，检查点才继续保持中断。
+
+SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创建同内容的新任务。
+
+## 5. 学习状态、首页和学习路径
+
+### 5.1 核心接口
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| `GET` | `/api/v1/dashboard/home` | 首页摘要、今日任务、复习任务和继续学习 |
+| `GET` | `/api/v1/learning-context` | 当前用户画像、行为、完整长短期计划正文、复习队列和能力状态 |
+| `GET` | `/api/v1/agent-data-capabilities` | 智能体可读写数据权限清单 |
+| `POST` | `/api/v1/learning-tasks/current/complete` | 完成当前当日任务 |
+| `POST` | `/api/v1/learning-tasks/current/refresh` | 到期时幂等轮换当前当日任务；未到期只返回现状 |
+| `GET` | `/api/v1/learning-path` | 获取长期规划的阶段层 |
+| `GET` | `/api/v1/learning-path?parent_id={node_id}` | 获取指定阶段的教材层 |
+| `GET` | `/api/v1/learning-path/nodes?parent_id={node_id}` | 等价的显式子节点接口 |
+| `GET` | `/api/v1/learning-routes?status=approved&q=` | 获取非个性化经典路线目录 |
+| `GET` | `/api/v1/learning-routes/{route_id}` | 获取一条经典路线的阶段、教材和来源 |
+| `GET` | `/api/v1/qualification-targets` | 获取注册与规划可选择的五类资格考试及其教材路线映射 |
+| `GET` | `/api/v1/learning-metrics/overview?days=30` | 当前用户统一监测指标；每项附计算公式、来源、单位和可用状态 |
+| `GET` | `/api/v1/learning-activity/summary?days=30&recent_limit=20` | 当前用户行为指标、计数器和最近事件 |
+| `GET` | `/api/v1/learning-activity/trends?days=30` | 当前用户学习趋势 |
+
+平台首页采用同一组正式接口组合展示，不维护单独的本地模拟数据：
+
+- 首屏摘要、签到状态、今日任务、最近学习和复习队列读取 `/api/v1/dashboard/home`；
+- 首页学习动态读取同一响应的 `learning_activity.recent_activities`。该数组由当前用户近 30 天正式行为记录与训练工坊任务合并产生；训练任务项可额外包含 `title`、`task_type`，没有记录时返回空数组；
+- 桌面顶部导航（移动端抽屉）中的“资格考试路径”读取 `/api/v1/qualification-targets`；用户切换后以 `PUT /api/personalization/learning-target` 保存 `exam_track_id`，并打开前端 `qualification-route` 子页，不得只在前端临时切换文案；
+- `qualification-route` 子页收到资格目标变化后读取该目标的 `textbook_route_id`，再通过 `/api/v1/learning-routes/{textbook_route_id}` 呈现对应经典路线的阶段；点击阶段后使用响应中的 `stages[].books` 展开教材层。目标尚未加载时才以 `/api/v1/learning-path` 作为当前个性化路线回退；
+- “了解详情”按需读取 `/api/v1/learning-context` 中的长期、短期规划正文；
+- 资格目标栏目在桌面侧栏和移动导航抽屉中使用同一数据与保存逻辑；平台首页不得再渲染第二个目标选择器，也不得自建与服务端五条资格路线不一致的列表。再次点击“打开当前学习路线”应能直接进入当前考试子页，无需切换目标；
+- 学习动态和复习动态只显示接口已经返回的正式记录；无数据时显示空状态，不生成占位任务；
+- 所有按钮通过前端白名单动作映射进入学习工坊、复习页或个性数据页，不直接执行服务端返回的任意 URL。
+
+长期规划的结构化阶段位于 `learning-context.long_term_plan.stages`，元素固定为 `{ "stage": 1, "book": ["《教材》"], "goal": "阶段目标" }`。长期规划更新时，正文、`stages`、`planning_route`、版本号及 `/api/v1/learning-path` 投影会作为同一次写入一起变化；前端不得从规划正文二次解析阶段。流式对话的长期规划完成消息会由系统附加同源的 `long_term_plan_stages` JSON 小块，供即时渲染，不是模型自由生成字段。
+
+注册调查不是只供前端展示的数据。`learning-context.user_profile` 会将已持久化的调查转换为
+规划智能体可直接使用的可信事实，包括：
+
+- `learning_goal`：优先使用所选经典路线的 `target_exam_or_course`；
+- `learning_background`：基础水平、专业背景和已学课程的自然语言摘要；
+- `daily_available_minutes`、`user_major_or_profession`、`completed_courses`；
+- `goals.goal_name`、`goals.goal_type`、`goals.textbook_route_id` 和路线版本；
+- `user_preference`：学习时段、资源形式和难度偏好。
+
+同一响应的 `onboarding` 字段保留完整 `survey_answers`、`field_sources` 与 `l0_baseline`，
+供画像页回显和数据来源说明。Diagnosis、路线解析和规划准备度统一读取服务端组装后的
+`user_profile`，不得要求用户重复提供其中已经存在的目标、基础、专业或时间信息；只有报考
+途径等调查中确实不存在、且会改变路线的事实才允许继续追问。
+
+个性数据中的“今日任务卡”只读取 `learning-context.learning_task`。映射字段为：`task_id -> key`、`task_content -> title`、`learning_chapter -> 今日章节`、`focus_knowledge_points -> 重点知识点`、`estimated_minutes -> duration_min`、`completion_criteria -> reason`，并可保留 `expected_output` 与 `status`。旧规划摘要中的 `daily_tasks` 不再覆盖正式当日任务；页面也不再展示独立的“本周计划卡”。当 `learning_task=null` 时，前端应说明需先制定短期计划，再生成今日任务。
+
+今日任务采用服务端管理的滚动 24 小时窗口。任务本体返回 `refresh_started_at`、`refresh_due_at`；`learning-context` 与 `dashboard/home` 同时返回 `daily_task_timer`：
+
+```json
+{
+  "policy": "rolling_24h",
+  "interval_hours": 24,
+  "auto_refresh_enabled": true,
+  "available": true,
+  "state": "active",
+  "server_time": "2026-07-23T08:00:00+00:00",
+  "refresh_started_at": "2026-07-23T07:30:00+00:00",
+  "refresh_due_at": "2026-07-24T07:30:00+00:00",
+  "remaining_seconds": 84600,
+  "refreshed": false,
+  "current_task_id": "TASK_xxx"
+}
+```
+
+前端以 `server_time` 和 `remaining_seconds` 展示倒计时，到零调用刷新接口并重新读取页面数据。截止判断必须服从服务端，禁止用浏览器本地日期自行换任务。刷新接口可以由多个标签页同时调用：未到期时不换，到期后只会把当前任务推进一次。用户在截止时离线也不会丢失轮换；下一次读取上述任一页面接口时，服务端会先补做过期轮换。轮换仅使用当前短期计划的 `task_blocks`，不会静默修改长期或短期计划；没有短期计划时返回 `available=false`、`reason=short_term_plan_required`。
+
+已有任务在升级前没有刷新字段时，第一次读取会从该时刻开始获得完整 24 小时窗口，避免部署升级直接覆盖尚未完成的学习内容。字段存放在计划 JSON 中，无需新增数据库表或迁移。
+
+学习工坊右栏使用 `GET /api/v1/dashboard/home` 的 `current_learning_task`，不要自行从任务正文解析章节或知识点。后端会以知识仓库为准把模型给出的可读知识点名称解析为正式 ID，并返回可执行知识卡动作：
+
+资源物化遵循“按需桥接”原则：后端以 `learning_chapter` 限定教材范围，将自然语言知识点映射到
+规范 `kp_id`，确认公共知识库中至少存在 3 道配套题后，才把该知识点和题目版本冻结到当前用户的
+每日任务执行库。视频同样只能引用知识库已发布的规范片段。前端不得为缺失资源自行拼接 ID、题目或
+视频地址；未映射成功的标签仍可出现在计划文字中，但不会出现在可执行资源数组中。
+任务落库时，`focus_knowledge_points`、`expected_output` 和 `completion_criteria` 会按最终冻结的
+视频/题目原子项重新校准；完成率及 `daily_task.acceptance_gate` 只使用这组服务端事实。
+
+历史任务只有文字或 `recall` 项时，`GET /api/v1/dashboard/home` 会幂等尝试修复；前端也可显式调用
+`POST /api/v1/learning-tasks/current/materialize-resources` 后重新读取首页。成功响应中的
+`learning_task.items` 只包含具备服务端完成证据的 `video_section` 与 `knowledge_practice`。
+
+```json
+{
+  "current_learning_task": {
+    "task_id": "TASK_xxx",
+    "title": "学习四君子汤的组成、功用和配伍意义",
+    "duration": "25 分钟",
+    "refresh_started_at": "2026-07-23T07:30:00+00:00",
+    "refresh_due_at": "2026-07-24T07:30:00+00:00",
+    "learning_chapter": {
+      "book": "方剂学",
+      "title": "补益剂·补气",
+      "source": "knowledge_repository"
+    },
+    "focus_knowledge_points": ["四君子汤"],
+    "recommended_resources": {
+      "chapter_videos": [
+        {
+          "task_item_id": "DTI_VIDEO_xxx",
+          "title": "观看《方剂学》补益剂·补气章节视频",
+          "resource": {
+            "provider": "bilibili",
+            "bvid": "BV_xxx",
+            "page": 1,
+            "start_seconds": 0,
+            "end_seconds": 600,
+            "duration_seconds": 600
+          }
+        }
+      ],
+      "knowledge_practice": [
+        {
+          "task_item_id": "DTI_PRACTICE_xxx",
+          "kp_id": "KP_xxx",
+          "kp_name": "四君子汤",
+          "required_question_count": 3
+        }
+      ]
+    },
+    "knowledge_cards": [
+      {
+        "kp_id": "KP_xxx",
+        "title": "四君子汤",
+        "book": "方剂学",
+        "chapter": "补益剂·补气",
+        "action": {
+          "action_type": "navigate",
+          "label": "学习知识卡",
+          "destination": "workshop.knowledge_card",
+          "params": { "kp_id": "KP_xxx" }
+        }
+      }
+    ]
+  }
+}
+```
+
+视频原子项的 `resource_ref.duration_seconds` 是该视频片段的真实时长（秒），由服务端按
+`end_seconds - start_seconds` 计算。任务物化时，`video_section` 项的 `estimated_minutes`
+按真实时长向上取整（`ceil(duration_seconds / 60)`），其余练习原子项平分剩余预算；
+前端展示视频任务预计时间时也应优先使用 `resource_ref.duration_seconds` 而不是任务的
+`estimated_minutes`，避免“看视频”预估时间与视频实际时长脱节。诊断智能体生成任务正文时
+同样会收到学习路径进度中的 `duration_seconds` 并据此分配时间。
+
+今日任务原子项的点击行为与 `action.destination` 白名单一致，但学习路径页对两类原子项有
+固定导航语义：
+
+- `video_section`：点击后先按 `resource_ref.kp_id` 解析教材位置，进入教材章节学习页
+  （`view=textbook-chapters`）对应的“第 X 章第 X 节”，并携带 `taskItemId` 与
+  `returnTo={ page: 'qualification-route', params: {} }`，页面“返回”回到今日任务；
+- `knowledge_practice`：点击后进入专题训练（`workshop.topic_training`），并携带
+  `kpId`、`kpName`、`taskItemId` 与上述 `returnTo`，训练上下文直接锁定该知识点。
+
+`current_learning_task=null` 表示当前没有未完成的正式今日任务。点击知识卡时按 `action.destination` 白名单跳转，并把 `params.kp_id` 交给知识卡模块；知识卡模块会复用 `/api/v1/workshop/knowledge-cards/resolve` 完成生成或更新。
+
+资格考试必须单选。当前只允许五类受支持目标进入新规划：四类中医/中西医结合医师资格与
+执业药师职业资格考试（中药学类）。前端不得再提交中医专长、传统医学师承、职称、职业技能、
+考研或纯课程路线。历史记录仍可读取，但不会出现在新用户目录，也不能被模型选为新的默认规划。
+若会话中断追问后，用户给出五类中的唯一考试名称，后端将该回复作为恢复答案直接解析并继续，
+不会再次提出相同问题。
+
+四类医师资格分别保留独立 `exam_track_id`；中医执业/助理医师复用
+`textbook_tcm_physician`，中西医结合执业/助理医师复用
+`textbook_integrated_clinical`。执业药师使用 `textbook_tcm_pharmacy`。这意味着考试身份
+不会因复用教材而合并，长期规划正文与 `long_term_plan_stages` 则按对应教材路线生成。
+
+### 5.2 学习路径数据
+
+```json
+{
+  "schema_version": "1.0",
+  "learner_id": "USER_xxx",
+  "plan_ref": {
+    "plan_id": "LP_LONG_xxx",
+    "plan_version": 1,
+    "route_id": "textbook_tcm_physician",
+    "route_version": 1
+  },
+  "parent_id": null,
+  "parent_type": null,
+  "current_node_id": "stage-1",
+  "nodes": [
+    {
+      "node_id": "stage-1",
+      "node_type": "stage",
+      "parent_id": null,
+      "title": "中医基础与文化语言",
+      "order": 1,
+      "status": "in_progress",
+      "progress": 0.2,
+      "mastery": null,
+      "has_children": true,
+      "child_count": 4,
+      "description": "建立中医基础概念和医古文阅读基础。",
+      "source_refs": ["user-textbook-routes-json-2026-07-19"],
+      "navigation": {
+        "action": "expand",
+        "parent_id": "stage-1"
+      }
+    }
+  ],
+  "offset": 0,
+  "limit": 100,
+  "total": 1,
+  "has_more": false
+}
+```
+
+`node_type`：`stage`、`book`、`knowledge_point`。
+
+阶段标题优先取教材路线的阶段名；没有教材路线但存在已确认规划路线时，回退取 `planning_route.phases[].name`，不能只显示无语义的“第 N 阶段”。
+
+`status`：`completed`、`in_progress`、`next`、`locked`、`unassessed`。
+
+`navigation.action`：
+
+- `expand`：继续请求子节点；
+- `open_knowledge_atlas`：按 `route_id`、`book` 打开知识图谱；
+- `open_knowledge_point`：按 `kp_id` 打开知识点。
+
+未制定长期规划时仍返回 `200`，不要把它当异常：
+
+```json
+{
+  "schema_version": "1.0",
+  "plan_ref": null,
+  "nodes": [],
+  "availability": "requires_long_term_plan",
+  "message": "请先完成长期学习规划，再生成阶段、教材和知识点路径。"
+}
+```
+
+此时页面显示空状态和“去制定长期规划”按钮，不回退为未经用户确认的默认路径。
+
+### 5.3 非个性化经典路线
+
+经典路线是系统提供的参考路线，不等同于用户已确认的长期规划。前端可在学习路径中提供“我的学习路径 / 经典路线”切换，但不得把经典路线的阶段标记为用户已完成或进行中。
+
+学习工坊的“经典路线”下拉框必须调用 `GET /api/v1/qualification-targets`，展示其中五项
+`official_name`，以 `target_id` 作为选择值。选中后使用该项的 `textbook_route_id` 调用
+`GET /api/v1/learning-routes/{textbook_route_id}` 加载阶段和教材。医师与助理医师可以复用
+同一教材路线，但在下拉框中仍是两个独立的官方考试入口。
+
+`GET /api/v1/learning-routes` 返回完整的经典教材参考目录，供管理、检索或其他非资格入口
+使用，不应直接作为学习工坊的资格考试下拉选项。其目录响应示例：
+
+```json
+{
+  "schema_version": "1.0",
+  "route_kind": "classic_reference",
+  "personalized": false,
+  "items": [
+    {
+      "route_id": "textbook_tcm_physician",
+      "route_version": 1,
+      "status": "approved",
+      "goal_name": "中医执业医师",
+      "aliases": [],
+      "stage_count": 5,
+      "book_count": 18,
+      "source_refs": ["user-textbook-routes-json-2026-07-19"],
+      "detail_endpoint": "/api/v1/learning-routes/textbook_tcm_physician"
+    }
+  ],
+  "total": 7
+}
+```
+
+详情响应中的 `route.stages` 已按 `order` 排列，每个阶段包含 `stage_id`、`name`、`objective`、`books`、`exit_evidence` 和 `source_refs`。`sources` 提供可展示的来源说明；`navigation.atlas_route_id` 用于从教材继续进入知识图谱。经典路线教材节点统一使用 `unassessed`，不伪造个性化进度。
+
+### 5.4 学习行为监控
+
+`/api/v1/learning-activity/summary` 只聚合当前登录用户，`days` 仅支持 `7`、`30`、`90`。响应包含：
+
+- `system_data`：按本次请求窗口即时计算的活跃天数、专注时长、每日任务完成率和资源点击率；
+- `compatibility_snapshot_30d`：仅供旧客户端迁移的固定 30 日持久化快照；
+- `trends`：按日趋势序列；
+- `counters`：学习任务、专注会话和行为事件的原始计数；
+- `recent_activities`：最近可追溯事件；
+- `collection`：每类指标对应的采集来源说明。
+
+汇总响应示例：
+
+```json
+{
+  "schema_version": "1.1",
+  "window_days": 30,
+  "calculated_at": "2026-07-22T09:30:00+08:00",
+  "system_data": {
+    "time_data": {
+      "login_frequency": {"value": 6, "unit": "active_days"},
+      "login_event_count": {"value": 9, "unit": "events"},
+      "distinct_login_days": {"value": 5, "unit": "days"},
+      "active_days": {"value": 6, "unit": "days"},
+      "focus_minutes": {"value": 35.0, "unit": "minutes"},
+      "focus_time_period": {"value": "20:00-20:59", "unit": "hour_slot"}
+    },
+    "task_completion_rate": {"available": true, "value": 0.75, "unit": "ratio"},
+    "resource_click_rate": {"value": 0.4, "unit": "ratio"},
+    "calculation_version": "learning-window-v3-auditable"
+  },
+  "trends": {
+    "days": 30,
+    "series": [
+      {"date": "2026-07-22", "login_days": 1, "focus_minutes": 35, "task_completion_rate": 1.0}
+    ]
+  },
+  "counters": {
+    "daily_task_items": {
+      "total": 4,
+      "completed": 3,
+      "incomplete": 1,
+      "pending": 1,
+      "by_status": {"completed": 3, "pending": 1}
+    },
+    "login": {"events": 9, "distinct_login_days": 5, "checkin_days": 2, "active_days": 6},
+    "focus_sessions": {"total": 2, "active_seconds": 2100, "by_status": {"completed": 2}},
+    "activities": {"total": 8, "by_type": {"question_attempt": 3}}
+  },
+  "recent_activities": [
+    {
+      "activity_id": 42,
+      "activity_type": "question_attempt",
+      "resource_type": "question",
+      "resource_id": "FORMAL_Q_1",
+      "completion_status": "completed",
+      "score": 100.0,
+      "duration_minutes": 0,
+      "created_at": "2026-07-22T01:28:00"
+    }
+  ],
+  "collection": {
+    "task_completion": "published daily_task_instances + daily_task_items",
+    "focus_time": "learning_focus_sessions heartbeat",
+    "resource_click": "dashboard recommendation view and click",
+    "graded_learning": "question, paper and case submission activities"
+  }
+}
+```
+
+`GET /api/v1/learning-activity/trends?days=30` 只返回 `schema_version`、`days`、`series` 和 `calculated_at`，适合图表按需刷新。`system_data` 中单项指标还可能包含 `window_start`、`window_end`；前端必须允许服务端增加字段。
+
+行为写入仍由兼容层承担：学习任务创建/完成、专注会话心跳/结束、题目与试卷提交、案例训练提交，以及首页推荐曝光和点击。首页只有真实展示推荐后才会产生曝光记录，用户点击后调用 `POST /api/dashboard/recommendations/click`；不能用页面访问代替资源点击。
+
+`task_completion_rate` 与 `daily_atomic_task_completion_rate` 使用同一正式口径：窗口内已发布今日任务的
+非取消原子项中，`status=completed` 的项数除以全部可统计项数。自由练习、自由试卷、案例和泛
+`LearningTask` 不进入分子或分母；没有已发布原子项时返回 `available=false`、`value=null`，
+前端必须显示“暂无计划数据”，不能显示 0%。
+
+登录相关字段必须按含义选择：
+
+- `login_event_count` / `counters.login.events`：登录事件次数，同日多次登录分别计数；
+- `distinct_login_days`：仅登录事件的去重日期数；
+- `checkin_days`：签到日期数；
+- `active_days`：登录日期与签到日期的并集；
+- `login_frequency`：为旧客户端保留，语义等同 `active_days`，不是登录次数。
+
+### 5.4.1 统一监测指标接口
+
+`GET /api/v1/learning-metrics/overview?days=30`
+
+`days` 只支持 `7`、`30`、`90`。这是后续前端读取综合统计数字的首选接口，覆盖登录、签到、
+专注、每日任务、题目、试卷、错题、掌握度和复习队列。每个 `metrics.<key>` 均包含：
+
+- `value`、`unit`、`scope`；
+- `available` 与 `unavailable_reason`；
+- 可直接用于“计算依据”弹层的 `formula` 和 `sources`。
+
+需要行为明细或趋势时仍读取 `/learning-activity/summary`；需要累计/窗口成果完整拆分时读取
+`/learning-statistics/overview`。统一接口不会替代这两个明细接口。
+
+### 5.5 学习成果统计
+
+`GET /api/v1/learning-statistics/overview?days=30`
+
+`days` 只支持 `7`、`30`、`90`。该接口同时返回 `lifetime` 与
+`current_window`，用于前端展示累计学习成果和近期成果。主要字段包括：
+
+- `questions_completed`：正式审核题项与已完成历史试卷题项兼容去重后的完成题目数；
+- `audited_question_items_completed`：统一批改链路中按 `attempt_item_id` 去重的正式审核题项数；
+- `paper_questions_completed`：已完成试卷中的题目数；
+- `unique_questions_completed`：按题目稳定 ID 去重后的已练习题目数；
+- `correct_answers`、`incorrect_answers`、`correctness_unavailable`；
+- `score_rate`：审核通过结果的总得分除以总可得分，空样本返回 `null`；
+- `knowledge_points_practiced`、`knowledge_points_assessed`、`knowledge_points_mastered`；
+- `paper_attempts_completed`、`case_sessions_completed`；
+- `mistakes_recorded`、`active_mistakes`；
+- `review_queue_total`、`reviews_due`、`review_tasks_completed`、`review_tasks_pending`；
+- `focus_minutes`、`knowledge_cards_saved`。
+
+`metric_definitions` 给出前端可展示的中文标签、计算公式和数据表，
+`counting_policy` 说明草稿、只打开题目、审核拒绝和重复批改版本是否计数。
+同一 `attempt_item_id` 即使产生多条审核记录也只计一次；不同用户的数据由服务端登录身份隔离。
+其中 `review_queue_total`、`reviews_due` 和 `review_tasks_pending` 统一投影自
+`canonical_review_memory`，与 `/api/v1/review-dashboard` 的 `queue`、`summary.due_count`
+及 `/api/v1/learning-insights` 的 `overview.due_review_count` 保持同一口径；前端不得再把
+旧复习状态表的计数与当前队列混合。响应中的 `review_projection_source` 可用于排查数据来源。
+
+这个接口回答“完成了多少正式成果”。行为趋势继续使用
+`learning-activity/summary`，学情判断继续使用 `learning-insights`，三者不能互相替代。
+
+### 5.6 每日签到
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/checkin?days=7` | 获取当前用户签到状态、连续天数和日历 |
+| `POST` | `/api/v1/checkin` | 当前用户当日签到，重复调用幂等 |
+
+`GET` 响应包含 `today`、`checked_in_today`、`streak`、`total_checkins` 和 `calendar_days`。`POST` 额外返回 `already_checked_in`、`message`、更新后的 `status` 以及刷新后的 `system_data`。签到只用于记录真实活跃日，不等同于完成学习任务，也不会直接提高任务完成率。首页 `GET /api/v1/dashboard/home` 同时返回同结构的 `checkin_status`，供首屏直接渲染。
+
+前端展示指标时应同时保留时间窗口和空样本状态。没有事件时显示“暂无数据”，不要把空样本渲染成 0 分能力结论。
+
+## 6. 学习工坊
+
+### 6.1 工坊入口
+
+当前“学习工坊”首页是教材学习入口，不再把训练模块总览作为首屏。前端并行读取：
+
+- `GET /api/v1/dashboard/home`：当前学习任务、教材与章节；
+- `GET /api/v1/learning-path`：当前长期规划的阶段；
+- `GET /api/v1/learning-path?parent_id={stage_node_id}`：阶段内计划教材；
+- `GET /api/knowledge/atlas/nodes?level=1&route=textbook_14_5`：完整教材库。
+
+计划教材始终排在前面；用户点击“展开所有教材”后才追加其余教材。进入教材后继续调用
+Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍作为训练能力目录保留，
+不应再覆盖教材工坊首屏。
+
+`GET /api/v1/workshop`
+
+```json
+{
+  "schema_version": "1.0",
+  "default_module": "question_training",
+  "modules": [
+    {
+      "key": "question_training",
+      "label": "题目训练",
+      "description": "完成客观题、案例简答、AI 病患模拟和错题变式训练。",
+      "enabled": true,
+      "recommended": false,
+      "capabilities": ["practice_grading", "case_training", "mistake_variation"],
+      "practice_modes": [
+        "objective_practice",
+        "case_short_answer",
+        "ai_patient_simulation",
+        "mistake_history"
+      ]
+    }
+  ],
+  "endpoints": {}
+}
+```
+
+正式模块键只有：`question_training`、`knowledge_cards`、`paper_workspace`。前端不要恢复已移除的“讲义生成”入口。
+
+### 6.2 题目收藏与学习笔记
+
+题目收藏和学习笔记是当前登录用户的私有数据。所有接口均从 `competition_session` 解析用户，前端不得传递或猜测 `user_id`。每个解题界面均可显示即时收藏图标；没有收藏簿时前端创建“默认收藏”，随后以相同资源 ID 幂等保存。批改后再次保存同题时可用标准答案和解析补全 `content`。学习笔记正文使用 Markdown，图片必须先上传到用户隔离的笔记图片接口，再把返回 URL 写入 Markdown。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/workshop/favorite-folders` | 当前用户收藏簿及收藏数 |
+| `POST` | `/api/v1/workshop/favorite-folders` | 新建收藏簿，正文 `{ "name": "方剂重点" }` |
+| `DELETE` | `/api/v1/workshop/favorite-folders/{folder_id}` | 删除收藏簿及簿内收藏 |
+| `GET` | `/api/v1/workshop/favorites?folder_id={folder_id}` | 查询当前用户收藏，可按收藏簿筛选 |
+| `POST` | `/api/v1/workshop/favorites` | 保存收藏；相同用户、收藏簿、资源类型和资源 ID 幂等更新 |
+| `DELETE` | `/api/v1/workshop/favorites/{favorite_id}` | 取消收藏 |
+| `GET` | `/api/v1/workshop/note-folders` | 当前用户笔记本及每本笔记数量 |
+| `POST` | `/api/v1/workshop/note-folders` | 新建笔记本，正文 `{ "name": "经方笔记" }` |
+| `GET` | `/api/v1/workshop/notes?note_type={type}&q={text}` | 查询当前用户笔记，可按类型和文本筛选 |
+| `POST` | `/api/v1/workshop/notes` | 新建学习笔记 |
+| `PUT` | `/api/v1/workshop/notes/{note_id}` | 修改笔记标题、正文或类型 |
+| `DELETE` | `/api/v1/workshop/notes/{note_id}` | 删除笔记 |
+| `POST` | `/api/v1/workshop/note-images` | 上传笔记图片；`multipart/form-data` 字段名 `file` |
+| `GET` | `/api/v1/workshop/note-images/{image_id}` | 读取当前登录用户自己的笔记图片 |
+
+笔记图片约束：
+
+- 只接受 `image/jpeg`、`image/png`、`image/webp`、`image/gif`，单文件不超过 5 MB；
+- 成功返回 `201`，字段包括 32 位 `image_id`、同源私有 `url` 和 `media_type`；
+- 图片 URL 仍要求 Cookie 登录，其他用户即使知道 `image_id` 也只能在自己的目录中查询，返回 `404`；
+- 不支持的文件类型、空文件和超限文件返回 `422`；
+- 前端 Markdown 图片语法使用 `![替代文本](/api/v1/workshop/note-images/{image_id})`，不得把本地对象 URL 写入持久化正文。
+
+收藏请求示例：
+
+```json
+{
+  "folder_id": "FAVF_01J...",
+  "resource_type": "question",
+  "resource_id": "QUESTION_001",
+  "title": "四君子汤的君药",
+  "source": "智能组卷",
+  "content": {
+    "question_content": "四君子汤的君药是？",
+    "options": [{"option_id": "A", "content": "人参"}],
+    "my_answer": "A",
+    "standard_answer": ["A"],
+    "explanation": "人参益气健脾，为君药。"
+  }
+}
+```
+
+笔记本列表响应示例：
+
+```json
+{
+  "items": [
+    {
+      "folder_id": "NOTEF_01J...",
+      "name": "经方笔记",
+      "note_count": 3,
+      "created_at": "2026-07-26T10:00:00+00:00",
+      "updated_at": "2026-07-26T10:30:00+00:00"
+    }
+  ],
+  "total": 1
+}
+```
+
+创建笔记时可在 `context.notebook` 写入笔记本名称。服务端会把笔记归入该用户的同名
+笔记本；同名笔记本不存在时自动创建。`folder_id` 仅用于笔记本列表的稳定渲染标识，
+当前笔记归属仍以 `context.notebook` 的名称表达；前端不得自行生成或跨用户复用标识。
+
+笔记请求示例：
+
+```json
+{
+  "title": "四君子汤配伍",
+  "content": "人参为君，白术为臣。",
+  "note_type": "题目笔记",
+  "source": "智能组卷",
+  "resource_type": "question",
+  "resource_id": "QUESTION_001",
+  "context": {
+    "question_content": "四君子汤的君药是？",
+    "standard_answer": ["A"]
+  }
+}
+```
+
+### 6.3 题目训练
+
+题目训练页固定提供四种模式：客观题、案例简答、AI 病患模拟、错题变式。前三者完成提交后都写入当前用户的学习行为；答错结果进入统一错题记录。AI 病患模拟沿用病例会话接口，不删除、不降级为普通简答题。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/workshop/practice/next?mode=objective&scope=public&topic=四君子汤` | 从正式题库获取一道未泄露答案的练习题 |
+| `POST` | `/api/v1/workshop/practice/grade` | 提交并批改已签发题目 |
+| `GET` | `/api/v1/workshop/practice/mistakes?status=all&offset=0&limit=50` | 当前用户全部错题记录 |
+| `GET` | `/api/v1/workshop/practice/mistakes/{mistake_id}` | 当前用户单条错题详情 |
+| `POST` | `/api/v1/workshop/practice/mistakes/{mistake_id}/answer-context` | 客观错题生成变式前补充当时的作答情况 |
+
+`mode`：
+
+- `objective`：`single_choice`、`multiple_choice`、`fill_blank`、`true_false`；
+- `case`：`short_answer`、`case_quiz`；
+- `all`：兼容调用，不限制题型。
+
+`scope`：`public` 为正式题库，`user` 为当前用户导入题库，`all` 为两者。`kp_id` 可选；不传时由后端从当前范围中选题。`next` 响应中的 `request_id` 必须原样带入 `grade`，且只可消费一次。前端不得提交或展示标准答案字段。
+
+取题成功响应：
+
+```json
+{
+  "available": true,
+  "kp_id": "050122",
+  "question": {
+    "question_id": "FORMAL_Q_1",
+    "question_type": "multiple_choice",
+    "stem": "四君子汤的组成包括哪些药物？",
+    "options": [
+      {"option_id": "A", "content": "人参"},
+      {"option_id": "B", "content": "白术"}
+    ],
+    "kp_ids": ["050122"],
+    "kp_names": ["四君子汤的组成与配伍"],
+    "difficulty": null,
+    "difficulty_source": null,
+    "request_id": "6f718df8-72cf-4af8-90ec-5739216c59dd",
+    "source_scope": "formal_question_bank"
+  }
+}
+```
+
+无匹配题时返回 `200`：
+
+```json
+{"available": false, "kp_id": "050122", "question": null}
+```
+
+正式题批改请求只信任服务端保存的题目、答案和知识点快照。虽然兼容模型仍接收下列字段，前端不得填写 `standard_answer`、`rubric` 或自行改写知识点：
+
+```json
+{
+  "question_id": "FORMAL_Q_1",
+  "question_type": "multiple_choice",
+  "stem": "四君子汤的组成包括哪些药物？",
+  "student_answer": "A, B",
+  "request_id": "6f718df8-72cf-4af8-90ec-5739216c59dd"
+}
+```
+
+批改响应：
+
+```json
+{
+  "grading": {
+    "question_id": "FORMAL_Q_1",
+    "question_type": "multiple_choice",
+    "score": 0.0,
+    "is_correct": false,
+    "analysis": "本题考查四君子汤的组成与配伍。多选题含错误选项，按规则计 0 分。错因暂不自动下结论，请到错题变式中补充当时的作答把握和判断过程。",
+    "question_explanation": "四君子汤由人参、白术、茯苓、炙甘草组成，配伍重在益气健脾。",
+    "explanation_source": "generated_on_first_attempt",
+    "error_type": "待结合作答情况分析"
+  },
+  "attempt_id": "ATTEMPT_xxx",
+  "attempt_item_id": "ITEM_xxx",
+  "writeback": {
+    "status": "applied",
+    "receipt_id": "RECEIPT_xxx",
+    "mistake_ids": ["18"],
+    "review_task_ids": []
+  }
+}
+```
+
+受控练习的响应不会返回 `standard_answer`。`request_id` 有效期为 30 分钟且只能成功消费一次：未签发或不属于当前用户返回 `400`，重复提交返回 `409`，过期返回 `410`，答案为空返回 `422`。该提交不是可任意重放的幂等请求：前端提交期间应禁用按钮；若响应在网络中断时丢失，先刷新错题/学习行为确认是否已写入，再决定重新取题，不能生成新的 `request_id` 冒充原题。
+
+`kp_names` 是前端唯一可展示的知识点标签，`kp_ids` 仅用于接口联动，不得直接渲染。服务端会在首次下发、刷新恢复未完成题目和缓存回退三条路径统一去除重复名称及误作名称返回的知识点 ID。当前正式题库没有可信难度元数据，因此 `difficulty` 与 `difficulty_source` 均可为 `null`，前端不得显示默认 D2。后续题库补充明确的来源难度时，接口仍兼容 1—5 数值和对应来源；只有字段可用时才参与匹配评分，缺失时按其他可用分项重新归一化。
+
+提交答案后，后端优先使用题库已有解析；没有解析时由 Expert 题目讲解模型依据服务端题干、
+参考答案、评分要点和知识点生成 `question_explanation`，再由独立审核模型核验。解析生成过程
+不读取学习者答案，因而“评分分析”和“题目解析”是两个独立字段。模型或审核不可用时会基于
+同一组可信题目字段生成保底解析，不影响交卷。
+
+首次生成的解析会在当前批改事务中写回可用的权威题目记录：
+`QuestionVersionRecord.analysis`、`QuestionBankItem.analysis` 或
+`LearningQuestion.explanation`；用户私有题写入 `UserQuestionItem.analysis`。再次遇到同一道题
+时直接读取缓存，不重复请求模型。`explanation_source` 可能为
+`generated_on_first_attempt`、`question_version_cache`、`question_bank_cache`、
+`learning_question_cache` 或 `user_question_cache`。前端应分别展示“本次批改”和“题目解析”。
+
+公共练习题直接来自知识库交付包的只读正式题库：`01_question_bank/formatted_questions.json`，当前基线为 93,111 道；语义候选可使用同一交付包对应的题库 FAISS。前端传入 `topic` 或 `kp_id` 后由后端检索并筛选题型，不能用业务数据库中已缓存的题数判断正式题库是否完整。业务数据库只按需保存本次签发题目的权威快照、一次性凭证、作答、评分和错题记录，不批量复制或改写公共题库。正式题响应使用 `source_scope=formal_question_bank`。
+
+客观题由后端按服务端标准答案确定性判分；多选题只要包含错误选项即为 `0` 分。主观题（`short_answer`、`case_quiz`）必须经过 Expert Agent 批改，并在返回的 `agent_trace` 中保留 `expert_agent` 记录。
+
+错题列表与“可生成变式的错题”不是同一集合。`mistakes` 返回所有归属当前用户的错题。客观错题还必须先完成作答情境调研，之后才可生成变式；主观题由 Expert Agent 直接归因，不要求该调研。不能变式的错题仍必须展示，并使用 `variation_reason` 说明原因。同一题再次答错会更新活动中的错题及最近作答证据，不因无法生成变式而丢弃记录。
+
+错题列表响应：
+
+```json
+{
+  "schema_version": "1.0",
+  "items": [
+    {
+      "mistake_id": 18,
+      "status": "active",
+      "question_id": "FORMAL_Q_1",
+      "question_version_id": "FORMAL_Q_1",
+      "attempt_item_id": "ITEM_xxx",
+      "stem": "四君子汤的组成包括哪些药物？",
+      "question_type": "multiple_choice",
+      "difficulty": null,
+      "kp_ids": ["050122"],
+      "error_type": "待结合作答情况分析",
+      "summary": "错因暂不自动下结论。",
+      "student_answer": "A, B",
+      "score": 50.0,
+      "max_score": 100.0,
+      "feedback": "答案不完整。",
+      "answer_context_required": true,
+      "answer_context_completed": false,
+      "answer_context": null,
+      "variation_available": false,
+      "variation_reason": "请先补充当时的作答把握和判断过程",
+      "created_at": "2026-07-22T01:28:00",
+      "updated_at": "2026-07-22T01:28:00"
+    }
+  ],
+  "total": 1,
+  "offset": 0,
+  "limit": 50,
+  "has_more": false
+}
+```
+
+详情接口返回 `{ "schema_version": "1.0", "mistake": MistakeItem }`。`status=all` 不过滤；其他值按错题状态原样过滤。`limit` 为 `1—100`。错题 ID 不属于当前用户时返回 `404`，不得跨用户回退查询。
+
+客观错题作答情境请求：
+
+```json
+{
+  "answer_state": "犹豫后作答",
+  "reason": "审题遗漏",
+  "notes": "当时只注意了症状，没有看清题目要求选全部正确项。"
+}
+```
+
+`answer_state` 可选：`确定后作答`、`犹豫后作答`、`排除后猜测`、`完全猜测`、`误读题意`；`reason` 可选：`概念混淆`、`审题遗漏`、`记忆不清`、`选项辨析困难`、`操作失误`、`其他`。保存后响应返回更新后的 `mistake`，前端以新的 `variation_available` 决定是否开放变式按钮。
+
+AI 病患模拟使用：
+
+- `GET /api/training/cases/types`
+- `POST /api/training/case-sessions`
+- `GET /api/training/case-sessions/{session_id}`
+- `POST /api/training/case-sessions/{session_id}/messages`
+- `POST /api/training/case-sessions/{session_id}/help`
+- `POST /api/training/case-sessions/{session_id}/submit`
+
+病例评分审核通过但答案不完整时，同样写入统一错题历史；病例错题当前只保留记录，不自动生成普通题变式。
+
+本分支同时提供统一模拟病患接口：
+
+`POST /api/v1/simulated-patient`
+
+请求体：
+
+```json
+{
+  "user_id": "兼容字段，可为空",
+  "session_id": "SP_SESSION_xxx",
+  "action": "start",
+  "user_input": "",
+  "case_id": null,
+  "practice_scope": "full",
+  "diagnosis": null,
+  "help_type": null,
+  "history_id": null,
+  "limit": 100
+}
+```
+
+`action` 支持 `start`、`dialogue`、`help`、`submit`、`stats`、`mistakes`、`collections`、`history`、`clear`、`reset`、`dialog_history` 和 `history_detail`。其中：
+
+- `start` 可选传 `case_id`，不传时由服务端选择病例；
+- `dialogue` 使用 `user_input` 继续问诊；
+- `help` 使用 `help_type=question|interpretation` 请求帮助；
+- `submit` 可传 `practice_scope` 和 `diagnosis` 提交诊断；
+- `dialog_history` 可使用 `limit=1—500`；
+- `history_detail` 使用 `history_id` 读取历史记录。
+
+响应统一包含：
+
+```json
+{
+  "session_id": "SP_SESSION_xxx",
+  "action": "start",
+  "success": true,
+  "data": {},
+  "error": null,
+  "is_complete": false,
+  "turn_count": 0,
+  "help_available": false
+}
+```
+
+用户身份规则：请求必须带当前登录会话。服务端优先使用 Cookie 对应的当前用户身份；请求体中的 `user_id` 仅保留兼容，不得用于切换用户。未登录且没有可用兼容身份时返回 `success=false`、`error=请先登录后继续`。前端新代码不得填写其他用户的 ID，也不得根据用户输入覆盖当前身份。
+
+统计与错题快捷接口仍保留路径参数以兼容旧页面：
+
+- `GET /api/v1/simulated-patient/stats/{user_id}`
+- `GET /api/v1/simulated-patient/mistakes/{user_id}`
+
+这两个接口实际查询登录态用户；路径中的 `user_id` 不参与用户切换。跨用户路径访问不会返回路径用户的数据。
+
+### 6.4 知识卡片
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/workshop/knowledge-cards?offset=0&limit=50` | 已学习知识卡列表 |
+| `GET` | `/api/v1/workshop/knowledge-cards/{card_id}` | 完整知识卡 |
+| `POST` | `/api/v1/workshop/knowledge-cards/resolve` | 按知识点聚合资源并保存 |
+
+聚合请求：
+
+```json
+{
+  "kp_id": "050122",
+  "question_limit": 10,
+  "source_execution_id": "THREAD_xxx"
+}
+```
+
+完整知识卡的 `resource_bundle`：
+
+```json
+{
+  "schema_version": "1.0",
+  "bundle_id": "BUNDLE_xxx",
+  "knowledge_point": {},
+  "explanation": {},
+  "textbook_slices": [],
+  "videos": [],
+  "questions": [],
+  "coverage": {
+    "knowledge_point": true,
+    "explanation": true,
+    "textbook_slices": true,
+    "videos": true,
+    "questions": true,
+    "fallback_used": ["video", "question"]
+  },
+  "provenance": []
+}
+```
+
+`fallback_used` 表示本地资源不足后使用过网络补充。前端应标注来源，不应隐藏或改写为本地教材证据。
+
+知识卡详情默认只渲染 `explanation`。教材切片、视频和题目分别作为可切换资源入口，用户点击后再展示；不要把四类资源同时铺在首屏。
+
+知识卡只保存已完成学习或明确生成的知识点。到期复习卡不能因“生成完成”直接进入复习队列；复习队列准入以用户完成配套题目为准。
+
+### 6.5 试卷
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/workshop/papers?offset=0&limit=50` | 试卷列表 |
+| `GET` | `/api/v1/workshop/papers/{paper_id}` | 试卷、题目、计时和答题状态 |
+| `PUT` | `/api/v1/workshop/papers/{paper_id}/answers` | 保存草稿答案 |
+| `POST` | `/api/v1/workshop/papers/{paper_id}/timer/pause` | 暂停服务端计时 |
+| `POST` | `/api/v1/workshop/papers/{paper_id}/timer/resume` | 从剩余时长继续计时 |
+| `POST` | `/api/v1/workshop/papers/{paper_id}/submit` | 幂等提交并评分 |
+
+保存答案：
+
+```json
+{
+  "answers": {
+    "ITEM_1": "A",
+    "ITEM_2": "人参、白术、茯苓、炙甘草"
+  }
+}
+```
+
+提交：
+
+```json
+{
+  "request_id": "paper-由前端生成的UUID"
+}
+```
+
+同一次提交重试必须复用 `request_id`，防止重复计分和重复写入学习行为。
+
+计时结构：
+
+```json
+{
+  "duration_minutes": 60,
+  "started_at": "2026-07-21T20:00:00Z",
+  "expires_at": "2026-07-21T21:00:00Z",
+  "remaining_seconds": 3540,
+  "expired": false,
+  "paused": false,
+  "paused_at": null
+}
+```
+
+题目类型：`single_choice`、`multiple_choice`、`fill_blank`、`short_answer`、`case_quiz`。答案提交后才形成学习行为，进而更新掌握度和复习队列。
+
+试卷读取响应顶层包含 `total_score`，各题包含 `max_score`、`kp_names`，并可选返回 `difficulty` 与 `difficulty_source`。未声明总分时保留新试卷明确给出的题目分值；对历史遗留的“每题错误写成 100 分”数据，读取时自动归一化为整卷 100 分。前端只能使用服务端的 `total_score`/`max_score`，不得用题数乘固定分值；难度为空时不得自行补默认值。
+
+交卷响应的 `items[]` 固定包含 `is_correct`、`score`、`max_score`、`submitted_answer`、
+`standard_answer`、`explanation`、`grading_analysis`、`mistake_ids`。其中 `explanation`
+使用与单题练习相同的“首次生成并持久化、后续直接复用”机制。答错题在发布时已建立
+`PaperItem -> QuestionVersion -> QuestionKPLink` 权威链，审核通过后会写入统一错题记录，
+并出现在错题变式来源中；不能只保存页面上的对错状态。
+
+`short_answer`、`case_quiz` 必须由 Expert Agent 进行语义评分，再由 Audit Agent 独立复核。批改响应增加：
+
+- `grading.grading_source=expert_agent_model`：真实模型批改；
+- `grading.dimension_scores`：各评分维度结果；
+- `audit.decision`、`audit.reason`：独立审核结论；
+- `writeback.status`：只有 `audit.decision=pass` 才允许更新掌握度、错题和复习队列。
+
+模型或审核不可用时，服务端可以返回 `grading_source=rule_fallback` 供页面临时展示，但 Audit 必须为 `needs_human_review`，并返回 `writeback.status=withheld_pending_audit` 或 `skipped`。前端不得把这种结果显示成“Expert 批改成功”。
+
+作答页固定按“单选题、多选题、填空题、简答题”分组展示；`case_quiz` 归入简答题区并保留自身题型标识。暂停与继续必须调用服务端计时接口，不能只停浏览器定时器。暂停后的剩余时长由服务端保存，刷新、离开页面或断线重连后仍保持暂停；继续后服务端基于保存的剩余秒数生成新的截止时间。交卷成功后倒计时立即停止并显示已交卷状态。
+
+### 6.6 资格考试真题套题
+
+资格考试真题套题是独立于智能体组卷的只读题包能力。套题模板从后端发布目录读取，作答记录按当前登录用户保存。当前支持的资格考试目录与套题由
+`GET /api/v1/qualification-papers/catalog` 返回，前端不得从本地文件复制考试名称、年份或套题列表。
+
+#### 6.5.1 获取套题目录
+
+`GET /api/v1/qualification-papers/catalog`
+
+可选查询参数：
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `exam_id` | string | 按资格考试 ID 筛选 |
+| `year` | string | 按年份筛选 |
+| `paper_type` | string | 按套题类型筛选，例如 `真题` |
+
+响应：
+
+```json
+{
+  "schema_version": "1.0",
+  "exams": [
+    {"exam_id": "bd4f84f55760", "name": "中医执业医师资格考试"}
+  ],
+  "papers": [
+    {
+      "template_id": "bd4f84f55760-877578c095",
+      "exam_id": "bd4f84f55760",
+      "year": "2024",
+      "paper_type": "真题",
+      "title": "2024年中医执业医师（一试）题目整理",
+      "question_count": 285
+    }
+  ]
+}
+```
+
+只返回 `published=true` 的模板。`template_id` 是创建作答记录时使用的唯一标识；目录为空是正常的空结果，不应由前端补造套题。
+
+#### 6.5.2 创建作答记录
+
+`POST /api/v1/qualification-papers/{template_id}/attempts`
+
+请求：
+
+```json
+{
+  "answer_mode": "practice",
+  "duration_minutes": null
+}
+```
+
+`answer_mode` 只能是：
+
+- `practice`：练习模式，可在作答过程中查看指定题目解析；`duration_minutes` 必须为 `null`；
+- `test`：测试模式，交卷前不返回标准答案和解析；`duration_minutes` 必须为 10—300 的整数分钟。
+
+成功响应会返回 `attempt_id`、套题信息、完整题目列表、当前位置、标记题号和 `status=not_started`：
+
+```json
+{
+  "attempt_id": "qualification-xxxxxxxx",
+  "template_id": "bd4f84f55760-877578c095",
+  "source": "qualification_paper",
+  "title": "2024年中医执业医师（一试）题目整理",
+  "answer_mode": "test",
+  "duration_minutes": 60,
+  "status": "not_started",
+  "current_position": 1,
+  "marked_positions": [],
+  "created_at": "2026-07-25T08:00:00+00:00",
+  "started_at": null,
+  "submitted_at": null,
+  "items": [
+    {
+      "position": 1,
+      "question_id": "q1",
+      "question_type": "single_choice",
+      "question_content": "题目内容",
+      "options": [{"option_id": "A", "content": "选项内容"}],
+      "media": [],
+      "answer": ""
+    }
+  ]
+}
+```
+
+实际 `items` 包含 `position`、`question_id`、`question_type`、`question_content`、`options`、`media` 和当前 `answer`。测试模式在交卷前不包含 `standard_answer`、`explanation`。
+
+#### 6.5.3 读取作答记录
+
+`GET /api/v1/qualification-paper-attempts/{attempt_id}`
+
+该接口按当前登录用户读取作答记录。首次读取 `status=not_started` 的记录时会自动开始作答，并写入 `started_at`，返回的状态为 `in_progress`。状态可能为 `in_progress`、`paused` 或 `submitted`。
+
+测试模式只有 `status=submitted` 后，题目才会包含 `standard_answer` 和 `explanation`；练习模式按题目读取时可通过解析接口按需获取。其他用户的 `attempt_id` 按不存在处理并返回 `404`。
+
+#### 6.5.4 保存作答进度
+
+`PUT /api/v1/qualification-paper-attempts/{attempt_id}/progress`
+
+请求：
+
+```json
+{
+  "answers": {
+    "q1": "A",
+    "q2": "A,B"
+  },
+  "current_position": 2,
+  "marked_positions": [1, 5],
+  "paused": false
+}
+```
+
+约束：
+
+- `answers` 的键必须是当前套题中的 `question_id`；未知题目会被忽略；
+- 多选题答案使用逗号分隔的选项 ID，例如 `A,B`；
+- `current_position` 从 1 开始，超出范围时服务端截断到合法题号；
+- `marked_positions` 只保留合法题号，并由服务端去重、升序排列；
+- `paused=true` 返回 `status=paused`，否则返回 `status=in_progress`；
+- 已交卷记录不能再次保存，返回 `422`。
+
+接口返回更新后的完整作答记录。离开页面、切换题目、标记题目或提交前都应先保存最新答案；不能只依赖浏览器内存状态。
+
+#### 6.5.5 交卷与幂等
+
+`POST /api/v1/qualification-paper-attempts/{attempt_id}/submit`
+
+请求：
+
+```json
+{"request_id": "submit-由前端生成的UUID"}
+```
+
+`request_id` 必填且长度为 1—120。一次提交发生网络重试时必须复用同一个 `request_id`；服务端会返回首次提交结果，不重复计分。响应：
+
+```json
+{
+  "attempt_id": "qualification-xxxxxxxx",
+  "status": "submitted",
+  "score": 2,
+  "max_score": 2,
+  "items": [
+    {
+      "position": 1,
+      "question_id": "q1",
+      "submitted_answer": "A",
+      "standard_answer": ["A"],
+      "explanation": "题目解析",
+      "is_correct": true,
+      "answer_status": "graded"
+    }
+  ]
+}
+```
+
+标准答案存在时，服务端按选项集合进行确定性判分；未配置标准答案的题目返回 `answer_status=pending`、`is_correct=null`，不计入 `score`，但仍保留在 `items` 中。测试模式交卷前不得向用户泄露答案。
+
+#### 6.5.6 查看题目解析
+
+`GET /api/v1/qualification-paper-attempts/{attempt_id}/items/{question_id}/explanation`
+
+响应：
+
+```json
+{
+  "question_id": "q1",
+  "answer": ["A"],
+  "explanation": "题目解析"
+}
+```
+
+练习模式可直接查看；测试模式必须在交卷后查看。题目不属于该作答记录、或测试模式尚未交卷时，服务端返回 `403`；作答记录不存在返回 `404`。
+
+资格套题接口的所有作答记录都按登录用户隔离。前端不得把 `user_id` 拼入请求路径，也不得使用目录中的原始题库文件绕过作答记录读取答案。
+
+### 6.7 训练任务兼容接口
+
+尚未完全迁移的训练入口使用：
+
+| 方法 | 浏览器路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/training/workspace/modules` | 训练模块能力 |
+| `POST` | `/api/training/workspace/tasks` | 创建训练任务 |
+| `GET` | `/api/training/workspace/tasks/{task_id}` | 获取训练结果 |
+| `GET` | `/api/training/workspace/mistake-variations/sources` | 可变式错题来源 |
+| `GET` | `/api/training/workspace/mistakes` | 全部错题记录（稳定接口的兼容路径） |
+| `GET` | `/api/training/workspace/mistakes/{mistake_id}` | 单条错题详情（兼容路径） |
+| `GET` | `/api/training/workspace/papers/{paper_id}` | 兼容试卷读取 |
+| `PUT` | `/api/training/workspace/papers/{paper_id}/answers` | 兼容答案保存 |
+| `POST` | `/api/training/workspace/papers/{paper_id}/timer/pause` | 兼容暂停计时 |
+| `POST` | `/api/training/workspace/papers/{paper_id}/timer/resume` | 兼容继续计时 |
+| `POST` | `/api/training/workspace/papers/{paper_id}/submit` | 兼容试卷提交 |
+
+兼容创建任务示例：
+
+```json
+{
+  "task_type": "paper_generation",
+  "title": "训练试卷",
+  "query": "围绕四君子汤组卷",
+  "inputs": {
+    "topic": "四君子汤",
+    "question_count": 25,
+    "types": ["fill_blank"],
+    "distribution": {"fill_blank": 25}
+  },
+  "options": {"need_audit": true}
+}
+```
+
+学习工坊的正式“生成试卷”按钮不再调用上述兼容 `paper_generation`，而是同步调用 `POST /api/v1/review-cards`，提交自然语言组卷要求及 `exam_constraints.question_count`、`question_types`、`question_type_distribution`。这样题库不足时仍可继续网络检索或由 Expert 补题，并强制经过 Audit；前端从 `ui_actions` 中查找 `destination=workshop.paper` 的 `params.paper_id`，再调用 `/api/v1/workshop/papers/{paper_id}` 打开计时答题页。系统当前没有可靠的题目难度评级数据，因此页面、组卷契约和推荐计算均不使用难度等级。
+
+发布门禁会逐题核验标准答案和解析。正式题库候选缺少任一项时不会直接入卷，系统改用其他完整候选或由
+Expert 按蓝图补题；题量、精确题型分布、题干去重、答案键、答案与解析任一硬约束未满足时，
+Audit 必须返回修订或拒绝，不能发布 `paper_id`。
+
+对话组卷成功时，`assistant_message` 只包含“组卷并通过审核”的提示，不包含试卷正文、答案或解析；试卷内容仅由答题页按 `paper_id` 读取。当前 UI 继续通过兼容任务接口使用的类型为 `knowledge_card_generation`、`mistake_variation`。普通客观题和案例简答直接使用 `/api/v1/workshop/practice/*`；AI 病患模拟使用独立病例会话接口，不通过此字段伪装。
+
+只有下列条件同时满足时才展示任务产物：
+
+```text
+status == "completed" && audit.decision == "pass"
+```
+
+审核拒绝时保留错误摘要，不得把未通过试卷当作正式试卷跳转。
+
+## 7. 知识库
+
+### 7.1 正式主接口
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/knowledge/routes` | 教材路线 |
+| `GET` | `/api/v1/knowledge/nodes` | 教材、章节或知识点节点 |
+| `GET` | `/api/v1/knowledge/points/{kp_id}` | 知识点完整详情 |
+| `GET` | `/api/v1/knowledge/images/{filename}` | 教材图片 |
+| `POST` | `/api/v1/knowledge/warm` | 预热正式知识后端 |
+| `POST` | `/api/v1/knowledge/questions/search` | 检索题目 |
+| `POST` | `/api/v1/knowledge/questions/import-markdown` | 导入 Markdown 题目 |
+| `POST` | `/api/v1/knowledge/questions/import-file` | 导入题目文件 |
+| `POST` | `/api/v1/knowledge/content/import-text` | 导入用户文本资料 |
+| `POST` | `/api/v1/knowledge/content/import-file` | 导入用户文件 |
+
+题目检索：
+
+```json
+{
+  "query": "四君子汤组成和配伍意义",
+  "kp_ids": ["050122"],
+  "limit": 10,
+  "scope": "all"
+}
+```
+
+`scope`：`all`、`public`、`user`。用户导入内容必须写入个人域，不能修改公共知识库。
+
+PDF、图片导入不再要求浏览器传 MinerU 密钥。`MINERU_TOKEN`（兼容
+`MINERU_API_KEY`）由服务端 `.env.local` 读取；客户端若发送 `x-mineru-token` 只作为旧版兼容，
+不得把密钥保存到前端。PDF 使用交接包 `knowledge_upload_pipeline/parse_question_pdf.py`
+解析为规范 Markdown，再进入知识点/题目抽取和 Embedding。
+
+当前知识资料工作台使用兼容上传接口：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `POST` | `/api/knowledge/upload?scope=personal` | `multipart/form-data`，字段名 `files`，普通用户仅可写个人库 |
+| `GET` | `/api/knowledge/files?scope=all` | 同时返回公共和当前用户个人资料 |
+| `GET` | `/api/knowledge/status?scope=personal` | 返回文档、切片、处理进度和 Embedding 状态 |
+| `POST` | `/api/knowledge/rebuild?scope=personal` | 重建当前范围索引 |
+
+PDF 上传成功响应中的 `pdf_processing[]` 包含
+`source_filename`、`stored_filename` 和 `parser=mineru_precision`。PDF 原件不会直接进入
+重复索引；检索库保存 MinerU 生成的 `.mineru.md`。Embedding 默认
+`EMBEDDING_MODE=enabled`：有本地 `EMBEDDING_MODEL_PATH` 时使用本地模型，否则使用主后端注入的
+远程 Embedding 配置。活动题库向量目录必须提供与 `index.faiss`、`metadata.jsonl` 配套的
+`index_manifest.json`，用于校验模型标识、维度和向量归一化契约；文档索引和个人索引仍按用户
+隔离保存。
+
+### 7.2 考试路线
+
+| 方法 | 路径 |
+|---|---|
+| `GET` | `/api/v1/knowledge/exams/tracks` |
+| `GET` | `/api/v1/knowledge/exams/tracks/{track_id}/stages` |
+| `GET` | `/api/v1/knowledge/exams/tracks/{track_id}/catalog` |
+| `GET` | `/api/v1/knowledge/exams/stages/{stage_id}/requirements` |
+| `GET` | `/api/v1/knowledge/exams/requirements/{node_id}/matches` |
+| `GET` | `/api/v1/knowledge/exams/catalog/{catalog_node_id}/knowledge-points` |
+| `GET` | `/api/v1/knowledge/exams/knowledge-points/{kp_id}/matches` |
+| `GET` | `/api/v1/knowledge/exams/review-queue` |
+| `GET` | `/api/v1/knowledge/exams/validation-summary` |
+| `POST` | `/api/v1/knowledge/exams/query` |
+| `POST` | `/api/v1/knowledge/exams/import-markdown` |
+| `POST` | `/api/v1/knowledge/exams/import-file` |
+
+官方路线读取接口不要求把用户 ID放进 URL；用户导入和查询仍由登录态隔离。
+
+### 7.3 知识图谱兼容接口
+
+正式前端知识图谱当前使用 `/api/knowledge/atlas/*`。知识星球页面固定呈现教材目录，不展示或切换不同学习路线；后端的经典路线接口仍供“学习路径”等其他页面使用：
+
+- `GET /api/knowledge/atlas/status`
+- `GET /api/knowledge/atlas/routes`
+- `GET /api/knowledge/atlas/nodes`
+- `GET /api/knowledge/atlas/section/{section_id}`
+- `GET /api/knowledge/atlas/detail/{kp_id}`
+- `GET /api/knowledge/atlas/images/{filename}`
+- `POST /api/knowledge/atlas/warm`
+- `GET /api/knowledge/atlas/resolve-context`
+- `GET /api/knowledge/atlas/questions/search`
+
+新页面优先使用 `/api/v1/knowledge/*`；兼容层仅保留现有知识图谱交互。
+
+知识图谱固定按“教材 → 章节 → 小节 → 知识点”四级下钻。目录和画布必须使用同一套顺序：教材、章节、小节按后端 `order_index` 升序，知识点按后端 `order` 升序。顺序视图采用单列纵向排布。前端筛选只移除节点，不得按标题或资源数量重新排序。
+
+当前知识星球节点请求示例：
+
+```text
+GET /api/knowledge/atlas/nodes?level=2&route=textbook_14_5&lv1=中医学基础
+GET /api/knowledge/atlas/nodes?level=3&route=textbook_14_5&lv1=中医学基础&chapter_id=CHAPTER_ID
+GET /api/knowledge/atlas/nodes?level=4&route=textbook_14_5&lv1=中医学基础&chapter_id=CHAPTER_ID&section_id=SECTION_ID
+```
+
+节点响应：
+
+```json
+{
+  "ok": true,
+  "level": 2,
+  "nodes": [
+    {
+      "id": "稳定章节标识",
+      "name": "第一章 绪论",
+      "count": 33,
+      "children_count": 4,
+      "order_index": 1,
+      "review_status": "resolved"
+    }
+  ],
+  "count": 36,
+  "stats": {"lv1": 83, "lv2": 1282, "lv3": 5186, "lv4": 73777},
+  "route": "textbook_14_5"
+}
+```
+
+前端进入教材时传 `lv1=name`；进入章节时传 `chapter_id=id`（也可同时传 `chapter=name`）；进入小节时传 `section_id=id`（兼容调用可传 `lv2=name`）；第四级节点的 `id` 才是详情接口所需的 `kp_id`。`resolve-context` 也会返回 `chapter`、`chapter_id`、`section_id`，前端应原样保留以恢复钻取位置。
+
+教材学习页选择小节后调用：
+
+```text
+GET /api/knowledge/atlas/section/{section_id}?recommendation_limit=1
+```
+
+响应中的 `section_videos`、`recommended_videos` 和 `knowledge_points[].timestamp_video`
+由同一个播放器消费；选择时间戳视频时替换当前播放器，不能同时创建多个播放器。
+
+用户教材识别审查使用登录态隔离的只读接口：
+
+```text
+GET /api/v1/knowledge/content/recognition-reports?offset=0&limit=20
+GET /api/v1/knowledge/content/recognition-reports/{report_id}
+```
+
+列表响应包含 `items`、`total`、`offset`、`limit` 和 `has_more`。结构识别置信度只衡量
+Markdown、切片和章节映射的确定性完整度，不代表医学内容已通过人工审定。
+
+## 8. 复习队列
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/review-queue?limit=50` | 推荐：按登录态读取当前用户复习队列 |
+| `GET` | `/api/v1/review-dashboard?limit=50&history_limit=100` | 当前用户复习队列、知识点掌握度、复习状态和掌握历史的聚合接口 |
+| `GET` | `/api/v1/learners/{learner_id}/review-queue?limit=50` | 当前用户复习队列 |
+| `POST` | `/api/v1/learners/{learner_id}/review-queue/dispatch` | 为下一个到期知识点生成复习资源 |
+| `POST` | `/api/v1/learning-automation/run` | 运行反馈闭环并幂等推送一个尚无资源的到期复习 |
+| `POST` | `/api/v1/review-tasks/{review_task_id}/attempts` | 提交复习结果 |
+
+调度请求：
+
+```json
+{
+  "available_minutes": 15
+}
+```
+
+页面登录后、消息中心刷新或定时刷新时，可调用统一自动化接口：
+
+```http
+POST /api/v1/learning-automation/run
+Content-Type: application/json
+
+{"days": 30, "available_minutes": 15, "push_due_review_resource": true}
+```
+
+响应中的 `automation.plan_review` 是本次规划复盘结果，
+`review_resource_push.status` 为 `pushed`、`empty` 或 `skipped`。每次最多推送一个
+等待资源的到期知识点；重复调用不会为已绑定任务重复生成资源。
+读取 `GET /api/v1/learning-insights` 时，后端也会异步触发同一幂等派发，因此学情报告
+打开后无需阻塞等待资源生成；前端随后刷新复习看板即可看到已经绑定的资源。
+`GET /api/v1/learning-automation/status` 返回最近一次异步派发的 `running`、`pushed`、
+`empty`、`failed` 或 `cancelled` 状态；失败时包含受控的 `error_type` 和 `message`，
+前端可显示重试入口，不能把后台失败渲染成“已推送”。
+到期队列已经提供知识点、掌握度和遗忘参数，因此该内部派发不会再次调用 Diagnosis
+重新推断整体现状；它只使用已确认队列状态完成知识检索、资源生成、审核与绑定，避免把
+即时推送阻塞在重复学情分析上。
+
+复习结果：
+
+```json
+{
+  "learner_id": "USER_xxx",
+  "outcome": "independent_correct",
+  "hint_used": false,
+  "answered_at": "2026-07-21T21:00:00Z",
+  "attempt_id": "ATTEMPT_xxx"
+}
+```
+
+`outcome`：`independent_correct`、`hinted_correct`、`wrong`、`skipped`。
+
+队列准入规则：完成知识点题目且批改结果被接受的瞬间才创建或更新记忆单元。只打开知识卡、只生成复习卡、浏览资源或未提交答案都不算完成；答对和答错都会入队，答错会更早复习。响应中的 `admission_policy=completed_graded_kp_question_v1` 和 `projection_source=canonical_review_memory` 可用于前端展示规则说明。
+
+`review-dashboard` 返回 `summary`、`queue`、`mastery`、`review_states`、`review_tasks` 和 `mastery_history`。知识点对用户显示时优先使用 `kp_name`，不得用内部 `kp_id` 替代名称。掌握度使用 0–100，保持率使用 0–1。
+
+## 8.1 Memory Agent 权威画像
+
+对话中用户明确表达昵称、用户群体、学习目标、学习基础或时间条件时，Memory Agent 会先提炼稳定事实并写入现有权威画像；规划、推荐、学习工坊和前端均通过 `GET /api/v1/learning-context` 的 `user_profile` 读取，不应各自从原始对话重复抽取。
+
+关键字段为 `display_name`、`learner_group`、`learning_goal`、`learning_background`、`time_constraints`。低置信度或未明确表达的字段不写入；画像锁定字段不会被自动覆盖。兼容 `/api/personalization/learner-profile` 主要用于设置和历史页面，不应覆盖 `learning-context.user_profile` 中的已确认事实。
+
+规划追问中的短回答同样进入上述权威画像。系统会把“中医执业医师考试”规范为
+`learning_goal=中医执业医师资格考试`，把“我是零基础，计算机专业，每周学习4天，每天2小时”拆分为
+`learning_background=零基础，计算机专业` 与
+`time_constraints=每周学习4天，每天2小时`。路线解析同时兼容结构化 `goals[]` 和直接
+`learning_goal` 字段，前端不需要为了兼容旧格式重复写两份目标。
+
+## 8.2 学习监控快照
+
+`GET /api/v1/learning-monitoring/snapshot?days=7`
+
+`days` 只支持 `7`、`30`、`90`。这是学情诊断的正式数据依赖，返回 `sample_counts`、可空的
+`metrics`、`evidence_status`、`freshness_status`、`calculated_at` 和 `reason_codes`。其中任务完成率
+来自已发布每日原子任务，题目正确率只来自已提交、已批改且审核通过的题项；不能再读取旧活动日志的
+“完成状态”代替这两个指标。零样本时 `evidence_status=insufficient`，准确率、完成率等不可观测指标
+返回 `null`，前端不得显示为 100% 或“状态稳定”。Diagnosis Agent 同样读取这份快照；证据不足时
+可以结合画像制定起步规划，但必须降低置信度，不能虚构薄弱点。
+
+## 9. 兼容业务接口索引
+
+以下接口仍由 `backend-handoff` 提供。浏览器统一加 `/api` 前缀；表中均为浏览器最终请求路径。
+
+| 页面/能力 | 主要接口 |
+|---|---|
+| 首页兼容数据 | `/api/dashboard/home` |
+| 学习画像与记忆 | `/api/personalization/overview`、`/learner-profile`、`/memories`、`/candidates`、`/learning-trends` |
+| 学习目标 | `/api/personalization/learning-target` |
+| 记忆管理 | `/api/personalization/memories`、`/candidates` 及其子资源 |
+| 学习设置 | `/api/personalization/learner-settings` |
+| 新用户问卷 | `/api/training/onboarding/status`、`/group-templates`、`/survey` |
+| 题目练习 | 首选 `/api/v1/workshop/practice/*`；兼容 `/api/training/practice/next`、`/practice/grade` |
+| 案例训练 | `/api/training/cases/types`、`/api/training/case-sessions` 及其消息、帮助、提交接口 |
+| 考试图谱 | `/api/exam-learning/tracks` 及其节点、知识点、掌握度接口 |
+| 题库工作区 | `/api/question-workspace/imports`、`/items`、`/questions`、`/index/rebuild` |
+| 文件上传 | `/api/upload` |
+| 反馈 | `/api/feedback`；管理员使用 `/api/feedback/admin*` |
+| 语音转写 | `/api/voice/transcribe`，当前阶段可能禁用 |
+
+兼容层是否可用：
+
+`GET /api/v1/platform/status`
+
+完整兼容 OpenAPI：
+
+`GET /api/v1/platform/openapi.json`
+
+若 `enabled=false` 或 `mounted=false`，前端应隐藏依赖兼容层的入口或展示明确空状态。
+
+## 10. 智能体返回的页面动作
+
+智能体完成知识卡或试卷任务后，可在结构化 `result.ui_actions` 中返回：
+
+```json
+{
+  "action_type": "navigate",
+  "label": "进入试卷作答",
+  "destination": "workshop.paper",
+  "params": {
+    "paper_id": "PAPER_xxx"
+  }
+}
+```
+
+合法目标：
+
+- `workshop.question_training`
+- `workshop.topic_training`
+- `workshop.knowledge_video`
+- `workshop.knowledge_card`
+- `workshop.paper`
+
+前端必须维护目标到内部页面的白名单映射，不直接把 `destination` 当 URL：
+
+```js
+const destinations = {
+  'workshop.question_training': { page: 'practice', view: 'workspace', taskType: 'question_training' },
+  'workshop.topic_training': { page: 'practice', view: 'workspace', taskType: 'topic_training' },
+  'workshop.knowledge_video': { page: 'practice', view: 'workspace', taskType: 'video_learning', resourceView: 'videos' },
+  'workshop.knowledge_card': { page: 'practice', view: 'workspace', taskType: 'knowledge_cards' },
+  'workshop.paper': { page: 'practice', view: 'workspace', taskType: 'paper_workspace' },
+};
+```
+
+## 11. 页面到接口映射
+
+| 正式页面 | 首选主接口 | 兼容接口 |
+|---|---|---|
+| 登录/注册 | `/api/v1/auth/*` | 不允许回退旧认证 |
+| 智能助教 | `/api/v1/conversations*`、`/api/v1/review-cards*` | 文件、反馈等暂用 `/api/*` |
+| 平台首页 | `/api/v1/dashboard/home` | 无数据时可读取 `/api/dashboard/home`，不得混合覆盖可信字段 |
+| 学习路径 | `/api/v1/learning-path*`、`/api/v1/learning-routes*` | 个性化路径和非个性化经典路线分开展示；教材可进入知识图谱 |
+| 学习工坊 | `/api/v1/workshop*` | 训练任务、案例训练暂用 `/api/training*` |
+| 知识仓库 | `/api/v1/knowledge*` | 现有三维图谱暂用 `/api/knowledge/atlas*` |
+| 个性数据 | `/api/v1/learning-context`、`/api/v1/learning-monitoring/snapshot`、`/api/v1/learning-activity/*` | 画像、记忆编辑暂用 `/api/personalization*` |
+| 学情洞察与资源匹配 | `/api/v1/learning-insights`、`/api/v1/resource-match-report` | 旧 `/api/agent/diagnosis/report` 仅作无数据降级 |
+| 通知与主动干预 | `/api/v1/notifications*`、`/api/v1/notification-preferences`、`/api/v1/interventions*` | 设置页也可通过 `/api/personalization/learner-settings` 一次保存通知偏好 |
+| 规划自动复盘 | `/api/v1/plan-reviews*` | 调整提案必须由用户确认，长期规划不得静默覆盖 |
+| 规划入口 | `/api/v1/planning/readiness`、`/api/v1/review-cards*` | readiness 只做预检，生成接口仍会强制校验 |
+| 复习队列 | `/api/v1/review-queue` | 带 learner_id 的旧接口仅作兼容 |
+
+## 12. 前端实现约束
+
+1. 只使用相对路径，并统一通过 `fetchWithAuth`。
+2. `401` 触发全局退出流程；其他错误由页面就地处理。
+3. 取消请求使用 `AbortController`，不要把用户主动取消显示成系统错误。
+4. SSE 断线后先查询 `run` 状态，禁止直接重复创建任务。
+5. `assistant_message` 渲染自然语言；结构化结果只用于执行、校验和页面卡片。
+6. `schema_version` 不兼容时显示升级提示，禁止猜字段。
+7. 列表按服务端 `total` 和 `has_more` 分页，不用当前数组长度推断总数。
+8. 试卷提交复用 `request_id`；按钮提交期间禁用，防止双击。
+9. 用户 ID 从 `/auth/me` 获取，只作展示和当前用户 URL 占位，不允许手工切换。
+10. OpenAPI 或 Pydantic 契约变化时，同一个提交中更新本文档和前端适配测试。
+
+## 13. 联调检查清单
+
+```bash
+# 服务存活
+curl http://127.0.0.1:7860/health
+
+# 主 OpenAPI
+curl http://127.0.0.1:7860/openapi.json
+
+# 前端检查
+cd frontend/llm
+npm run test:unit
+npm run lint
+npm run build
+```
+
+Live 验收不要从 WSL 命令行运行 Live pytest；应在已启动前端运行面板点击 Execute。
+
+## 14. 学情洞察、自动治理与通知
+
+### 14.1 学情洞察
+
+`GET /api/v1/learning-insights?days=30&run_automation=true`
+
+`days` 只允许 `7`、`30`、`90`。响应中的稳定字段包括：
+
+- `overview`：当前 T 阶段、诊断摘要、可信度、到期复习数量；
+- `dimensions`：知识掌握、复习保持、任务执行、练习正确、学习规律和资源使用；
+- `activity_trends.series`：按日登录、有效学习分钟和任务完成率；
+- `mastery_heatmap`、`weak_points`、`mistake_distribution`；
+- `data_quality`：样本量、数据来源及是否足以触发主动干预；
+- `automation`：本次幂等检查得到的干预与规划复盘结果。
+
+前端必须展示 `data_quality`。数据不足时不得把空值渲染成确定性诊断。
+`overview.review_projection_source` 在正式集成链路中固定为
+`canonical_review_memory`。该投影在运行自动提醒和规划复盘前注入，因此响应展示值与自动化判定值一致，
+前端不再进行二次合并或使用 `learner_kp_review_states` 覆盖。
+
+每个 `dimensions[]` 同时返回 `source_ids`、`formula`、`evidence_count` 和 `window_days`；
+顶层 `data_sources[]` 与 `methodology` 是正式审计契约。`overview.confidence` 和
+`data_quality.confidence` 表示数据覆盖度，不是统计置信区间。完整口径见
+[学情监测与资源匹配口径](learning-monitoring-methodology.md)。
+
+### 14.2 资源匹配报告
+
+`GET /api/v1/resource-match-report?limit=12`
+
+每个 `matches[]` 包含 `resource_id`、`resource_type`、`title`、`score`、
+`estimated_minutes`、`components`、`reasons` 和白名单 `action`。`components` 当前包含知识点覆盖、
+质量、资源形式和时间匹配；当前没有难度数据，不返回难度分项。前端用 `action.type` 做受控跳转，
+不自行拼接外部 URL。
+
+资源项还包含 `component_sources`、`quality_basis`、`estimated_minutes_basis` 和原始 `source`。
+缺少可选特征时服务端排除该特征并重新归一化权重；前端不得把 `null` 渲染为 0 分。
+没有薄弱知识点和今日任务知识点时，服务端返回空 `matches`，禁止前端补默认推荐。
+
+报告顶层返回 `recommendation_view_id`，每个匹配项返回 `feedback`。前端实际打开资源和确认完成时分别调用：
+
+```http
+POST /api/v1/resource-recommendations/events
+```
+
+```json
+{
+  "event_type": "impression",
+  "recommendation_view_id": "recommendation-view:...",
+  "resource_id": "CARD_1",
+  "resource_type": "knowledge_card",
+  "kp_ids": ["KP_1"]
+}
+```
+
+`event_type` 依次使用 `impression`、`click`、`complete`。GET 报告只生成待展示凭证，
+不计入曝光；推荐列表真正渲染后必须先上报一次 `impression`，之后才能上报点击或完成。
+后端会核验当前用户和该次展示，不接受未展示资源。
+`GET /api/v1/resource-effectiveness?days=7|30|90` 返回展示、点击、完成漏斗，
+以及有证据时的相关知识点后测正确率和掌握度变化。前端应按 `status` 显示“证据积累中”，
+不能把空学习增益显示为 0。
+
+正式前端入口为“个性数据 → 学情报告 → 资源匹配报告”。当前实现约定：
+
+- 首批推荐卡片进入 DOM 后，以第一项的服务端 `feedback` 凭证幂等上报一次 `impression`；
+- “打开资源”先上报 `click`，再按资源类型进入知识卡、视频或知识点训练，且保留“返回学情报告”；
+- “我已学完”是用户显式完成确认，成功后上报 `complete`、禁用重复按钮并刷新效果漏斗；
+- `feedback.event_endpoint` 是后端地址。通用请求器自身会添加 `/api` 前缀，因此若服务端返回
+  `/api/v1/...`，前端接口层会先归一化为 `/v1/...`，禁止形成 `/api/api/v1/...`；
+- 缺少反馈凭证时仍允许用户打开资源，但必须展示上报错误，不能伪造曝光、点击或完成记录。
+
+### 14.2.1 次日任务负载
+
+`GET /api/v1/task-load-policy`
+
+稳定字段为 `baseline_minutes`、`recommended_minutes`、`direction`、`allocation`、
+`evidence`、`evidence_availability`、`reasons` 和 `constraints`。24 小时刷新会自动采用
+`recommended_minutes`；对话生成今日任务也会收到同一系统策略。前端只负责解释和展示，
+不重新计算，也不能把用户可用的 24 小时全部填满。
+
+### 14.3 通知
+
+- `GET /api/v1/notifications?status=all|unread|read|dismissed&limit=50`
+- `PATCH /api/v1/notifications/{notification_id}`，请求体：`{"status":"read"}` 或 `dismissed`
+- `GET /api/v1/notification-preferences`
+- `PUT /api/v1/notification-preferences`
+
+偏好请求示例：
+
+```json
+{
+  "in_app_enabled": true,
+  "categories": {
+    "review_due": true,
+    "intervention": true,
+    "plan_review": true
+  },
+  "digest_frequency": "realtime",
+  "quiet_hours": {"start": "22:00", "end": "07:00"}
+}
+```
+
+通知使用服务端 `dedupe_key` 防重复，前端不得按标题自行合并。所有读写均以 Cookie 当前用户为边界。
+
+### 14.4 主动干预
+
+- `GET /api/v1/interventions?limit=30`
+- `POST /api/v1/interventions/{intervention_id}/feedback`
+
+反馈 `action` 可为 `accept`、`postpone`、`not_relevant`、`too_easy` 或 `too_hard`。
+系统仅在 `data_quality.is_sufficient_for_intervention=true` 时创建干预，并执行 24 小时冷却。
+
+### 14.5 规划自动复盘
+
+- `GET /api/v1/plan-reviews?limit=30`
+- `POST /api/v1/plan-reviews/run`
+- `POST /api/v1/plan-reviews/{review_id}/decision`，请求体为 `{"decision":"accept"}` 或 `reject`
+
+`outcome` 可能为 `on_track`、`daily_adjustment_suggested`、`short_replan_suggested` 或
+其他后续扩展值。每条记录还返回 `policy_conditions` 和 `data_quality`：
+`policy_conditions` 来自当前长期/短期计划的 `recovery_policy.trigger_conditions`；
+带“连续两周”等时间条件的自然语言标准只会标记为已对照，不会用单个聚合值冒充满足条件。
+需要调整时会生成 `category=plan_review` 的通知；`on_track` 不产生打扰性通知。
+`long_replan_requires_confirmation`。每日层调整只能处于现有短期计划范围；短期和长期提案需确认后才能写入正式计划。
+
+连续低完成率使用按自然日的正式每日原子任务完成率，不使用资源点击、自由练习或登录次数
+替代。最近连续 3 个“存在正式任务”的自然日均低于 50% 时，复盘返回
+`outcome=short_replan_suggested`、`low_completion_streak_days>=3`，并在
+`proposal.workflow_request` 和消息中心通知的 `action.workflow_request` 中提供可直接交给
+多智能体执行的 `plan_scope=short_term` 请求。该请求必须由用户确认后发送，自动化不得静默
+覆盖现有计划。
+
+### 14.6 LangGraph 重启恢复
+
+当主库启用时，中断检查点和恢复上下文写入数据库。页面刷新、连接中断或服务重启后仍使用原
+`thread_id` 调用 `/api/v1/review-cards/runs/{thread_id}/resume/stream`。恢复前可读取
+`GET /api/v1/review-cards/runs/{thread_id}`；若状态不是 `interrupted`，前端不得重复提交恢复答案。
+
+### 14.7 多时间尺度学情
+
+`GET /api/v1/learning-state/multiscale`
+
+- 鉴权：当前登录用户的 HttpOnly Cookie；未登录返回 `401`。
+- 查询：`window_days=7|30|90`，默认 `30`；`include_recent_events=true|false`，默认 `false`。
+- 隔离：只读取服务端登录身份，不接受客户端学习者 ID。
+- 版本：`schema_version` 当前为 `"1.0"`。
+
+完整响应示例：
+
+```json
+{
+  "schema_version": "1.0",
+  "state_id": "MSLS_01",
+  "learner_id": "USER_01",
+  "generated_at": "2026-07-24T08:00:00+00:00",
+  "macro": {
+    "qualification_goal": {"name": "中医执业医师资格考试"},
+    "approved_route": {"route_id": "ROUTE_01"},
+    "current_stage": {"phase_id": "P1", "name": "中医基础与文化语言"},
+    "stage_books": [{"name": "《中医基础理论》"}],
+    "prerequisites": [],
+    "acceptance_evidence": []
+  },
+  "meso": {
+    "current_short_term_plan": {},
+    "current_daily_tasks": [],
+    "planned_knowledge_points": [],
+    "weak_knowledge_points": [],
+    "due_review_knowledge_points": [],
+    "task_completion_rate": {
+      "available": true, "value": 0.75, "unit": "ratio_0_1",
+      "source_refs": ["learning_task:TASK_01"], "unavailable_reason": null
+    },
+    "learning_regularity": {
+      "available": false, "value": null, "unit": "ratio_0_1",
+      "source_refs": [], "unavailable_reason": "no_learning_activity_in_window"
+    }
+  },
+  "micro": {
+    "recent_attempts": [],
+    "question_accuracy": {
+      "available": false, "value": null, "unit": "ratio_0_1",
+      "source_refs": [], "unavailable_reason": "no_question_attempts"
+    },
+    "average_response_time": {
+      "available": false, "value": null, "unit": "seconds",
+      "source_refs": [], "unavailable_reason": "no_question_attempts"
+    },
+    "average_mastery": {
+      "available": false, "value": null, "unit": "ratio_0_1",
+      "source_refs": [], "unavailable_reason": "no_mastery_observations"
+    },
+    "mastery_by_knowledge_point": [],
+    "confirmed_mistake_reasons": [],
+    "recent_focus_minutes": {
+      "available": false, "value": null, "unit": "minutes",
+      "source_refs": [], "unavailable_reason": "no_focus_sessions"
+    },
+    "current_task_load": {
+      "available": false, "value": null, "unit": "minutes",
+      "source_refs": [], "unavailable_reason": "no_pending_tasks"
+    },
+    "recent_question_ids": [],
+    "recent_knowledge_point_ids": [],
+    "recent_resource_ids": []
+  },
+  "data_quality": {
+    "window_days": 30,
+    "window_start": "2026-06-24T08:00:00+00:00",
+    "window_end": "2026-07-24T08:00:00+00:00",
+    "coverage": 0.1429,
+    "sample_counts": {"tasks": 1, "question_attempts": 0, "mastery_points": 0, "review_states": 0, "mistakes": 0, "focus_sessions": 0},
+    "available_metrics": 1,
+    "unavailable_metrics": 6,
+    "allow_cautious_path_adjustment": false,
+    "limitations": ["缺失指标保持不可用，不参与正向评分。"]
+  },
+  "hard_constraints": [
+    {"key": "low_data_protection", "passed": false, "reason": "insufficient_data_for_high_risk_adjustment", "source_refs": []}
+  ],
+  "source_refs": [
+    {"source_id": "learning_task:TASK_01", "source_type": "database_row", "table": "learning_task", "record_id": "TASK_01", "window_days": 30}
+  ],
+  "state_digest": "aaaaaaaaaaaaaaaaaaaaaaaa"
+}
+```
+
+`MetricValue.value` 是 `number|null`。`ratio_0_1` 表示 `0..1` 比例，`seconds`、`minutes`
+分别为秒、分钟。`available=false` 时 `value` 必须为 `null` 且 `unavailable_reason` 非空；
+前端显示“不可用”和原因，不得转成 `0` 或 `0%`。默认响应会清空近期事件和原始 ID 数组。
+
+### 14.8 路径候选
+
+`GET /api/v1/learning-state/path-candidates`
+
+- 鉴权和用户隔离同上。
+- 查询：必填 `scope=long_term|short_term|daily_task`；`limit=1..30`，默认 `10`；
+  `include_blocked=true|false`，默认 `true`。
+- 版本：`schema_version` 当前为 `"1.0"`。
+
+完整响应示例：
+
+```json
+{
+  "schema_version": "1.0",
+  "learner_id": "USER_01",
+  "scope": "daily_task",
+  "generated_at": "2026-07-24T08:00:00+00:00",
+  "state_digest": "aaaaaaaaaaaaaaaaaaaaaaaa",
+  "prerequisite_evidence": {
+    "route_id": "textbook_tcm_physician",
+    "required_courses": ["中医诊断学"],
+    "satisfied_courses": ["中医诊断学"],
+    "unmet_courses": [],
+    "unknown_courses": [],
+    "source_refs": ["textbook_route:textbook_tcm_physician", "user_profile:1"]
+  },
+  "items": [
+    {
+      "candidate_id": "PATH_01",
+      "scope": "daily_task",
+      "stage": {"phase_id": "P1", "name": "基础阶段"},
+      "books": [{"book_id": "BOOK_01", "name": "《中医基础理论》"}],
+      "knowledge_points": [{"kp_id": "KP_01", "name": "阴阳学说"}],
+      "estimated_minutes": 20,
+      "eligible": true,
+      "blocked_reasons": [],
+      "hard_constraint_results": [
+        {"key": "time_budget", "passed": true, "reason": "time_budget_satisfied", "source_refs": ["profile:USER_01"]}
+      ],
+      "score": 0.8,
+      "score_components": {
+        "learning_gain": {
+          "available": true, "value": 0.7, "unit": "ratio_0_1",
+          "source_refs": ["knowledge_mastery_states:STATE_01"], "unavailable_reason": null
+        },
+        "difficulty_fit": {
+          "available": false, "value": null, "unit": "ratio_0_1",
+          "source_refs": [], "unavailable_reason": "resource_difficulty_missing"
+        }
+      },
+      "evidence_refs": ["knowledge_mastery_states:STATE_01"],
+      "source_refs": ["learning_task:TASK_01"],
+      "recommended_action": "continue_task"
+    }
+  ],
+  "counts": {"returned": 1, "eligible": 1, "blocked": 0, "due_reviews_considered": 0},
+  "scoring_policy": {
+    "hard_constraint_order": ["goal_route_alignment", "parent_plan_exists", "prerequisite_satisfied", "time_budget", "due_review_priority", "trusted_source", "low_data_protection", "approved_stage_mapping"],
+    "positive_weights": {"learning_gain": 0.3, "retention_benefit": 0.2, "knowledge_coverage": 0.2, "time_fit": 0.1, "difficulty_fit": 0.1, "autonomy_support": 0.1},
+    "repetition_weight": 0.1,
+    "uncertainty_weight": 0.15,
+    "missing_positive_components": "renormalize_available_only",
+    "risk_components": "independent_deductions"
+  }
+}
+```
+
+`estimated_minutes` 是整数分钟，`score` 和可用评分分项为 `0..1`。硬约束失败时，即使高分也归入
+“被阻断候选”。不可用分项显示“未纳入”，不显示 `0%`。展示使用 `stage.name`、
+`books[].name`、`knowledge_points[].name`，默认不显示裸 ID。前端不得从规划正文推导这些字段。
+
+`prerequisite_evidence` 是系统按正式教材路线的 route 级 `prerequisites[].before_stage_id`
+投影并结合持久化 `completed_courses` 生成的只读证据。前置规则对目标阶段及后续阶段累计生效；
+规划对话内部还会用本轮用户明确表达覆盖旧状态，例如“以前完成但现在忘了”在本轮按
+`unmet` 处理，但不会删除历史课程完成记录。调用方提交的布尔值、候选 ID 或自定义 JSON
+不能改变该硬约束。
+
+### 14.9 执行协调摘要
+
+`GET /api/v1/executions/{execution_id}/coordination`
+
+- 鉴权：必须登录；无查询参数。
+- 隔离：只有执行所属用户可读；不存在和其他用户的执行都返回 `404`。
+- 版本：`schema_version` 当前为 `"1.0"`。
+
+完整响应示例：
+
+```json
+{
+  "schema_version": "1.0",
+  "execution_id": "EXE_01",
+  "communication_summary": {
+    "total": 1,
+    "items": [
+      {
+        "schema_version": "1.0",
+        "handoff_id": "HANDOFF_01",
+        "step_id": "diagnosis",
+        "target_agent": "diagnosis_agent",
+        "fact_count": 2,
+        "evidence_count": 1,
+        "blocking_field_count": 0,
+        "omitted_categories": ["raw_conversation"],
+        "status": "consumed",
+        "created_at": "2026-07-24T08:00:00+00:00"
+      }
+    ]
+  },
+  "repair_summary": {
+    "total": 1,
+    "items": [
+      {
+        "repair_id": "REPAIR_01",
+        "trigger_step_id": "audit",
+        "issue_types": ["missing_evidence"],
+        "rerun_step_ids": ["diagnosis"],
+        "preserved_step_ids": ["planner", "memory"],
+        "round": 1,
+        "status": "completed",
+        "final_audit_decision": "pass",
+        "created_at": "2026-07-24T08:01:00+00:00"
+      }
+    ]
+  },
+  "final_audit_decision": "pass"
+}
+```
+
+`total` 是非负整数，`items` 空时为 `[]`；无最终结论时 `final_audit_decision=null`。接口不返回
+已确认事实正文、原始对话、提示词或完整证据正文。前端只映射
+`handoff_prepared`（按需通信）、`handoff_blocked`（通信信息不足）、`repair_planned`
+（已生成局部修复链）、`repair_step_started`（局部修复执行中）、`repair_completed`
+（局部修复完成）、`repair_stopped`（局部修复已停止），只展示摘要、步骤和状态。

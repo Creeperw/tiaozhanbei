@@ -1,0 +1,651 @@
+from __future__ import annotations
+
+import json
+import uuid
+from collections import Counter
+from datetime import date, datetime, timedelta, timezone
+
+from APP.backend.time_utils import BEIJING_TZ, as_beijing, utc_now
+from typing import Any
+
+
+UTC = timezone.utc
+
+from sqlalchemy import and_, or_
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from APP.backend.database import (
+    DailyTaskInstanceRecord,
+    DailyTaskItemRecord,
+    LearningActivityRecord,
+    LearningFocusSession,
+    LearningTask,
+    SystemData,
+)
+
+_ACTIVITY_WINDOW_DAYS = 30
+_CALCULATION_VERSION = "system-data-v4-auditable-window"
+_RECOMMENDATION_VIEW_ACTIVITY = "dashboard_recommendations_view"
+_RESOURCE_IMPRESSION_ACTIVITY = "resource_recommendation_impression"
+_RESOURCE_CLICK_ACTIVITY = "resource_click"
+_LEGACY_TASK_ACTIVITY_TYPES = {
+    "question_attempt",
+    "paper_submission",
+    "case_training",
+    "training_workspace_task",
+}
+
+
+def system_data_payload(snapshot: SystemData | None) -> dict[str, Any]:
+    if snapshot is None:
+        return {}
+    task_completion_rate = _json_object(snapshot.task_completion_rate_json)
+    return {
+        "time_data": _json_object(snapshot.time_data_json),
+        "task_completion_rate": task_completion_rate,
+        "daily_atomic_task_completion_rate": task_completion_rate,
+        "resource_click_rate": _json_object(snapshot.resource_click_rate_json),
+        "calculation_version": snapshot.calculation_version,
+        "calculated_at": _beijing_iso(snapshot.calculated_at),
+    }
+
+
+def record_login_activity(db: Session, *, user_id: int, now: datetime | None = None) -> SystemData:
+    timestamp = now or utc_now()
+    db.add(LearningActivityRecord(
+        user_id=user_id,
+        activity_type="login",
+        resource_type="session",
+        completion_status="completed",
+        created_at=timestamp,
+    ))
+    return rebuild_system_data(db, user_id=user_id, now=timestamp)
+
+
+def record_dashboard_recommendations_view(
+    db: Session,
+    *,
+    user_id: int,
+    recommendation_keys: tuple[str, ...],
+    now: datetime | None = None,
+) -> LearningActivityRecord:
+    if not recommendation_keys or any(not key.strip() for key in recommendation_keys):
+        raise ValueError("recommendation_keys are required")
+    timestamp = now or utc_now()
+    view = LearningActivityRecord(
+        user_id=user_id,
+        activity_type=_RECOMMENDATION_VIEW_ACTIVITY,
+        resource_id=f"recommendation-view:{uuid.uuid4()}",
+        resource_type="dashboard_recommendations",
+        completion_status="viewed",
+        payload_json=json.dumps({"recommendation_keys": list(dict.fromkeys(recommendation_keys))}, ensure_ascii=False),
+        created_at=timestamp,
+    )
+    db.add(view)
+    db.flush()
+    return view
+
+
+def record_dashboard_recommendation_click(
+    db: Session,
+    *,
+    user_id: int,
+    recommendation_key: str,
+    recommendation_view_id: str,
+    now: datetime | None = None,
+) -> SystemData:
+    if not recommendation_key.strip() or not recommendation_view_id.strip():
+        raise ValueError("recommendation click requires displayed recommendation")
+    view = db.query(LearningActivityRecord).filter_by(
+        user_id=user_id,
+        activity_type=_RECOMMENDATION_VIEW_ACTIVITY,
+        resource_id=recommendation_view_id,
+        completion_status="viewed",
+    ).one_or_none()
+    if view is None or recommendation_key not in _json_list(view.payload_json, "recommendation_keys"):
+        raise ValueError("recommendation was not displayed to current user")
+
+    timestamp = now or utc_now()
+    db.add(LearningActivityRecord(
+        user_id=user_id,
+        activity_type=_RESOURCE_CLICK_ACTIVITY,
+        resource_id=recommendation_key,
+        resource_type="dashboard_recommendation",
+        completion_status="clicked",
+        payload_json=json.dumps({"recommendation_view_id": recommendation_view_id}, ensure_ascii=False),
+        created_at=timestamp,
+    ))
+    return rebuild_system_data(db, user_id=user_id, now=timestamp)
+
+
+def rebuild_system_data(
+    db: Session,
+    *,
+    user_id: int,
+    now: datetime | None = None,
+) -> SystemData:
+    db.flush()
+    calculated_at = now or utc_now()
+    window_start = calculated_at - timedelta(days=_ACTIVITY_WINDOW_DAYS)
+    snapshot = db.query(SystemData).filter_by(user_id=user_id).with_for_update().one_or_none()
+    if snapshot is None:
+        try:
+            with db.begin_nested():
+                snapshot = SystemData(user_id=user_id)
+                db.add(snapshot)
+                db.flush()
+        except IntegrityError:
+            snapshot = db.query(SystemData).filter_by(user_id=user_id).with_for_update().one()
+
+    activities = db.query(LearningActivityRecord).filter(
+        LearningActivityRecord.user_id == user_id,
+        LearningActivityRecord.created_at >= window_start,
+        LearningActivityRecord.created_at <= calculated_at,
+    ).all()
+    _migrate_legacy_task_activities(db, user_id=user_id, activities=activities)
+    db.flush()
+    daily_items = _published_daily_task_items(
+        db, user_id=user_id, window_start=window_start, window_end=calculated_at
+    )
+    focus_sessions = db.query(LearningFocusSession).filter(
+        LearningFocusSession.user_id == user_id,
+        LearningFocusSession.started_at <= calculated_at,
+        or_(
+            LearningFocusSession.ended_at.is_(None),
+            LearningFocusSession.ended_at >= window_start,
+        ),
+    ).all()
+
+    snapshot.time_data_json = json.dumps(
+        _time_data(activities, focus_sessions, window_start, calculated_at),
+        ensure_ascii=False,
+    )
+    snapshot.task_completion_rate_json = json.dumps(
+        _daily_atomic_task_completion_rate(daily_items, window_start, calculated_at),
+        ensure_ascii=False,
+    )
+    snapshot.resource_click_rate_json = json.dumps(_resource_click_rate(activities, window_start, calculated_at), ensure_ascii=False)
+    snapshot.data_source = "daily_task_instances,daily_task_items,learning_focus_sessions,learning_activity_records"
+    snapshot.calculation_version = _CALCULATION_VERSION
+    snapshot.calculated_at = calculated_at
+    db.flush()
+    return snapshot
+
+
+def build_learning_window_metrics(
+    db: Session,
+    *,
+    user_id: int,
+    days: int,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Calculate auditable behavior metrics over the caller's exact rolling window.
+
+    ``system_data`` remains the persisted 30-day compatibility snapshot.  Reports that
+    advertise a 7/30/90-day window must not reuse that fixed snapshot, so they call this
+    function instead.
+    """
+
+    if days not in {7, 30, 90}:
+        raise ValueError("days must be one of: 7, 30, 90")
+    calculated_at = now or utc_now()
+    window_start = calculated_at - timedelta(days=days)
+    activities = db.query(LearningActivityRecord).filter(
+        LearningActivityRecord.user_id == user_id,
+        LearningActivityRecord.created_at >= window_start,
+        LearningActivityRecord.created_at <= calculated_at,
+    ).all()
+    daily_items = _published_daily_task_items(
+        db, user_id=user_id, window_start=window_start, window_end=calculated_at
+    )
+    focus_sessions = db.query(LearningFocusSession).filter(
+        LearningFocusSession.user_id == user_id,
+        LearningFocusSession.started_at <= calculated_at,
+        or_(
+            LearningFocusSession.ended_at.is_(None),
+            LearningFocusSession.ended_at >= window_start,
+        ),
+    ).all()
+    recommendation_views = [
+        row for row in activities
+        if row.activity_type in {
+            _RECOMMENDATION_VIEW_ACTIVITY,
+            _RESOURCE_IMPRESSION_ACTIVITY,
+        }
+    ]
+    recommendation_clicks = [
+        row for row in activities if row.activity_type == _RESOURCE_CLICK_ACTIVITY
+    ]
+    effective_focus_sessions = [
+        row
+        for row in focus_sessions
+        if row.status in {"active", "completed"} and (row.active_seconds or 0) > 0
+    ]
+    focus_seconds = focus_seconds_in_window(
+        focus_sessions,
+        window_start=window_start,
+        window_end=calculated_at,
+    )
+    login_events = [
+        row for row in activities if row.activity_type == "login"
+    ]
+    checkin_events = [
+        row for row in activities if row.activity_type == "daily_checkin"
+    ]
+    login_dates = {
+        as_beijing(row.created_at).date() for row in login_events
+    }
+    checkin_dates = {
+        as_beijing(row.created_at).date() for row in checkin_events
+    }
+    daily_atomic_task_completion_rate = _daily_atomic_task_completion_rate(
+        daily_items, window_start, calculated_at
+    )
+    daily_item_statuses = Counter(
+        str(row.status or "unknown") for row in daily_items
+    )
+    return {
+        "window": {
+            "days": days,
+            "start_at": _beijing_iso(window_start),
+            "end_at": _beijing_iso(calculated_at),
+            "timezone": "Asia/Shanghai",
+        },
+        "time_data": _time_data(activities, focus_sessions, window_start, calculated_at),
+        "task_completion_rate": daily_atomic_task_completion_rate,
+        "daily_atomic_task_completion_rate": daily_atomic_task_completion_rate,
+        "resource_click_rate": _resource_click_rate(activities, window_start, calculated_at),
+        "counts": {
+            "activity_records": len(activities),
+            "tasks": len(daily_items),
+            "completed_tasks": sum(row.status == "completed" for row in daily_items),
+            "incomplete_tasks": sum(
+                row.status != "completed" for row in daily_items
+            ),
+            "pending_tasks": int(daily_item_statuses.get("pending", 0)),
+            "tasks_by_status": dict(sorted(daily_item_statuses.items())),
+            "focus_sessions": len(effective_focus_sessions),
+            "focus_seconds": focus_seconds,
+            "login_events": len(login_events),
+            "distinct_login_days": len(login_dates),
+            "checkin_days": len(checkin_dates),
+            "active_days": len(login_dates | checkin_dates),
+            "recommendation_views": len(recommendation_views),
+            "recommendation_clicks": len(recommendation_clicks),
+        },
+        "data_source": "daily_task_instances,daily_task_items,learning_focus_sessions,learning_activity_records",
+        "calculation_version": "learning-window-v3-auditable",
+        "calculated_at": _beijing_iso(calculated_at),
+    }
+
+
+def build_learning_trends(
+    db: Session,
+    *,
+    user_id: int,
+    days: int,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    if days not in {7, 30, 90}:
+        raise ValueError("days must be one of: 7, 30, 90")
+
+    calculated_at = now or utc_now()
+    today = as_beijing(calculated_at).date()
+    start_date = today - timedelta(days=days - 1)
+    window_start = (datetime.combine(start_date, datetime.min.time())
+                    .replace(tzinfo=BEIJING_TZ)
+                    .astimezone(UTC)
+                    .replace(tzinfo=None))
+    activities = db.query(LearningActivityRecord).filter(
+        LearningActivityRecord.user_id == user_id,
+        LearningActivityRecord.created_at >= window_start,
+        LearningActivityRecord.created_at <= calculated_at,
+    ).all()
+    daily_items = _published_daily_task_items(
+        db, user_id=user_id, window_start=window_start, window_end=calculated_at
+    )
+    focus_sessions = db.query(LearningFocusSession).filter(
+        LearningFocusSession.user_id == user_id,
+        LearningFocusSession.started_at <= calculated_at,
+        or_(
+            LearningFocusSession.ended_at.is_(None),
+            LearningFocusSession.ended_at >= window_start,
+        ),
+    ).all()
+
+    active_dates = {
+        as_beijing(activity.created_at).date()
+        for activity in activities
+        if activity.activity_type in {"login", "daily_checkin"}
+    }
+    login_dates = {
+        as_beijing(activity.created_at).date()
+        for activity in activities
+        if activity.activity_type == "login"
+    }
+    login_events_by_date = Counter(
+        as_beijing(activity.created_at).date()
+        for activity in activities
+        if activity.activity_type == "login"
+    )
+    focus_seconds_by_date = _focus_seconds_by_beijing_date(
+        focus_sessions,
+        window_start=window_start,
+        window_end=calculated_at,
+    )
+    daily_items_by_date: dict[date, list[DailyTaskItemRecord]] = {}
+    for item in daily_items:
+        item_date = as_beijing(item.created_at).date()
+        daily_items_by_date.setdefault(item_date, []).append(item)
+
+    series = []
+    for offset in range(days):
+        day = start_date + timedelta(days=offset)
+        daily_tasks = daily_items_by_date.get(day, [])
+        completed = sum(item.status == "completed" for item in daily_tasks)
+        series.append({
+            "date": day.isoformat(),
+            # Compatibility field: historically this represented an active day
+            # observed from either login or check-in, not a raw login event.
+            "login_days": int(day in active_dates),
+            "active_days": int(day in active_dates),
+            "distinct_login_days": int(day in login_dates),
+            "login_events": int(login_events_by_date.get(day, 0)),
+            "focus_minutes": round(focus_seconds_by_date.get(day, 0) / 60),
+            "task_completion_rate": completed / len(daily_tasks) if daily_tasks else None,
+            "daily_atomic_task_completion_rate": completed / len(daily_tasks) if daily_tasks else None,
+        })
+    return {
+        "days": days,
+        "series": series,
+        "calculated_at": _beijing_iso(calculated_at),
+    }
+
+
+def _focus_seconds_by_beijing_date(
+    focus_sessions: list[LearningFocusSession],
+    *,
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[date, int]:
+    seconds_by_date: dict[date, int] = {}
+    for focus in focus_sessions:
+        if focus.status not in {"active", "completed"} or focus.active_seconds <= 0:
+            continue
+        observed_end = min(focus.ended_at or focus.updated_at or window_end, window_end)
+        session_start = max(focus.started_at, window_start)
+        if session_start >= observed_end:
+            continue
+        observed_seconds = max(0, int((observed_end - focus.started_at).total_seconds()))
+        if observed_seconds == 0:
+            continue
+        elapsed_processed = max(0, int((session_start - focus.started_at).total_seconds()))
+        cursor = session_start
+        while cursor < observed_end:
+            beijing_cursor = as_beijing(cursor)
+            next_midnight = datetime.combine(
+                beijing_cursor.date() + timedelta(days=1),
+                datetime.min.time(),
+                tzinfo=BEIJING_TZ,
+            ).astimezone(UTC).replace(tzinfo=None)
+            segment_end = min(observed_end, next_midnight)
+            segment_seconds = int((segment_end - cursor).total_seconds())
+            allocated_seconds = (
+                focus.active_seconds
+                if segment_end == observed_end
+                else round(focus.active_seconds * (elapsed_processed + segment_seconds) / observed_seconds)
+            ) - round(focus.active_seconds * elapsed_processed / observed_seconds)
+            focus_date = beijing_cursor.date()
+            seconds_by_date[focus_date] = seconds_by_date.get(focus_date, 0) + allocated_seconds
+            elapsed_processed += segment_seconds
+            cursor = segment_end
+    return seconds_by_date
+
+
+def focus_seconds_in_window(
+    focus_sessions: list[LearningFocusSession],
+    *,
+    window_start: datetime,
+    window_end: datetime,
+) -> int:
+    """Return focus seconds attributable to the requested window.
+
+    A focus row stores accumulated effective seconds rather than heartbeat
+    segments.  For a session crossing a window boundary, the persisted effective
+    seconds are therefore allocated proportionally across its observed duration.
+    Sessions fully inside the window retain their exact accumulated seconds.
+    """
+
+    return sum(
+        _focus_seconds_by_beijing_date(
+            focus_sessions,
+            window_start=window_start,
+            window_end=window_end,
+        ).values()
+    )
+
+
+def _migrate_legacy_task_activities(
+    db: Session,
+    *,
+    user_id: int,
+    activities: list[LearningActivityRecord],
+) -> None:
+    existing_task_ids = {
+        task_id for task_id, in db.query(LearningTask.task_id).filter(
+            LearningTask.user_id == user_id,
+        ).all()
+    }
+    for activity in activities:
+        if activity.activity_type not in _LEGACY_TASK_ACTIVITY_TYPES:
+            continue
+        source_task_id = _json_value(activity.payload_json, "task_id") or activity.resource_id
+        if source_task_id and source_task_id in existing_task_ids:
+            continue
+        task_id = f"LEGACY_ACTIVITY_{activity.id}"
+        if task_id in existing_task_ids:
+            continue
+        task_type = _json_value(activity.payload_json, "task_type") or activity.activity_type
+        status = (
+            activity.completion_status
+            if activity.activity_type == "training_workspace_task"
+            else "completed"
+        )
+        resource_ids = [activity.resource_id] if activity.resource_id else []
+        task = LearningTask(
+            task_id=task_id,
+            user_id=user_id,
+            task_type=task_type,
+            resource_ids_json=json.dumps(resource_ids, ensure_ascii=False),
+            task_content=activity.resource_type or activity.activity_type,
+            status=status,
+            created_at=activity.created_at,
+            completed_at=activity.created_at if status == "completed" else None,
+        )
+        try:
+            # Several dashboard panels rebuild the same snapshot concurrently.
+            # Their initial SELECT can legitimately race, so isolate each
+            # compatibility insert in a savepoint and let the unique task_id be
+            # the final idempotency guard.
+            with db.begin_nested():
+                db.add(task)
+                db.flush()
+        except IntegrityError:
+            pass
+        existing_task_ids.add(task_id)
+
+
+def _time_data(
+    activities: list[LearningActivityRecord],
+    focus_sessions: list[LearningFocusSession],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, Any]:
+    active_dates = {
+        as_beijing(activity.created_at).date().isoformat()
+        for activity in activities
+        if activity.activity_type in {"login", "daily_checkin"}
+    }
+    login_events = [
+        activity for activity in activities if activity.activity_type == "login"
+    ]
+    login_dates = {
+        as_beijing(activity.created_at).date().isoformat()
+        for activity in login_events
+    }
+    checkin_dates = {
+        as_beijing(activity.created_at).date().isoformat()
+        for activity in activities
+        if activity.activity_type == "daily_checkin"
+    }
+    focus_slot = ""
+    effective_focus_sessions = [
+        focus for focus in focus_sessions
+        if focus.status in {"active", "completed"} and focus.active_seconds > 0
+    ]
+    if effective_focus_sessions:
+        seconds_by_hour: dict[int, int] = {}
+        for focus in effective_focus_sessions:
+            hour = as_beijing(focus.started_at).hour
+            seconds_by_hour[hour] = seconds_by_hour.get(hour, 0) + focus.active_seconds
+        focus_slot = _hour_slot(max(seconds_by_hour, key=lambda hour: (seconds_by_hour[hour], -hour)))
+    focus_seconds = focus_seconds_in_window(
+        focus_sessions,
+        window_start=window_start,
+        window_end=window_end,
+    )
+    return {
+        # Kept for clients that already consume the legacy name. Its historical
+        # meaning is active days (login or check-in), not raw login count.
+        "login_frequency": _metric(len(active_dates), "active_days", window_start, window_end),
+        "active_days": _metric(len(active_dates), "days", window_start, window_end),
+        "login_event_count": _metric(len(login_events), "events", window_start, window_end),
+        "distinct_login_days": _metric(len(login_dates), "days", window_start, window_end),
+        "checkin_days": _metric(len(checkin_dates), "days", window_start, window_end),
+        "focus_seconds": _metric(focus_seconds, "seconds", window_start, window_end),
+        "focus_minutes": _metric(round(focus_seconds / 60, 2), "minutes", window_start, window_end),
+        "focus_time_period": _metric(focus_slot, "hour_slot", window_start, window_end),
+    }
+
+
+def _published_daily_task_items(
+    db: Session,
+    *,
+    user_id: int,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[DailyTaskItemRecord]:
+    """Return only atomic items belonging to a published, non-cancelled daily task.
+
+    The handoff schema records publication by materializing a daily task instance;
+    its active or completed states remain published.  Orphaned item rows and any
+    cancelled instance/item are deliberately excluded.
+    """
+
+    return db.query(DailyTaskItemRecord).join(
+        DailyTaskInstanceRecord,
+        and_(
+            DailyTaskInstanceRecord.host_task_id == DailyTaskItemRecord.host_task_id,
+            DailyTaskInstanceRecord.host_task_version == DailyTaskItemRecord.host_task_version,
+            DailyTaskInstanceRecord.user_id == DailyTaskItemRecord.user_id,
+        ),
+    ).filter(
+        DailyTaskItemRecord.user_id == user_id,
+        DailyTaskItemRecord.created_at >= window_start,
+        DailyTaskItemRecord.created_at <= window_end,
+        DailyTaskInstanceRecord.status.in_(("active", "completed")),
+        DailyTaskItemRecord.status != "cancelled",
+    ).all()
+
+
+def _daily_atomic_task_completion_rate(
+    daily_items: list[DailyTaskItemRecord],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, Any]:
+    if not daily_items:
+        return {
+            "available": False,
+            "value": None,
+            "unit": "ratio",
+            "unavailable_reason": "no_planned_daily_task_items",
+        }
+    completed = sum(item.status == "completed" for item in daily_items)
+    return {
+        "available": True,
+        **_metric(completed / len(daily_items), "ratio", window_start, window_end),
+    }
+
+
+def _resource_click_rate(
+    activities: list[LearningActivityRecord],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, Any]:
+    views = [activity for activity in activities if activity.activity_type == _RECOMMENDATION_VIEW_ACTIVITY]
+    displayed_resources = {
+        (view.resource_id, recommendation_key)
+        for view in views
+        for recommendation_key in _json_list(view.payload_json, "recommendation_keys")
+    }
+    displayed_resources.update(
+        (
+            _json_value(activity.payload_json, "recommendation_view_id"),
+            activity.resource_id,
+        )
+        for activity in activities
+        if activity.activity_type == _RESOURCE_IMPRESSION_ACTIVITY
+    )
+    clicked_resources = {
+        (_json_value(activity.payload_json, "recommendation_view_id"), activity.resource_id)
+        for activity in activities
+        if activity.activity_type == _RESOURCE_CLICK_ACTIVITY
+    }
+    clicked_count = len(displayed_resources & clicked_resources)
+    rate = clicked_count / len(displayed_resources) if displayed_resources else 0.0
+    return _metric(rate, "ratio", window_start, window_end)
+
+
+def _metric(value: Any, unit: str, window_start: datetime, window_end: datetime) -> dict[str, Any]:
+    return {
+        "value": value,
+        "unit": unit,
+        "window_start": _beijing_iso(window_start),
+        "window_end": _beijing_iso(window_end),
+    }
+
+
+def _beijing_iso(value: datetime | None) -> str | None:
+    return as_beijing(value).isoformat() if value else None
+
+
+def _hour_slot(hour: int) -> str:
+    return f"{hour:02d}:00-{hour:02d}:59"
+
+
+def _json_object(value: str | None) -> dict[str, Any]:
+    try:
+        payload = json.loads(value or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _json_value(value: str, key: str) -> str:
+    try:
+        payload = json.loads(value or "{}")
+    except (TypeError, ValueError):
+        return ""
+    return str(payload.get(key) or "") if isinstance(payload, dict) else ""
+
+
+def _json_list(value: str, key: str) -> list[str]:
+    try:
+        payload = json.loads(value or "{}")
+    except (TypeError, ValueError):
+        return []
+    candidate = payload.get(key) if isinstance(payload, dict) else []
+    if isinstance(candidate, str):
+        return [candidate]
+    return [str(item) for item in candidate] if isinstance(candidate, list) else []

@@ -1,0 +1,1673 @@
+import asyncio
+import time
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from pydantic import BaseModel
+from sqlalchemy import create_engine
+
+from competition_app.contracts.base import AgentEnvelope
+from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
+from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.knowledge import QuestionDetail, QuestionRetrievalMetadata
+from competition_app.contracts.paper import (
+    BlueprintUnit,
+    ExamPaperDraft,
+    ExamPaperItem,
+    PaperBlueprint,
+    QuestionCandidatePool,
+    UnitQuestionCandidates,
+)
+from competition_app.contracts.local_repair import RepairIssue
+from competition_app.contracts.learning_plan import LearningPlanClarificationResult
+from competition_app.contracts.memory import LearnerContextBrief, MemoryGovernanceDecision
+from competition_app.contracts.default_route import ResolvedPlanningRoute
+from competition_app.agents.memory import MemoryAgentResult
+from competition_app.contracts.textbook_route import ResolvedTextbookRoute
+from competition_app.agents.common import envelope
+from competition_app.application.container import ApplicationContainer
+from competition_app.config import Settings
+from competition_app.runtime.agent_registry import AgentRegistry
+from competition_app.runtime.agent_communication import CognitiveGapAnalyzer
+from competition_app.runtime.langgraph_orchestrator import LangGraphOrchestrator
+from competition_app.runtime.orchestrator import Orchestrator
+from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
+from competition_app.runtime.sqlalchemy_checkpointer import SqlAlchemyCheckpointSaver
+from competition_app.db.migrations import MigrationRunner
+
+
+class RecordingAgent:
+    def __init__(self, name: str, events: list[str], fail_once: bool = False) -> None:
+        self.name = name
+        self.events = events
+        self.fail_once = fail_once
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        self.events.append(f"start:{self.name}")
+        await asyncio.sleep(0.01)
+        if self.fail_once and self.calls == 1:
+            raise RuntimeError("temporary")
+        self.events.append(f"end:{self.name}")
+        return {
+            "agent": self.name,
+            "inputs": sorted(context.get("dependency_outputs", {})),
+        }
+
+
+class FailingAgent:
+    async def run(self, context):
+        raise LookupError("knowledge point could not be resolved")
+
+
+class CountingAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        return {"draft": self.calls}
+
+
+class PassingAuditPublisher:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.audit_decisions: list[str | None] = []
+
+    async def run(self, context):
+        self.calls += 1
+        audit = context["dependency_outputs"]["audit"]
+        decision = getattr(getattr(audit, "payload", None), "decision", None)
+        self.audit_decisions.append(decision)
+        if decision != "pass":
+            raise RuntimeError("publication requires a passing audit")
+        return {"published": True}
+
+
+class AuditSequenceAgent:
+    def __init__(self, decisions: list[str]) -> None:
+        self.decisions = decisions
+        self.calls = 0
+
+    async def run(self, context):
+        decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
+        self.calls += 1
+        return AuditOutput(
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_{self.calls}",
+                decision=decision,
+                structured_findings=(
+                    [
+                        RepairIssue(
+                            issue_id=f"ISSUE_{self.calls}",
+                            issue_type="content_quality",
+                            message="内容质量需修订",
+                            owner_step_id="expert",
+                            affected_step_ids=["expert"],
+                        )
+                    ]
+                    if decision == "revise"
+                    else []
+                ),
+            )
+        )
+
+
+class EnvelopeAuditSequenceAgent(AuditSequenceAgent):
+    async def run(self, context):
+        decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
+        self.calls += 1
+        return AgentEnvelope[AuditResult](
+            artifact_id=f"ART_AUDIT_GATE_{self.calls}",
+            artifact_type="audit_result",
+            case_id="CASE_AUDIT_GATE",
+            trace_id="TRACE_AUDIT_GATE",
+            request_id="REQ_AUDIT_GATE",
+            execution_id="EXE_AUDIT_GATE",
+            step_id=str(context["step_id"]),
+            producer="audit_agent",
+            task_type="learning_plan",
+            learner_id="",
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_GATE_{self.calls}",
+                decision=decision,
+                structured_findings=(
+                    [
+                        RepairIssue(
+                            issue_id=f"ISSUE_GATE_{self.calls}",
+                            issue_type="content_quality",
+                            message="内容质量需修订",
+                            owner_step_id="expert",
+                            affected_step_ids=["expert"],
+                        )
+                    ]
+                    if decision == "revise"
+                    else []
+                ),
+            ),
+        )
+
+
+class AuditOutput(BaseModel):
+    payload: AuditResult
+
+
+class EvidenceAuditSequenceAgent(AuditSequenceAgent):
+    async def run(self, context):
+        decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
+        self.calls += 1
+        return AuditOutput(
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_{self.calls}",
+                decision=decision,
+                findings=["证据缺失"] if decision == "revise" else [],
+            )
+        )
+
+
+class InterruptDuringRepairExpertAgent:
+    """Only asks for input on the Expert action in the repair pass."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self.interrupted = False
+        self.received_findings: list[list[str]] = []
+
+    async def run(self, context):
+        self.calls += 1
+        audit_feedback = context.get("audit_feedback")
+        if audit_feedback is not None:
+            self.received_findings.append(
+                list(getattr(getattr(audit_feedback, "payload", None), "findings", []))
+            )
+        if audit_feedback is not None and not self.interrupted:
+            self.interrupted = True
+            return type(
+                "RepairClarification",
+                (),
+                {"payload": LearningPlanClarificationResult(
+                    clarification_questions=["请确认修复后的讲解范围。"],
+                    reason="修复需要补充范围。",
+                    requested_scope="long_term",
+                )},
+            )()
+        return {"draft": self.calls}
+
+
+class EnvelopeEvidenceAuditSequenceAgent(AuditSequenceAgent):
+    async def run(self, context):
+        decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
+        self.calls += 1
+        return AgentEnvelope[AuditResult](
+            artifact_id=f"ART_AUDIT_{self.calls}",
+            artifact_type="audit_result",
+            case_id="CASE_REPAIR_RESTART",
+            trace_id="TRACE_REPAIR_RESTART",
+            request_id="REQ_REPAIR_RESTART",
+            execution_id="EXE_REPAIR_RESTART",
+            step_id=str(context["step_id"]),
+            producer="audit_agent",
+            task_type="personalized_review_card",
+            learner_id="LEARNER_REPAIR_RESTART",
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_{self.calls}",
+                decision=decision,
+                findings=["证据缺失"] if decision == "revise" else [],
+            ),
+        )
+
+
+class FailsDuringRepairAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        if context.get("audit_feedback") is not None:
+            raise RuntimeError("repair action failed")
+        return {"draft": self.calls}
+
+
+class RecordingCheckpointDeleter:
+    persistent = False
+
+    def __init__(self) -> None:
+        self.deleted_thread_ids: list[str] = []
+
+    async def adelete_thread(self, thread_id: str) -> None:
+        self.deleted_thread_ids.append(thread_id)
+
+
+@pytest.mark.asyncio
+async def test_expired_session_deletes_checkpoint_through_checkpointer() -> None:
+    registry = AgentRegistry()
+    checkpointer = RecordingCheckpointDeleter()
+    orchestrator = LangGraphOrchestrator(registry, checkpointer=checkpointer)
+    thread_id = "THREAD_EXPIRED"
+    orchestrator._interrupted_sessions[thread_id] = SimpleNamespace(
+        graph=object(),
+        last_used_at=time.monotonic()
+        - orchestrator._SESSION_MAX_AGE_SECONDS
+        - 1,
+    )
+
+    orchestrator._expire_stale_sessions()
+    await asyncio.gather(*orchestrator._pending_checkpoint_deletions)
+
+    assert thread_id not in orchestrator._interrupted_sessions
+    assert checkpointer.deleted_thread_ids == [thread_id]
+
+
+def test_restore_checkpoint_output_retypes_dict_payload_inside_envelope() -> None:
+    flattened = AgentEnvelope[dict[str, object]](
+        artifact_id="ART_AUDIT_FLAT",
+        artifact_type="audit_result",
+        case_id="CASE_FLAT",
+        trace_id="TRACE_FLAT",
+        request_id="REQ_FLAT",
+        execution_id="EXE_FLAT",
+        step_id="audit",
+        producer="audit_agent",
+        task_type="personalized_review_card",
+        learner_id="LEARNER_FLAT",
+        payload=AuditResult(
+            audit_result_id="AUDIT_FLAT",
+            decision="revise",
+            findings=["证据缺失"],
+        ).model_dump(mode="json"),
+    )
+
+    restored = LangGraphOrchestrator._restore_checkpoint_output(flattened)
+
+    assert isinstance(restored, AgentEnvelope)
+    assert isinstance(restored.payload, AuditResult)
+    assert restored.payload.findings == ["证据缺失"]
+
+
+def test_restore_checkpoint_output_retypes_memory_agent_result() -> None:
+    """Checkpoint replay must restore memory_agent envelopes so that memory
+    governance persistence can still find the agent output after a resume."""
+    flattened = AgentEnvelope[dict[str, object]](
+        artifact_id="ART_MEMORY_FLAT",
+        artifact_type="memory_agent_result",
+        case_id="CASE_MEMORY_FLAT",
+        trace_id="TRACE_MEMORY_FLAT",
+        request_id="REQ_MEMORY_FLAT",
+        execution_id="EXE_MEMORY_FLAT",
+        step_id="memory",
+        producer="memory_agent",
+        task_type="govern_learning_memory",
+        learner_id="LEARNER_MEMORY_FLAT",
+        payload=MemoryAgentResult(
+            learner_context=LearnerContextBrief(
+                learner_id="LEARNER_MEMORY_FLAT",
+            ),
+            auto_confirm_memories=[],
+            memory_candidates=[],
+            governance=MemoryGovernanceDecision(
+                analysis="确定性陈述，直接沉淀。",
+                resolution="none",
+                requires_clarification=False,
+                clarification_questions=[],
+                memory_candidates=[],
+                auto_confirm_memories=[],
+                conflicts=[],
+            ),
+        ).model_dump(mode="json"),
+    )
+
+    restored = LangGraphOrchestrator._restore_checkpoint_output(flattened)
+
+    assert isinstance(restored, AgentEnvelope)
+    assert isinstance(restored.payload, MemoryAgentResult)
+    assert restored.producer == "memory_agent"
+    assert isinstance(restored.payload.governance, MemoryGovernanceDecision)
+    assert restored.payload.governance.resolution == "none"
+
+
+@pytest.mark.parametrize(
+    ("artifact_type", "payload", "expected_type"),
+    [
+        (
+            "paper_blueprint",
+            PaperBlueprint(
+                blueprint_id="BLUEPRINT_REPLAY",
+                title="重放测试试卷",
+                source_status="practice_sample",
+                scope_summary="测试检查点类型恢复",
+                units=[
+                    BlueprintUnit(
+                        unit_id="UNIT_REPLAY",
+                        sequence=1,
+                        knowledge_module="四君子汤",
+                        learning_objective="掌握组成",
+                        retrieval_query="四君子汤 组成",
+                        required_question_count=1,
+                    )
+                ],
+            ),
+            PaperBlueprint,
+        ),
+        (
+            "question_candidate_pool",
+            QuestionCandidatePool(
+                pool_id="POOL_REPLAY",
+                blueprint_id="BLUEPRINT_REPLAY",
+                units=[
+                    UnitQuestionCandidates(
+                        unit_id="UNIT_REPLAY",
+                        retrieval_query="四君子汤 组成",
+                        requested_limit=5,
+                        required_question_count=1,
+                    )
+                ],
+            ),
+            QuestionCandidatePool,
+        ),
+        (
+            "exam_paper_draft",
+            ExamPaperDraft(
+                paper_draft_id="DRAFT_REPLAY",
+                blueprint_id="BLUEPRINT_REPLAY",
+                candidate_pool_id="POOL_REPLAY",
+                title="重放测试试卷",
+                instructions="请作答。",
+                items=[
+                    ExamPaperItem(
+                        sequence=1,
+                        unit_id="UNIT_REPLAY",
+                        question=QuestionDetail(
+                            question_id="QUESTION_REPLAY",
+                            question_type="填空题",
+                            stem="四君子汤由____组成。",
+                            reference_answer="人参、白术、茯苓、甘草",
+                            analysis="考查方剂组成。",
+                            tags=["四君子汤"],
+                            source_metadata={},
+                            bridges=[],
+                            retrieval=QuestionRetrievalMetadata(
+                                channels=["bm25"],
+                                channel_scores={"bm25": 1.0},
+                                fusion_score=1.0,
+                            ),
+                        ),
+                        selection_rationale="覆盖核心组成。",
+                    )
+                ],
+                answer_key={"QUESTION_REPLAY": "人参、白术、茯苓、甘草"},
+                explanations={"QUESTION_REPLAY": "考查方剂组成。"},
+            ),
+            ExamPaperDraft,
+        ),
+    ],
+)
+def test_restore_checkpoint_output_retypes_paper_payloads(
+    artifact_type: str,
+    payload,
+    expected_type: type,
+) -> None:
+    flattened = AgentEnvelope[dict[str, object]](
+        artifact_id=f"ART_{artifact_type}",
+        artifact_type=artifact_type,
+        case_id="CASE_PAPER_REPLAY",
+        trace_id="TRACE_PAPER_REPLAY",
+        request_id="REQ_PAPER_REPLAY",
+        execution_id="EXE_PAPER_REPLAY",
+        step_id=artifact_type,
+        producer="test_agent",
+        task_type="paper_generation",
+        learner_id="LEARNER_PAPER_REPLAY",
+        payload=payload.model_dump(mode="json"),
+    )
+
+    restored = LangGraphOrchestrator._restore_checkpoint_output(flattened)
+
+    assert isinstance(restored, AgentEnvelope)
+    assert isinstance(restored.payload, expected_type)
+
+
+class ClarifyingAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        if "用户补充的具体变化" not in context.get("user_request", ""):
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=["新的目标和期限是什么？"],
+                    reason="重规划信息不足。",
+                    requested_scope="long_term",
+                ),
+            )
+        return {
+            "resolved_request": context["user_request"],
+            "plan_scope": context.get("plan_scope"),
+        }
+
+
+class PrerequisiteClarifyingAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        if "用户补充的具体变化" not in context.get("user_request", ""):
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=["当前还没有有效短期计划，是否先制定短期计划？"],
+                    reason="当日任务必须基于有效短期计划制定。",
+                    requested_scope="short_term",
+                ),
+            )
+        return {
+            "resolved_request": context["user_request"],
+            "plan_scope": context.get("plan_scope"),
+        }
+
+
+class MemoryConflictClarifyingAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        answer = str(context.get("memory_conflict_answer") or "").strip()
+        if not answer:
+            decision = MemoryGovernanceDecision(
+                analysis="新旧每日学习时长不能同时成立。",
+                conflicts=[
+                    {
+                        "memory_id": 7,
+                        "proposed_memory": "以后每天学习一小时。",
+                        "reason": "与已有每天最多二十分钟冲突。",
+                    }
+                ],
+                requires_clarification=True,
+                clarification_questions=["保留旧记忆、仅本次使用还是替换旧记忆？"],
+                interrupt_type="memory_conflict",
+                resolution="needs_clarification",
+            )
+        else:
+            decision = MemoryGovernanceDecision(
+                analysis="用户已明确选择仅本次使用新时间安排。",
+                conflicts=[
+                    {
+                        "memory_id": 7,
+                        "proposed_memory": "本次学习一小时。",
+                        "reason": "仅本次覆盖，不修改稳定记忆。",
+                    }
+                ],
+                resolution="use_current_once",
+            )
+        return envelope(
+            context,
+            "memory_agent",
+            "memory_context",
+            MemoryAgentResult(
+                learner_context=LearnerContextBrief(
+                    learner_id=str(context["learner_id"])
+                ),
+                governance=decision,
+            ),
+        )
+
+
+class DependencyAwareClarifyingAgent(ClarifyingAgent):
+    async def run(self, context):
+        result = await super().run(context)
+        if isinstance(result, dict):
+            dependencies = context.get("dependency_outputs", {})
+            result["dependency_keys"] = sorted(dependencies)
+            route = dependencies.get("route")
+            result["route_payload_type"] = type(
+                getattr(route, "payload", None)
+            ).__name__
+        return result
+
+
+class RouteEnvelopeAgent:
+    async def run(self, context):
+        return envelope(
+            context,
+            "default_route_resolver",
+            "resolved_planning_route",
+            ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name="中医执业医师",
+                planning_status="provisional",
+                match_reason="test",
+                assumptions=["test"],
+            ),
+        )
+
+
+class RefreshingRouteAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        is_resumed = "用户补充的具体变化" in context.get("user_request", "")
+        return envelope(
+            context,
+            "default_route_resolver",
+            "resolved_planning_route",
+            ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name=("中医执业医师" if is_resumed else "未提供学习目标"),
+                planning_status=("approved_route" if is_resumed else "provisional"),
+                route_id=("tcm_physician_standard_degree" if is_resumed else None),
+                route_version=(1 if is_resumed else None),
+                route_status=("approved" if is_resumed else None),
+                match_reason=(
+                    "agent_selected" if is_resumed else "agent_requires_clarification"
+                ),
+                unknowns_to_confirm=([] if is_resumed else ["准备参加什么考试？"]),
+            ),
+        )
+
+
+class RouteDependentDiagnosisAgent:
+    async def run(self, context):
+        route = context["dependency_outputs"]["route_resolution"].payload
+        if route.planning_status != "approved_route":
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=list(route.unknowns_to_confirm),
+                    reason="学习目标尚未匹配到正式路线。",
+                    requested_scope="long_term",
+                ),
+            )
+        return {"route_id": route.route_id, "goal_name": route.goal_name}
+
+
+class NestedTextbookRefreshingRouteAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        is_resumed = "用户补充的具体变化" in context.get("user_request", "")
+        question = "请说明要参加的具体考试或要学习的专业方向。"
+        return envelope(
+            context,
+            "default_route_resolver",
+            "resolved_planning_route",
+            ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name=("中医执业医师考试" if is_resumed else "学习计划"),
+                planning_status=("approved_route" if is_resumed else "provisional"),
+                route_id=("tcm_physician_standard_degree" if is_resumed else None),
+                route_version=(1 if is_resumed else None),
+                route_status=("approved" if is_resumed else None),
+                match_reason=("agent_selected" if is_resumed else "no_safe_match"),
+                assumptions=([] if is_resumed else ["目标待确认"]),
+                textbook_route=(
+                    None
+                    if is_resumed
+                    else ResolvedTextbookRoute(
+                        planning_status="unmatched",
+                        match_reason="no_textbook_route_match",
+                        clarification_questions=[question],
+                    )
+                ),
+            ),
+        )
+
+
+class NestedTextbookDependentDiagnosisAgent:
+    async def run(self, context):
+        route = context["dependency_outputs"]["route_resolution"].payload
+        if route.planning_status != "approved_route":
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=list(
+                        route.textbook_route.clarification_questions
+                    ),
+                    reason="教材路线尚未确定。",
+                    requested_scope="long_term",
+                ),
+            )
+        return {"route_id": route.route_id, "goal_name": route.goal_name}
+
+
+@pytest.mark.asyncio
+async def test_langgraph_executes_parallel_dependencies_and_retries() -> None:
+    events: list[str] = []
+    registry = AgentRegistry()
+    memory = RecordingAgent("memory", events)
+    knowledge = RecordingAgent("knowledge", events, fail_once=True)
+    diagnosis = RecordingAgent("diagnosis", events)
+    registry.register("memory_agent", memory)
+    registry.register("knowledge_agent", knowledge)
+    registry.register("diagnosis_agent", diagnosis)
+    plan = ExecutionPlan(
+        plan_id="P_GRAPH",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="memory", agent="memory_agent"),
+            ExecutionStep(step_id="knowledge", agent="knowledge_agent"),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["memory", "knowledge"],
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "success"
+    assert knowledge.calls == 2
+    assert result.outputs["diagnosis"]["inputs"] == ["knowledge", "memory"]
+    assert events.index("start:diagnosis") > events.index("end:memory")
+    assert events.index("start:diagnosis") > events.index("end:knowledge")
+
+
+@pytest.mark.asyncio
+async def test_langgraph_preserves_step_failure_and_blocks_dependents() -> None:
+    registry = AgentRegistry()
+    dependent = CountingAgent()
+    registry.register("knowledge_agent", FailingAgent())
+    registry.register("expert_agent", dependent)
+    plan = ExecutionPlan(
+        plan_id="P_FAIL",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="knowledge", agent="knowledge_agent"),
+            ExecutionStep(
+                step_id="expert",
+                agent="expert_agent",
+                depends_on=["knowledge"],
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "failed"
+    assert result.error_type == "LookupError"
+    assert "knowledge point could not be resolved" in result.error_message
+    assert dependent.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_langgraph_preserves_single_audit_revision() -> None:
+    registry = AgentRegistry()
+    expert = CountingAgent()
+    audit = AuditSequenceAgent(["revise", "pass"])
+    registry.register("expert_agent", expert)
+    registry.register("audit_agent", audit)
+    plan = ExecutionPlan(
+        plan_id="P_REVISE",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="expert", agent="expert_agent"),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["expert"]
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "success"
+    assert expert.calls == 2
+    assert audit.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_langgraph_holds_downstream_publication_until_reaudit_passes() -> None:
+    registry = AgentRegistry()
+    expert = CountingAgent()
+    audit = EnvelopeAuditSequenceAgent(["revise", "pass"])
+    publisher = PassingAuditPublisher()
+    registry.register("expert_agent", expert)
+    registry.register("audit_agent", audit)
+    registry.register("publisher_agent", publisher)
+    plan = ExecutionPlan(
+        plan_id="P_REVISE_BEFORE_PUBLISH",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(step_id="expert", agent="expert_agent"),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["expert"]
+            ),
+            ExecutionStep(
+                step_id="publish",
+                agent="publisher_agent",
+                depends_on=["expert", "audit"],
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "success", (
+        result.error_type,
+        result.error_message,
+        result.outputs,
+        result.repair_trace,
+    )
+    assert expert.calls == 2
+    assert audit.calls == 2
+    assert publisher.calls == 1
+    assert publisher.audit_decisions == ["pass"]
+
+
+@pytest.mark.asyncio
+async def test_langgraph_empty_modern_audit_findings_fail_closed() -> None:
+    registry = AgentRegistry()
+    expert = CountingAgent()
+    audit = AuditSequenceAgent(["revise"])
+    registry.register("expert_agent", expert)
+    registry.register("audit_agent", audit)
+    original_run = audit.run
+
+    async def empty_findings_run(context):
+        result = await original_run(context)
+        result.payload.findings = []
+        result.payload.structured_findings = []
+        return result
+
+    audit.run = empty_findings_run
+    plan = ExecutionPlan(
+        plan_id="P_EMPTY_FINDINGS",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="expert", agent="expert_agent"),
+            ExecutionStep(step_id="audit", agent="audit_agent", depends_on=["expert"]),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "waiting_human_review"
+    assert expert.calls == 1
+    assert audit.calls == 1
+    assert result.repair_trace[0].status == "stopped"
+
+
+@pytest.mark.asyncio
+async def test_langgraph_repair_exception_stops_trace_and_emits_safe_event() -> None:
+    registry = AgentRegistry()
+    knowledge = FailsDuringRepairAgent()
+    registry.register("knowledge_agent", knowledge)
+    registry.register("expert_agent", CountingAgent())
+    registry.register("audit_agent", EvidenceAuditSequenceAgent(["revise"]))
+    plan = ExecutionPlan(
+        plan_id="P_REPAIR_FAILS",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="knowledge", agent="knowledge_agent"),
+            ExecutionStep(
+                step_id="expert", agent="expert_agent", depends_on=["knowledge"]
+            ),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["expert"]
+            ),
+        ],
+    )
+    events: list[dict[str, object]] = []
+    token = bind_event_sink(events.append)
+    try:
+        result = await LangGraphOrchestrator(registry).execute(plan, {})
+    finally:
+        reset_event_sink(token)
+
+    assert result.status == "failed"
+    assert result.repair_trace[0].status == "stopped"
+    stopped = [event for event in events if event["event"] == "repair_stopped"]
+    assert len(stopped) == 1
+    assert stopped[0]["status"] == "failed"
+    assert "error_message" not in stopped[0]
+
+
+def test_langgraph_compiles_existing_execution_plan_for_visualization() -> None:
+    registry = AgentRegistry()
+    registry.register("memory_agent", CountingAgent())
+    registry.register("expert_agent", CountingAgent())
+    plan = ExecutionPlan(
+        plan_id="P_VISUAL",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="memory", agent="memory_agent"),
+            ExecutionStep(
+                step_id="expert", agent="expert_agent", depends_on=["memory"]
+            ),
+        ],
+    )
+
+    graph = LangGraphOrchestrator(registry).compile_plan(plan, {})
+    mermaid = graph.get_graph().draw_mermaid()
+
+    assert "memory" in mermaid
+    assert "expert" in mermaid
+
+
+def test_container_uses_langgraph_by_default_and_keeps_legacy_fallback() -> None:
+    default_container = ApplicationContainer.build(Settings(mode="stub"))
+    legacy_container = ApplicationContainer.build(
+        Settings(mode="stub", execution_engine="legacy")
+    )
+
+    assert isinstance(
+        default_container.review_card_use_case.orchestrator,
+        LangGraphOrchestrator,
+    )
+    assert type(legacy_container.review_card_use_case.orchestrator) is Orchestrator
+
+
+@pytest.mark.asyncio
+async def test_langgraph_interrupts_and_resumes_same_thread_from_checkpoint() -> None:
+    registry = AgentRegistry()
+    agent = ClarifyingAgent()
+    registry.register("diagnosis_agent", agent)
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="diagnosis", agent="diagnosis_agent")],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT",
+        "trace_id": "TRACE_INTERRUPT",
+        "request_id": "REQ_INTERRUPT",
+        "execution_id": "EXE_INTERRUPT",
+        "learner_id": "LEARNER_INTERRUPT",
+        "task_type": "learning_plan",
+        "user_request": "这个长期规划我不满意，重新计划一下",
+        "original_user_request": "这个长期规划我不满意，重新计划一下",
+        "messages": [],
+        "available_minutes": 15,
+        "multi_scale_learning_state": {"macro": {}, "meso": {}, "micro": {}},
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_INTERRUPT_001"
+    )
+
+    assert interrupted.status == "interrupted", (
+        interrupted.error_type,
+        interrupted.error_message,
+        interrupted.outputs,
+    )
+    assert interrupted.thread_id == "THREAD_INTERRUPT_001"
+    assert interrupted.interrupt["step_id"] == "diagnosis"
+    assert orchestrator.pending_interrupt("THREAD_INTERRUPT_001") is not None
+
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_001",
+        {
+            "answer": "改为半年内完成方剂学，按教材章节推进。",
+            "plan_scope": "long_term",
+        },
+    )
+
+    assert resumed.status == "success", (
+        resumed.error_type,
+        resumed.error_message,
+        resumed.trace,
+    )
+    assert "半年内完成方剂学" in resumed.outputs["diagnosis"]["resolved_request"]
+    assert resumed.outputs["diagnosis"]["plan_scope"] == "long_term"
+    assert agent.calls == 3
+    assert orchestrator.pending_interrupt("THREAD_INTERRUPT_001") is None
+
+
+@pytest.mark.asyncio
+async def test_langgraph_memory_conflict_resume_does_not_overwrite_learning_goal() -> None:
+    registry = AgentRegistry()
+    agent = MemoryConflictClarifyingAgent()
+    registry.register("memory_agent", agent)
+    orchestrator = LangGraphOrchestrator(registry)
+    plan = ExecutionPlan(
+        plan_id="P_MEMORY_CONFLICT",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="memory", agent="memory_agent")],
+    )
+    context = {
+        "case_id": "CASE_MEMORY_CONFLICT",
+        "trace_id": "TRACE_MEMORY_CONFLICT",
+        "request_id": "REQ_MEMORY_CONFLICT",
+        "execution_id": "EXE_MEMORY_CONFLICT",
+        "learner_id": "LEARNER_MEMORY_CONFLICT",
+        "user_request": "以后每天学习一小时。",
+        "learning_goal": "中医执业医师考试",
+        "interruptible": True,
+    }
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_MEMORY_CONFLICT"
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_MEMORY_CONFLICT", {"answer": "仅本次采用一小时"}
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["interrupt_type"] == "memory_conflict"
+    assert resumed.status == "success", (
+        resumed.error_type,
+        resumed.error_message,
+        resumed.trace,
+    )
+    assert context["memory_conflict_answer"] == "仅本次采用一小时"
+    assert context["learning_goal"] == "中医执业医师考试"
+    assert agent.calls >= 2
+
+
+@pytest.mark.asyncio
+async def test_langgraph_memory_conflict_deferred_for_non_planning_task() -> None:
+    """Non-planning tasks must NOT hard-interrupt for memory conflicts.
+
+    The conflict is deferred into ``deferred_memory_conflicts`` so the
+    workflow completes normally and the use case surfaces a system message.
+    """
+    registry = AgentRegistry()
+    agent = MemoryConflictClarifyingAgent()
+    registry.register("memory_agent", agent)
+    orchestrator = LangGraphOrchestrator(registry)
+    plan = ExecutionPlan(
+        plan_id="P_MEMORY_CONFLICT_EXPLAIN",
+        task_type="knowledge_explanation",
+        steps=[ExecutionStep(step_id="memory", agent="memory_agent")],
+    )
+    context = {
+        "case_id": "CASE_MEMORY_CONFLICT_EXPLAIN",
+        "trace_id": "TRACE_MEMORY_CONFLICT_EXPLAIN",
+        "request_id": "REQ_MEMORY_CONFLICT_EXPLAIN",
+        "execution_id": "EXE_MEMORY_CONFLICT_EXPLAIN",
+        "learner_id": "LEARNER_MEMORY_CONFLICT_EXPLAIN",
+        "user_request": "讲解白芍的主治功效。",
+        "learning_goal": "中医执业医师考试",
+        "interruptible": True,
+        "task_type": "knowledge_explanation",
+    }
+
+    result = await orchestrator.execute(
+        plan, context, thread_id="THREAD_MEMORY_CONFLICT_EXPLAIN"
+    )
+
+    assert result.status == "success", (
+        result.error_type,
+        result.error_message,
+        result.trace,
+    )
+    assert orchestrator.pending_interrupt("THREAD_MEMORY_CONFLICT_EXPLAIN") is None
+    deferred = context.get("deferred_memory_conflicts", [])
+    assert len(deferred) == 1
+    assert deferred[0]["interrupt_type"] == "memory_conflict"
+    assert deferred[0]["questions"] == [
+        "保留旧记忆、仅本次使用还是替换旧记忆？"
+    ]
+    assert "memory_conflict_answer" not in context
+
+
+@pytest.mark.asyncio
+async def test_langgraph_memory_conflict_deferred_task_type_injected_from_plan() -> None:
+    """When the context omits ``task_type``, execute() injects it from the
+    plan so the memory-conflict gate still applies consistently."""
+    registry = AgentRegistry()
+    agent = MemoryConflictClarifyingAgent()
+    registry.register("memory_agent", agent)
+    orchestrator = LangGraphOrchestrator(registry)
+    plan = ExecutionPlan(
+        plan_id="P_MEMORY_CONFLICT_PLAN_CTX",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="memory", agent="memory_agent")],
+    )
+    context = {
+        "case_id": "CASE_MEMORY_CONFLICT_PLAN_CTX",
+        "trace_id": "TRACE_MEMORY_CONFLICT_PLAN_CTX",
+        "request_id": "REQ_MEMORY_CONFLICT_PLAN_CTX",
+        "execution_id": "EXE_MEMORY_CONFLICT_PLAN_CTX",
+        "learner_id": "LEARNER_MEMORY_CONFLICT_PLAN_CTX",
+        "user_request": "重新制定我的长期学习计划。",
+        "learning_goal": "中医执业医师考试",
+        "interruptible": True,
+    }
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_MEMORY_CONFLICT_PLAN_CTX"
+    )
+
+    assert context["task_type"] == "learning_plan"
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["interrupt_type"] == "memory_conflict"
+
+
+@pytest.mark.asyncio
+async def test_langgraph_resume_uses_agent_requested_prerequisite_scope() -> None:
+    registry = AgentRegistry()
+    agent = PrerequisiteClarifyingAgent()
+    registry.register("diagnosis_agent", agent)
+    plan = ExecutionPlan(
+        plan_id="P_PREREQUISITE",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="diagnosis", agent="diagnosis_agent")],
+    )
+    context = {
+        "case_id": "CASE_PREREQUISITE",
+        "trace_id": "TRACE_PREREQUISITE",
+        "request_id": "REQ_PREREQUISITE",
+        "execution_id": "EXE_PREREQUISITE",
+        "learner_id": "LEARNER_PREREQUISITE",
+        "task_type": "learning_plan",
+        "user_request": "我今天要学习些什么东西？",
+        "original_user_request": "我今天要学习些什么东西？",
+        "messages": [],
+        "available_minutes": 15,
+        "multi_scale_learning_state": {"macro": {}, "meso": {}, "micro": {}},
+        "interruptible": True,
+        "plan_scope": "daily_task",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_PREREQUISITE_001"
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_PREREQUISITE_001",
+        {"answer": "可以"},
+    )
+
+    assert interrupted.interrupt["requested_scope"] == "short_term"
+    assert resumed.status == "success"
+    assert resumed.outputs["diagnosis"]["plan_scope"] == "short_term"
+
+
+@pytest.mark.asyncio
+async def test_langgraph_restores_interrupted_thread_after_process_recreation(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'langgraph-restart.sqlite'}"
+    migration_dir = Path(__file__).parents[2] / "migrations"
+    plan = ExecutionPlan(
+        plan_id="P_PERSISTENT_INTERRUPT",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="diagnosis", agent="diagnosis_agent")],
+    )
+    context = {
+        "case_id": "CASE_PERSISTENT",
+        "trace_id": "TRACE_PERSISTENT",
+        "request_id": "REQ_PERSISTENT",
+        "execution_id": "EXE_PERSISTENT",
+        "learner_id": "LEARNER_PERSISTENT",
+        "task_type": "learning_plan",
+        "user_request": "重新制定长期计划",
+        "original_user_request": "重新制定长期计划",
+        "messages": [],
+        "available_minutes": 15,
+        "multi_scale_learning_state": {"macro": {}, "meso": {}, "micro": {}},
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    first_engine = create_engine(database_url)
+    MigrationRunner(first_engine, migration_dir).run()
+    first_registry = AgentRegistry()
+    first_registry.register("diagnosis_agent", ClarifyingAgent())
+    first = LangGraphOrchestrator(
+        first_registry,
+        checkpointer=SqlAlchemyCheckpointSaver(first_engine),
+    )
+
+    interrupted = await first.execute(
+        plan, context, thread_id="THREAD_PERSISTENT_INTERRUPT"
+    )
+    assert interrupted.status == "interrupted"
+    first_engine.dispose()
+
+    second_engine = create_engine(database_url)
+    second_registry = AgentRegistry()
+    second_registry.register("diagnosis_agent", ClarifyingAgent())
+    restored = LangGraphOrchestrator(
+        second_registry,
+        checkpointer=SqlAlchemyCheckpointSaver(second_engine),
+    )
+    resumed = await restored.resume(
+        "THREAD_PERSISTENT_INTERRUPT",
+        {"answer": "半年内完成方剂学", "plan_scope": "long_term"},
+        plan=plan,
+        context=context,
+    )
+
+    assert resumed.status == "success"
+    assert "半年内完成方剂学" in resumed.outputs["diagnosis"]["resolved_request"]
+    second_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_process_restart_during_repair_preserves_completed_repair_nodes(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'repair-restart.sqlite'}"
+    migration_dir = Path(__file__).parents[2] / "migrations"
+    plan = ExecutionPlan(
+        plan_id="P_REPAIR_RESTART",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="knowledge", agent="knowledge_agent"),
+            ExecutionStep(
+                step_id="expert", agent="expert_agent", depends_on=["knowledge"]
+            ),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["expert"]
+            ),
+        ],
+    )
+    context = {
+        "task_type": "personalized_review_card",
+        "user_request": "请生成有证据的个性化讲解",
+        "original_user_request": "请生成有证据的个性化讲解",
+        "messages": [],
+        "interruptible": True,
+    }
+    knowledge = CountingAgent()
+    expert = InterruptDuringRepairExpertAgent()
+    first_engine = create_engine(database_url)
+    MigrationRunner(first_engine, migration_dir).run()
+    first_registry = AgentRegistry()
+    first_registry.register("knowledge_agent", knowledge)
+    first_registry.register("expert_agent", expert)
+    first_registry.register("audit_agent", EnvelopeEvidenceAuditSequenceAgent(["revise"]))
+    first = LangGraphOrchestrator(
+        first_registry,
+        checkpointer=SqlAlchemyCheckpointSaver(first_engine),
+    )
+
+    interrupted = await first.execute(plan, context, thread_id="THREAD_REPAIR_1")
+
+    assert interrupted.status == "interrupted", (
+        interrupted.error_type,
+        interrupted.error_message,
+        interrupted.outputs,
+    )
+    assert "knowledge" in interrupted.outputs
+    completed_knowledge_calls = knowledge.calls
+    first_engine.dispose()
+
+    second_engine = create_engine(database_url)
+    second_registry = AgentRegistry()
+    second_registry.register("knowledge_agent", knowledge)
+    second_registry.register("expert_agent", expert)
+    second_registry.register("audit_agent", EnvelopeEvidenceAuditSequenceAgent(["pass"]))
+    second = LangGraphOrchestrator(
+        second_registry,
+        checkpointer=SqlAlchemyCheckpointSaver(second_engine),
+    )
+    resumed = await second.resume(
+        "THREAD_REPAIR_1",
+        {"answer": "继续", "plan_scope": "long_term"},
+        plan=plan,
+        context=context,
+    )
+
+    assert resumed.status == "success"
+    assert knowledge.calls == completed_knowledge_calls
+    assert resumed.repair_trace[0].status == "completed"
+    assert expert.received_findings
+    assert expert.received_findings[-1] == ["证据缺失"]
+    second_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_langgraph_resume_preserves_completed_upstream_outputs() -> None:
+    registry = AgentRegistry()
+    registry.register("route_agent", RouteEnvelopeAgent())
+    registry.register("diagnosis_agent", DependencyAwareClarifyingAgent())
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT_WITH_PARENT",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(step_id="route", agent="route_agent"),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["route"],
+            ),
+        ],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT_PARENT",
+        "trace_id": "TRACE_INTERRUPT_PARENT",
+        "request_id": "REQ_INTERRUPT_PARENT",
+        "execution_id": "EXE_INTERRUPT_PARENT",
+        "learner_id": "LEARNER_INTERRUPT_PARENT",
+        "task_type": "learning_plan",
+        "user_request": "重新制定计划",
+        "original_user_request": "重新制定计划",
+        "messages": [],
+        "available_minutes": 15,
+        "multi_scale_learning_state": {"macro": {}, "meso": {}, "micro": {}},
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_INTERRUPT_PARENT"
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_PARENT",
+        {"answer": "一年内完成", "plan_scope": "long_term"},
+    )
+
+    assert interrupted.status == "interrupted"
+    assert "route" in interrupted.outputs
+    assert resumed.status == "success"
+    assert set(resumed.outputs) == {"route", "diagnosis"}
+    assert resumed.outputs["diagnosis"]["dependency_keys"] == ["route"]
+    assert resumed.outputs["diagnosis"]["route_payload_type"] == "ResolvedPlanningRoute"
+
+
+@pytest.mark.asyncio
+async def test_langgraph_resume_refreshes_route_resolution_before_diagnosis() -> None:
+    registry = AgentRegistry()
+    route_agent = RefreshingRouteAgent()
+    registry.register("default_route_resolver", route_agent)
+    registry.register("diagnosis_agent", RouteDependentDiagnosisAgent())
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT_REFRESH_ROUTE",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(
+                step_id="route_resolution",
+                agent="default_route_resolver",
+            ),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["route_resolution"],
+            ),
+        ],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT_REFRESH_ROUTE",
+        "trace_id": "TRACE_INTERRUPT_REFRESH_ROUTE",
+        "request_id": "REQ_INTERRUPT_REFRESH_ROUTE",
+        "execution_id": "EXE_INTERRUPT_REFRESH_ROUTE",
+        "learner_id": "LEARNER_INTERRUPT_REFRESH_ROUTE",
+        "task_type": "learning_plan",
+        "user_request": "请结合我的学习状态，给我制定一份长期学习计划。",
+        "original_user_request": "请结合我的学习状态，给我制定一份长期学习计划。",
+        "messages": [],
+        "available_minutes": 15,
+        "multi_scale_learning_state": {"macro": {}, "meso": {}, "micro": {}},
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan,
+        context,
+        thread_id="THREAD_INTERRUPT_REFRESH_ROUTE",
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_REFRESH_ROUTE",
+        {
+            "answer": "我想考中医执业医师资格考试",
+            "plan_scope": "long_term",
+        },
+    )
+
+    assert interrupted.status == "interrupted"
+    assert resumed.status == "success"
+    assert route_agent.calls == 2
+    assert resumed.outputs["route_resolution"].payload.planning_status == "approved_route"
+    assert resumed.outputs["diagnosis"] == {
+        "route_id": "tcm_physician_standard_degree",
+        "goal_name": "中医执业医师",
+    }
+
+
+@pytest.mark.asyncio
+async def test_langgraph_resume_refreshes_route_for_nested_textbook_question() -> None:
+    registry = AgentRegistry()
+    route_agent = NestedTextbookRefreshingRouteAgent()
+    registry.register("default_route_resolver", route_agent)
+    registry.register(
+        "diagnosis_agent", NestedTextbookDependentDiagnosisAgent()
+    )
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(
+                step_id="route_resolution",
+                agent="default_route_resolver",
+            ),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["route_resolution"],
+            ),
+        ],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "trace_id": "TRACE_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "request_id": "REQ_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "execution_id": "EXE_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "learner_id": "LEARNER_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "task_type": "learning_plan",
+        "user_request": "请制定长期学习计划。",
+        "original_user_request": "请制定长期学习计划。",
+        "messages": [],
+        "available_minutes": 15,
+        "multi_scale_learning_state": {"macro": {}, "meso": {}, "micro": {}},
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan,
+        context,
+        thread_id="THREAD_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        {"answer": "中医执业医师考试", "plan_scope": "long_term"},
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["questions"] == [
+        "请说明要参加的具体考试或要学习的专业方向。"
+    ]
+    assert resumed.status == "success"
+    assert route_agent.calls == 2
+    assert resumed.outputs["diagnosis"]["route_id"] == (
+        "tcm_physician_standard_degree"
+    )
+
+
+class MemoryConflictRouteSwitchAgent:
+    """Route resolver that switches the selected route after a confirmed
+    memory-conflict target change (e.g. TCM physician -> integrated
+    TCM-Western medicine)."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        answer = str(context.get("memory_conflict_answer") or "").strip()
+        switched = bool(answer) and "确认" in answer
+        return envelope(
+            context,
+            "default_route_resolver",
+            "resolved_planning_route",
+            ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name=("中西医结合执业医师" if switched else "中医执业医师"),
+                planning_status=("approved_route" if switched else "provisional"),
+                route_id=(
+                    "tcm_physician_standard_degree" if switched else None
+                ),
+                route_version=(1 if switched else None),
+                route_status=("approved" if switched else None),
+                match_reason=(
+                    "agent_selected" if switched else "agent_requires_clarification"
+                ),
+                unknowns_to_confirm=([] if switched else ["准备参加什么考试？"]),
+            ),
+        )
+
+
+class MemoryConflictRouteDependentDiagnosisAgent:
+    async def run(self, context):
+        route = context["dependency_outputs"]["route_resolution"].payload
+        if route.planning_status != "approved_route":
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=list(route.unknowns_to_confirm),
+                    reason="学习目标尚未匹配到正式路线。",
+                    requested_scope="long_term",
+                ),
+            )
+        return {"route_id": route.route_id, "goal_name": route.goal_name}
+
+
+@pytest.mark.asyncio
+async def test_langgraph_memory_conflict_resume_refreshes_route_on_target_switch() -> None:
+    """A confirmed memory-conflict answer that switches the learner's target
+    must re-resolve the route so Diagnosis compiles the new plan against the
+    newly selected route (regression for the '改考中西医结合执业医师' resume
+    failure where the stale TCM route caused immutable_route_conflict)."""
+    registry = AgentRegistry()
+    route_agent = MemoryConflictRouteSwitchAgent()
+    registry.register("default_route_resolver", route_agent)
+    registry.register("memory_agent", MemoryConflictClarifyingAgent())
+    registry.register(
+        "diagnosis_agent", MemoryConflictRouteDependentDiagnosisAgent()
+    )
+    plan = ExecutionPlan(
+        plan_id="P_MEMORY_CONFLICT_ROUTE_SWITCH",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(
+                step_id="route_resolution",
+                agent="default_route_resolver",
+            ),
+            ExecutionStep(
+                step_id="memory",
+                agent="memory_agent",
+                depends_on=["route_resolution"],
+            ),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["route_resolution", "memory"],
+            ),
+        ],
+    )
+    context = {
+        "case_id": "CASE_MEMORY_CONFLICT_ROUTE_SWITCH",
+        "trace_id": "TRACE_MEMORY_CONFLICT_ROUTE_SWITCH",
+        "request_id": "REQ_MEMORY_CONFLICT_ROUTE_SWITCH",
+        "execution_id": "EXE_MEMORY_CONFLICT_ROUTE_SWITCH",
+        "learner_id": "LEARNER_MEMORY_CONFLICT_ROUTE_SWITCH",
+        "task_type": "learning_plan",
+        "user_request": "我不想考中医执业医师了，我要改考中西医结合执业医师",
+        "original_user_request": "我不想考中医执业医师了，我要改考中西医结合执业医师",
+        "learning_goal": "中医执业医师考试",
+        "messages": [],
+        "available_minutes": 15,
+        "multi_scale_learning_state": {"macro": {}, "meso": {}, "micro": {}},
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan,
+        context,
+        thread_id="THREAD_MEMORY_CONFLICT_ROUTE_SWITCH",
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_MEMORY_CONFLICT_ROUTE_SWITCH",
+        {"answer": "是的，我确认要改考中西医结合执业医师"},
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["interrupt_type"] == "memory_conflict"
+    assert resumed.status == "success", (
+        resumed.error_type,
+        resumed.error_message,
+        resumed.trace,
+    )
+    # Route must be re-resolved after the confirmed target switch.
+    assert route_agent.calls == 2
+    assert resumed.outputs["route_resolution"].payload.goal_name == (
+        "中西医结合执业医师"
+    )
+    assert resumed.outputs["route_resolution"].payload.planning_status == (
+        "approved_route"
+    )
+    assert resumed.outputs["diagnosis"] == {
+        "route_id": "tcm_physician_standard_degree",
+        "goal_name": "中西医结合执业医师",
+    }
+
+
+@pytest.mark.asyncio
+async def test_langgraph_uses_same_handoff_contract_as_legacy() -> None:
+    class HandoffCapturingAgent:
+        def __init__(self) -> None:
+            self.context = None
+
+        async def run(self, context):
+            self.context = context
+            return {"status": "ok"}
+
+    agent = HandoffCapturingAgent()
+    registry = AgentRegistry()
+    registry.register("handoff_agent", agent)
+    plan = ExecutionPlan(
+        plan_id="P_LANGGRAPH_HANDOFF",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="handoff", agent="handoff_agent")],
+    )
+    context = {
+        "case_id": "CASE_LANGGRAPH_HANDOFF",
+        "trace_id": "TRACE_LANGGRAPH_HANDOFF",
+        "request_id": "REQ_LANGGRAPH_HANDOFF",
+        "execution_id": "EXE_LANGGRAPH_HANDOFF",
+        "learner_id": "LEARNER_LANGGRAPH_HANDOFF",
+        "task_type": "learning_plan",
+        "user_request": "请处理学习计划",
+    }
+
+    result = await LangGraphOrchestrator(registry).execute(plan, context)
+
+    assert result.status == "success"
+    assert result.communication_trace
+    assert agent.context["agent_handoff"]["schema_version"] == "1.0"
+
+
+@pytest.mark.asyncio
+async def test_langgraph_rejects_interruptible_ordinary_success_with_blocking_handoff() -> None:
+    registry = AgentRegistry()
+    agent = CountingAgent()
+    registry.register("expert_agent", agent)
+    plan = ExecutionPlan(
+        plan_id="P_LANGGRAPH_INTERRUPTIBLE_BLOCKED",
+        task_type="knowledge_explanation",
+        steps=[ExecutionStep(step_id="expert", agent="expert_agent")],
+    )
+    context = {
+        "case_id": "CASE_LANGGRAPH_INTERRUPTIBLE_BLOCKED",
+        "trace_id": "TRACE_LANGGRAPH_INTERRUPTIBLE_BLOCKED",
+        "request_id": "REQ_LANGGRAPH_INTERRUPTIBLE_BLOCKED",
+        "execution_id": "EXE_LANGGRAPH_INTERRUPTIBLE_BLOCKED",
+        "learner_id": "LEARNER_LANGGRAPH_INTERRUPTIBLE_BLOCKED",
+        "task_type": "knowledge_explanation",
+        "user_request": "请生成知识讲解",
+        "interruptible": True,
+    }
+
+    result = await LangGraphOrchestrator(registry).execute(plan, context)
+
+    assert result.status == "failed"
+    assert result.error_type == "AgentHandoffBlocked"
+    assert result.outputs == {}
+    assert agent.calls == 1
+    assert result.communication_trace[-1].status == "blocked"
+
+
+def test_langgraph_resume_does_not_fabricate_unrelated_handoff_facts() -> None:
+    context = {
+        "trace_id": "TRACE_RESUME_FACTS",
+        "execution_id": "EXE_RESUME_FACTS",
+        "learner_id": "LEARNER_RESUME_FACTS",
+        "user_request": "重新制定学习计划",
+    }
+
+    LangGraphOrchestrator._apply_resume_value(
+        context,
+        {"answer": "半年内完成方剂学"},
+    )
+    analysis = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(step_id="diagnosis", agent="diagnosis_agent"),
+        root_context=context,
+        dependency_outputs={},
+    )
+
+    assert context["learning_goal"] == "半年内完成方剂学"
+    assert "available_minutes" not in context
+    assert "multi_scale_learning_state" not in context
+    assert set(analysis.gap.blocking_fields) == {"multi_scale_learning_state"}
+    assert "time_budget" in analysis.gap.missing_fields
+    assert "time_budget" not in analysis.gap.blocking_fields
+
+
+@pytest.mark.parametrize(
+    ("answer", "scope"),
+    [
+        ("长期规划", "long_term"),
+        ("短期计划", "short_term"),
+        ("当日任务", "daily_task"),
+    ],
+)
+def test_langgraph_resume_treats_scope_answer_as_control_data(
+    answer: str,
+    scope: str,
+) -> None:
+    context = {
+        "user_request": "请结合我的学习状态，为我制定一份学习计划。",
+        "plan_scope": "unspecified",
+        "learning_goal": "中医执业医师资格考试",
+        "messages": [],
+    }
+
+    LangGraphOrchestrator._apply_resume_value(
+        context,
+        {"answer": answer, "plan_scope": scope},
+        requested_scope="unspecified",
+    )
+
+    assert context["plan_scope"] == scope
+    assert context["learning_goal"] == "中医执业医师资格考试"
+    assert context["user_request"] == "请结合我的学习状态，为我制定一份学习计划。"
+    assert "plan_change_context" not in context
+    assert context["messages"][-1] == {"role": "user", "content": answer}
+
+
+def test_langgraph_resume_keeps_ambiguous_scope_answer_out_of_learning_goal() -> None:
+    context = {
+        "user_request": "请结合我的学习状态，为我制定一份学习计划。",
+        "plan_scope": "unspecified",
+        "learning_goal": "中医执业医师资格考试",
+        "messages": [],
+    }
+
+    LangGraphOrchestrator._apply_resume_value(
+        context,
+        {"answer": "都可以", "clarification_kind": "plan_scope"},
+        requested_scope="unspecified",
+    )
+
+    assert context["plan_scope"] == "unspecified"
+    assert context["learning_goal"] == "中医执业医师资格考试"
+    assert context["user_request"] == "请结合我的学习状态，为我制定一份学习计划。"
+    assert "plan_change_context" not in context
+    assert context["messages"][-1] == {"role": "user", "content": "都可以"}

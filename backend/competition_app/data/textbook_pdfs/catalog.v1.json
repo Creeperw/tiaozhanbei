@@ -1,0 +1,1111 @@
+{
+  "catalog_version": "1.0.0",
+  "default_category": "中医药",
+  "books": [
+    {
+      "book_id": "TBPDF_6be58f7175be92ed",
+      "title": "中医气功学",
+      "aliases": [
+        "中医气功",
+        "中医气功学"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/中医气功学.pdf",
+      "size_bytes": 2690019,
+      "sha256": "1c6e687a69624922e72e93f4e629722bac15eb96d308af90f8cd0d1da2a24bbe"
+    },
+    {
+      "book_id": "TBPDF_d6a18d188fac1138",
+      "title": "中国医学史",
+      "aliases": [
+        "中国医学史"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/中国医学史.pdf",
+      "size_bytes": 4607075,
+      "sha256": "fe86aae9816e928132c44ff6f67d7b7435b32d681cc85b1a2bd8b51bf2bc7af8"
+    },
+    {
+      "book_id": "TBPDF_36d67f65a6aa31cc",
+      "title": "中药分析",
+      "aliases": [
+        "中药分析"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/中药分析.pdf",
+      "size_bytes": 79011133,
+      "sha256": "81df42f8229d7a1c2fa7c1d59528ab8c16e9a04831cce47d17cbb3d32e04371b"
+    },
+    {
+      "book_id": "TBPDF_feaa0fdf24a48983",
+      "title": "中药炮制学",
+      "aliases": [
+        "中药炮制",
+        "中药炮制学"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/中药炮制学.pdf",
+      "size_bytes": 78061440,
+      "sha256": "001ef82bcaf22a3c18c16b1c21269571fec426bef0fc68bd5651ac389ae72497"
+    },
+    {
+      "book_id": "TBPDF_9b38214899110053",
+      "title": "中药药剂学",
+      "aliases": [
+        "中药药剂",
+        "中药药剂学"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/中药药剂学.pdf",
+      "size_bytes": 118005817,
+      "sha256": "41134289014464fc65840f1cb6639c6a47e3c08f993d4bce1ab963b1cd8f76ab"
+    },
+    {
+      "book_id": "TBPDF_34438fe4c7ad17db",
+      "title": "中西医结合耳鼻咽喉科学",
+      "aliases": [
+        "中西医结合耳鼻咽喉科",
+        "中西医结合耳鼻咽喉科学"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/中西医结合耳鼻咽喉科学 .pdf",
+      "size_bytes": 99984557,
+      "sha256": "0243cb83b05d1e1a7715916f9fb15e1917ca0e4863a5257a78261a4c4783d298"
+    },
+    {
+      "book_id": "TBPDF_744d42ba133008ae",
+      "title": "人体解剖学",
+      "aliases": [
+        "人体解剖",
+        "人体解剖学"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/人体解剖学.pdf",
+      "size_bytes": 72620294,
+      "sha256": "a7118310a087f71947a5c9f2eefc1ff1344bd5ef4f9bd34e9a4da6279f7968d1"
+    },
+    {
+      "book_id": "TBPDF_1c6ad0ecc66904a7",
+      "title": "内科学 中西医结合",
+      "aliases": [
+        "中西医结合内科学",
+        "内科学 中西医结合"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/内科学 中西医结合.pdf",
+      "size_bytes": 96291548,
+      "sha256": "df4929eb3f45f563faf5a5f5eb98264413e334379ea9c50944f3120ddbf8bb96"
+    },
+    {
+      "book_id": "TBPDF_5c70c6112404cb5d",
+      "title": "刺法灸法学",
+      "aliases": [
+        "刺法灸法",
+        "刺法灸法学"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/刺法灸法学.pdf",
+      "size_bytes": 224148425,
+      "sha256": "eb0fc00dd43f2dcc9861f182b861fb8dc12bd984a2901764c73a828ac2a85071"
+    },
+    {
+      "book_id": "TBPDF_4ace883f58a14883",
+      "title": "外科学 中西医",
+      "aliases": [
+        "中西医结合外科学",
+        "外科学 中西医"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/外科学 中西医.pdf",
+      "size_bytes": 217634641,
+      "sha256": "6296efcc3162b3b78cedefe3bb7ca8ff386eea9f282234b51cb051287d6aeb23"
+    },
+    {
+      "book_id": "TBPDF_bbf19690ed52309c",
+      "title": "药用植物学",
+      "aliases": [
+        "药用植物",
+        "药用植物学"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/药用植物学.pdf",
+      "size_bytes": 77272169,
+      "sha256": "a8a33ebc527608835185ea760e3b46b9d2c7057a637f65f817c9683e1cdb779a"
+    },
+    {
+      "book_id": "TBPDF_7292ab8c9ef267d4",
+      "title": "针灸医籍选读",
+      "aliases": [
+        "针灸医籍选读"
+      ],
+      "edition": "十三五",
+      "relative_path": "十三五/针灸医籍选读.pdf",
+      "size_bytes": 45484263,
+      "sha256": "09940d950d5c3aea801bdb8ad28d892edbf34f2180fde0bd1037482d5f264753"
+    },
+    {
+      "book_id": "TBPDF_8a8e79d5e707e7f3",
+      "title": "推拿治疗学",
+      "aliases": [
+        "推拿治疗",
+        "推拿治疗学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/14-推拿治疗学 .pdf",
+      "size_bytes": 72295775,
+      "sha256": "4a1b3ed07f37283c016c7b75d657352d638a26cc5f3c714ca6b09685c63e7255"
+    },
+    {
+      "book_id": "TBPDF_88e0e39d2b8299c1",
+      "title": "伤寒论选读",
+      "aliases": [
+        "伤寒论选读"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/伤寒论选读.pdf",
+      "size_bytes": 447914245,
+      "sha256": "3d4d1e0f4074beabf67e8dc205c32d5b655674c5c144b47f97401b6602dd32be"
+    },
+    {
+      "book_id": "TBPDF_314a46016f1bb35a",
+      "title": "内科学",
+      "aliases": [
+        "内科",
+        "内科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/内科学.pdf",
+      "size_bytes": 384675064,
+      "sha256": "d822070727f84bea36cde7457512581799a64d0549e2841779c03aabdfae1d1d"
+    },
+    {
+      "book_id": "TBPDF_cc592d7beab20e3f",
+      "title": "内经选读",
+      "aliases": [
+        "内经选读"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/内经选读.pdf",
+      "size_bytes": 530281385,
+      "sha256": "c43b70bd659a7874d7343be7cfee651ec0690bb158308fff95084f3caa6def7e"
+    },
+    {
+      "book_id": "TBPDF_9bcb6157fa498bf4",
+      "title": "推拿功法学",
+      "aliases": [
+        "推拿功法",
+        "推拿功法学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/推拿功法学.pdf",
+      "size_bytes": 43951627,
+      "sha256": "1324a6d0264aae01336cfae56736f9e9bba8e0ba5e8a0bcc0a93545789a0f745"
+    },
+    {
+      "book_id": "TBPDF_256755aa4bac9b1e",
+      "title": "推拿学",
+      "aliases": [
+        "推拿",
+        "推拿学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/推拿学.pdf",
+      "size_bytes": 524713735,
+      "sha256": "93b80b0843fffef769962ff646d9bed0e43428c419a01e52f4e5683eaea62469"
+    },
+    {
+      "book_id": "TBPDF_41eae4b2159c27e8",
+      "title": "推拿手法学",
+      "aliases": [
+        "推拿手法",
+        "推拿手法学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/推拿手法学.pdf",
+      "size_bytes": 79759678,
+      "sha256": "19fe3a991f929564f3369a0e5de6a7777df12e4dd665f69636bc00a3c2283545"
+    },
+    {
+      "book_id": "TBPDF_316b9048622a91b0",
+      "title": "方剂学",
+      "aliases": [
+        "方剂",
+        "方剂学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/方剂学.pdf",
+      "size_bytes": 578478873,
+      "sha256": "435ad36bb1ac07492ee0c139484e0cb14d5a7bb39df79c0167b9cd6f787a9dd5"
+    },
+    {
+      "book_id": "TBPDF_aea4b0b5028b7136",
+      "title": "生理学",
+      "aliases": [
+        "生理",
+        "生理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/生理学.pdf",
+      "size_bytes": 109903164,
+      "sha256": "01a4a79b47c7257f7aeb82f2d313da835f23445fff2cca0f976584bd94f972ab"
+    },
+    {
+      "book_id": "TBPDF_043a1bbe5a525531",
+      "title": "病理学",
+      "aliases": [
+        "病理",
+        "病理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/病理学.pdf",
+      "size_bytes": 572790879,
+      "sha256": "3c5af9b6dee0982f9c21718ecd8394db2d84b7db6b116c7f9a7c5869f2d92542"
+    },
+    {
+      "book_id": "TBPDF_6b154547b36dc140",
+      "title": "经络腧穴学",
+      "aliases": [
+        "经络腧穴",
+        "经络腧穴学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/经络腧穴学.pdf",
+      "size_bytes": 64068596,
+      "sha256": "bf3b8c4866c0c15e92237bc2b2e95eb9ec00c2aab1efb7d50a8db79c7c7ae8e5"
+    },
+    {
+      "book_id": "TBPDF_833fdec90d31345c",
+      "title": "金匮要略",
+      "aliases": [
+        "金匮要略"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/1/金匮要略.pdf",
+      "size_bytes": 507030495,
+      "sha256": "375c7f4b1121270aa932feaa65de95a616f8ba11dea26161ca3e0acc943cd233"
+    },
+    {
+      "book_id": "TBPDF_2174e5b76acb70f7",
+      "title": "中西医结合儿科学",
+      "aliases": [
+        "中西医结合儿科",
+        "中西医结合儿科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/中西医结合儿科学.pdf",
+      "size_bytes": 45188916,
+      "sha256": "cd5a179f2de86e4247ebda4fe1e9703a41c234096ef2462949502112e4fd2346"
+    },
+    {
+      "book_id": "TBPDF_894b105cc20f7bd7",
+      "title": "中西医结合妇产科学",
+      "aliases": [
+        "中西医结合妇产科",
+        "中西医结合妇产科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/中西医结合妇产科学.pdf",
+      "size_bytes": 72881059,
+      "sha256": "7719428db3fd421ad821babd8aa710a4848b10213722d04ce81ed336224d6450"
+    },
+    {
+      "book_id": "TBPDF_7137cfe11666543e",
+      "title": "中西医结合眼科学",
+      "aliases": [
+        "中西医结合眼科",
+        "中西医结合眼科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/中西医结合眼科学.pdf",
+      "size_bytes": 70099807,
+      "sha256": "a5d5ab818a6e42c17ccfa049edf652389b93b12d7d87a21e20d7398b60e71a68"
+    },
+    {
+      "book_id": "TBPDF_02b56e464169d950",
+      "title": "中西医结合骨伤科学",
+      "aliases": [
+        "中西医结合骨伤科",
+        "中西医结合骨伤科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/中西医结合骨伤科学.pdf",
+      "size_bytes": 153052559,
+      "sha256": "a414d8a76fccc3013bc1ba43ccea604944e188f7e53c7e2185e95aa9e5d87d5e"
+    },
+    {
+      "book_id": "TBPDF_7c275dd3b9c478b3",
+      "title": "医古文",
+      "aliases": [
+        "医古文"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/医古文.pdf",
+      "size_bytes": 35243683,
+      "sha256": "2a9e37bd034523daeed25ad0611f95746cfdb30a9bcfb83b32c48e3a9a0cee64"
+    },
+    {
+      "book_id": "TBPDF_7786c0d19fd36ebe",
+      "title": "外科学",
+      "aliases": [
+        "外科",
+        "外科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/外科学.pdf",
+      "size_bytes": 289593361,
+      "sha256": "70ff7b88861443c66a105b8b0a84a9bc05d2e179da35d49fd57f4415934bc91c"
+    },
+    {
+      "book_id": "TBPDF_5c18a6889ae2540e",
+      "title": "小儿推拿学",
+      "aliases": [
+        "小儿推拿",
+        "小儿推拿学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/小儿推拿学.pdf",
+      "size_bytes": 270854923,
+      "sha256": "4f93d5912f885b5510016ebe3cedf55aacc939396b4c94452bb08f6a167eb003"
+    },
+    {
+      "book_id": "TBPDF_76b0659f94e4d6f2",
+      "title": "温病学",
+      "aliases": [
+        "温病",
+        "温病学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/温病学.pdf",
+      "size_bytes": 455462018,
+      "sha256": "aff11cfd6e0a717a1654dda61992897be2be33d684f1e15f5be22ccdd75dd5f6"
+    },
+    {
+      "book_id": "TBPDF_ea432e8e6c04e93d",
+      "title": "药理学",
+      "aliases": [
+        "药理",
+        "药理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/药理学.pdf",
+      "size_bytes": 65333594,
+      "sha256": "f99f4cb59baf4a1a22fe287e477e9d2d7ed9425d3df16b3f3e8c33084b836184"
+    },
+    {
+      "book_id": "TBPDF_6413af5d414d2277",
+      "title": "诊断学",
+      "aliases": [
+        "诊断",
+        "诊断学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/诊断学.pdf",
+      "size_bytes": 170500856,
+      "sha256": "3b73a5a6049fba6736cd8eb9d9afbf42335bbfdce1f7d4680c1bba5dabcfc451"
+    },
+    {
+      "book_id": "TBPDF_eb731e8c56b587af",
+      "title": "针灸学",
+      "aliases": [
+        "针灸",
+        "针灸学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/针灸学.pdf",
+      "size_bytes": 212535978,
+      "sha256": "cfcf52fa1cf1f49636a4c7de6f32ebb5cf200bb2fd711d9c8a301b542dfd7d0e"
+    },
+    {
+      "book_id": "TBPDF_c321623d746504c4",
+      "title": "针灸治疗学",
+      "aliases": [
+        "针灸治疗",
+        "针灸治疗学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/2/针灸治疗学.pdf",
+      "size_bytes": 51424392,
+      "sha256": "faab7b2c3df4fc34bff6e7c833e66baaf89558ddee1b69a634c1d01d94be5ea9"
+    },
+    {
+      "book_id": "TBPDF_60aa88fbc360f89d",
+      "title": "中医儿科学",
+      "aliases": [
+        "中医儿科",
+        "中医儿科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医儿科学.pdf",
+      "size_bytes": 246623608,
+      "sha256": "8c4058f29ede96d5c28dfbb82e54f5d24cb0fc1cdfbbf6ff8bd0db093d130ed9"
+    },
+    {
+      "book_id": "TBPDF_021a0612f3fcface",
+      "title": "中医内科学",
+      "aliases": [
+        "中医内科",
+        "中医内科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医内科学.pdf",
+      "size_bytes": 306188792,
+      "sha256": "dec13ad65612638632fca356faadebbd1e6756f66877d863ead46afd6a3808a0"
+    },
+    {
+      "book_id": "TBPDF_fc207494d7076e73",
+      "title": "中医基础理论",
+      "aliases": [
+        "中医基础理论"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医基础理论.pdf",
+      "size_bytes": 175587110,
+      "sha256": "031007fc2caa796ed6b72f8b6ea4a512a861660e84349c936a5160782b0dded9"
+    },
+    {
+      "book_id": "TBPDF_fa8b3776103e4599",
+      "title": "中医外科学",
+      "aliases": [
+        "中医外科",
+        "中医外科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医外科学.pdf",
+      "size_bytes": 267875347,
+      "sha256": "eef24f565f6c9177fc7c576a02b1661e3a9922eae9984eff069d097a2962b935"
+    },
+    {
+      "book_id": "TBPDF_a28978168f19cb94",
+      "title": "中医妇科学",
+      "aliases": [
+        "中医妇科",
+        "中医妇科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医妇科学.pdf",
+      "size_bytes": 657330924,
+      "sha256": "d8892a11cf8b3fd03e24074f7641b2d4cf6535c304589d2dde87f74dc5945b82"
+    },
+    {
+      "book_id": "TBPDF_bb8f4761d359ab41",
+      "title": "中医急诊学",
+      "aliases": [
+        "中医急诊",
+        "中医急诊学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医急诊学.pdf",
+      "size_bytes": 80971833,
+      "sha256": "98aaf3630e1157013e0044ba4f5becd4497a92517b790542f229d925b4286cca"
+    },
+    {
+      "book_id": "TBPDF_b11bf7a56493e0bb",
+      "title": "中医眼科学",
+      "aliases": [
+        "中医眼科",
+        "中医眼科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医眼科学.pdf",
+      "size_bytes": 110962898,
+      "sha256": "b88670d8b7c54344cd31e2ad2fc4b72a080573761090b42c41969990537f0067"
+    },
+    {
+      "book_id": "TBPDF_c6c858bbab3d355b",
+      "title": "中医耳鼻咽喉科学",
+      "aliases": [
+        "中医耳鼻咽喉科",
+        "中医耳鼻咽喉科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医耳鼻咽喉科学.pdf",
+      "size_bytes": 55455356,
+      "sha256": "eaa5a0f46420e95a50629570422b048a5495cdcca722fd6dc07c381b1d1d2c94"
+    },
+    {
+      "book_id": "TBPDF_05637bd4ea712e84",
+      "title": "中医诊断学",
+      "aliases": [
+        "中医诊断",
+        "中医诊断学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医诊断学.pdf",
+      "size_bytes": 427668183,
+      "sha256": "88b5d32ecb76a1dd85a35e00b71ab3ee02a96424a33dc32a71a204d12e996fbe"
+    },
+    {
+      "book_id": "TBPDF_45b4fa1ac52fc6d8",
+      "title": "中医骨伤科学",
+      "aliases": [
+        "中医骨伤科",
+        "中医骨伤科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中医骨伤科学.pdf",
+      "size_bytes": 691197857,
+      "sha256": "7817dd36b75bc1789078789f5abbd434b732dffa9395c9701efa78b36b78f767"
+    },
+    {
+      "book_id": "TBPDF_f15fb866937217e0",
+      "title": "中药学",
+      "aliases": [
+        "中药",
+        "中药学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/中药学.pdf",
+      "size_bytes": 332682235,
+      "sha256": "d594ea4262f478f4aba26e0cb010363795c6ee5ec2cf70e3b25d6f5b684fb89b"
+    },
+    {
+      "book_id": "TBPDF_0f87e1fc87a8c83e",
+      "title": "组织学与胚胎学",
+      "aliases": [
+        "组织学与胚胎",
+        "组织学与胚胎学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/3/组织学与胚胎学.pdf",
+      "size_bytes": 260331701,
+      "sha256": "4bd62e5ffe58cda4f94e41f0dbc6f4c5779664631469367e4393a50f841ca270"
+    },
+    {
+      "book_id": "TBPDF_e25c298f394b02c8",
+      "title": "中医临床护理学",
+      "aliases": [
+        "中医临床护理",
+        "中医临床护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医临床护理学.pdf",
+      "size_bytes": 22877715,
+      "sha256": "3ec48419bbf9f74099ec807f6eb47d84515ced018ad9a614eca85748ca883fbf"
+    },
+    {
+      "book_id": "TBPDF_022f3bf5a204bc64",
+      "title": "中医养生学",
+      "aliases": [
+        "中医养生",
+        "中医养生学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医养生学.pdf",
+      "size_bytes": 244905480,
+      "sha256": "63ae9ee8ee15c6fb088e3fd2d09c558dcbfc1fb1c153727591bcb54a030ac7fb"
+    },
+    {
+      "book_id": "TBPDF_50b9575ad3cef271",
+      "title": "中医各家学说",
+      "aliases": [
+        "中医各家学说"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医各家学说.pdf",
+      "size_bytes": 238176126,
+      "sha256": "5830a49cad2abb18abf12e22eb208773708e3075b2d7b0aae02d5e1f7f4f02de"
+    },
+    {
+      "book_id": "TBPDF_5e037128fc5c423d",
+      "title": "中医学基础",
+      "aliases": [
+        "中医学基础"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医学基础.pdf",
+      "size_bytes": 7527363,
+      "sha256": "cbe8edc08e7d7cfe6a7c47519eef91ee280b48aab90005ea82b1f91f0152590a"
+    },
+    {
+      "book_id": "TBPDF_10144043b753aa27",
+      "title": "中医学概论",
+      "aliases": [
+        "中医学概论"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医学概论.pdf",
+      "size_bytes": 12166118,
+      "sha256": "c9f7dbec24d7fad2b457ae9372276d5617bb7d53f575901be426fe266a04c0e5"
+    },
+    {
+      "book_id": "TBPDF_4f63d72f1b1cbe5e",
+      "title": "中医文化学",
+      "aliases": [
+        "中医文化",
+        "中医文化学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医文化学.pdf",
+      "size_bytes": 8263221,
+      "sha256": "43e9d850364ea83e81dd300f01f0270e25dc435ddb32656ae367ea025f98d9f5"
+    },
+    {
+      "book_id": "TBPDF_96eb54a798b3c8df",
+      "title": "中医文献学",
+      "aliases": [
+        "中医文献",
+        "中医文献学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医文献学.pdf",
+      "size_bytes": 36095672,
+      "sha256": "4a05a7cc00d093e2ac8fced6b5c72181819c9517934bd654f675b0f42711da3d"
+    },
+    {
+      "book_id": "TBPDF_54f74f0cee8abc07",
+      "title": "中医正骨学",
+      "aliases": [
+        "中医正骨",
+        "中医正骨学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医正骨学.pdf",
+      "size_bytes": 22230350,
+      "sha256": "6b86a35eb2167f61ea1c63e8dbc6f6d6d92e08d7d8c1436126c921fdc3d5bf11"
+    },
+    {
+      "book_id": "TBPDF_395d2645d4aa4113",
+      "title": "中医治未病学概论",
+      "aliases": [
+        "中医治未病学概论"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医治未病学概论.pdf",
+      "size_bytes": 7187040,
+      "sha256": "7fa3a5d59be0ba637dc2baa0fe6418cd13c569a31c96e86672940aa6306748aa"
+    },
+    {
+      "book_id": "TBPDF_d38f53d7f9eab2f3",
+      "title": "中医筋伤学",
+      "aliases": [
+        "中医筋伤",
+        "中医筋伤学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医筋伤学.pdf",
+      "size_bytes": 23841410,
+      "sha256": "19f68e487e84f463df5e95b5c91877794dba2e5feeac5313135a8b8c84161833"
+    },
+    {
+      "book_id": "TBPDF_6cbcb0cd7d69a5e8",
+      "title": "中医食疗学",
+      "aliases": [
+        "中医食疗",
+        "中医食疗学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医食疗学.pdf",
+      "size_bytes": 6018179,
+      "sha256": "1f603256e3eb286fd71248e8dba4284f5542171556c9c1d7827a0b5284c29536"
+    },
+    {
+      "book_id": "TBPDF_2b503efe5f93871b",
+      "title": "中医骨伤科学基础",
+      "aliases": [
+        "中医骨伤科学基础"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中医骨伤科学基础.pdf",
+      "size_bytes": 11277603,
+      "sha256": "773c945164c44762314eb6ba0b342215a6841bcf3ea6419b81d8d6e9dc757495"
+    },
+    {
+      "book_id": "TBPDF_08bbf0252574213e",
+      "title": "中药药理学",
+      "aliases": [
+        "中药药理",
+        "中药药理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中药药理学.pdf",
+      "size_bytes": 108406878,
+      "sha256": "145a23313bc7d36dc14368bb8bf51f4210cfd93008dd1cad818ecd772719d376"
+    },
+    {
+      "book_id": "TBPDF_c474565faba43a23",
+      "title": "中药资源学",
+      "aliases": [
+        "中药资源",
+        "中药资源学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中药资源学.pdf",
+      "size_bytes": 6122544,
+      "sha256": "99831e27993d0488b15516b48af3790c97aa6198099bc3d5de962906dead070d"
+    },
+    {
+      "book_id": "TBPDF_2aee0ac2cb86c47f",
+      "title": "中药鉴定学",
+      "aliases": [
+        "中药鉴定",
+        "中药鉴定学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中药鉴定学.pdf",
+      "size_bytes": 279377372,
+      "sha256": "3194d7c025621c55ef7672bd725325717fbf81bd875386e6cecf7100030e9018"
+    },
+    {
+      "book_id": "TBPDF_bcf11f072fe4582e",
+      "title": "中西医结合口腔科学",
+      "aliases": [
+        "中西医结合口腔科",
+        "中西医结合口腔科学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中西医结合口腔科学.pdf",
+      "size_bytes": 16243309,
+      "sha256": "a5668ea6dde3582d3cb03dfd1a030b580769c87d74d60ea4efaab22e7b9572ed"
+    },
+    {
+      "book_id": "TBPDF_b9590df99395dcf2",
+      "title": "中西医结合肿瘤学",
+      "aliases": [
+        "中西医结合肿瘤",
+        "中西医结合肿瘤学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/中西医结合肿瘤学.pdf",
+      "size_bytes": 326890932,
+      "sha256": "efeaeff6da1ed78608bc5d22a073c251ef4c32b8c9be8319ee5460c0c59c852e"
+    },
+    {
+      "book_id": "TBPDF_3a95bc6fd6653f82",
+      "title": "临床中药学",
+      "aliases": [
+        "临床中药",
+        "临床中药学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/临床中药学.pdf",
+      "size_bytes": 17963490,
+      "sha256": "38abd426c98da41d8507df434c328f37ad843223a9d73a61257c5a905407c353"
+    },
+    {
+      "book_id": "TBPDF_cd82f789076cb027",
+      "title": "五官科护理学",
+      "aliases": [
+        "五官科护理",
+        "五官科护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/五官科护理学.pdf",
+      "size_bytes": 11876198,
+      "sha256": "87db5864d4667467dc6566e7e3f1a7e2a0b627fc15c7df9a9eb9ba76354cf23d"
+    },
+    {
+      "book_id": "TBPDF_17e12aa27d57f70f",
+      "title": "健康评估",
+      "aliases": [
+        "健康评估"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/健康评估.pdf",
+      "size_bytes": 20152486,
+      "sha256": "e9f6a2ecdc13a58b4d9ded8e34b3834dd9ce151e5264cfd00a122368f5e7029f"
+    },
+    {
+      "book_id": "TBPDF_5bf45aa50da8a7a8",
+      "title": "儿科护理学",
+      "aliases": [
+        "儿科护理",
+        "儿科护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/儿科护理学.pdf",
+      "size_bytes": 13156116,
+      "sha256": "64ea80b9746c2ae65ace1b29de6f3e3f038baa6f6d3f440acdb4abea9c3e981f"
+    },
+    {
+      "book_id": "TBPDF_fccc4cd5e9341bb3",
+      "title": "免疫学基础与病原生物学",
+      "aliases": [
+        "免疫学基础与病原生物",
+        "免疫学基础与病原生物学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/免疫学基础与病原生物学.pdf",
+      "size_bytes": 525119819,
+      "sha256": "b155bbe5dce3663a23047afc7bcbfb4d7ef6c7602a7612038bb2cb93a36dc142"
+    },
+    {
+      "book_id": "TBPDF_81dfec770c869148",
+      "title": "各家针灸学说",
+      "aliases": [
+        "各家针灸学说"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/各家针灸学说.pdf",
+      "size_bytes": 10362969,
+      "sha256": "101c04f789b73ad4ff0486152bae87f5969403470038db3baa2bc7ffe1ee12b1"
+    },
+    {
+      "book_id": "TBPDF_c0286a83eb733214",
+      "title": "外科护理学",
+      "aliases": [
+        "外科护理",
+        "外科护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/外科护理学.pdf",
+      "size_bytes": 21096435,
+      "sha256": "2d7acd4bc1873cd9418da2c24f55df5f7fddcde1267934a82fd2437782ac5cc7"
+    },
+    {
+      "book_id": "TBPDF_ede49d9f3eb85b68",
+      "title": "妇产科护理学",
+      "aliases": [
+        "妇产科护理",
+        "妇产科护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/妇产科护理学.pdf",
+      "size_bytes": 20492908,
+      "sha256": "29ee6e4085ebe7af94306c270e3e419af52382d7af16236fbe217e6d29a070d6"
+    },
+    {
+      "book_id": "TBPDF_fda9728f6983cd77",
+      "title": "实验针灸学",
+      "aliases": [
+        "实验针灸",
+        "实验针灸学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/实验针灸学.pdf",
+      "size_bytes": 16931340,
+      "sha256": "c12f94cf26675bd50e319aaefdace8e84968e53db343ea367bffcc1bee3b4679"
+    },
+    {
+      "book_id": "TBPDF_6d0c29f454621ce4",
+      "title": "实验针灸学实验指导",
+      "aliases": [
+        "实验针灸学实验指导"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/实验针灸学实验指导.pdf",
+      "size_bytes": 8787413,
+      "sha256": "8e39e0a4e7314bf7e7c29687269c671dae88a7a3ea1f2666a8cb8f340ce23b6d"
+    },
+    {
+      "book_id": "TBPDF_84750cf95e086c37",
+      "title": "康复护理学",
+      "aliases": [
+        "康复护理",
+        "康复护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/康复护理学.pdf",
+      "size_bytes": 17947758,
+      "sha256": "5554e02017cdb5a32d3dac666a95b7a0857282842b2a2e6c16c603be59d801d0"
+    },
+    {
+      "book_id": "TBPDF_68d6c1742416cbfb",
+      "title": "护理伦理学",
+      "aliases": [
+        "护理伦理",
+        "护理伦理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/护理伦理学.pdf",
+      "size_bytes": 4483540,
+      "sha256": "dfa198cd5f16762e97803e06f81224352f5f3c741e43e77c22323f38519adddb"
+    },
+    {
+      "book_id": "TBPDF_3fe16f6bab94c657",
+      "title": "护理心理学",
+      "aliases": [
+        "护理心理",
+        "护理心理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/护理心理学.pdf",
+      "size_bytes": 7983761,
+      "sha256": "76e6ac0bf9799a8d2b92710de63b7edb272fe1cb933389a100e0eaf58435bc65"
+    },
+    {
+      "book_id": "TBPDF_7234d7011d1fa4db",
+      "title": "护理美学",
+      "aliases": [
+        "护理美",
+        "护理美学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/护理美学.pdf",
+      "size_bytes": 6435006,
+      "sha256": "959c3780a7787d2849666b708a60ef43a48ef28c48d62b74c74fd24d44eb344a"
+    },
+    {
+      "book_id": "TBPDF_55c0d05da2ed6ba2",
+      "title": "无机化学实验",
+      "aliases": [
+        "无机化学实验"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/无机化学实验.pdf",
+      "size_bytes": 14240710,
+      "sha256": "078445f910cfaebc54be50f90541f70543a00ecd3e4d157a5e2f4d1aa34dfd53"
+    },
+    {
+      "book_id": "TBPDF_c2bacda0a514b38e",
+      "title": "有机化学实验",
+      "aliases": [
+        "有机化学实验"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/有机化学实验.pdf",
+      "size_bytes": 18863941,
+      "sha256": "c6cfdefe3abbf5ba4d4be4c5d0ac917f52a26ae3c9a913ca1aa6b97127bc5053"
+    },
+    {
+      "book_id": "TBPDF_c9a27724ec20905a",
+      "title": "本草典籍选读",
+      "aliases": [
+        "本草典籍选读"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/本草典籍选读.pdf",
+      "size_bytes": 6958935,
+      "sha256": "3d31ca10bb6d862e55453bec0a7d50af9a4f7fb52fd9b3ab1181f776e6d41327"
+    },
+    {
+      "book_id": "TBPDF_de115234acc57344",
+      "title": "生物化学",
+      "aliases": [
+        "生物化",
+        "生物化学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/生物化学.pdf",
+      "size_bytes": 219479497,
+      "sha256": "3848de490e5f1fffb058d4b7d9f9266366614c4e966b235a458a462e89cc3a76"
+    },
+    {
+      "book_id": "TBPDF_2221f49afb301a13",
+      "title": "生理学基础",
+      "aliases": [
+        "生理学基础"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/生理学基础.pdf",
+      "size_bytes": 18144438,
+      "sha256": "a174ee189f778dcfb27a4ea7828b4e7e4f2fc44107a0c0ba4bc37fd04f1165fe"
+    },
+    {
+      "book_id": "TBPDF_de7b249e37248d58",
+      "title": "病理学基础",
+      "aliases": [
+        "病理学基础"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/病理学基础.pdf",
+      "size_bytes": 11799466,
+      "sha256": "fd2849c85feefa98ef0f3700a905d0d71a14e334eeb87ca709eac18e03905d8b"
+    },
+    {
+      "book_id": "TBPDF_84df6f1547bc6056",
+      "title": "社区护理学",
+      "aliases": [
+        "社区护理",
+        "社区护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/社区护理学.pdf",
+      "size_bytes": 18524946,
+      "sha256": "9df0f610e0adde60b5966042b2c55d03e2a4de10f27e6a832c4564fe541a4b9d"
+    },
+    {
+      "book_id": "TBPDF_982065e094d6b2bb",
+      "title": "系统解剖学",
+      "aliases": [
+        "系统解剖",
+        "系统解剖学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/系统解剖学.pdf",
+      "size_bytes": 25679726,
+      "sha256": "8a4ce5ac52cc20a6c0353b9003df06cc11cb2190b4d51aee7864c6e06351d4b8"
+    },
+    {
+      "book_id": "TBPDF_47d24c1fb56e652e",
+      "title": "细胞生物学实验",
+      "aliases": [
+        "细胞生物学实验"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/细胞生物学实验.pdf",
+      "size_bytes": 4901279,
+      "sha256": "acc0589220a41597347eab1704aa5266d8292738b9a3dc39e896e9f965ae5dd6"
+    },
+    {
+      "book_id": "TBPDF_c90686499b7f0be8",
+      "title": "老年护理学",
+      "aliases": [
+        "老年护理",
+        "老年护理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/老年护理学.pdf",
+      "size_bytes": 8912959,
+      "sha256": "aa34a6395a38eeddf899dda3d0caceefd579a8b8e72d3aba9dc6f469f8060cfc"
+    },
+    {
+      "book_id": "TBPDF_c1eb79dc134aa568",
+      "title": "药事管理学",
+      "aliases": [
+        "药事管理",
+        "药事管理学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/药事管理学.pdf",
+      "size_bytes": 12036988,
+      "sha256": "8e3d25f96b301d966437d91cfc84e10dba2833ed6dc6cfb829b2ea1a4ebff726"
+    },
+    {
+      "book_id": "TBPDF_1848fc66888457ec",
+      "title": "药学文献检索",
+      "aliases": [
+        "药学文献检索"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/药学文献检索.pdf",
+      "size_bytes": 20683898,
+      "sha256": "bec8baa0517b84e797f54f78e137e33a755fd1b0a7c24685803abcee4d7ff9d9"
+    },
+    {
+      "book_id": "TBPDF_9d683fb71f90edd2",
+      "title": "药用植物栽培学",
+      "aliases": [
+        "药用植物栽培",
+        "药用植物栽培学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/药用植物栽培学.pdf",
+      "size_bytes": 7481094,
+      "sha256": "436cd89b7cba278324126bb12a22d476023eacbd3d5fe98f6937c7033ed2711a"
+    },
+    {
+      "book_id": "TBPDF_e7f9d58ed141555c",
+      "title": "预防医学",
+      "aliases": [
+        "预防医",
+        "预防医学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/预防医学.pdf",
+      "size_bytes": 13766197,
+      "sha256": "5bf4fe61489b07907f03d96ba38d150b685325d940477e46eda1d8dd2f2cd1d3"
+    },
+    {
+      "book_id": "TBPDF_f78714c4c4fae1b0",
+      "title": "骨伤影像学",
+      "aliases": [
+        "骨伤影像",
+        "骨伤影像学"
+      ],
+      "edition": "十四五",
+      "relative_path": "十四五/骨伤影像学.pdf",
+      "size_bytes": 20758811,
+      "sha256": "b49effb8260df9cbd137b8a966c345121039d17051fef31a6fd2c08f3086ed86"
+    }
+  ]
+}

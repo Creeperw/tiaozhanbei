@@ -1,0 +1,36 @@
+{
+  "users": [
+    {
+      "username": "dashboard_cross_major",
+      "profile": {
+        "display_name": "林同学",
+        "constitution": "跨专业进阶群体",
+        "health_goals": "系统掌握中医基础与方剂学",
+        "diet_restrictions": "每天30分钟",
+        "exercise_preferences": "知识卡和题目",
+        "medical_history": "四君子汤组成与配伍辨析薄弱"
+      },
+      "memories": [
+        {
+          "category": "short_term",
+          "title": "近期重点",
+          "content": "四君子汤组成、功用、主治与配伍意义"
+        }
+      ],
+      "agent_events": [
+        {
+          "agent_name": "diagnosis_agent",
+          "event_type": "learning_state",
+          "output_summary": "已识别近期方剂学习重点"
+        }
+      ],
+      "sessions": [
+        {
+          "id": 1,
+          "title": "四君子汤学习",
+          "updated_at": "2026-07-21T20:00:00"
+        }
+      ]
+    }
+  ]
+}

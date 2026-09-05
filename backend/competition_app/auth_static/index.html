@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f32">
+  <meta name="description" content="登录或注册时珍智训，安全访问个人学习计划与复习数据。">
+  <title>登录 · 时珍智训</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23173f32'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='38' fill='white'%3E%E6%97%B6%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/auth/auth.css">
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="identity-panel" aria-labelledby="brand-title">
+      <div class="brand-mark" aria-hidden="true">时</div>
+      <p class="eyebrow">PERSONAL LEARNING WORKSPACE</p>
+      <h1 id="brand-title">一人一档，<br>每次学习都有来处。</h1>
+      <p>登录后，学习计划、对话检查点、复习队列和答题反馈只会进入你自己的学习空间。</p>
+      <dl>
+        <div><dt>01</dt><dd>长期规划与短期节奏持续衔接</dd></div>
+        <div><dt>02</dt><dd>中断追问可在刷新后继续</dd></div>
+        <div><dt>03</dt><dd>复习状态按个人掌握度更新</dd></div>
+      </dl>
+    </section>
+
+    <section class="form-panel" aria-labelledby="form-title">
+      <div class="mode-switch" role="tablist" aria-label="账号操作">
+        <button id="login-tab" type="button" role="tab" aria-selected="true">登录</button>
+        <button id="register-tab" type="button" role="tab" aria-selected="false">注册</button>
+      </div>
+      <p class="eyebrow accent" id="form-eyebrow">WELCOME BACK</p>
+      <h2 id="form-title">继续你的学习</h2>
+      <p id="form-intro" class="form-intro">使用已有账号进入个人学习空间。</p>
+
+      <form id="auth-form" novalidate>
+        <label for="username">用户名
+          <input id="username" name="username" minlength="3" maxlength="64" autocomplete="username" required placeholder="请输入用户名">
+        </label>
+        <label id="display-name-field" for="display-name" hidden>称呼（可选）
+          <input id="display-name" name="display_name" maxlength="64" autocomplete="name" placeholder="例如：林同学">
+        </label>
+        <label for="password">密码
+          <input id="password" name="password" type="password" minlength="8" maxlength="128" autocomplete="current-password" required placeholder="至少 8 个字符">
+        </label>
+        <label id="confirm-field" for="confirm-password" hidden>确认密码
+          <input id="confirm-password" name="confirm_password" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="再次输入密码">
+        </label>
+        <p id="auth-error" class="form-error" role="alert"></p>
+        <button id="submit-button" class="submit-button" type="submit">登录并继续</button>
+      </form>
+      <p class="privacy-note">账号仅用于隔离你的学习数据。密码不会以明文保存。</p>
+    </section>
+  </main>
+  <script src="/auth/auth.js"></script>
+</body>
+</html>

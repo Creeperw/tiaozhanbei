@@ -1,0 +1,3829 @@
+from __future__ import annotations
+
+import importlib
+import json
+import os
+import re
+import sys
+import threading
+import time
+from collections import Counter
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from datetime import timedelta
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from typing import Any, Callable
+from urllib.parse import quote_plus
+from uuid import uuid4
+
+from fastapi import FastAPI
+
+from competition_app.config import Settings
+from competition_app.legacy_asset_compat import (
+    knowledge_component_root,
+    knowledge_video_root,
+)
+
+
+_IMPORT_LOCK = threading.RLock()
+
+#: TTL for the in-process learning-context cache. 行为上下文聚合涉及
+#: 系统数据重建、诊断快照、学习统计等多张表的全量聚合，单次约 200ms+，
+#: 而它会被 /dashboard/home、/learning-context、/learning-path 等高频读
+#: 接口反复调用。TTL 缓存让聚合结果在窗口内复用。
+_LEARNING_CONTEXT_TTL_SECONDS = 30.0
+
+
+def _normalize_profile_memory_value(field: str, value: Any) -> Any:
+    """Normalize legacy profile prose before it becomes shared agent context."""
+
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if field != "learning_goal" or not text:
+        return text
+    if "中医" in text and "执业医师" in text:
+        return "中医执业医师资格考试"
+    if any(token in text for token in ("请结合", "给我制定", "重新制定", "规划")):
+        match = re.search(r"(?:我要|我想|目标是|准备)(?:考取|报考|参加)?([^，。；\n]+)", text)
+        if match:
+            return match.group(1).strip("：:，。； ")
+        if not any(
+            token in text
+            for token in (
+                "考试", "资格", "执业", "考研", "研究生", "课程",
+                "方剂", "中药", "中医基础", "医古文", "能力", "阅读",
+            )
+        ):
+            return ""
+    return text
+
+
+def _onboarding_profile_context(onboarding: dict[str, Any] | None) -> dict[str, Any]:
+    """Translate the persisted registration survey into agent-consumable facts."""
+
+    onboarding = onboarding if isinstance(onboarding, dict) else {}
+    survey = onboarding.get("survey_answers")
+    survey = survey if isinstance(survey, dict) else {}
+    baseline = onboarding.get("l0_baseline")
+    baseline = baseline if isinstance(baseline, dict) else {}
+
+    target = str(
+        survey.get("target_exam_or_course")
+        or baseline.get("target_exam_or_course")
+        or ""
+    ).strip()
+    long_term_goal = str(survey.get("long_term_goal") or "").strip()
+    short_term_goal = str(survey.get("short_term_goal") or "").strip()
+    route_id = str(
+        survey.get("textbook_route_id")
+        or baseline.get("textbook_route_id")
+        or ""
+    ).strip()
+    route_version = int(
+        survey.get("textbook_route_version")
+        or baseline.get("textbook_route_version")
+        or 0
+    )
+    foundation = str(survey.get("tcm_foundation") or "").strip()
+    major = str(
+        survey.get("major_or_role")
+        or baseline.get("major_or_role")
+        or ""
+    ).strip()
+    education = str(survey.get("education") or "").strip()
+    learned_courses = [
+        str(item).strip()
+        for item in (survey.get("learned_courses") or [])
+        if str(item).strip()
+    ]
+    custom_requirements = str(
+        survey.get("custom_requirements") or ""
+    ).strip()
+    background_parts = [
+        value
+        for value in (foundation, major)
+        if value and value not in {"未填写", "暂不确定"}
+    ]
+    if learned_courses:
+        background_parts.append("已学：" + "、".join(learned_courses))
+
+    goal_text = f"{target} {long_term_goal}".strip()
+    goal_type = (
+        "credential"
+        if any(
+            marker in goal_text
+            for marker in ("执业", "资格", "认证", "职称", "证书")
+        )
+        else "learning"
+    )
+    daily_minutes = int(
+        survey.get("daily_available_minutes")
+        or baseline.get("daily_available_minutes")
+        or 0
+    )
+    resources = survey.get("resource_preference") or []
+    if not isinstance(resources, list):
+        resources = [resources] if resources else []
+
+    return {
+        "learner_group": (
+            survey.get("learner_group_title")
+            or survey.get("user_group")
+            or baseline.get("learner_group")
+            or ""
+        ),
+        "learning_goal": target or long_term_goal,
+        "learning_background": "；".join(background_parts),
+        "education": education,
+        "user_major_or_profession": major,
+        "completed_courses": learned_courses,
+        "daily_available_minutes": daily_minutes,
+        "custom_requirements": custom_requirements,
+        "goals": {
+            "goal_type": goal_type,
+            "goal_name": target or long_term_goal,
+            "long_term_goal": long_term_goal,
+            "short_term_goal": short_term_goal,
+            "textbook_route_id": route_id,
+            "textbook_route_version": route_version,
+        },
+        "user_preference": {
+            "resource_preference": resources,
+            "learning_periods": survey.get("preferred_time_slot") or "",
+            "custom_requirements": custom_requirements,
+        },
+        "onboarding_survey": survey,
+        "l0_baseline": baseline,
+    }
+
+
+def _explicit_profile_updates(user_text: str) -> dict[str, str]:
+    """Recover only profile facts stated literally when model extraction is unavailable.
+
+    This is deliberately narrower than intent classification: it never infers a
+    goal, background, or schedule.  It only preserves unmistakable first-person
+    facts so the long-term planning gate does not ask for information already in
+    the current message.
+    """
+
+    text = str(user_text or "").strip()
+    if not text:
+        return {}
+    updates: dict[str, str] = {}
+
+    if "中医" in text and "执业医师" in text:
+        updates["learning_goal"] = "中医执业医师资格考试"
+    else:
+        goal_match = re.search(
+            r"(?:我想|我要|准备|计划)(?:考取|报考|参加|学习)?([^，。；\n]{2,80})",
+            text,
+        )
+        if goal_match:
+            updates["learning_goal"] = goal_match.group(1).strip("：:，。； ")
+
+    background_parts: list[str] = []
+    if "零基础" in text or "完全不会" in text or "啥都不会" in text:
+        background_parts.append("零基础")
+    major_match = re.search(
+        r"(?:^|[，,。；;\n])\s*(?:我是|本人是|目前是)?\s*"
+        r"([^，,。；;\n]{1,40}?专业)(?:的|学生|毕业|，|,|。|；|;|\n|$)",
+        text,
+    )
+    if major_match:
+        background_parts.append(major_match.group(1).strip())
+    learned_match = re.search(r"(?:已经|曾经)?学过([^，。；\n]{1,100})", text)
+    if learned_match:
+        background_parts.append(f"学过{learned_match.group(1).strip()}")
+    if background_parts:
+        updates["learning_background"] = "，".join(dict.fromkeys(background_parts))
+
+    weekly_match = re.search(r"每周[^，。；\n]{0,30}?\d+(?:\.\d+)?\s*天", text)
+    daily_match = re.search(r"每天[^，。；\n]{0,30}?\d+(?:\.\d+)?\s*(?:小时|分钟)", text)
+    time_parts = [
+        match.group(0).strip() for match in (weekly_match, daily_match) if match is not None
+    ]
+    if time_parts:
+        updates["time_constraints"] = "，".join(dict.fromkeys(time_parts))
+    return updates
+
+
+@contextmanager
+def _temporary_environment(values: dict[str, str]):
+    previous = {name: os.environ.get(name) for name in values}
+    os.environ.update(values)
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+def _real_difficulty_label(question: dict[str, Any]) -> tuple[Any, Any]:
+    """Return (difficulty, difficulty_source) using only real annotations.
+
+    Never infers or defaults a difficulty: an unlabelled question keeps NULL
+    (None, None) so downstream consumers can distinguish labelled content from
+    manufactured values.
+
+    Learner-tagged levels are personal labels persisted in
+    user_question_difficulty_tags; they must never be written back into the
+    shared bank as if they were source annotations.
+    """
+    source = question.get("difficulty_source") or question.get("难度来源")
+    if str(source or "").strip() == "user_tagged":
+        return None, None
+    difficulty_module = importlib.import_module(
+        "competition_app.contracts.difficulty"
+    )
+    raw = question.get("difficulty", question.get("难度"))
+    if raw is None:
+        return None, None
+    parsed = difficulty_module.parse_difficulty(raw)
+    if parsed is None:
+        return None, None
+    difficulty_source = difficulty_module.parse_difficulty_source(
+        source or "source_metadata"
+    )
+    return parsed, difficulty_source
+
+
+@dataclass
+class BackendHandoffRuntime:
+    """Loaded frontend-backend contract hosted inside the main ASGI process."""
+
+    app: FastAPI
+    root: Path
+    runtime_root: Path
+    database_backend: str
+    review_context_provider: Callable[[str, int], dict[str, Any]] | None = None
+    _started: bool = False
+    _lifespan: object | None = field(default=None, init=False, repr=False)
+    _learning_context_cache: dict[tuple[str, int], tuple[float, dict[str, Any]]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _learning_context_lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False
+    )
+
+    def _cache_learning_context(
+        self, external_user_id: str, days: int, payload: dict[str, Any]
+    ) -> None:
+        with self._learning_context_lock:
+            self._learning_context_cache[(str(external_user_id), int(days))] = (
+                time.monotonic(),
+                payload,
+            )
+
+    def _cached_learning_context(
+        self, external_user_id: str, days: int
+    ) -> dict[str, Any] | None:
+        with self._learning_context_lock:
+            hit = self._learning_context_cache.get(
+                (str(external_user_id), int(days))
+            )
+        if hit is None:
+            return None
+        cached_at, payload = hit
+        if time.monotonic() - cached_at >= _LEARNING_CONTEXT_TTL_SECONDS:
+            return None
+        return payload
+
+    def invalidate_learning_context(
+        self, external_user_id: str | None = None
+    ) -> None:
+        """Drop cached learning contexts after behavior-data writes.
+
+        Pass a user id to invalidate one user; omit it to clear all users.
+        """
+        with self._learning_context_lock:
+            if external_user_id is None:
+                self._learning_context_cache.clear()
+                return
+            user_key = str(external_user_id)
+            stale = [
+                key
+                for key in self._learning_context_cache
+                if key[0] == user_key
+            ]
+            for key in stale:
+                self._learning_context_cache.pop(key, None)
+
+    def record_legacy_simulated_patient_activity(
+        self,
+        external_user_id: str,
+        result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Project a completed legacy case session into the shared activity log.
+
+        The legacy JSON files remain the source for its detail/history screens;
+        this record is only a safe, idempotent behavior projection and is not
+        included in audited outcome statistics.
+        """
+        history_id = str(result.get("history_id") or "").strip()
+        if not history_id:
+            raise ValueError("history_id is required for legacy activity projection")
+        data = result.get("data") if isinstance(result.get("data"), dict) else {}
+        grading = data.get("grading_report") if isinstance(data.get("grading_report"), dict) else {}
+        score = grading.get("score")
+        try:
+            normalized_score = max(0.0, min(1.0, float(score) / 100.0))
+        except (TypeError, ValueError):
+            normalized_score = None
+
+        database = importlib.import_module("APP.backend.database")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            existing = db.query(database.LearningActivityRecord).filter_by(
+                user_id=user.id,
+                activity_type="case_training",
+                resource_id=history_id,
+                resource_type="simulated_patient_session",
+            ).one_or_none()
+            if existing is None:
+                payload = {
+                    "source": "legacy_simulated_patient",
+                    "history_id": history_id,
+                    "session_id": str(result.get("session_id") or ""),
+                    "practice_scope": str(result.get("practice_scope") or "full"),
+                    "diagnosis_correct": bool(grading.get("diagnosis_correct")),
+                    "projection_kind": "behavior_history_only",
+                }
+                db.add(database.LearningActivityRecord(
+                    user_id=user.id,
+                    activity_type="case_training",
+                    resource_id=history_id,
+                    resource_type="simulated_patient_session",
+                    duration_minutes=0,
+                    completion_status="completed",
+                    score=normalized_score,
+                    payload_json=json.dumps(payload, ensure_ascii=False),
+                    created_at=time_utils.utc_now(),
+                ))
+                system_data.rebuild_system_data(
+                    db,
+                    user_id=user.id,
+                    now=time_utils.utc_now(),
+                )
+                db.commit()
+                projected = True
+            else:
+                projected = False
+            self.invalidate_learning_context(external_user_id)
+            return {"projected": projected, "history_id": history_id}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    @property
+    def route_count(self) -> int:
+        return len(self.app.routes)
+
+    def status(self) -> dict[str, object]:
+        return {
+            "enabled": True,
+            "mounted": True,
+            "source": str(self.root),
+            "runtime_root": str(self.runtime_root),
+            "database_backend": self.database_backend,
+            "route_count": self.route_count,
+            "started": self._started,
+        }
+
+    async def startup(self) -> None:
+        if self._started:
+            return
+        self._lifespan = self.app.router.lifespan_context(self.app)
+        await self._lifespan.__aenter__()
+        self._started = True
+
+    async def shutdown(self) -> None:
+        if not self._started:
+            return
+        if self._lifespan is not None:
+            await self._lifespan.__aexit__(None, None, None)
+        self._lifespan = None
+        self._started = False
+
+    def record_login_activity(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            snapshot = system_data.record_login_activity(db, user_id=user.id)
+            db.commit()
+            self.invalidate_learning_context(external_user_id)
+            return system_data.system_data_payload(snapshot)
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def get_onboarding_status(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return diagnosis.get_onboarding_status(db, user.id)
+        finally:
+            db.close()
+
+    def get_checkin_status(self, external_user_id: str, *, days: int = 7) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        checkin = importlib.import_module("APP.backend.checkin_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return checkin.build_checkin_status(db, user.id, days=days)
+        finally:
+            db.close()
+
+    def resolve_executable_knowledge_point(
+        self,
+        knowledge_point_name: str,
+    ) -> str | None:
+        """Resolve a formal KP only when the handoff can freeze three questions."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            return service.resolve_executable_knowledge_point(
+                db,
+                knowledge_point_name,
+                required_question_count=3,
+            )
+        finally:
+            db.close()
+
+    def ensure_executable_knowledge_bundle(
+        self,
+        bundle: dict[str, Any],
+        *,
+        required_question_count: int = 3,
+    ) -> str:
+        """Register one trusted atlas bundle in the executable task store."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            kp_id = service.ensure_executable_knowledge_bundle(
+                db,
+                bundle,
+                required_question_count=required_question_count,
+            )
+            db.commit()
+            return kp_id
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def record_daily_checkin(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        checkin = importlib.import_module("APP.backend.checkin_service")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = checkin.record_daily_checkin(db, user.id)
+            snapshot = system_data.rebuild_system_data(db, user_id=user.id)
+            db.commit()
+            self.invalidate_learning_context(external_user_id)
+            return {**result, "system_data": system_data.system_data_payload(snapshot)}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def upsert_daily_task_execution(
+        self, external_user_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Publish one daily-task execution payload into the delivered runtime."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = service.upsert_daily_task_snapshot(db, user.id, payload)
+            self.invalidate_learning_context(external_user_id)
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_daily_task_progress(
+        self, external_user_id: str, payload: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """Load the server-owned daily-task progress snapshot for the mapped host user."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.daily_task_progress(db, user.id, payload or {})
+        finally:
+            db.close()
+
+    def load_active_exam_scope(self, external_user_id: str) -> dict[str, Any]:
+        """Load the server-owned active exam identity for one host user."""
+
+        database = importlib.import_module("APP.backend.database")
+        learning_targets = importlib.import_module(
+            "APP.backend.learning_target_service"
+        )
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            target = learning_targets.get_active_learning_target(db, user.id)
+            return learning_targets.serialize_learning_target(target) or {}
+        finally:
+            db.close()
+
+    def load_learning_context(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+    ) -> dict[str, Any]:
+        """Build a server-owned behavior context for the host application's user."""
+
+        if days not in {7, 30, 90}:
+            raise ValueError("days must be one of: 7, 30, 90")
+        cached = self._cached_learning_context(external_user_id, days)
+        if cached is not None:
+            return cached
+        database = importlib.import_module("APP.backend.database")
+        auth = importlib.import_module("APP.backend.auth")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        learning_targets = importlib.import_module("APP.backend.learning_target_service")
+        memory = importlib.import_module("APP.backend.memory_agent_service")
+        statistics = importlib.import_module("APP.backend.learning_statistics_service")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        db = database.SessionLocal()
+        try:
+            user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                db, SimpleNamespace(user_id=external_user_id)
+            )
+            stored_profile = diagnosis.get_or_create_profile(db, user.id, commit=False)
+            system_data.rebuild_system_data(db, user_id=user.id)
+            profile = diagnosis.build_learning_profile(db, user.id)
+            behavior_window = diagnosis.build_l3_behavior_window(db, user.id)
+            diagnosis_report = diagnosis.build_diagnosis_snapshot(
+                db, user.id, persist=False
+            )
+            learner_brief = memory.build_learner_context_brief(db, user.id)
+            learning_target = learning_targets.serialize_learning_target(
+                learning_targets.get_active_learning_target(db, user.id)
+            )
+            window_metrics = system_data.build_learning_window_metrics(
+                db, user_id=user.id, days=days
+            )
+            trends = system_data.build_learning_trends(db, user_id=user.id, days=days)
+            outcome_statistics = statistics.build_learning_statistics(
+                db, user.id, days=days
+            )
+
+            mastery_rows = (
+                db.query(database.LearnerKnowledgeMastery)
+                .filter(database.LearnerKnowledgeMastery.user_id == user.id)
+                .order_by(database.LearnerKnowledgeMastery.updated_at.desc())
+                .limit(100)
+                .all()
+            )
+            identity = importlib.import_module(
+                "APP.backend.knowledge_point_identity_service"
+            )
+            canonical_mastery = identity.canonical_map_for_ids(
+                db, (str(row.kp_id) for row in mastery_rows)
+            )
+            mastery_by_canonical = identity.authoritative_rows_by_canonical(
+                mastery_rows, canonical_mastery, projection_name="learning_context_mastery"
+            )
+            completed_attempts = self._load_completed_question_attempts(
+                database, db, user.id, external_user_id
+            )
+            system_payload = {
+                "time_data": window_metrics["time_data"],
+                "task_completion_rate": window_metrics["task_completion_rate"],
+                "daily_atomic_task_completion_rate": window_metrics[
+                    "daily_atomic_task_completion_rate"
+                ],
+                "resource_click_rate": window_metrics["resource_click_rate"],
+                "calculation_version": window_metrics["calculation_version"],
+                "calculated_at": window_metrics["calculated_at"],
+            }
+            current_outcomes = dict(
+                outcome_statistics.get("current_window") or {}
+            )
+            correctness_denominator = (
+                int(current_outcomes.get("correct_answers") or 0)
+                + int(current_outcomes.get("incorrect_answers") or 0)
+            )
+            canonical_accuracy = (
+                int(current_outcomes.get("correct_answers") or 0)
+                / correctness_denominator
+                if correctness_denominator
+                else None
+            )
+            monitoring_metrics = {
+                "task_completion_rate": (
+                    window_metrics.get("daily_atomic_task_completion_rate") or {}
+                ).get("value"),
+                "question_accuracy": canonical_accuracy,
+                "question_score_rate": current_outcomes.get("score_rate"),
+                "review_stability": None,
+                "retry_count": int(behavior_window.get("retry_count") or 0),
+                "sample_counts": {
+                    "activities": int(
+                        (window_metrics.get("counts") or {}).get(
+                            "activity_records"
+                        )
+                        or 0
+                    ),
+                    "question_attempts": int(
+                        current_outcomes.get(
+                            "audited_question_items_completed"
+                        )
+                        or 0
+                    ),
+                    "mastery_records": int(
+                        (outcome_statistics.get("lifetime") or {}).get(
+                            "knowledge_points_assessed"
+                        )
+                        or 0
+                    ),
+                },
+                "sources": [
+                    "daily_task_instances",
+                    "daily_task_items",
+                    "learning_attempt_items",
+                    "grading_result_records",
+                    "audit_result_records",
+                    "knowledge_mastery_states",
+                ],
+            }
+            system_payload.update(
+                {
+                    "behavior_window": behavior_window,
+                    "question_accuracy": {
+                        "value": profile.get("question_accuracy", 0.0),
+                        "unit": "ratio",
+                    },
+                    "review_stability": {
+                        "value": profile.get("review_stability", 0.0),
+                        "unit": "ratio",
+                    },
+                }
+            )
+            brief_payload = learner_brief.model_dump(mode="json")
+            user_profile = dict(brief_payload.get("profile", {}))
+            onboarding = diagnosis.get_onboarding_status(db, user.id)
+            user_profile.update(_onboarding_profile_context(onboarding))
+            try:
+                survey = json.loads(stored_profile.survey_json or "{}")
+            except (TypeError, ValueError):
+                survey = {}
+            survey = survey if isinstance(survey, dict) else {}
+            survey_background = survey.get("background") if isinstance(survey.get("background"), dict) else {}
+            confirmed_profile = survey.get("agent_confirmed_profile") if isinstance(survey, dict) else {}
+            manual_education_major = str(
+                survey.get("education_major")
+                or survey.get("major_or_role")
+                or survey_background.get("education_major")
+                or survey_background.get("major_or_role")
+                or ""
+            ).strip()
+            manual_learning_background = str(survey.get("learning_background") or "").strip()
+            manual_learning_habits = str(survey.get("learning_habits") or "").strip()
+            if isinstance(confirmed_profile, dict):
+                normalized_confirmed = {
+                    str(key): _normalize_profile_memory_value(str(key), value)
+                    for key, value in confirmed_profile.items()
+                    if str(key).strip() and value not in (None, "")
+                }
+                repaired = {
+                    key: value for key, value in normalized_confirmed.items()
+                    if value != confirmed_profile.get(key)
+                }
+                if repaired:
+                    profile_service = importlib.import_module("APP.backend.learner_profile_service")
+                    profile_service.apply_learner_profile_update(
+                        stored_profile,
+                        {key: value for key, value in repaired.items() if key in {
+                            "display_name", "learner_group", "learning_goal", "time_constraints",
+                        }},
+                        source="memory_agent",
+                    )
+                    survey["agent_confirmed_profile"] = normalized_confirmed
+                    stored_profile.survey_json = json.dumps(survey, ensure_ascii=False)
+                    db.add(database.AgentEvent(
+                        user_id=user.id,
+                        agent_name="memory_agent",
+                        event_type="profile_memory_normalized",
+                        input_summary="清理历史画像中的任务指令式文本",
+                        output_summary="已归一化：" + "、".join(sorted(repaired)),
+                        payload=json.dumps({"fields": sorted(repaired)}, ensure_ascii=False),
+                    ))
+                confirmed_profile = normalized_confirmed
+                user_profile.update(
+                    {
+                        str(key): value
+                        for key, value in confirmed_profile.items()
+                        if str(key).strip() and value not in (None, "")
+                    }
+                )
+            if manual_education_major:
+                user_profile["user_major_or_profession"] = manual_education_major
+            profile_service = importlib.import_module("APP.backend.learner_profile_service")
+            authoritative_profile = profile_service.build_learner_profile_payload(stored_profile)
+            for field in ("resource_preferences", "resource_preference", "time_constraints"):
+                user_profile[field] = authoritative_profile[field]
+            if manual_learning_background:
+                user_profile["learning_background"] = manual_learning_background
+            if manual_learning_habits:
+                user_profile["learning_habits"] = manual_learning_habits
+            if learning_target:
+                goal_name = _normalize_profile_memory_value(
+                    "learning_goal", str(learning_target.get("exam_name") or "").strip()
+                )
+                target_type = str(learning_target.get("target_type") or "").strip()
+                goal_type = (
+                    "credential"
+                    if target_type == "certification"
+                    else "admission"
+                    if target_type == "graduate_entrance_exam"
+                    else target_type
+                )
+                if goal_name:
+                    # The active target is an explicit, persisted user choice and is
+                    # more reliable than the legacy free-text profile placeholder.
+                    user_profile["learning_goal"] = goal_name
+                    user_profile["goals"] = {
+                        "goal_type": goal_type or "learning",
+                        "goal_name": goal_name,
+                    }
+            report_payload = diagnosis_report.model_dump(mode="json")
+            db.commit()
+            result = {
+                "source": "frontend_backend",
+                "calculated_at": system_payload.get("calculated_at"),
+                "user_profile": user_profile,
+                "onboarding": onboarding,
+                "learning_target": learning_target,
+                "learning_profile": {
+                    **profile,
+                    "current_status": {
+                        "status_code": diagnosis_report.stage_id or "T0",
+                        "status_name": diagnosis_report.stage_name or "稳定学习",
+                        "confidence": diagnosis_report.confidence or 0.0,
+                        "evidence": [diagnosis_report.summary]
+                        if diagnosis_report.summary
+                        else [],
+                    },
+                    "behavior_metrics": behavior_window,
+                },
+                "monitoring_metrics": monitoring_metrics,
+                "system_data": system_payload,
+                "learning_statistics": outcome_statistics,
+                "question_attempt": completed_attempts,
+                "mastery": [
+                    {
+                        "kp_id": canonical_id,
+                        "mastery": float(row.mastery or 0.0),
+                        "confidence": float(row.confidence or 0.0),
+                        "wrong_count": int(row.wrong_count or 0),
+                        "review_count": int(row.review_count or 0),
+                        "mastery_status": row.mastery_status,
+                        "last_review_at": row.last_review_at.isoformat()
+                        if row.last_review_at
+                        else None,
+                        "next_review_at": row.next_review_at.isoformat()
+                        if row.next_review_at
+                        else None,
+                    }
+                    for canonical_id, row in mastery_by_canonical.items()
+                ],
+                "learning_trends": trends,
+                "diagnosis": report_payload,
+            }
+            self._cache_learning_context(external_user_id, days, result)
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_active_personalization_memories(
+        self, external_user_id: str
+    ) -> list[dict[str, Any]]:
+        """Read active, non-expired memories for the mapped host user only."""
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        memory_service = importlib.import_module("APP.backend.health_memory")
+        sqlalchemy = importlib.import_module("sqlalchemy")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            with memory_service.memory_rw_lock.read():
+                rows = (
+                    db.query(database.PersonalizationMemory)
+                    .filter(
+                        database.PersonalizationMemory.user_id == user.id,
+                        database.PersonalizationMemory.is_active.is_(True),
+                        sqlalchemy.or_(
+                            database.PersonalizationMemory.expires_at.is_(None),
+                            database.PersonalizationMemory.expires_at > time_utils.utc_now(),
+                        ),
+                    )
+                    .order_by(
+                        database.PersonalizationMemory.updated_at.desc(),
+                        database.PersonalizationMemory.id.desc(),
+                    )
+                    .all()
+                )
+                return [
+                    {
+                        "id": row.id,
+                        "category": row.category or "note",
+                        "importance": row.importance or "normal",
+                        "title": row.title or "",
+                        "content": row.content or "",
+                        "source": row.source or "",
+                        "confidence": float(row.confidence or 0.0),
+                        "updated_at": row.updated_at.isoformat()
+                        if row.updated_at
+                        else None,
+                    }
+                    for row in rows
+                    if str(row.content or "").strip()
+                ]
+        finally:
+            db.close()
+
+    def persist_memory_governance(
+        self,
+        external_user_id: str,
+        *,
+        execution_id: str,
+        candidates: list[dict[str, Any]],
+        resolution: str = "none",
+        conflicts: list[dict[str, Any]] | None = None,
+        auto_confirm_candidates: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Persist pending candidates and only user-confirmed replacements.
+
+        ``auto_confirm_candidates`` carries facts the memory agent judged
+        deterministic enough to persist directly (requires_confirmation=false):
+        they are written straight into active memories instead of the pending
+        candidate pool, so the learner does not have to confirm them one by one.
+        """
+
+        allowed_resolutions = {
+            "none", "keep_existing", "use_current_once", "replace_existing"
+        }
+        if resolution not in allowed_resolutions:
+            raise ValueError("memory governance is not ready for persistence")
+        database = importlib.import_module("APP.backend.database")
+        memory_service = importlib.import_module("APP.backend.health_memory")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            normalized_candidates = [
+                {
+                    "content": str(item.get("content") or item.get("summary") or "").strip(),
+                    "title": str(item.get("title") or "")[:200],
+                    "importance": "normal",
+                    "reason": str(item.get("reason") or "Memory Agent 提取，等待用户在学习记忆设置中确认。"),
+                    "confidence": float(item.get("confidence") or 0.8),
+                    "category": str(item.get("category") or "long_term"),
+                }
+                for item in candidates
+                if str(item.get("content") or item.get("summary") or "").strip()
+            ]
+            normalized_auto_confirm = [
+                {
+                    "content": str(item.get("content") or item.get("summary") or "").strip(),
+                    "title": str(item.get("title") or "")[:200],
+                    "importance": str(item.get("importance") or "normal"),
+                    "reason": str(item.get("reason") or "记忆管理智能体识别为确定性信息，直接沉淀。"),
+                    "confidence": float(item.get("confidence") or 0.9),
+                    "requires_confirmation": False,
+                    "category": str(item.get("category") or "long_term"),
+                }
+                for item in (auto_confirm_candidates or [])
+                if str(item.get("content") or item.get("summary") or "").strip()
+            ]
+            extracted = {"candidates": normalized_candidates}
+            if normalized_auto_confirm:
+                extracted["important_short_term"] = normalized_auto_confirm
+            saved = memory_service.save_extracted_memories(
+                db,
+                user.id,
+                extracted,
+                source="memory_agent",
+                session_id=None,
+                commit=False,
+            )
+            replacement_result: dict[str, Any] = {"replaced": []}
+            if resolution == "replace_existing":
+                replacement_result = memory_service.apply_confirmed_memory_replacements(
+                    db,
+                    user.id,
+                    list(conflicts or []),
+                )
+            db.add(
+                database.AgentEvent(
+                    user_id=user.id,
+                    agent_name="memory_agent",
+                    event_type="learning_memory_governance",
+                    input_summary="学习记忆候选与冲突治理",
+                    output_summary=(
+                        f"候选{len(normalized_candidates)}条，"
+                        f"自动沉淀{len(normalized_auto_confirm)}条，决策{resolution}"
+                    ),
+                    payload=json.dumps(
+                        {
+                            "execution_id": execution_id,
+                            "resolution": resolution,
+                            "candidate_contents": [
+                                item["content"] for item in normalized_candidates
+                            ],
+                            "auto_confirm_contents": [
+                                item["content"] for item in normalized_auto_confirm
+                            ],
+                            "replacements": replacement_result.get("replaced", []),
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
+            db.commit()
+            return {
+                "candidates": saved.get("non_important_candidates", []),
+                "auto_confirmed": saved.get("auto_confirmed", []),
+                "resolution": resolution,
+                **replacement_result,
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_multiscale_learning_state(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any],
+        window_days: int = 30,
+    ) -> dict[str, Any]:
+        """Derive the current host user's read-only multi-scale learning state."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module(
+            "APP.backend.multiscale_learning_service"
+        )
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            verified_plan_context = service.verify_host_plan_context(
+                plan_context,
+                external_user_id=external_user_id,
+            )
+            return service.build_multiscale_state(
+                db,
+                user.id,
+                plan_context=verified_plan_context,
+                window_days=window_days,
+            )
+        finally:
+            db.close()
+
+    def load_path_candidates(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any],
+        scope: str,
+        limit: int = 10,
+        include_blocked: bool = True,
+    ) -> dict[str, Any]:
+        """Build hard-gated path candidates for the mapped workshop user."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module(
+            "APP.backend.multiscale_learning_service"
+        )
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            verified_plan_context = service.verify_host_plan_context(
+                plan_context,
+                external_user_id=external_user_id,
+            )
+            return service.build_path_candidates(
+                db,
+                user.id,
+                plan_context=verified_plan_context,
+                scope=scope,
+                limit=limit,
+                include_blocked=include_blocked,
+            )
+        finally:
+            db.close()
+
+    def load_review_dashboard(self, external_user_id: str, *, history_limit: int = 100) -> dict[str, Any]:
+        """Return user-owned mastery, review state and history for presentation."""
+
+        database = importlib.import_module("APP.backend.database")
+        auth = importlib.import_module("APP.backend.auth")
+        db = database.SessionLocal()
+        try:
+            user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                db, SimpleNamespace(user_id=external_user_id)
+            )
+            mastery_rows = (
+                db.query(database.KnowledgeMasteryState)
+                .filter(database.KnowledgeMasteryState.learner_id == user.id)
+                .order_by(database.KnowledgeMasteryState.updated_at.desc())
+                .all()
+            )
+            review_rows = (
+                db.query(database.LearnerKPReviewState)
+                .filter(database.LearnerKPReviewState.learner_id == user.id)
+                .all()
+            )
+            history_ids = (
+                db.query(database.MasteryHistoryRecord.kp_id)
+                .filter(database.MasteryHistoryRecord.learner_id == user.id)
+                .distinct()
+                .all()
+            )
+            task_rows = (
+                db.query(database.ReviewTaskRecord)
+                .filter(database.ReviewTaskRecord.learner_id == user.id)
+                .order_by(database.ReviewTaskRecord.created_at.desc())
+                .limit(200)
+                .all()
+            )
+            identity = importlib.import_module(
+                "APP.backend.knowledge_point_identity_service"
+            )
+            replay = importlib.import_module(
+                "APP.backend.knowledge_point_history_replay"
+            )
+            all_state_ids = [
+                str(row.kp_id)
+                for row in [*mastery_rows, *review_rows]
+                if str(getattr(row, "kp_id", "") or "").strip()
+            ]
+            all_state_ids.extend(str(kp_id) for (kp_id,) in history_ids if kp_id)
+            all_state_ids.extend(
+                str(row.primary_kp_id)
+                for row in task_rows
+                if str(row.primary_kp_id or "").strip()
+            )
+            canonical_map = identity.canonical_map_for_ids(db, all_state_ids)
+            canonical_ids = set(canonical_map.values())
+            lineage_by_canonical = identity.source_ids_by_canonical(
+                db, canonical_ids
+            )
+            active_mapping_ids = {
+                str(source_id)
+                for (source_id,) in db.query(database.KnowledgePointCanonicalMap.source_kp_id)
+                .filter(
+                    database.KnowledgePointCanonicalMap.source_kp_id.in_(canonical_ids),
+                    database.KnowledgePointCanonicalMap.status == "active",
+                    database.KnowledgePointCanonicalMap.decision == "equivalent",
+                ).all()
+            }
+            mastery_by_canonical = identity.authoritative_rows_by_canonical(
+                mastery_rows, canonical_map, projection_name="review_dashboard_mastery"
+            )
+            review_by_canonical = identity.authoritative_rows_by_canonical(
+                review_rows, canonical_map, projection_name="review_dashboard_review"
+            )
+            kp_ids = {
+                *canonical_ids,
+            }
+            kp_names = {
+                str(row.kp_id): str(row.name or row.kp_id)
+                for row in db.query(database.KnowledgePoint).filter(
+                    database.KnowledgePoint.kp_id.in_(kp_ids)
+                ).all()
+            } if kp_ids else {}
+            mastery = []
+            for kp_id, row in mastery_by_canonical.items():
+                review = review_by_canonical.get(kp_id)
+                mastery.append({
+                    "kp_id": kp_id,
+                    "source_kp_ids": list(
+                        lineage_by_canonical.get(kp_id, (kp_id,))
+                    ),
+                    "kp_name": kp_names.get(kp_id, kp_id),
+                    "mastery_score": float(row.mastery_score or 0.0),
+                    "mastery_confidence": float(row.mastery_confidence or 0.0),
+                    "attempt_count": int(row.attempt_count or 0),
+                    "last_assessed_at": row.last_assessed_at.isoformat() if row.last_assessed_at else None,
+                    "review_stage": review.review_stage if review else "new",
+                    "retention_estimate": float(review.retention_estimate or 0.0) if review else None,
+                    "last_review_at": review.last_review_at.isoformat() if review and review.last_review_at else None,
+                    "next_review_at": review.next_review_at.isoformat() if review and review.next_review_at else None,
+                    "requires_remediation": bool(review.requires_remediation) if review else False,
+                })
+            history = []
+            legacy_history_ids = []
+            for canonical_id in sorted(canonical_ids):
+                lineage = lineage_by_canonical.get(canonical_id, (canonical_id,))
+                events = replay.collect_canonical_replay_events(
+                    db,
+                    source_kp_ids=lineage,
+                )
+                projection = next(
+                    (
+                        item for item in replay.replay_canonical_events(events)
+                        if item.learner_id == user.id
+                    ),
+                    None,
+                )
+                if projection is None:
+                    if tuple(lineage) == (canonical_id,) and canonical_id not in active_mapping_ids:
+                        legacy_history_ids.append(canonical_id)
+                    continue
+                for event in projection.event_history:
+                    history.append({
+                        "history_id": f"canonical-replay:{event['attempt_item_id']}",
+                        "kp_id": canonical_id,
+                        "kp_name": kp_names.get(canonical_id, canonical_id),
+                        "source_kp_ids": list(event.get("source_kp_ids") or []),
+                        "mastery_score": float(event["mastery_score"]),
+                        "mastery_confidence": float(event["confidence"]),
+                        "trigger_attempt_item_id": event["attempt_item_id"],
+                        "calculated_at": event["occurred_at"],
+                        "projection_source": "canonical_event_replay",
+                    })
+            if legacy_history_ids:
+                history_rows = (
+                    db.query(database.MasteryHistoryRecord)
+                    .filter(
+                        database.MasteryHistoryRecord.learner_id == user.id,
+                        database.MasteryHistoryRecord.kp_id.in_(legacy_history_ids),
+                    )
+                    .order_by(
+                        database.MasteryHistoryRecord.calculated_at.desc(),
+                        database.MasteryHistoryRecord.id.desc(),
+                    )
+                    .limit(max(1, min(history_limit, 500)))
+                    .all()
+                )
+                history.extend({
+                    "history_id": row.history_id,
+                    "kp_id": str(row.kp_id),
+                    "kp_name": kp_names.get(str(row.kp_id), str(row.kp_id)),
+                    "source_kp_ids": [str(row.kp_id)],
+                    "mastery_score": float(row.mastery_score or 0.0),
+                    "mastery_confidence": float(row.mastery_confidence or 0.0),
+                    "trigger_attempt_item_id": row.trigger_attempt_item_id,
+                    "calculated_at": row.calculated_at.isoformat() if row.calculated_at else None,
+                    "projection_source": "legacy_raw_history",
+                } for row in history_rows)
+            history.sort(
+                key=lambda item: str(item.get("calculated_at") or ""),
+                reverse=True,
+            )
+            history = history[: max(1, min(history_limit, 500))]
+            tasks = []
+            seen_task_scopes: set[tuple[str, str, str]] = set()
+            for row in task_rows:
+                canonical_id = canonical_map.get(
+                    str(row.primary_kp_id), str(row.primary_kp_id)
+                )
+                scope = (canonical_id, str(row.review_type), str(row.status))
+                if scope in seen_task_scopes:
+                    continue
+                seen_task_scopes.add(scope)
+                tasks.append({
+                    "review_task_id": row.review_task_id,
+                    "kp_id": canonical_id,
+                    "kp_name": kp_names.get(canonical_id, canonical_id),
+                    "review_type": row.review_type,
+                    "status": row.status,
+                    "scheduled_at": row.scheduled_at.isoformat() if row.scheduled_at else None,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                })
+            payload: dict[str, Any] = {
+                "schema_version": "1.0",
+                "learner_id": external_user_id,
+                "mastery": mastery,
+                "mastery_history": history,
+                "review_states": [{
+                    "kp_id": canonical_id,
+                    "kp_name": kp_names.get(canonical_id, canonical_id),
+                    "source_kp_ids": list(
+                        lineage_by_canonical.get(canonical_id, (canonical_id,))
+                    ),
+                    "review_stage": row.review_stage,
+                    "retention_estimate": float(row.retention_estimate or 0.0),
+                    "last_review_at": row.last_review_at.isoformat() if row.last_review_at else None,
+                    "next_review_at": row.next_review_at.isoformat() if row.next_review_at else None,
+                    "requires_remediation": bool(row.requires_remediation),
+                    "status": row.status,
+                } for canonical_id, row in review_by_canonical.items()],
+                "review_tasks": tasks,
+            }
+            # Merge the canonical (competition_app) review store so diagnosis
+            # agents see the same due-queue / schedule / active-task picture as
+            # the frontend review dashboard.  The provider is injected by the
+            # application container and reads review_service; it must not raise
+            # into the dashboard path when the store is unavailable.
+            if self.review_context_provider is not None:
+                try:
+                    payload.update(
+                        self.review_context_provider(external_user_id, history_limit)
+                    )
+                except Exception:
+                    pass
+            return payload
+        finally:
+            db.close()
+
+    def load_learning_insights(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+        plan_context: dict[str, Any] | None = None,
+        run_automation: bool = True,
+        review_projection: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Return the stable learning-insight contract and run idempotent automation."""
+
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            intervention_trace = None
+            if run_automation:
+                cycle = governance.run_automation_cycle(
+                    db,
+                    user.id,
+                    plan_context=plan_context or {},
+                    days=days,
+                    review_projection=review_projection,
+                    agent_decider=governance.build_governance_agent_decider(),
+                )
+                result = cycle["insights"]
+                result["automation"] = {
+                    "intervention": cycle.get("intervention"),
+                    "plan_review": cycle.get("plan_review"),
+                }
+                intervention_trace = cycle.get("intervention_trace")
+            else:
+                result = governance.build_learning_insights(
+                    db,
+                    user.id,
+                    days=days,
+                    review_projection=review_projection,
+                )
+            result["intervention_status"] = governance.build_intervention_status(
+                db,
+                user.id,
+                result,
+                automation_requested=run_automation,
+                automation_trace=intervention_trace,
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_learning_report(
+        self,
+        external_user_id: str,
+    ) -> dict[str, Any]:
+        """Return the persisted learning report incl. per-difficulty accuracy."""
+
+        database = importlib.import_module("APP.backend.database")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return diagnosis.build_report_summary(db, user.id)
+        finally:
+            db.close()
+
+    def load_resource_match_report(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any] | None = None,
+        limit: int = 12,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            insights = governance.build_learning_insights(db, user.id, days=30)
+            report = governance.build_resource_match_report(
+                db,
+                user.id,
+                insights=insights,
+                plan_context=plan_context or {},
+                limit=limit,
+            )
+            return report
+        finally:
+            db.close()
+
+    def load_task_load_policy(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any] | None = None,
+        review_projection: dict[str, Any] | None = None,
+        days: int = 7,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.build_task_load_policy(
+                db,
+                user.id,
+                plan_context=plan_context or {},
+                review_projection=review_projection,
+                days=days,
+            )
+        finally:
+            db.close()
+
+    def record_resource_recommendation_event(
+        self,
+        external_user_id: str,
+        *,
+        event_type: str,
+        recommendation_view_id: str = "",
+        recommendation_credential: str = "",
+        resource_id: str,
+        resource_type: str = "",
+        kp_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.record_resource_recommendation_event(
+                db,
+                user.id,
+                event_type=event_type,
+                recommendation_view_id=recommendation_view_id,
+                recommendation_credential=recommendation_credential,
+                resource_id=resource_id,
+                resource_type=resource_type,
+                kp_ids=kp_ids,
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_resource_effectiveness_report(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.build_resource_effectiveness_report(
+                db, user.id, days=days
+            )
+        finally:
+            db.close()
+
+    def record_plan_progression_event(
+        self,
+        external_user_id: str,
+        progression: dict[str, Any],
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.record_plan_progression_event(
+                db, user.id, progression
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_notifications(
+        self,
+        external_user_id: str,
+        *,
+        status: str = "all",
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.list_notifications(db, user.id, status=status, limit=limit)
+        finally:
+            db.close()
+
+    def update_notification_status(
+        self,
+        external_user_id: str,
+        notification_id: str,
+        status: str,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.update_notification_status(
+                db, user.id, notification_id, status
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def create_memory_conflict_notification(
+        self,
+        external_user_id: str,
+        *,
+        execution_id: str,
+        conflicts: list[dict[str, Any]],
+    ) -> dict[str, Any] | None:
+        """Emit a system notification for a deferred memory conflict.
+
+        Non-planning tasks (knowledge explanation, papers, review cards,
+        casual chat) do not hard-interrupt the graph for memory conflicts;
+        the conflict is surfaced here as a system message so the learner can
+        resolve it from the conflict list at their own pace.
+        """
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            summaries: list[str] = []
+            for conflict in conflicts or []:
+                proposed = str(conflict.get("proposed_memory") or "").strip()
+                reason = str(conflict.get("reason") or "").strip()
+                if proposed and reason:
+                    summaries.append(f"{proposed}（{reason}）")
+                elif proposed:
+                    summaries.append(proposed)
+                elif reason:
+                    summaries.append(reason)
+            detail = "；".join(summaries[:3]) or "检测到学习记忆记录存在不一致"
+            row = governance.create_notification(
+                db,
+                user.id,
+                category="memory_conflict",
+                title="记忆记录待确认",
+                message=f"检测到学习记忆存在不一致，请在冲突清单中确认或修改：{detail}",
+                dedupe_key=f"memory_conflict:{execution_id}",
+                severity="info",
+                source_type="memory_conflict",
+                source_id=execution_id,
+                action={"view": "conflicts"},
+            )
+            db.commit()
+            return governance.serialize_notification(row) if row is not None else None
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def create_daily_task_refreshed_notification(
+        self,
+        external_user_id: str,
+        *,
+        task_summary: str = "",
+    ) -> dict[str, Any] | None:
+        """Emit a system notification when the rolling daily task refreshes.
+
+        Deduped per UTC day so the background refresh scan, request-time
+        fallback refresh and the materialization callback can all call this
+        freely without spamming the learner.
+        """
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            today = governance.utc_now().date().isoformat()
+            detail = str(task_summary or "").strip()
+            message = "你的每日学习任务已自动更新，请查看今日安排。"
+            if detail:
+                message = f"{message}\n\n{detail}"
+            row = governance.create_notification(
+                db,
+                user.id,
+                category="daily_task",
+                title="今日学习任务已更新",
+                message=message,
+                dedupe_key=f"daily-task-refreshed:{today}",
+                severity="info",
+                source_type="daily_task",
+                source_id="",
+                action={"type": "navigate", "page": "learning_path"},
+            )
+            db.commit()
+            return governance.serialize_notification(row) if row is not None else None
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def create_intervention_applied_notification(
+        self,
+        external_user_id: str,
+        *,
+        intervention_id: Any,
+        action: str,
+        summary: str = "",
+    ) -> dict[str, Any] | None:
+        """Emit a station notification after an accepted intervention lands.
+
+        Deduped per intervention id so re-submission never spams the learner.
+        """
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            action_label = str(action or "学习调整").strip()
+            detail = str(summary or "").strip()
+            message = f"已按你的确认把「{action_label}」安排进今日任务。"
+            if detail:
+                message = f"{message}\n\n{detail}"
+            row = governance.create_notification(
+                db,
+                user.id,
+                category="intervention",
+                title=f"已安排：{action_label}",
+                message=message,
+                dedupe_key=f"intervention-applied:{intervention_id}",
+                severity="info",
+                source_type="learning_intervention",
+                source_id=str(intervention_id or ""),
+                action={"type": "navigate", "page": "learning_path"},
+            )
+            db.commit()
+            return governance.serialize_notification(row) if row is not None else None
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def create_plan_review_applied_notification(
+        self,
+        external_user_id: str,
+        *,
+        review_id: str,
+        summary: str = "",
+        dedupe_key: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Emit a station notification after an accepted plan review lands.
+
+        Deduped per review id so re-submission never spams the learner.
+        The same dedupe key is updated across the lifecycle, so an accepted
+        async replan does not create a second completion notification.
+        """
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            detail = str(summary or "").strip()
+            message = "已按你的确认完成规划调整。"
+            if detail:
+                message = f"{message}\n\n{detail}"
+            lifecycle_key = dedupe_key or f"plan-review-lifecycle:{review_id}"
+            row = governance.create_notification(
+                db,
+                user.id,
+                category="plan_review",
+                title="规划调整已完成",
+                message=message,
+                dedupe_key=lifecycle_key,
+                severity="info",
+                source_type="plan_review",
+                source_id=str(review_id or ""),
+                action={"type": "navigate", "page": "learning_path"},
+            )
+            if row is not None:
+                row.title = "规划调整已完成"
+                row.message = message
+                row.severity = "info"
+                row.action_json = json.dumps(
+                    {"type": "navigate", "page": "learning_path"},
+                    ensure_ascii=False,
+                )
+                if row.status not in {"read", "dismissed"}:
+                    row.status = "unread"
+                    row.read_at = None
+                row.delivered_at = governance.utc_now()
+                db.flush()
+            db.commit()
+            return governance.serialize_notification(row) if row is not None else None
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def update_plan_review_lifecycle_notification(
+        self,
+        external_user_id: str,
+        *,
+        review_id: str,
+        status: str,
+        summary: str = "",
+    ) -> dict[str, Any] | None:
+        """Create or update the one notification representing a replan run."""
+
+        labels = {
+            "queued": ("规划调整已排队", "已提交规划调整，正在等待执行。", "info"),
+            "running": ("规划调整执行中", "正在更新短期计划并重新生成今日任务。", "info"),
+            "succeeded": ("规划调整已完成", "短期计划和今日任务已完成级联更新。", "info"),
+            "failed": ("规划调整执行失败", "规划调整未完成，可在复盘面板中重试。", "warning"),
+        }
+        if status not in labels:
+            raise ValueError(f"invalid plan review notification status: {status}")
+        title, message, severity = labels[status]
+        detail = str(summary or "").strip()
+        if detail:
+            message = f"{message}\n\n{detail}"
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            row = governance.create_notification(
+                db,
+                user.id,
+                category="plan_review",
+                title=title,
+                message=message,
+                dedupe_key=f"plan-review-lifecycle:{review_id}",
+                severity=severity,
+                source_type="plan_review",
+                source_id=str(review_id or ""),
+                action={"type": "navigate", "page": "learning_path"},
+            )
+            if row is not None:
+                row.title = title
+                row.message = message
+                row.severity = severity
+                row.action_json = json.dumps(
+                    {"type": "navigate", "page": "learning_path"},
+                    ensure_ascii=False,
+                )
+                if row.status not in {"read", "dismissed"}:
+                    row.status = "unread"
+                    row.read_at = None
+                row.delivered_at = governance.utc_now()
+                db.flush()
+            db.commit()
+            return governance.serialize_notification(row) if row is not None else None
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def get_notification_preferences(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            row = governance.get_notification_preferences(db, user.id)
+            result = governance.serialize_notification_preferences(row)
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def update_notification_preferences(
+        self,
+        external_user_id: str,
+        updates: dict[str, Any],
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.update_notification_preferences(db, user.id, updates)
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_interventions(self, external_user_id: str, *, limit: int = 30) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.list_interventions(db, user.id, limit=limit)
+        finally:
+            db.close()
+
+    def submit_intervention_feedback(
+        self,
+        external_user_id: str,
+        intervention_id: int,
+        action: str,
+        reason: str = "",
+        *,
+        commit: bool = True,
+        application_result: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.record_intervention_feedback(
+                db,
+                user.id,
+                intervention_id,
+                action,
+                reason,
+                commit=commit,
+                application_result=application_result,
+            )
+            if commit:
+                db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_plan_reviews(self, external_user_id: str, *, limit: int = 30) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.list_plan_reviews(db, user.id, limit=limit)
+        finally:
+            db.close()
+
+    def run_plan_review(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any] | None = None,
+        trigger_type: str = "manual",
+        review_projection: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            insights = governance.build_learning_insights(
+                db,
+                user.id,
+                days=30,
+                review_projection=review_projection,
+            )
+            result = governance.run_plan_review(
+                db,
+                user.id,
+                insights=insights,
+                plan_context=plan_context or {},
+                trigger_type=trigger_type,
+                agent_decider=governance.build_governance_agent_decider(),
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def decide_plan_review(
+        self,
+        external_user_id: str,
+        review_id: str,
+        decision: str,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.decide_plan_review(
+                db, user.id, review_id, decision
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def claim_plan_review_execution(
+        self,
+        external_user_id: str,
+        review_id: str,
+        *,
+        execution_id: str,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.claim_plan_review_execution(
+                db,
+                user.id,
+                review_id,
+                execution_id=execution_id,
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def update_plan_review_execution(
+        self,
+        external_user_id: str,
+        review_id: str,
+        *,
+        status: str,
+        execution: dict[str, Any] | None = None,
+        execution_id: str | None = None,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.update_plan_review_execution(
+                db,
+                user.id,
+                review_id,
+                status=status,
+                execution=execution,
+                execution_id=execution_id,
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_learning_activity_summary(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+        recent_limit: int = 20,
+    ) -> dict[str, Any]:
+        """Return user-isolated behavior metrics and their observable source rows."""
+
+        if days not in {7, 30, 90}:
+            raise ValueError("days must be one of: 7, 30, 90")
+        if recent_limit < 1 or recent_limit > 100:
+            raise ValueError("recent_limit must be between 1 and 100")
+
+        database = importlib.import_module("APP.backend.database")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            calculated_at = time_utils.utc_now()
+            window_start = calculated_at - timedelta(days=days)
+            snapshot = system_data.rebuild_system_data(
+                db,
+                user_id=user.id,
+                now=calculated_at,
+            )
+            window_metrics = system_data.build_learning_window_metrics(
+                db,
+                user_id=user.id,
+                days=days,
+                now=calculated_at,
+            )
+            trends = system_data.build_learning_trends(
+                db,
+                user_id=user.id,
+                days=days,
+                now=calculated_at,
+            )
+            tasks = (
+                db.query(database.LearningTask)
+                .filter(
+                    database.LearningTask.user_id == user.id,
+                    database.LearningTask.created_at >= window_start,
+                    database.LearningTask.created_at <= calculated_at,
+                )
+                .all()
+            )
+            focus_sessions = (
+                db.query(database.LearningFocusSession)
+                .filter(
+                    database.LearningFocusSession.user_id == user.id,
+                    database.LearningFocusSession.started_at <= calculated_at,
+                    (
+                        database.LearningFocusSession.ended_at.is_(None)
+                        | (database.LearningFocusSession.ended_at >= window_start)
+                    ),
+                )
+                .all()
+            )
+            activities = (
+                db.query(database.LearningActivityRecord)
+                .filter(
+                    database.LearningActivityRecord.user_id == user.id,
+                    database.LearningActivityRecord.created_at >= window_start,
+                    database.LearningActivityRecord.created_at <= calculated_at,
+                )
+                .order_by(
+                    database.LearningActivityRecord.created_at.desc(),
+                    database.LearningActivityRecord.id.desc(),
+                )
+                .all()
+            )
+            task_statuses = Counter(str(row.status or "unknown") for row in tasks)
+            focus_statuses = Counter(str(row.status or "unknown") for row in focus_sessions)
+            activity_types = Counter(str(row.activity_type or "unknown") for row in activities)
+            training_task_ids = {
+                str(row.resource_id)
+                for row in activities
+                if str(row.activity_type or "") == "training_workspace_task"
+                and row.resource_id
+            }
+            training_tasks = {}
+            if training_task_ids:
+                training_tasks = {
+                    str(row.task_id): row
+                    for row in db.query(database.TrainingTaskRecord)
+                    .filter(
+                        database.TrainingTaskRecord.user_id == user.id,
+                        database.TrainingTaskRecord.task_id.in_(training_task_ids),
+                    )
+                    .all()
+                }
+            compatibility_snapshot = system_data.system_data_payload(snapshot)
+            exact_system_data = {
+                "time_data": window_metrics["time_data"],
+                "task_completion_rate": window_metrics["task_completion_rate"],
+                "daily_atomic_task_completion_rate": window_metrics[
+                    "daily_atomic_task_completion_rate"
+                ],
+                "resource_click_rate": window_metrics["resource_click_rate"],
+                "calculation_version": window_metrics["calculation_version"],
+                "calculated_at": window_metrics["calculated_at"],
+            }
+            recent_activity_rows = []
+            kp_name_cache: dict[str, str] = {}
+            for row in activities[:recent_limit]:
+                try:
+                    activity_payload = json.loads(row.payload_json or "{}")
+                except (TypeError, ValueError):
+                    activity_payload = {}
+                activity_payload = (
+                    activity_payload if isinstance(activity_payload, dict) else {}
+                )
+                raw_knowledge_points = (
+                    activity_payload.get("knowledge_points")
+                    or activity_payload.get("kp_names")
+                    or activity_payload.get("kp_ids")
+                    or []
+                )
+                if not raw_knowledge_points and isinstance(
+                    activity_payload.get("grading"), dict
+                ):
+                    raw_knowledge_points = (
+                        activity_payload["grading"].get("knowledge_points")
+                        or activity_payload["grading"].get("kp_ids")
+                        or []
+                    )
+                knowledge_points = []
+                for item in (
+                    raw_knowledge_points
+                    if isinstance(raw_knowledge_points, list)
+                    else [raw_knowledge_points]
+                ):
+                    value = (
+                        item.get("name") or item.get("kp_name") or item.get("kp_id")
+                        if isinstance(item, dict)
+                        else item
+                    )
+                    value = str(value or "").strip()
+                    if value and re.fullmatch(
+                        r"(?:KP[_-]?)?\d{3,}|[A-Z]{2,}[_-][A-Z0-9_-]+",
+                        value,
+                        flags=re.IGNORECASE,
+                    ):
+                        if value not in kp_name_cache:
+                            kp_row = (
+                                db.query(database.KnowledgePoint)
+                                .filter(database.KnowledgePoint.kp_id == value)
+                                .one_or_none()
+                            )
+                            kp_name_cache[value] = (
+                                str(kp_row.name or "").strip() if kp_row else ""
+                            )
+                        value = kp_name_cache[value]
+                    if value:
+                        knowledge_points.append(value)
+                training_task = training_tasks.get(str(row.resource_id))
+                label_candidates = (
+                    getattr(training_task, "title", ""),
+                    activity_payload.get("title"),
+                    activity_payload.get("section_name"),
+                    activity_payload.get("chapter_name"),
+                    activity_payload.get("book"),
+                    activity_payload.get("knowledge_point_name"),
+                )
+                label = next(
+                    (
+                        str(value).strip()
+                        for value in label_candidates
+                        if str(value or "").strip()
+                    ),
+                    "",
+                )
+                recent_activity_rows.append(
+                    {
+                        "activity_id": row.id,
+                        "activity_type": row.activity_type,
+                        "resource_type": row.resource_type,
+                        "resource_id": row.resource_id,
+                        "completion_status": row.completion_status,
+                        "score": float(row.score) if row.score is not None else None,
+                        "duration_minutes": int(row.duration_minutes or 0),
+                        "created_at": (
+                            row.created_at.isoformat() if row.created_at else None
+                        ),
+                        "title": label,
+                        "knowledge_points": list(dict.fromkeys(knowledge_points)),
+                        "task_type": (
+                            str(getattr(training_task, "task_type", "") or "")
+                            or (
+                                "case_training"
+                                if str(row.activity_type or "") == "case_training"
+                                and str(row.resource_type or "") == "simulated_patient_session"
+                                else ""
+                            )
+                        ),
+                    }
+                )
+            db.commit()
+            return {
+                "schema_version": "1.1",
+                "window_days": days,
+                "calculated_at": window_metrics["calculated_at"],
+                "system_data": exact_system_data,
+                "compatibility_snapshot_30d": compatibility_snapshot,
+                "trends": trends,
+                "counters": {
+                    "daily_task_items": {
+                        "total": window_metrics["counts"]["tasks"],
+                        "completed": window_metrics["counts"]["completed_tasks"],
+                        "incomplete": window_metrics["counts"][
+                            "incomplete_tasks"
+                        ],
+                        "pending": window_metrics["counts"]["pending_tasks"],
+                        "by_status": window_metrics["counts"][
+                            "tasks_by_status"
+                        ],
+                        "completion_rate": window_metrics[
+                            "daily_atomic_task_completion_rate"
+                        ],
+                    },
+                    "learning_tasks": {
+                        "total": len(tasks),
+                        "by_status": dict(sorted(task_statuses.items())),
+                        "scope": "legacy_and_free_learning_tasks",
+                    },
+                    "focus_sessions": {
+                        "total": window_metrics["counts"]["focus_sessions"],
+                        "active_seconds": window_metrics["counts"]["focus_seconds"],
+                        "by_status": dict(sorted(focus_statuses.items())),
+                    },
+                    "login": {
+                        "events": window_metrics["counts"]["login_events"],
+                        "distinct_login_days": window_metrics["counts"][
+                            "distinct_login_days"
+                        ],
+                        "checkin_days": window_metrics["counts"]["checkin_days"],
+                        "active_days": window_metrics["counts"]["active_days"],
+                    },
+                    "activities": {
+                        "total": len(activities),
+                        "by_type": dict(sorted(activity_types.items())),
+                    },
+                },
+                "recent_activities": recent_activity_rows,
+                "collection": {
+                    "task_completion": "published daily_task_instances + daily_task_items",
+                    "legacy_learning_tasks": "learning_tasks",
+                    "login_frequency": "learning_activity_records(activity_type=login)",
+                    "active_days": "learning_activity_records(activity_type in login,daily_checkin)",
+                    "focus_time": "learning_focus_sessions heartbeat",
+                    "resource_click": "dashboard recommendation view and click",
+                    "graded_learning": "question, paper and case submission activities",
+                },
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_recent_learning_summary(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 7,
+        recent_limit: int = 20,
+    ) -> dict[str, Any]:
+        """Return only server-observed learning completions, never recommendation noise."""
+
+        activity = self.load_learning_activity_summary(
+            external_user_id,
+            days=days,
+            recent_limit=min(100, max(recent_limit * 3, recent_limit)),
+        )
+        verified_types = {
+            "question_attempt",
+            "paper_submission",
+            "case_training",
+            "resource_complete",
+            "textbook_section_completed",
+            "training_workspace_task",
+            "practice",
+        }
+        accepted_statuses = {
+            "completed",
+            "submitted",
+            "needs_review",
+            "published",
+        }
+        verified_events = []
+        for item in activity.get("recent_activities", []):
+            activity_type = str(item.get("activity_type") or "")
+            completion_status = str(item.get("completion_status") or "")
+            if activity_type not in verified_types:
+                continue
+            if completion_status not in accepted_statuses:
+                continue
+            verified_events.append(
+                {
+                    key: item.get(key)
+                    for key in (
+                        "activity_type",
+                        "resource_type",
+                        "completion_status",
+                        "score",
+                        "duration_minutes",
+                        "created_at",
+                        "title",
+                        "knowledge_points",
+                        "task_type",
+                    )
+                }
+            )
+            if len(verified_events) >= recent_limit:
+                break
+        return {
+            "schema_version": "1.0",
+            "window_days": days,
+            "calculated_at": activity.get("calculated_at"),
+            "evidence_status": (
+                "observed" if verified_events else "no_verified_records"
+            ),
+            "verified_event_count": len(verified_events),
+            "verified_learning_events": verified_events,
+            "task_completion": activity.get("counters", {}).get(
+                "daily_task_items", {}
+            ),
+            "focus": activity.get("counters", {}).get("focus_sessions", {}),
+            "excluded_event_types": [
+                "login",
+                "daily_checkin",
+                "dashboard_recommendations_view",
+                "resource_recommendation_offer",
+                "resource_click",
+                "onboarding_survey",
+                "diagnosis",
+            ],
+            "evidence_rule": (
+                "只纳入服务端记录的答题、试卷、案例、教材小节、资源完成或"
+                "已完成训练任务；推荐曝光、点击、登录、签到和仅生成资源不算已学习。"
+            ),
+        }
+
+    def load_learning_statistics(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+    ) -> dict[str, Any]:
+        """Return audited learning outcome counters for the mapped host user."""
+
+        if days not in {7, 30, 90}:
+            raise ValueError("days must be one of: 7, 30, 90")
+
+        database = importlib.import_module("APP.backend.database")
+        statistics = importlib.import_module("APP.backend.learning_statistics_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return statistics.build_learning_statistics(
+                db,
+                user.id,
+                days=days,
+            )
+        finally:
+            db.close()
+
+    def issue_personal_practice(
+        self,
+        external_user_id: str,
+        *,
+        kp_id: str | None,
+        mode: str,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
+    ) -> dict[str, Any]:
+        """Issue an owned uploaded question through the existing controlled route."""
+
+        database = importlib.import_module("APP.backend.database")
+        routes = importlib.import_module("APP.backend.routers.training_routes")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return routes.next_practice_question(
+                kp_id=kp_id,
+                scope="user",
+                mode=mode,
+                difficulty=difficulty,
+                difficulty_min=difficulty_min,
+                difficulty_max=difficulty_max,
+                current_user=user,
+                db=db,
+            )
+        finally:
+            db.close()
+
+    def load_practice_selection_context(
+        self,
+        external_user_id: str,
+    ) -> dict[str, Any]:
+        """Load the small, read-only fact set needed to rank practice questions."""
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            now = time_utils.utc_now()
+            cutoff = now - timedelta(minutes=30)
+
+            active_tasks = (
+                db.query(database.LearningTask)
+                .filter(
+                    database.LearningTask.user_id == user.id,
+                    database.LearningTask.status.in_(("pending", "in_progress", "active")),
+                )
+                .order_by(
+                    database.LearningTask.due_at.asc(),
+                    database.LearningTask.created_at.desc(),
+                )
+                .limit(10)
+                .all()
+            )
+            current_task_kp_ids: list[str] = []
+            for task in active_tasks:
+                current_task_kp_ids.extend(self._json_list(task.kp_ids_json))
+
+            mastery_rows = (
+                db.query(database.KnowledgeMasteryState)
+                .filter(database.KnowledgeMasteryState.learner_id == user.id)
+                .all()
+            )
+            mastery = {
+                row.kp_id: {
+                    "mastery": float(row.mastery_score or 0.0),
+                    "confidence": float(row.mastery_confidence or 0.0),
+                }
+                for row in mastery_rows
+                if str(row.kp_id or "").strip()
+            }
+            for row in (
+                db.query(database.LearnerKnowledgeMastery)
+                .filter(database.LearnerKnowledgeMastery.user_id == user.id)
+                .all()
+            ):
+                mastery.setdefault(
+                    row.kp_id,
+                    {
+                        "mastery": float(row.mastery or 0.0),
+                        "confidence": float(row.confidence or 0.0),
+                    },
+                )
+
+            due_review_kp_ids = [
+                row.kp_id
+                for row in (
+                    db.query(database.LearnerKPReviewState)
+                    .filter(
+                        database.LearnerKPReviewState.learner_id == user.id,
+                        database.LearnerKPReviewState.status == "active",
+                    )
+                    .all()
+                )
+                if row.requires_remediation
+                or (row.next_review_at is not None and row.next_review_at <= now)
+            ]
+
+            attempt_history: dict[str, dict[str, Any]] = {}
+
+            def remember(question_id: Any, answered_at: Any, is_correct: Any) -> None:
+                normalized_id = str(question_id or "").strip()
+                if not normalized_id:
+                    return
+                item = attempt_history.setdefault(
+                    normalized_id,
+                    {"attempt_count": 0, "last_answered_at": None, "last_correct": None},
+                )
+                item["attempt_count"] += 1
+                if answered_at is not None and (
+                    item["last_answered_at"] is None or answered_at > item["last_answered_at"]
+                ):
+                    item["last_answered_at"] = answered_at
+                    item["last_correct"] = bool(is_correct)
+
+            for row in db.query(database.LearningQuestionAttempt).filter(
+                database.LearningQuestionAttempt.user_id == user.id,
+            ).all():
+                remember(row.question_id, row.answered_at, row.is_correct)
+            for row in db.query(database.QuestionAttempt).filter(
+                database.QuestionAttempt.user_id == user.id,
+            ).all():
+                remember(row.question_id, row.created_at, row.is_correct)
+            for attempt, item, grading in (
+                db.query(
+                    database.LearningAttemptRecord,
+                    database.LearningAttemptItemRecord,
+                    database.GradingResultRecord,
+                )
+                .join(
+                    database.LearningAttemptItemRecord,
+                    database.LearningAttemptItemRecord.attempt_id
+                    == database.LearningAttemptRecord.attempt_id,
+                )
+                .join(
+                    database.GradingResultRecord,
+                    database.GradingResultRecord.attempt_item_id
+                    == database.LearningAttemptItemRecord.attempt_item_id,
+                )
+                .filter(
+                    database.LearningAttemptRecord.learner_id == user.id,
+                    database.GradingResultRecord.status == "reviewed",
+                )
+                .all()
+            ):
+                remember(
+                    item.question_version_id,
+                    attempt.submitted_at or item.created_at,
+                    grading.is_correct,
+                )
+
+            active_claim_rows = (
+                db.query(database.CorePracticeSubmissionClaim)
+                .filter(
+                    database.CorePracticeSubmissionClaim.user_id == user.id,
+                    database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                    database.CorePracticeSubmissionClaim.created_at >= cutoff,
+                )
+                .order_by(database.CorePracticeSubmissionClaim.created_at.desc())
+                .all()
+            )
+            latest_claim = active_claim_rows[0] if active_claim_rows else None
+            active_claims = [
+                {
+                    "question_id": row.question_id,
+                    "request_id": row.request_id,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                for row in active_claim_rows
+            ]
+            return {
+                "current_task_kp_ids": list(dict.fromkeys(current_task_kp_ids)),
+                "due_review_kp_ids": list(dict.fromkeys(due_review_kp_ids)),
+                "mastery": mastery,
+                "attempt_history": {
+                    question_id: {
+                        **item,
+                        "last_answered_at": item["last_answered_at"].isoformat()
+                        if item["last_answered_at"] is not None
+                        else None,
+                    }
+                    for question_id, item in attempt_history.items()
+                },
+                "active_claims": active_claims,
+                "latest_active_claim": {
+                    "question_id": latest_claim.question_id,
+                    "request_id": latest_claim.request_id,
+                    "created_at": latest_claim.created_at.isoformat()
+                    if latest_claim.created_at
+                    else None,
+                } if latest_claim is not None else None,
+            }
+        finally:
+            db.close()
+
+    def issue_cached_public_practice(
+        self,
+        external_user_id: str,
+        *,
+        kp_id: str | None,
+        mode: str,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
+        exclude_question_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Fallback for stub mode and already projected formal questions."""
+
+        database = importlib.import_module("APP.backend.database")
+        routes = importlib.import_module("APP.backend.routers.training_routes")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return routes.next_practice_question(
+                kp_id=kp_id,
+                scope="public",
+                mode=mode,
+                difficulty=difficulty,
+                difficulty_min=difficulty_min,
+                difficulty_max=difficulty_max,
+                exclude_question_id=exclude_question_id,
+                current_user=user,
+                db=db,
+            )
+        finally:
+            db.close()
+
+    def resume_formal_practice_claim(
+        self,
+        external_user_id: str,
+        *,
+        question_id: str,
+        request_id: str,
+    ) -> dict[str, Any] | None:
+        """Return an already-issued public question without creating another claim."""
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            cutoff = time_utils.utc_now() - timedelta(minutes=30)
+            claim = db.query(database.CorePracticeSubmissionClaim).filter(
+                database.CorePracticeSubmissionClaim.user_id == user.id,
+                database.CorePracticeSubmissionClaim.question_id == question_id,
+                database.CorePracticeSubmissionClaim.request_id == request_id,
+                database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                database.CorePracticeSubmissionClaim.created_at >= cutoff,
+            ).one_or_none()
+            if claim is None:
+                return None
+            bank = db.query(database.QuestionBankItem).filter_by(
+                question_id=question_id,
+                status="active",
+            ).one_or_none()
+            core = db.query(database.LearningQuestion).filter_by(
+                question_id=question_id,
+            ).one_or_none()
+            if bank is None or core is None:
+                return None
+            kp_ids = self._json_list(bank.kp_ids_json)
+            kp_rows = db.query(database.KnowledgePoint).filter(
+                database.KnowledgePoint.kp_id.in_(kp_ids),
+            ).all() if kp_ids else []
+            kp_names = {
+                row.kp_id: row.name
+                for row in kp_rows
+                if str(row.name or "").strip() and row.name != row.kp_id
+            }
+            difficulty = bank.difficulty
+            difficulty_source = bank.difficulty_source
+            if difficulty is None:
+                tag = db.query(database.UserQuestionDifficultyTag).filter_by(
+                    user_id=user.id,
+                    question_id=question_id,
+                ).one_or_none()
+                if tag is not None and int(tag.difficulty) in {1, 2, 3, 4, 5}:
+                    difficulty = int(tag.difficulty)
+                    difficulty_source = "user_tagged"
+            return {
+                "available": True,
+                "kp_id": kp_ids[0] if len(kp_ids) == 1 else None,
+                "question": {
+                    "question_id": question_id,
+                    "question_type": str(bank.question_type or "short_answer"),
+                    "stem": str(bank.stem or ""),
+                    "options": json.loads(core.options_json or "[]"),
+                    "kp_ids": kp_ids,
+                    "kp_names": [kp_names[kp_id] for kp_id in kp_ids if kp_id in kp_names],
+                    "request_id": request_id,
+                    "source_scope": "formal_question_bank",
+                    "difficulty": difficulty,
+                    "difficulty_source": difficulty_source,
+                },
+            }
+        finally:
+            db.close()
+
+    def issue_formal_practice(
+        self,
+        external_user_id: str,
+        question: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Persist one server-owned authority snapshot and issue a one-use claim.
+
+        The 93k public bank remains read-only in the knowledge delivery. Only the
+        selected question is projected into the learning database so grading,
+        mistakes, review scheduling and variation generation share one chain.
+        """
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            question_id = str(question.get("question_id") or "").strip()
+            stem = str(question.get("stem") or "").strip()
+            answer = str(question.get("standard_answer") or "").strip()
+            question_type = str(question.get("question_type") or "short_answer").strip()
+            analysis = str(question.get("analysis") or "").strip()
+            options = question.get("options") or []
+            kp_ids = list(dict.fromkeys(
+                str(value).strip()
+                for value in question.get("kp_ids") or []
+                if str(value).strip()
+            ))
+            if not question_id or not stem or not answer or not kp_ids:
+                raise ValueError("formal practice question is incomplete")
+            cutoff = time_utils.utc_now() - timedelta(minutes=30)
+            existing_claim = (
+                db.query(database.CorePracticeSubmissionClaim)
+                .filter(
+                    database.CorePracticeSubmissionClaim.user_id == user.id,
+                    database.CorePracticeSubmissionClaim.question_id == question_id,
+                    database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                    database.CorePracticeSubmissionClaim.created_at >= cutoff,
+                )
+                .order_by(database.CorePracticeSubmissionClaim.created_at.desc())
+                .first()
+            )
+            kp_names = {
+                str(key): str(value)
+                for key, value in (question.get("kp_names") or {}).items()
+                if str(key).strip() and str(value).strip()
+            }
+            for kp_id in kp_ids:
+                row = db.query(database.KnowledgePoint).filter_by(kp_id=kp_id).one_or_none()
+                if row is None:
+                    db.add(database.KnowledgePoint(
+                        kp_id=kp_id,
+                        name=kp_names.get(kp_id, kp_id),
+                        source="formal_question_bank",
+                        status="active",
+                    ))
+                elif row.status != "active":
+                    row.status = "active"
+
+                core_kp = db.query(database.LearningKnowledgePoint).filter_by(kp_id=kp_id).one_or_none()
+                if core_kp is None:
+                    db.add(database.LearningKnowledgePoint(kp_id=kp_id))
+
+            bank = db.query(database.QuestionBankItem).filter_by(question_id=question_id).one_or_none()
+            if bank is None:
+                bank = database.QuestionBankItem(question_id=question_id)
+                db.add(bank)
+            bank.stem = stem
+            bank.answer = answer
+            if analysis or not str(bank.analysis or "").strip():
+                bank.analysis = analysis
+            bank.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
+            bank.question_type = question_type
+            difficulty_value, difficulty_source_value = _real_difficulty_label(
+                question
+            )
+            bank.difficulty = difficulty_value
+            bank.difficulty_source = difficulty_source_value
+            bank.quality_score = 1.0
+            bank.source = "formal_question_bank"
+            bank.status = "active"
+
+            core = db.query(database.LearningQuestion).filter_by(question_id=question_id).one_or_none()
+            if core is None:
+                core = database.LearningQuestion(question_id=question_id)
+                db.add(core)
+            core.question_type = question_type
+            core.question_content = stem
+            core.options_json = json.dumps(options, ensure_ascii=False)
+            raw_answer = question.get("raw_answer")
+            core.answer_json = json.dumps(
+                raw_answer if isinstance(raw_answer, list) else [answer],
+                ensure_ascii=False,
+            )
+            if analysis or not str(core.explanation or "").strip():
+                core.explanation = analysis
+            core.difficulty = difficulty_value
+            core.difficulty_source = difficulty_source_value
+            core.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
+
+            version = db.query(database.QuestionVersionRecord).filter_by(
+                question_version_id=question_id,
+            ).one_or_none()
+            if version is None:
+                version = database.QuestionVersionRecord(
+                    question_version_id=question_id,
+                    question_id=question_id,
+                    version=1,
+                )
+                db.add(version)
+            version.question_type = question_type
+            version.stem = stem
+            version.answer = answer
+            if analysis or not str(version.analysis or "").strip():
+                version.analysis = analysis
+            version.standard_difficulty = difficulty_value
+            version.difficulty_source = difficulty_source_value
+            version.source_kind = "formal_question_bank"
+            version.status = "active"
+            db.flush()
+            existing_links = {
+                row.kp_id: row
+                for row in db.query(database.QuestionKPLinkRecord).filter_by(
+                    question_version_id=question_id,
+                ).all()
+            }
+            for index, kp_id in enumerate(kp_ids):
+                link = existing_links.get(kp_id)
+                if link is None:
+                    db.add(database.QuestionKPLinkRecord(
+                        question_version_id=question_id,
+                        kp_id=kp_id,
+                        is_primary=index == 0,
+                        status="active",
+                    ))
+                else:
+                    link.status = "active"
+                    link.is_primary = index == 0
+
+            request_id = existing_claim.request_id if existing_claim is not None else str(uuid4())
+            if existing_claim is None:
+                db.add(database.CorePracticeSubmissionClaim(
+                    user_id=user.id,
+                    request_id=request_id,
+                    question_id=question_id,
+                ))
+            db.commit()
+            return {
+                "available": True,
+                "kp_id": kp_ids[0] if len(kp_ids) == 1 else None,
+                "question": {
+                    "question_id": question_id,
+                    "question_type": question_type,
+                    "stem": stem,
+                    "options": options,
+                    "kp_ids": kp_ids,
+                    "kp_names": list(dict.fromkeys(
+                        kp_names[kp_id]
+                        for kp_id in kp_ids
+                        if str(kp_names.get(kp_id) or "").strip()
+                        and kp_names[kp_id] != kp_id
+                    )),
+                    "request_id": request_id,
+                    "source_scope": "formal_question_bank",
+                    "difficulty": difficulty_value,
+                    "difficulty_source": difficulty_source_value,
+                },
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def update_learning_profile(
+        self,
+        external_user_id: str,
+        updates: dict[str, Any],
+        execution_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Persist user-confirmed planning context with an auditable boundary."""
+
+        allowed_fields = {
+            "display_name", "learner_group", "learning_goal",
+            "learning_background", "time_constraints",
+        }
+        normalized = {}
+        for key, value in updates.items():
+            if key not in allowed_fields or value in (None, ""):
+                continue
+            normalized_value = _normalize_profile_memory_value(str(key), value)
+            if normalized_value not in (None, ""):
+                normalized[str(key)] = normalized_value
+        if set(updates) - allowed_fields:
+            raise PermissionError("profile update contains unsupported fields")
+        if not normalized:
+            return self.load_learning_context(external_user_id).get("user_profile", {})
+
+        database = importlib.import_module("APP.backend.database")
+        auth = importlib.import_module("APP.backend.auth")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        profile_service = importlib.import_module("APP.backend.learner_profile_service")
+        db = database.SessionLocal()
+        try:
+            user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                db, SimpleNamespace(user_id=external_user_id)
+            )
+            profile = diagnosis.get_or_create_profile(db, user.id, commit=False)
+            locked_fields = profile_service.get_locked_profile_fields(profile)
+            confirmed = {
+                key: value for key, value in normalized.items() if key not in locked_fields
+            }
+            mapped = {
+                key: value for key, value in confirmed.items()
+                if key in {"display_name", "learner_group", "learning_goal", "time_constraints"}
+            }
+            if mapped:
+                profile_service.apply_learner_profile_update(
+                    profile, mapped, source="memory_agent"
+                )
+            try:
+                survey = json.loads(profile.survey_json or "{}")
+            except (TypeError, ValueError):
+                survey = {}
+            if not isinstance(survey, dict):
+                survey = {}
+            stored = survey.get("agent_confirmed_profile")
+            if not isinstance(stored, dict):
+                stored = {}
+            stored.update(confirmed)
+            survey["agent_confirmed_profile"] = stored
+            profile.survey_json = json.dumps(survey, ensure_ascii=False)
+            db.add(
+                database.AgentEvent(
+                    user_id=user.id,
+                    agent_name="memory_agent",
+                    event_type="profile_confirmed_writeback",
+                    input_summary="记忆管理智能体提炼用户已明确表达的画像信息",
+                    output_summary="已写入：" + "、".join(sorted(confirmed)),
+                    payload=json.dumps(
+                        {
+                            "execution_id": execution_id,
+                            "fields": sorted(confirmed),
+                            "skipped_locked_fields": sorted(set(normalized) - set(confirmed)),
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
+            db.commit()
+            payload = profile_service.build_learner_profile_payload(profile)
+            payload.update(stored)
+            return payload
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def extract_and_update_learning_profile(
+        self,
+        external_user_id: str,
+        user_text: str,
+        execution_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Let Memory Agent distill explicit stable profile facts before planning."""
+
+        text_value = str(user_text or "").strip()
+        markers = (
+            "我是", "我叫", "昵称", "专业", "零基础", "学过", "基础",
+            "想考", "准备考", "目标", "考试", "资格", "执业医师",
+            "考研", "课程", "每天", "每周", "小时", "分钟",
+        )
+        if not text_value or not any(marker in text_value for marker in markers):
+            return {}
+        explicit_updates = _explicit_profile_updates(text_value)
+        try:
+            health_llm = importlib.import_module("APP.backend.health_llm")
+            health_utils = importlib.import_module("APP.backend.health_utils")
+            client = health_llm.build_llm_client("manager")
+            response = client.chat(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是记忆管理智能体。只提炼用户在本段文字中明确陈述、可供后续学习系统复用的稳定画像事实。"
+                            "不得猜测，不得把用户的任务指令整句保存为学习目标。只返回JSON："
+                            "display_name、learner_group、learning_goal、learning_background、time_constraints、"
+                            "confidence_by_field。没有明确事实的字段返回空字符串。"
+                            "learning_background应压缩为基础程度、专业背景和已学内容；learning_goal只保留目标考试或学习方向。"
+                        ),
+                    },
+                    {"role": "user", "content": text_value},
+                ],
+                temperature=0.0,
+                max_tokens=700,
+                extra_body={"response_format": {"type": "json_object"}},
+            )
+            parsed = health_utils.extract_json_object(response)
+            confidences = parsed.get("confidence_by_field")
+            if not isinstance(confidences, dict):
+                confidences = {}
+            allowed = {
+                "display_name", "learner_group", "learning_goal",
+                "learning_background", "time_constraints",
+            }
+            updates = {}
+            for key in allowed:
+                value = parsed.get(key)
+                confidence = confidences.get(key, 0.0)
+                if (
+                    isinstance(value, str) and value.strip()
+                    and isinstance(confidence, (int, float)) and not isinstance(confidence, bool)
+                    and float(confidence) >= 0.75
+                ):
+                    updates[key] = value.strip()[:1000]
+            # The model remains the primary semantic extractor.  Fill only
+            # fields that it omitted with facts whose wording is explicit in
+            # the current turn; never overwrite a model-extracted value.
+            updates = {**explicit_updates, **updates}
+            if not updates:
+                return {}
+            return self.update_learning_profile(
+                external_user_id, updates, execution_id
+            )
+        except Exception:
+            # Profile extraction enriches context but must not make the user's
+            # primary workflow unavailable when the model is temporarily down.
+            # Explicit current-turn facts can still be persisted safely.
+            if not explicit_updates:
+                return {}
+            try:
+                return self.update_learning_profile(
+                    external_user_id, explicit_updates, execution_id
+                )
+            except Exception:
+                return {}
+
+    @staticmethod
+    def workshop_overview() -> dict[str, Any]:
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        return service.workshop_overview()
+
+    def _workshop_user(self, db, external_user_id: str):
+        auth = importlib.import_module("APP.backend.auth")
+        return auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+            db, SimpleNamespace(user_id=external_user_id)
+        )
+
+    def canonicalize_knowledge_point_ids(
+        self,
+        external_user_id: str,
+        kp_ids: tuple[str, ...],
+    ) -> dict[str, str]:
+        """Return the reviewed source-to-canonical map for one user context."""
+
+        database = importlib.import_module("APP.backend.database")
+        identity = importlib.import_module(
+            "APP.backend.knowledge_point_identity_service"
+        )
+        db = database.SessionLocal()
+        try:
+            self._workshop_user(db, external_user_id)
+            return identity.canonical_map_for_ids(db, kp_ids)
+        finally:
+            db.close()
+
+    def list_knowledge_cards(
+        self, external_user_id: str, *, offset: int = 0, limit: int = 50
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.list_knowledge_cards(
+                db, user_id=user.id, offset=offset, limit=limit
+            )
+        finally:
+            db.close()
+
+    def get_knowledge_card(
+        self, external_user_id: str, card_id: str
+    ) -> dict[str, Any] | None:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.get_knowledge_card(db, user_id=user.id, card_id=card_id)
+        finally:
+            db.close()
+
+    def save_knowledge_card(
+        self,
+        external_user_id: str,
+        *,
+        kp_id: str,
+        title: str,
+        resource_bundle: dict[str, Any],
+        source_execution_id: str = "",
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.upsert_knowledge_card(
+                db,
+                user_id=user.id,
+                kp_id=kp_id,
+                title=title,
+                resource_bundle=resource_bundle,
+                source_execution_id=source_execution_id,
+            )
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def publish_agent_paper(
+        self,
+        external_user_id: str,
+        *,
+        execution_id: str,
+        paper: dict[str, Any],
+        blueprint: dict[str, Any],
+        evidence_pack: dict[str, Any],
+        daily_task_item_id: str | None = None,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.publish_agent_paper(
+                db,
+                user_id=user.id,
+                execution_id=execution_id,
+                paper=paper,
+                blueprint=blueprint,
+                evidence_pack=evidence_pack,
+                daily_task_item_id=daily_task_item_id,
+            )
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def release_practice_claim(self, external_user_id: str) -> None:
+        """Delete all active practice claims for this user."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            db.query(database.CorePracticeSubmissionClaim).filter_by(
+                user_id=user.id, daily_task_item_id=None,
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+
+    def mark_formal_practice_skipped(
+        self,
+        external_user_id: str,
+        *,
+        question_id: str,
+        request_id: str,
+    ) -> dict[str, Any]:
+        """Consume a one-use practice claim without grading it.
+
+        The active claim is removed so the skipped question is no longer
+        resumed as an in-progress exercise. No attempt/grade record is
+        written, so skipped questions never pollute mistake or mastery
+        statistics; callers pass ``exclude_question_id`` when loading the
+        next question to keep the skipped item out of the same session.
+        """
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            cutoff = time_utils.utc_now() - timedelta(minutes=30)
+            removed = (
+                db.query(database.CorePracticeSubmissionClaim)
+                .filter(
+                    database.CorePracticeSubmissionClaim.user_id == user.id,
+                    database.CorePracticeSubmissionClaim.question_id == question_id,
+                    database.CorePracticeSubmissionClaim.request_id == request_id,
+                    database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                    database.CorePracticeSubmissionClaim.created_at >= cutoff,
+                )
+                .delete(synchronize_session=False)
+            )
+            db.commit()
+            return {"skipped": True, "claim_removed": int(removed or 0)}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def save_user_question_difficulty_tag(
+        self,
+        external_user_id: str,
+        *,
+        question_id: str,
+        difficulty: int,
+    ) -> dict[str, Any]:
+        """Persist (or replace) the learner's manual difficulty for a question.
+
+        Only 1..5 levels are accepted. The stored tag is a personal label; it
+        never modifies the shared bank's own difficulty annotation.
+        """
+        if int(difficulty) not in {1, 2, 3, 4, 5}:
+            raise ValueError("difficulty must be one of 1..5")
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            tag = (
+                db.query(database.UserQuestionDifficultyTag)
+                .filter_by(user_id=user.id, question_id=question_id)
+                .one_or_none()
+            )
+            if tag is None:
+                tag = database.UserQuestionDifficultyTag(
+                    user_id=user.id,
+                    question_id=question_id,
+                    difficulty=int(difficulty),
+                )
+                db.add(tag)
+            else:
+                tag.difficulty = int(difficulty)
+                tag.updated_at = time_utils.utc_now()
+            db.commit()
+            return {"saved": True, "question_id": question_id, "difficulty": int(difficulty)}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_user_question_difficulty_tags(
+        self, external_user_id: str
+    ) -> dict[str, int]:
+        """Return {question_id: difficulty} for all of the learner's tags."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            rows = db.query(database.UserQuestionDifficultyTag).filter_by(
+                user_id=user.id,
+            ).all()
+            return {
+                str(tag.question_id): int(tag.difficulty)
+                for tag in rows
+                if int(tag.difficulty) in {1, 2, 3, 4, 5}
+            }
+        finally:
+            db.close()
+
+    def record_qualification_paper_outcomes(
+        self,
+        external_user_id: str,
+        *,
+        attempt_id: str,
+        outcomes: list[dict[str, Any]],
+    ) -> dict[str, int]:
+        """Project comprehensive-paper answers into the canonical mistake store."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        recorded = 0
+        mistakes_saved = 0
+        try:
+            user = self._workshop_user(db, external_user_id)
+            for outcome in outcomes:
+                question_id = str(outcome.get("question_id") or "").strip()
+                if not question_id or outcome.get("is_correct") is None:
+                    continue
+                request_id = f"qualification:{attempt_id}:{question_id}"
+                existing = db.query(database.LearningQuestionAttempt).filter_by(
+                    user_id=user.id,
+                    request_id=request_id,
+                ).one_or_none()
+                if existing is not None:
+                    continue
+
+                question = db.query(database.LearningQuestion).filter_by(
+                    question_id=question_id,
+                ).one_or_none()
+                if question is None:
+                    question = database.LearningQuestion(question_id=question_id)
+                    db.add(question)
+                question.question_type = str(outcome.get("question_type") or "short_answer")
+                question.question_content = str(outcome.get("question_content") or "")
+                question.options_json = json.dumps(outcome.get("options") or [], ensure_ascii=False)
+                question.answer_json = json.dumps(outcome.get("standard_answer") or [], ensure_ascii=False)
+                question.explanation = str(outcome.get("explanation") or "")
+                question.kp_ids_json = json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False)
+                db.flush()
+
+                is_correct = bool(outcome["is_correct"])
+                submitted_answer = str(outcome.get("submitted_answer") or "")
+                feedback = str(outcome.get("explanation") or "")
+                db.add(database.LearningQuestionAttempt(
+                    attempt_id=str(uuid4()),
+                    user_id=user.id,
+                    question_id=question_id,
+                    request_id=request_id,
+                    submitted_answer_json=json.dumps(
+                        [value.strip() for value in submitted_answer.split(",") if value.strip()],
+                        ensure_ascii=False,
+                    ),
+                    is_correct=is_correct,
+                    score=100.0 if is_correct else 0.0,
+                    reason_for_mistake="" if is_correct else "综合套题答题错误",
+                ))
+                db.add(database.QuestionAttempt(
+                    user_id=user.id,
+                    question_id=question_id,
+                    answer=submitted_answer,
+                    is_correct=is_correct,
+                    score=100.0 if is_correct else 0.0,
+                    kp_ids_json=json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False),
+                    feedback=feedback,
+                ))
+                recorded += 1
+                if not is_correct:
+                    mistake = db.query(database.MistakeRecord).filter_by(
+                        user_id=user.id,
+                        question_id=question_id,
+                        status="active",
+                    ).one_or_none()
+                    if mistake is None:
+                        mistake = database.MistakeRecord(
+                            user_id=user.id,
+                            question_id=question_id,
+                            status="active",
+                        )
+                        db.add(mistake)
+                    mistake.kp_ids_json = json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False)
+                    mistake.error_type = "综合套题答题错误"
+                    mistake.summary = feedback or "本题答案需要复盘。"
+                    mistakes_saved += 1
+            db.commit()
+            return {"attempts_recorded": recorded, "mistakes_saved": mistakes_saved}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_papers(
+        self, external_user_id: str, *, offset: int = 0, limit: int = 50
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            query = db.query(database.PaperInstanceRecord).filter_by(learner_id=user.id)
+            total = query.count()
+            rows = query.order_by(database.PaperInstanceRecord.created_at.desc()).offset(offset).limit(limit).all()
+            paper_ids = [row.paper_id for row in rows]
+            submission_scores: dict[str, dict[str, Any]] = {}
+            if paper_ids:
+                submission_rows = (
+                    db.query(database.PaperSubmissionRecord)
+                    .filter(
+                        database.PaperSubmissionRecord.paper_id.in_(paper_ids),
+                        database.PaperSubmissionRecord.status == "submitted",
+                    )
+                    .all()
+                )
+                for sub in submission_rows:
+                    score = None
+                    max_score = None
+                    try:
+                        parsed = json.loads(sub.result_json or "{}")
+                        if isinstance(parsed, dict):
+                            raw_score = parsed.get("score")
+                            raw_max = parsed.get("max_score")
+                            if raw_score is not None:
+                                score = round(float(raw_score), 2) if isinstance(raw_score, (int, float)) else None
+                            if raw_max is not None:
+                                max_score = round(float(raw_max), 2) if isinstance(raw_max, (int, float)) else None
+                    except (json.JSONDecodeError, TypeError, ValueError):
+                        pass
+                    submission_scores[str(sub.paper_id)] = {"score": score, "max_score": max_score}
+            items = []
+            for row in rows:
+                item = {
+                    "paper_id": row.paper_id,
+                    "title": row.title,
+                    "status": row.status,
+                    "duration_minutes": int(row.duration_minutes or 60),
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                entry = submission_scores.get(row.paper_id)
+                if entry is not None:
+                    item["score"] = entry["score"]
+                    item["max_score"] = entry["max_score"]
+                    if entry["score"] is not None and entry["max_score"]:
+                        item["score_rate"] = round(entry["score"] / entry["max_score"] * 100, 2)
+                items.append(item)
+            return {
+                "schema_version": "1.0",
+                "items": items,
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+            }
+        finally:
+            db.close()
+
+    def get_paper(self, external_user_id: str, paper_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.get_owned_paper(db, user.id, paper_id)
+        finally:
+            db.close()
+
+    def save_paper_answers(
+        self, external_user_id: str, paper_id: str, answers: dict[str, str]
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.save_paper_answers(db, user.id, paper_id, answers)
+        finally:
+            db.close()
+
+    def set_paper_timer_paused(
+        self, external_user_id: str, paper_id: str, *, paused: bool
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            operation = service.pause_paper_timer if paused else service.resume_paper_timer
+            return operation(db, user.id, paper_id)
+        finally:
+            db.close()
+
+    def submit_paper(
+        self, external_user_id: str, paper_id: str, request_id: str
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        expert_service = importlib.import_module("APP.backend.expert_agent_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.submit_paper(
+                db,
+                user.id,
+                paper_id,
+                request_id,
+                explanation_runner=expert_service.generate_question_explanation,
+            )
+        finally:
+            db.close()
+
+    @staticmethod
+    def _json_list(value: str | None) -> list[str]:
+        import json
+
+        try:
+            payload = json.loads(value or "[]")
+        except (TypeError, ValueError):
+            return []
+        return [str(item) for item in payload] if isinstance(payload, list) else []
+
+    @classmethod
+    def _load_completed_question_attempts(
+        cls,
+        database,
+        db,
+        user_id: int,
+        external_user_id: str,
+    ) -> list[dict[str, Any]]:
+        """Read only graded question submissions; generated resources are not attempts."""
+
+        attempts: list[dict[str, Any]] = []
+        seen_attempt_ids: set[str] = set()
+        seen_request_ids: set[str] = set()
+
+        graded_rows = (
+            db.query(
+                database.LearningAttemptRecord,
+                database.LearningAttemptItemRecord,
+                database.GradingResultRecord,
+                database.AuditResultRecord,
+            )
+            .join(
+                database.LearningAttemptItemRecord,
+                database.LearningAttemptItemRecord.attempt_id
+                == database.LearningAttemptRecord.attempt_id,
+            )
+            .join(
+                database.GradingResultRecord,
+                database.GradingResultRecord.attempt_item_id
+                == database.LearningAttemptItemRecord.attempt_item_id,
+            )
+            .join(
+                database.AuditResultRecord,
+                database.AuditResultRecord.source_artifact_id
+                == database.GradingResultRecord.artifact_id,
+            )
+            .filter(
+                database.LearningAttemptRecord.learner_id == user_id,
+                database.GradingResultRecord.status == "reviewed",
+                database.AuditResultRecord.source_artifact_version
+                == database.GradingResultRecord.version,
+                database.AuditResultRecord.decision == "pass",
+                database.AuditResultRecord.status.in_(("completed", "reviewed")),
+            )
+            .order_by(
+                database.LearningAttemptItemRecord.created_at.desc(),
+                database.GradingResultRecord.version.desc(),
+            )
+            .limit(200)
+            .all()
+        )
+        daily_groups: dict[str, list[tuple[Any, Any, Any]]] = {}
+        for attempt, item, grading, _audit in graded_rows:
+            if attempt.request_id:
+                seen_request_ids.add(str(attempt.request_id))
+            daily_item_id = str(attempt.daily_task_item_id or "").strip()
+            if daily_item_id:
+                daily_item = db.query(database.DailyTaskItemRecord).filter_by(
+                    task_item_id=daily_item_id,
+                    user_id=user_id,
+                ).one_or_none()
+                if daily_item is None or daily_item.status != "completed":
+                    continue
+                daily_groups.setdefault(daily_item_id, []).append(
+                    (attempt, item, grading)
+                )
+                continue
+            source_id = f"HANDOFF_ITEM_{item.attempt_item_id}"
+            if source_id in seen_attempt_ids:
+                continue
+            seen_attempt_ids.add(source_id)
+            kp_ids = cls._json_list(grading.kp_ids_json)
+            if not kp_ids:
+                kp_ids = cls._kp_snapshot_ids(item.kp_snapshot_json)
+            if not kp_ids:
+                continue
+            answered_at = attempt.submitted_at or item.created_at
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": item.question_version_id,
+                    "submitted_answer": item.submitted_answer,
+                    "is_correct": bool(grading.is_correct),
+                    "score": grading.score,
+                    "max_score": grading.max_score,
+                    "answered_at": answered_at.isoformat() if answered_at else None,
+                    "kp_ids": kp_ids,
+                    "hint_used": bool(item.hint_used),
+                    "feedback": grading.error_reason,
+                    "completion_status": "completed",
+                    "grading_status": "reviewed",
+                    "audit_decision": "pass",
+                }
+            )
+        for daily_item_id, rows in daily_groups.items():
+            source_id = f"HANDOFF_DAILY_ITEM_{daily_item_id}"
+            if source_id in seen_attempt_ids:
+                continue
+            kp_ids = list(
+                dict.fromkeys(
+                    kp_id
+                    for _attempt, item, grading in rows
+                    for kp_id in (
+                        cls._json_list(grading.kp_ids_json)
+                        or cls._kp_snapshot_ids(item.kp_snapshot_json)
+                    )
+                )
+            )
+            if not kp_ids:
+                continue
+            answered_at = max(
+                (
+                    attempt.submitted_at or item.created_at
+                    for attempt, item, _grading in rows
+                    if attempt.submitted_at is not None or item.created_at is not None
+                ),
+                default=None,
+            )
+            ratios = [
+                max(0.0, min(1.0, grading.score / grading.max_score))
+                for _attempt, _item, grading in rows
+                if grading.score is not None
+                and grading.max_score is not None
+                and grading.max_score > 0
+            ]
+            seen_attempt_ids.add(source_id)
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": f"daily-task-item:{daily_item_id}",
+                    "submitted_answer": [
+                        item.submitted_answer for _attempt, item, _grading in rows
+                    ],
+                    "is_correct": all(
+                        bool(grading.is_correct)
+                        for _attempt, _item, grading in rows
+                    ),
+                    "score": (
+                        round(100 * sum(ratios) / len(ratios), 2)
+                        if ratios
+                        else 0.0
+                    ),
+                    "max_score": 100.0,
+                    "answered_at": answered_at.isoformat()
+                    if answered_at is not None
+                    else None,
+                    "kp_ids": kp_ids,
+                    "feedback": "知识点题组已全部完成，按整组结果进入复习队列。",
+                    "completion_status": "completed",
+                    "grading_status": "reviewed",
+                    "audit_decision": "pass",
+                }
+            )
+
+        core_rows = (
+            db.query(database.LearningQuestionAttempt, database.LearningQuestion)
+            .join(
+                database.LearningQuestion,
+                database.LearningQuestion.question_id
+                == database.LearningQuestionAttempt.question_id,
+            )
+            .filter(database.LearningQuestionAttempt.user_id == user_id)
+            .order_by(database.LearningQuestionAttempt.answered_at.desc())
+            .limit(100)
+            .all()
+        )
+        for row, question in core_rows:
+            if row.request_id and str(row.request_id) in seen_request_ids:
+                continue
+            source_id = f"HANDOFF_CORE_{row.attempt_id}"
+            kp_ids = cls._json_list(question.kp_ids_json)
+            if source_id in seen_attempt_ids or not kp_ids:
+                continue
+            seen_attempt_ids.add(source_id)
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": row.question_id,
+                    "submitted_answer": cls._json_list(row.submitted_answer_json),
+                    "is_correct": bool(row.is_correct),
+                    "score": row.score,
+                    "answered_at": row.answered_at.isoformat()
+                    if row.answered_at
+                    else None,
+                    "kp_ids": kp_ids,
+                    "feedback": row.reason_for_mistake,
+                    "completion_status": "completed",
+                    "grading_status": "accepted",
+                    "audit_decision": "pass",
+                }
+            )
+
+        legacy_rows = (
+            db.query(database.QuestionAttempt)
+            .filter(database.QuestionAttempt.user_id == user_id)
+            .order_by(database.QuestionAttempt.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        for row in legacy_rows:
+            source_id = f"HANDOFF_ATTEMPT_{row.id}"
+            kp_ids = cls._json_list(row.kp_ids_json)
+            if source_id in seen_attempt_ids or not kp_ids:
+                continue
+            seen_attempt_ids.add(source_id)
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": row.question_id,
+                    "submitted_answer": row.answer,
+                    "is_correct": bool(row.is_correct),
+                    "score": row.score,
+                    "answered_at": row.created_at.isoformat()
+                    if row.created_at
+                    else None,
+                    "kp_ids": kp_ids,
+                    "feedback": row.feedback,
+                    "completion_status": "completed",
+                    "grading_status": "accepted",
+                    "audit_decision": "pass",
+                }
+            )
+
+        all_kp_ids = list(dict.fromkeys(
+            kp_id
+            for attempt in attempts
+            for kp_id in attempt.get("kp_ids", [])
+            if str(kp_id or "").strip()
+        ))
+        identity = importlib.import_module(
+            "APP.backend.knowledge_point_identity_service"
+        )
+        canonical_map = identity.canonical_map_for_ids(db, all_kp_ids)
+        for attempt in attempts:
+            source_kp_ids = list(attempt.get("kp_ids") or [])
+            attempt["source_kp_ids"] = source_kp_ids
+            attempt["kp_ids"] = list(dict.fromkeys(
+                canonical_map.get(kp_id, kp_id) for kp_id in source_kp_ids
+            ))
+        all_kp_ids = list(dict.fromkeys(
+            kp_id
+            for attempt in attempts
+            for kp_id in attempt.get("kp_ids", [])
+        ))
+        kp_names = {
+            str(row.kp_id): str(row.name).strip()
+            for row in (
+                db.query(database.KnowledgePoint)
+                .filter(database.KnowledgePoint.kp_id.in_(all_kp_ids))
+                .all()
+                if all_kp_ids
+                else []
+            )
+            if str(row.name or "").strip() and str(row.name).strip() != str(row.kp_id)
+        }
+        for attempt in attempts:
+            attempt["kp_names"] = {
+                kp_id: kp_names[kp_id]
+                for kp_id in attempt.get("kp_ids", [])
+                if kp_id in kp_names
+            }
+            if len(attempt["kp_ids"]) == 1 and attempt["kp_ids"][0] in kp_names:
+                attempt["knowledge_point_name"] = kp_names[attempt["kp_ids"][0]]
+
+        attempts.sort(key=lambda item: str(item.get("answered_at") or ""), reverse=True)
+        return attempts[:100]
+
+    @staticmethod
+    def _kp_snapshot_ids(value: str | None) -> list[str]:
+        import json
+
+        try:
+            payload = json.loads(value or "[]")
+        except (TypeError, ValueError):
+            return []
+        if not isinstance(payload, list):
+            return []
+        values = []
+        for item in payload:
+            kp_id = item.get("kp_id") if isinstance(item, dict) else item
+            if kp_id is not None and str(kp_id).strip():
+                values.append(str(kp_id).strip())
+        return list(dict.fromkeys(values))
+
+
+def _validate_handoff_root(root: Path) -> None:
+    required = (
+        root / "APP" / "__init__.py",
+        root / "APP" / "backend" / "main.py",
+        root / "APP" / "backend" / "database.py",
+        root / "APP" / "backend" / "routers" / "vl_chat_routes.py",
+    )
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise FileNotFoundError("前端后端交接包不完整：" + "; ".join(missing))
+
+
+def _database_environment(settings: Settings, runtime_root: Path) -> tuple[dict[str, str], str]:
+    if settings.mysql_password:
+        password = quote_plus(settings.mysql_password)
+        username = quote_plus(settings.mysql_user)
+        database = settings.backend_handoff_mysql_database
+        url = (
+            f"mysql+pymysql://{username}:{password}@{settings.mysql_host}:"
+            f"{settings.mysql_port}/{database}?charset=utf8mb4"
+        )
+        return (
+            {
+                "USE_SQLITE": "false",
+                "DATABASE_URL": url,
+                "MYSQL_HOST": settings.mysql_host,
+                "MYSQL_PORT": str(settings.mysql_port),
+                "MYSQL_USER": settings.mysql_user,
+                "MYSQL_PASSWORD": settings.mysql_password,
+                "MYSQL_DATABASE": database,
+            },
+            f"mysql:{database}",
+        )
+    sqlite_path = (runtime_root / "frontend_backend.sqlite3").resolve()
+    return (
+        {
+            "USE_SQLITE": "true",
+            "SQLITE_PATH": str(sqlite_path),
+            "DATABASE_URL": f"sqlite:///{sqlite_path}",
+        },
+        "sqlite",
+    )
+
+
+def _model_environment(settings: Settings) -> dict[str, str]:
+    """Project only the authoritative main model stack into legacy modules."""
+
+    return {
+        "LLM_MODE": "local",
+        "LLM_API_KEY": settings.llm_api_key or "",
+        "LLM_API_BASE_URL": settings.chat_base_url,
+        "LLM_API_MODEL": settings.chat_model,
+        "PLANNER_EXECUTOR_BASE_URL": settings.chat_base_url,
+        "PLANNER_EXECUTOR_MODEL": settings.chat_model,
+        "MANAGER_REVIEWER_BASE_URL": settings.chat_base_url,
+        "MANAGER_REVIEWER_MODEL": settings.chat_model,
+        "EMBEDDING_MODE": settings.embedding_mode,
+        "EMBEDDING_MODEL_ID": settings.embedding_model,
+        "EMBEDDING_MODEL_PATH": (
+            str(settings.embedding_model_path)
+            if settings.embedding_model_path is not None
+            else ""
+        ),
+        "EMBEDDING_API_BASE_URL": settings.embedding_base_url,
+        "EMBEDDING_API_KEY": settings.embedding_api_key or "",
+        # Voice migration is intentionally out of scope for this integration phase.
+        "VOICE_MODE": "disabled",
+    }
+
+
+def _assert_app_package(root: Path, module: ModuleType) -> None:
+    module_path = Path(getattr(module, "__file__", "")).resolve()
+    expected = (root / "APP").resolve()
+    if expected not in module_path.parents and module_path != expected:
+        raise RuntimeError(
+            f"Python 包 APP 已由其他路径占用：{module_path}；期望路径：{expected}"
+        )
+
+
+def load_backend_handoff(
+    settings: Settings,
+    *,
+    review_context_provider: Callable[[str, int], dict[str, Any]] | None = None,
+) -> BackendHandoffRuntime | None:
+    """Load the delivered backend once, with isolated persistence and runtime paths."""
+
+    if not settings.backend_handoff_enabled:
+        return None
+    root = settings.platform_backend_root.resolve()
+    runtime_root = settings.backend_handoff_runtime_root.resolve()
+    _validate_handoff_root(root)
+    runtime_root.mkdir(parents=True, exist_ok=True)
+
+    knowledge_paths_root = settings.knowledge_release_root.resolve()
+    knowledge_component = knowledge_component_root(knowledge_paths_root)
+    database_env, database_backend = _database_environment(settings, runtime_root)
+    environment = {
+        **database_env,
+        **_model_environment(settings),
+        "BACKEND_RUNTIME_ROOT": str(runtime_root),
+        "SECRET_KEY": settings.backend_handoff_secret_key,
+        "EXA_API_KEY": settings.exa_api_key or "",
+        "MINERU_TOKEN": settings.mineru_token or "",
+        "KNOWLEDGE_UPLOAD_PIPELINE_ROOT": str(
+            knowledge_component / "knowledge_upload_pipeline"
+        ),
+        "KNOWLEDGE_ATLAS_DATA_ROOT": str(
+            knowledge_component / "data" / "backend_delivery"
+        ),
+        "KNOWLEDGE_ATLAS_VIDEO_ROOT": str(
+            knowledge_video_root(knowledge_paths_root)
+        ),
+        "OFFICIAL_EXAM_DATA_DIR": str(
+            knowledge_component / "data" / "backend_delivery" / "08_exam_learning_path_2025"
+        ),
+        "KNOWLEDGE_DATA_SOURCE_PATH": str(knowledge_component / "data"),
+        "VDB_STORE_ROOT": str(settings.question_vector_store_root.resolve()),
+    }
+
+    with _IMPORT_LOCK:
+        root_text = str(root)
+        if root_text not in sys.path:
+            sys.path.insert(0, root_text)
+        with _temporary_environment(environment):
+            package = importlib.import_module("APP")
+            _assert_app_package(root, package)
+            module = importlib.import_module("APP.backend.main")
+        delivered_app = getattr(module, "app", None)
+        if not isinstance(delivered_app, FastAPI):
+            raise TypeError("交接包 APP.backend.main 未导出 FastAPI app")
+    return BackendHandoffRuntime(
+        app=delivered_app,
+        root=root,
+        runtime_root=runtime_root,
+        database_backend=database_backend,
+        review_context_provider=review_context_provider,
+    )

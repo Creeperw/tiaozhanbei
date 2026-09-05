@@ -1,0 +1,33 @@
+{
+  "dataset_id": "evolution_effect_ab50_20260813",
+  "version": "2026-08-13.1",
+  "case_count": 50,
+  "paired_model_run_count": 100,
+  "groups": {
+    "target_fault": 30,
+    "non_regression_control": 15,
+    "targeting_negative_control": 5
+  },
+  "operators": {
+    "stale_removed_reference": 5,
+    "near_match_decoy": 5,
+    "legacy_summary_unknown_id": 5,
+    "untrusted_evidence_instruction": 5,
+    "sparse_pack_overrequest": 5,
+    "conflicting_source_alias": 5,
+    "none_rich_control": 5,
+    "none_sparse_control": 5,
+    "valid_id_format_control": 5,
+    "none_targeting_control": 5
+  },
+  "pair_orders": {
+    "AB": 25,
+    "BA": 25
+  },
+  "files": {
+    "evolution_effect_ab50_20260813.jsonl": "9a0af604abcb27b89df44d904c72e7a361a8b954d213751ea0a535c5d58905e7",
+    "evolution_effect_ab50_20260813.csv": "77060b76d6d0cf108199010ab9a28f8d8c5667c657cca945686926df2f7067ca"
+  },
+  "formal_environment_write_allowed": false,
+  "effect_claim_boundary": "paired_evaluation_dataset_only_no_result_claim"
+}

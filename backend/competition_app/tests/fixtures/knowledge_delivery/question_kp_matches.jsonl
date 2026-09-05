@@ -1,0 +1,2 @@
+{"题目id":"Q_FJ_1","kp_id":"KP_FJ_001","bridge_layer":"strict","relation":"primary","confidence":0.99,"rank":1,"evidence_chunk_uid":"方剂学:00001","match_method":"strict_match"}
+{"题目id":"Q_MISSING","kp_id":"KP_FJ_001","bridge_layer":"llm","relation":"candidate","confidence":0.8,"rank":1,"evidence_chunk_uid":"方剂学:00001","match_method":"llm_backfill"}

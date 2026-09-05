@@ -1,0 +1,32 @@
+{
+  "dataset_id": "semantic_conflict_closure_ab100_v2_20260901",
+  "version": "2026-09-01.1",
+  "case_count": 100,
+  "paired_model_run_count": 200,
+  "case_groups": {
+    "target_fault": 60,
+    "non_regression_control": 30,
+    "targeting_negative_control": 10
+  },
+  "pair_orders": {
+    "AB": 50,
+    "BA": 50
+  },
+  "gold_relations": {
+    "contradiction": 60,
+    "not_applicable": 30,
+    "compatible": 10
+  },
+  "rule_exposure_scope": {
+    "exposed": 70,
+    "not_exposed": 30
+  },
+  "annotation_status": "deterministic_construct_validated_pending_independent_human_review",
+  "formal_environment_write_allowed": false,
+  "legacy_dataset_sha256": "7162b84f0ef4dcf3236e6cf48f6f429fc6b9fad887c211e669342844ee7aa505",
+  "files": {
+    "semantic_conflict_closure_ab100_v2_20260901.jsonl": "bbc322a6f25c69666fac760ecaef5c46025342ded3d6e29ebac40981b131ceaf",
+    "semantic_conflict_closure_ab100_v2_20260901.csv": "cf163c1ea27f9cbc4e811eb94d459620622d2289976e4c85db403fc26ce11dbd",
+    "semantic_conflict_closure_ab100_v2_20260901.human_review.csv": "c3e264f6e9243e3e6230e79a8c4fe9ed9eb158dfb5b3c35d09329b7837c495e7"
+  }
+}

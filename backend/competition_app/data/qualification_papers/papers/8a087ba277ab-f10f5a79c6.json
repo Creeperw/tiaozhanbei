@@ -1,0 +1,385 @@
+{
+  "template_id": "8a087ba277ab-f10f5a79c6",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0032",
+      "question_type": "single_choice",
+      "question_content": "患者, 女, 37 岁, 异位妊娠保守治疗, 现患者一侧下腹部撕裂样剧痛, 疑似异位妊娠破裂, 腹腔内出血严重, 心悸、乏力、呼吸加快, 伴随尿少、皮肤湿冷、苍白, 脉搏增快, 现治疗应补",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血浆"
+        },
+        {
+          "option_id": "B",
+          "content": "全血"
+        },
+        {
+          "option_id": "C",
+          "content": "右旋糖酐"
+        },
+        {
+          "option_id": "D",
+          "content": "平衡液"
+        },
+        {
+          "option_id": "E",
+          "content": "高渗盐水"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者的病史以及临床表现，诊断为低血容量休克，补充血容量以平衡液或等渗盐水为主。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 32,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0033",
+      "question_type": "single_choice",
+      "question_content": "患者, 男, 62 岁, 1 年前诊断为胃癌, 做手术后恢复良好。近 3 个月出现腹痛、体温升高等腹膜炎表现, 最近 3 日腹痛明显, 伴腹胀、呕吐, 未排气排便, 检查: 腹部膨胀, 可见肠型, 肠鸣音亢进。考虑该患者的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性阑尾炎"
+        },
+        {
+          "option_id": "B",
+          "content": "肠套叠"
+        },
+        {
+          "option_id": "C",
+          "content": "肠道畸形"
+        },
+        {
+          "option_id": "D",
+          "content": "胃癌复发"
+        },
+        {
+          "option_id": "E",
+          "content": "粘连性肠梗阻"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据患者的病史、痛呕胀闭症状以及肠型、肠鸣音亢进的体征，考虑为粘连性肠梗阻。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 33,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0034",
+      "question_type": "single_choice",
+      "question_content": "患者, 男, 43 岁, 3 天前工作时不慎冻伤双臂, 患处出现红斑、水肿、硬结, 温暖后感灼痒、胀痛, 出现水疱, 水疱下创面潮红, 有浆液渗出, 现形成溃疡。现症: 伤处暗红微肿, 局部疼痛喜冷。舌暗红, 苔黄, 脉数, 该患者辨证为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寒盛阳衰证"
+        },
+        {
+          "option_id": "B",
+          "content": "寒凝血虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "气血两虚证"
+        },
+        {
+          "option_id": "D",
+          "content": "瘀滞化热证"
+        },
+        {
+          "option_id": "E",
+          "content": "热毒内陷证"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“3天前工作时不慎冻伤双臂，患处出现红斑、水肿、硬结，温暖后感灼痒、胀痛，出现水疱，水疱下创面潮红，有浆液渗出，现形成溃疡”诊断为冷伤，根据“伤处暗红微肿，局部疼痛喜冷。舌暗红，苔黄，脉数”辨证为瘀滞化热证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0035",
+      "question_type": "single_choice",
+      "question_content": "患者，男，42岁，上班路上不慎发生车祸，送急诊后发现骨盆骨折，现自觉下腹部疼痛，排尿困难、血尿，直肠指诊波动感及压痛。现症：尿道疼痛，尿道滴血，颜色鲜红；舌淡苔白，脉弦，该患者中医治疗选方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "活血止痛散"
+        },
+        {
+          "option_id": "B",
+          "content": "活血散瘀汤"
+        },
+        {
+          "option_id": "C",
+          "content": "小蓟饮子"
+        },
+        {
+          "option_id": "D",
+          "content": "凉血地黄汤"
+        },
+        {
+          "option_id": "E",
+          "content": "清营汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据患者“车祸后发现骨盆骨折，现自觉下腹部疼痛，排尿困难、血尿，直肠指诊波动感及压痛”诊断为尿道损伤，根据“尿道疼痛，尿道滴血，颜色鲜红；舌淡苔白，脉弦”辨证为络伤溢血证，治法为止血镇痛，选方为活血止痛散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0036",
+      "question_type": "single_choice",
+      "question_content": "患者，男，29岁，2月前洗澡时触摸到左肩背部有一高出皮肤的肿物。经检查发现，肿物直径 $1.5\\mathrm{cm}$ ，呈圆形，边界清楚，基部较广泛，质软，有假性波动感，与周围组织无粘连，基底部可移动，但活动度不大。患者无其他自 懒人医考整理 觉症状。考虑该肿物的类型是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "纤维瘤"
+        },
+        {
+          "option_id": "B",
+          "content": "皮脂腺囊肿"
+        },
+        {
+          "option_id": "C",
+          "content": "毛细血管瘤"
+        },
+        {
+          "option_id": "D",
+          "content": "脂肪瘤"
+        },
+        {
+          "option_id": "E",
+          "content": "神经纤维瘤"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据肿物的位置，以及特点，考虑该体表肿物属于脂肪瘤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 36,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0037",
+      "question_type": "single_choice",
+      "question_content": "患者, 男, 25 岁, 与他人发生冲突, 被多次击打腹部, 初起表现为口渴、尿少、烦躁不安, 休息半小时后症状未好转, 出现面色苍白, 身出冷汗, 四肢不温, 心慌心悸, 送至医院。查体: 神志模糊, 脉搏微弱, 血压较低。心率较快, 听诊心音低钝较弱; 全腹有压痛、反跳痛, 腹肌轻度抵抗感, 叩诊有振水感。腹穿有血性液体。腹部 B 超: 脾脏表层的完整性遭到破坏。该患者现应采取的治疗措施为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "抗感染"
+        },
+        {
+          "option_id": "B",
+          "content": "保守治疗"
+        },
+        {
+          "option_id": "C",
+          "content": "积极手术治疗"
+        },
+        {
+          "option_id": "D",
+          "content": "补液"
+        },
+        {
+          "option_id": "E",
+          "content": "输血"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者的病因、症状以及体征，考虑为脾破裂。脾破裂一般需积极手术治疗。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 37,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0038",
+      "question_type": "single_choice",
+      "question_content": "患者，男，28 岁，因骑摩托车速度过快，不慎撞到路边护栏。受伤后，自觉右侧胸痛剧烈，呼吸困难，深呼吸或转动体位时胸部疼痛加剧，送至急诊。查体：右侧胸壁有时肿胀，按之有压痛，有骨摩擦感。急查胸部 X 线：右侧第 4 肋骨骨折，现症：右胁肋刺痛，痛处固定，伴咳嗽、咯血，呼吸短促，胸部胀闷；舌质紫，脉沉涩。该患者的中医证型为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞血瘀证"
+        },
+        {
+          "option_id": "B",
+          "content": "肺络损伤证"
+        },
+        {
+          "option_id": "C",
+          "content": "筋骨不续证"
+        },
+        {
+          "option_id": "D",
+          "content": "肝肾不足证"
+        },
+        {
+          "option_id": "E",
+          "content": "气血亏虚证"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据患者“受伤后，自觉右侧胸痛剧烈，呼吸困难，深呼吸或转动体位时胸部疼痛加剧”以及体征和X线结果，诊断为肋骨骨折。根据“右胁肋刺痛，痛处固定，伴咳嗽、咯血，呼吸短促，胸部胀闷；舌质紫，脉沉涩”辨证为肺络损伤证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 38,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0039",
+      "question_type": "single_choice",
+      "question_content": "患者，男，30岁，体型瘦高，今日因气管炎剧烈咳嗽数分钟，后出现胸闷、气促，入院检查：气管向健侧移位，伤侧胸部叩诊呈鼓音，听诊呼吸音减弱。胸部X线检查显示轻度肺萎陷，现症：呼吸急促，不能平卧，胸部胀闷；舌质淡红，脉弦，该患者中医治疗选方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "参附汤"
+        },
+        {
+          "option_id": "B",
+          "content": "复元活血汤"
+        },
+        {
+          "option_id": "C",
+          "content": "四君子汤合生脉散"
+        },
+        {
+          "option_id": "D",
+          "content": "理气止痛汤"
+        },
+        {
+          "option_id": "E",
+          "content": "柴胡疏肝散"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“体型瘦高，今日因气管炎剧烈咳嗽数分钟，后出现胸闷、气促”以及查体、X线结果，诊断为自发性气胸。根据“呼吸急促，不能平卧，胸部胀闷；舌质淡红，脉弦”辨证为气滞证，治法为开胸顺气，选方为理气止痛汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 39,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0040",
+      "question_type": "single_choice",
+      "question_content": "患者，男，34 岁，腋下淋巴结肿大伴压痛 1 周，3 天前局部红肿热痛加剧，扩展成肿块，出现发热、头痛、乏力等全身症状。现患处灼热疼痛，上肢活动不利，伴恶寒发热，纳差，舌红、苔薄白、脉滑数。该患者的治疗选方是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牛蒡解肌汤"
+        },
+        {
+          "option_id": "B",
+          "content": "柴胡疏肝散"
+        },
+        {
+          "option_id": "C",
+          "content": "柴胡清肝汤"
+        },
+        {
+          "option_id": "D",
+          "content": "五味消毒饮"
+        },
+        {
+          "option_id": "E",
+          "content": "活血散瘀汤"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者“腋下淋巴结肿大伴压痛1周，3天前局部红肿热痛加剧，扩展成肿块，出现发热、头痛、乏力等全身症状”诊断为急性淋巴结炎，根据“患处灼热疼痛，上肢活动不利，伴恶寒发热，纳差，舌红、苔薄白、脉滑数”辨证为腋痛，治法为清肝解郁，消肿化毒，选方为柴胡清肝汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-f10f5a79c6-q0041",
+      "question_type": "single_choice",
+      "question_content": "患者，男，64 岁，因缺铁性贫血进行输血治疗。今日输血过程中，出现咳吐血性泡沫痰，听诊肺部有湿啰音，考虑出现的输血不良反应是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "发热反应"
+        },
+        {
+          "option_id": "B",
+          "content": "溶血反应"
+        },
+        {
+          "option_id": "C",
+          "content": "细菌污染反应"
+        },
+        {
+          "option_id": "D",
+          "content": "循环超负荷"
+        },
+        {
+          "option_id": "E",
+          "content": "过敏反应"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“输血过程中，出现咳吐血性泡沫痰，听诊肺部有湿啰音”考虑为循环超负荷。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 11-中药相同功效药物总结 12-中药学30味中药药理作用总 13-方剂学常考重点总结 10-特定穴 记忆歌诀汇总",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+        "number": 41,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}
