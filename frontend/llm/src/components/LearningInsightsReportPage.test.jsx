@@ -147,8 +147,9 @@ describe('LearningInsightsReportPage', () => {
     expect(await screen.findByText('累计学习时长')).toBeInTheDocument();
     expect(screen.getByText('5160')).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: '学情报告快捷入口' })).not.toBeInTheDocument();
-    expect(screen.getByText('完成练习')).toBeInTheDocument();
-    expect(screen.getByText('平均正确率')).toBeInTheDocument();
+    expect(screen.getByText('练习活动')).toBeInTheDocument();
+    expect(screen.getByText('正式练习得分率')).toBeInTheDocument();
+    expect(screen.getByText(/仅统计审核通过的正式批改结果/)).toBeInTheDocument();
     expect(screen.getByText('活跃天数')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '能力分析' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '学习能力雷达图' })).toBeInTheDocument();

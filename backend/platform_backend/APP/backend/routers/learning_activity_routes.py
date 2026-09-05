@@ -22,6 +22,35 @@ from APP.backend.system_data_service import rebuild_system_data, system_data_pay
 router = APIRouter(prefix="/learning-activity", tags=["Learning Activity"])
 
 
+@router.get('/history')
+def get_learning_history(
+    section: str = Query(default='attempts'),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1, le=100),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from APP.backend.learning_history_service import history_page, SECTIONS
+    if section not in SECTIONS:
+        raise HTTPException(status_code=400, detail='Unknown history section')
+    return history_page(db, current_user.id, section, offset, limit)
+
+
+@router.get('/history/sessions/{session_id}/messages')
+def get_history_messages(
+    session_id: str,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1, le=100),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from APP.backend.learning_history_service import session_messages
+    result = session_messages(db, current_user.id, session_id, offset, limit)
+    if result is None:
+        raise HTTPException(status_code=404, detail='History session not found')
+    return result
+
+
 class TaskStartRequest(BaseModel):
     task_type: str = Field(min_length=1, max_length=80)
     resource_type: str = Field(min_length=1, max_length=80)
