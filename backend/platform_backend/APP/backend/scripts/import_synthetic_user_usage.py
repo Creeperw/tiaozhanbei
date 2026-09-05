@@ -14,7 +14,7 @@ DEFAULT_INPUT = (
     / "synthetic_user_usage_v1.json"
 )
 SYNTHETIC_PASSWORD_HASH = "!synthetic-login-disabled-v1"
-EXPECTED_SCHEMA = "synthetic_user_usage_v1"
+EXPECTED_SCHEMAS = {"synthetic_user_usage_v1", "synthetic_judge_usage_v2"}
 
 
 class SyntheticUsageImportError(ValueError):
@@ -51,8 +51,10 @@ def _unique(rows: list[dict[str, Any]], key: str, section: str) -> set[str]:
 
 
 def validate_dataset(dataset: dict[str, Any]) -> dict[str, int]:
-    if dataset.get("schema_version") != EXPECTED_SCHEMA:
-        raise SyntheticUsageImportError(f"schema_version must be {EXPECTED_SCHEMA}")
+    if dataset.get("schema_version") not in EXPECTED_SCHEMAS:
+        raise SyntheticUsageImportError(
+            "schema_version must be one of: " + ", ".join(sorted(EXPECTED_SCHEMAS))
+        )
     if dataset.get("data_classification") != "synthetic":
         raise SyntheticUsageImportError("data_classification must be synthetic")
     if dataset.get("contains_real_personal_data") is not False:
@@ -87,10 +89,25 @@ def validate_dataset(dataset: dict[str, Any]) -> dict[str, int]:
     if len(groups - {""}) < 2:
         raise SyntheticUsageImportError("at least two learner groups are required")
     for row in users:
-        if not str(row["username"]).startswith("sim_"):
-            raise SyntheticUsageImportError("synthetic usernames must start with sim_")
+        if not str(row["username"]).startswith(("sim_", "judge_")):
+            raise SyntheticUsageImportError(
+                "synthetic usernames must start with sim_ or judge_"
+            )
         if not str(row["email"]).endswith("@example.test"):
             raise SyntheticUsageImportError("synthetic email addresses must use example.test")
+        password = row.get("login_password")
+        if password is not None:
+            password_text = str(password)
+            if (
+                len(password_text) < 10
+                or not any(char.islower() for char in password_text)
+                or not any(char.isupper() for char in password_text)
+                or not any(char.isdigit() for char in password_text)
+                or password_text.isalnum()
+            ):
+                raise SyntheticUsageImportError(
+                    "judge login passwords must contain upper/lowercase letters, a digit and a symbol"
+                )
         _parse_time(row.get("created_at"), "users.created_at")
 
     reference = dataset.get("reference_catalog") or {}
@@ -197,6 +214,7 @@ def _dump(value: Any) -> str:
 def import_dataset(dataset: dict[str, Any], session_factory=None) -> dict[str, int]:
     summary = validate_dataset(dataset)
     from APP.backend import database
+    from APP.backend.auth import get_password_hash, verify_password
     from APP.backend.system_data_service import rebuild_system_data
 
     factory = session_factory or database.SessionLocal
@@ -204,6 +222,7 @@ def import_dataset(dataset: dict[str, Any], session_factory=None) -> dict[str, i
     try:
         users_by_learner: dict[str, Any] = {}
         for learner in dataset["users"]:
+            plain_password = learner.get("login_password")
             user = (
                 db.query(database.UserModel)
                 .filter(
@@ -216,20 +235,35 @@ def import_dataset(dataset: dict[str, Any], session_factory=None) -> dict[str, i
                 user = database.UserModel(
                     username=learner["username"],
                     email=learner["email"],
-                    hashed_password=SYNTHETIC_PASSWORD_HASH,
+                    hashed_password=(
+                        get_password_hash(str(plain_password))
+                        if plain_password
+                        else SYNTHETIC_PASSWORD_HASH
+                    ),
                     role="user",
                     created_at=_parse_time(learner["created_at"], "users.created_at"),
                 )
                 db.add(user)
                 db.flush()
-            elif (
-                user.username != learner["username"]
-                or user.email != learner["email"]
-                or user.hashed_password != SYNTHETIC_PASSWORD_HASH
-            ):
-                raise SyntheticUsageImportError(
-                    f"refusing to overwrite non-synthetic or mismatched account: {learner['username']}"
+            else:
+                identity_mismatch = (
+                    user.username != learner["username"]
+                    or user.email != learner["email"]
                 )
+                password_is_owned = user.hashed_password == SYNTHETIC_PASSWORD_HASH
+                if plain_password and not password_is_owned:
+                    try:
+                        password_is_owned = verify_password(
+                            str(plain_password), user.hashed_password
+                        )
+                    except (TypeError, ValueError):
+                        password_is_owned = False
+                if identity_mismatch or not password_is_owned:
+                    raise SyntheticUsageImportError(
+                        f"refusing to overwrite non-synthetic or mismatched account: {learner['username']}"
+                    )
+                if plain_password:
+                    user.hashed_password = get_password_hash(str(plain_password))
             users_by_learner[learner["learner_id"]] = user
 
         user_ids = [user.id for user in users_by_learner.values()]
@@ -352,7 +386,7 @@ def import_dataset(dataset: dict[str, Any], session_factory=None) -> dict[str, i
                 "plan_id": row["plan_id"],
                 "target_kp_ids": row["target_kp_ids"],
                 "daily_available_minutes": row["daily_available_minutes"],
-                "source": EXPECTED_SCHEMA,
+                "source": dataset["schema_version"],
             }
             db.add(
                 database.LearningPlanRecord(
@@ -463,7 +497,7 @@ def import_dataset(dataset: dict[str, Any], session_factory=None) -> dict[str, i
                         item_kind=item["item_kind"],
                         ordinal=int(item["ordinal"]),
                         required_question_count=int(item["required_question_count"]),
-                        resource_ref={"source": EXPECTED_SCHEMA},
+                        resource_ref={"source": dataset["schema_version"]},
                         completion_policy={"policy": "synthetic_record"},
                         status=item["status"],
                         completed_at=completed_at,
@@ -480,7 +514,7 @@ def import_dataset(dataset: dict[str, Any], session_factory=None) -> dict[str, i
                     importance="normal",
                     title=row["title"],
                     content=row["content"],
-                    source=EXPECTED_SCHEMA,
+                    source=dataset["schema_version"],
                     is_active=True,
                     confidence=float(row["confidence"]),
                     created_at=created_at,
