@@ -3,7 +3,6 @@ import PersonalizationPage from './PersonalizationPage';
 import LearningInsightsReportPage from './LearningInsightsReportPage';
 import ReviewDashboardPanel from './ReviewDashboardPanel';
 import ResourceUploadPage from './ResourceUploadPage';
-import LearningHistoryPanel from './LearningHistoryPanel';
 
 const validTaskKeys = new Set(['user-profile', 'reports', 'review', 'memory', 'resources']);
 const normalizeTask = (value) => (
@@ -68,7 +67,6 @@ export default function PersonalizationHubPage({ navigationContext = {}, onNavig
         {renderedTab === 'memory' && <PersonalizationPage onBackHome={null} embedded view="memory" />}
         {renderedTab === 'resources' && <ResourceUploadPage />}
       </main>
-      <LearningHistoryPanel key={currentUser?.user_id || currentUser?.username || 'anonymous'} />
     </div>
   );
 }

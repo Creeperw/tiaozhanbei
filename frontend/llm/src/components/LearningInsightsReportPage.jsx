@@ -631,8 +631,8 @@ export default function LearningInsightsReportPage({ onNavigate }) {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="学习结论">
         <SummaryMetric icon={Clock3} label="累计学习时长" value={summary.totalFocusMinutes} unit="分钟" detail={`近30天日均 ${summary.averageFocusMinutes} 分钟（取整）`} />
-        <SummaryMetric icon={ClipboardCheck} label="练习活动" value={summary.completedPractice} unit="次" detail={`正式答题 ${summary.questionCount} 条；历史答题另列`} tone="teal" />
-        <SummaryMetric icon={CheckCircle2} label="正式练习得分率" value={summary.accuracy === undefined ? '—' : percent(summary.accuracy)} detail="仅统计审核通过的正式批改结果；历史答题见下方历史记录" />
+        <SummaryMetric icon={ClipboardCheck} label="练习活动" value={summary.completedPractice} unit="次" detail={`正式答题 ${summary.questionCount} 条（与活动次数口径不同）`} tone="teal" />
+        <SummaryMetric icon={CheckCircle2} label="正式练习得分率" value={summary.accuracy === undefined ? '—' : percent(summary.accuracy)} detail="仅统计审核通过的正式批改结果" />
         <SummaryMetric icon={CalendarDays} label="活跃天数" value={summary.activeDays} unit="天" detail="本月" tone="teal" />
       </section>
 

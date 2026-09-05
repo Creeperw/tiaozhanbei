@@ -26,6 +26,8 @@ describe('PersonalizationHubPage task routing', () => {
 
     expect(screen.getByText('reports-task')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'alice的学情报告' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('region', { name: '历史学习记录' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /历史学习记录/ })).not.toBeInTheDocument();
   });
 
   it('routes all persistent text buttons without wrapping them in cards', async () => {
