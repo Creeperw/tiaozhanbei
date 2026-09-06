@@ -1,63 +1,68 @@
-# 协作与贡献说明
+# 贡献与协作
 
-感谢所有参与时珍智训前端、后端、知识资源和部署工作的贡献者。本仓库以 `main` 作为发布基线，功能开发通过独立分支完成。
+时珍智训不是我一个人完成的项目。感谢一起参与前端、后端、知识资源和部署工作的同学，也欢迎对中医药学习和多智能体应用感兴趣的朋友参与。
 
-2026-09-05 按仓库所有者要求，以整理后的当前代码建立无父提交的新基线，并清除旧远程分支。
-旧历史已在负责人本地完成镜像及 Git bundle 备份；备份含旧内容，不随源码或网盘资源分发。
-新根提交不会保留原有 Contributors 统计，但不会取消团队成员的署名和实际贡献。
+## 参与成员
 
-## 当前协作贡献
+我主要负责多智能体后端、前后端整合及部署维护。下面记录了目前的主要代码贡献：
 
-| 贡献者 | 已合并工作 |
-|---|---|
-| Creeperw | 多智能体后端、前后端整合、章节层级、数据持久化、接口与部署文档 |
-| sunjingyan（GitHub：[@Monologue-8106](https://github.com/Monologue-8106)） | 登录体验、顺序学习路径、知识空间和学习工坊前端交互 |
-| 11075 | 团队交接与 PowerShell 启动端口校准 |
+| 成员 | 主要工作 |
+| --- | --- |
+| [Creeperw](https://github.com/Creeperw)（我） | 多智能体后端、前后端整合、章节层级、数据持久化，以及接口和部署文档 |
+| sunjingyan / [Monologue-8106](https://github.com/Monologue-8106) | 登录体验、顺序学习路径、知识空间和学习工坊的前端交互 |
+| 11075 | 团队代码交接、PowerShell 启动脚本和端口配置校准 |
 
-GitHub Contributors 页面依据 `main` 可达提交的作者邮箱统计。提交者应使用已绑定到个人 GitHub 账号的邮箱；修改历史提交作者会破坏审计链路，不应为了统计而重写已经共享的提交。
+这份名单不只看 GitHub 的提交统计。如果有遗漏、分工描述不准确，或者希望调整自己的署名，请告诉我，我会补充。
 
-当前 GitHub 已将 `sunjingyan <2136945143@qq.com>` 正确映射为 `@Monologue-8106`。`11075 <11075@local>` 不是 GitHub 可识别邮箱，因此提交历史已经保留，但在该邮箱绑定到账号前不会出现在 GitHub Contributors 页面。
+## 提问题和建议
 
-## 重置前的协作历史记录
+发现问题时，可以先开一个 Issue。比起只说“不能用”，下面这些信息更方便我定位：
 
-2026-07-23 的整合基线已将下列历史作为合并父提交接入 `main`：
+- 在哪个页面、做了什么操作。
+- 原本希望看到什么，实际出现了什么。
+- 使用的系统、浏览器，以及 `stub` 还是 `live` 模式。
+- 能复现问题的步骤，必要时附上截图或脱敏后的错误日志。
 
-- `feature/light-login-page`
-- `feat/sequential-learning-path`
-- `fxz/merge-sequential-learning-path-20260722`
-- `feat/chapter-hierarchy-api-settings-20260722`
-- `codex/team-handoff-2026-07-20`
+模型密钥、数据库密码、Cookie 和真实用户数据不要放进公开 Issue。如果涉及隐私或安全问题，请先联系我，不要直接公开可利用的细节。
 
-上述内容记录重置前的整合过程；旧合并关系可在私有历史备份中追溯，不再是新 `main` 的父提交。
-新发布的功能验收边界以部署指南为准，不能用过去的验收记录替代当前验证。
+新功能或较大的结构调整，建议先讨论一下再开始写，避免做完后才发现和现有方向不一致。修正文档、补测试或小范围修复可以直接提 Pull Request。
 
-## 开发流程
+## 提交代码
 
-1. 从最新 `main` 创建单一目标的功能分支。
-2. 后端接口变化同步修改 OpenAPI/Pydantic 契约和 `docs/frontend-api-reference.md`。
-3. 数据库变化新增编号迁移，不修改已经执行的迁移文件。
-4. 不提交 `.env`、密钥、数据库、向量索引、缓存、用户数据或运行快照。
-5. 合并前完成与改动对应的单元测试、前端构建和在线流程验收。
-6. 使用普通 merge 或 Pull Request 保留作者历史，避免 squash 掉需要计入贡献列表的多人提交。
+从最新 `main` 创建自己的分支，一次尽量解决一个问题。Pull Request 里说明改了什么、为什么改，以及做过哪些验证；暂时没有验证的部分也请直接写明。
 
-## 验收命令
+我会重点看改动是否解决实际问题、是否影响原有功能，以及后续是否容易维护。合并时也会注意保留参与者署名，不为了整理提交记录而抹掉其他人的贡献。
+
+有几条约定请一起遵守：
+
+- 后端代码放在 `backend/`，前端代码放在 `frontend/llm/`。接口变化时同步更新契约和 [前端接口文档](docs/frontend-api-reference.md)。
+- 数据库结构变化使用新的编号迁移，不修改已经执行过的迁移文件。涉及已有数据的操作要说明备份和恢复办法。
+- 不提交真实 `.env`、密钥、数据库、用户上传、运行快照或向量索引。测试尽量使用小型合成数据，并明确它不是实际学习记录。
+- 用户隔离以服务端登录身份为准，不能靠前端传入的用户 ID 决定数据归属。
+- 页面展示计划、掌握度和学习成果时，以后端保存的结果为准，不从模型正文里猜阶段、评分或完成状态。
+- 自由文本的意图交给可靠的语义判断或明确的接口字段处理，不用几条关键词规则代替任务判断。
+- 智能体能用自然语言清楚表达的内容，就不强求复杂 JSON；执行、校验和保存需要的字段仍要有明确约定。
+
+## 提交前检查
+
+前端改动请在 `frontend/llm` 下运行相关测试，并检查 lint 和构建：
 
 ```bash
-cd backend
-conda run -n torch python -m pytest -q competition_app/tests \
-  --ignore=competition_app/tests/integration/test_learning_plan_live_flow.py
-
-cd ../frontend/llm
 npm run test:unit
 npm run lint
 npm run build
 ```
 
-不要从 WSL 命令行运行 Live pytest。Live 流程应在已经启动的前端运行面板点击 Execute，并以浏览器真实接口结果为准。
+后端改动请补充或运行对应模块的测试，具体入口见 [后端 README](backend/competition_app/README.md)。如果碰到已有失败，请在 Pull Request 中区分哪些是原有问题，哪些与本次改动有关。
 
-部署、数据库和接口细节分别见：
+涉及模型调用、规划生成或中断恢复时，还要在真实前端检查一次完整操作。WSL 下不要通过命令行运行 Live pytest，使用已启动运行面板的 Execute，并确认 `COMPETITION_APP_MODE=live`。不要为了测试另起一个会操作相同用户数据的应用实例。
 
-- [部署与升级指南](docs/deployment.md)
-- [数据库运维指南](docs/database-operations.md)
+只改文字时，检查 Markdown 格式、相对链接和命令是否仍然准确即可，不必为了凑测试记录运行整个应用。
+
+## 相关文档
+
+- [系统架构](docs/architecture.md)
+- [部署与升级](docs/deployment.md)
+- [数据库运维](docs/database-operations.md)
 - [前端接口参考](docs/frontend-api-reference.md)
-- [学情监测与资源匹配口径](docs/learning-monitoring-methodology.md)
+- [学情监测与资源匹配](docs/learning-monitoring-methodology.md)
