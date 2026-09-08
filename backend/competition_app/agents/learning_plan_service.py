@@ -13,8 +13,13 @@ from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
 from competition_app.repositories.learning_plan import PlanWriteConflictError
 from competition_app.services.plan_audit import plan_audit_subject_digest
+from competition_app.services.plan_safety import verify_plan_safety_approval
 
 _WEB_BACKFILL_MAX_KNOWLEDGE_POINTS = 2
+
+
+class LearningStateChangedError(RuntimeError):
+    """A proposal is not allowed to publish using unverifiable learning facts."""
 
 
 class LearningPlanServiceAdapter:
@@ -55,6 +60,11 @@ class LearningPlanServiceAdapter:
                 "learning_plan_concurrency_conflict",
                 result,
             )
+
+        try:
+            await self._validate_learning_state(context)
+        except LearningStateChangedError as exc:
+            return self._learning_state_conflict(context, str(exc))
 
         if context.get("step_id") == "learning_plan" and {
             "diagnosis_long", "audit_long", "diagnosis_short", "audit_short"
@@ -99,6 +109,9 @@ class LearningPlanServiceAdapter:
                     parent_plan_constraints=dict(
                         getattr(diagnosis, "parent_plan_constraints", {}) or {}
                     ),
+                    prerequisite_assessment=dict(
+                        getattr(diagnosis, "audit_evidence", {}) or {}
+                    ).get("prerequisite_assessment"),
                 )
                 failures = [
                     name
@@ -115,6 +128,11 @@ class LearningPlanServiceAdapter:
                         "combined plan requires independent passing audits: "
                         f"{scope}:{','.join(failures)}"
                     )
+                verify_plan_safety_approval(
+                    audit.medical_safety_approval,
+                    proposal=diagnosis.learning_plan_proposal,
+                    learner_id=str(context["learner_id"]), scope=scope,
+                )
             if short_audit.parent_subject_digest != long_audit.subject_digest:
                 raise RuntimeError("short-term audit is not bound to the approved long-term plan")
             learner_id = str(context["learner_id"])
@@ -125,12 +143,14 @@ class LearningPlanServiceAdapter:
                         learner_id=learner_id,
                         proposal=long_diagnosis.learning_plan_proposal,
                         now=context.get("now"),
+                        medical_safety_approval=long_audit.medical_safety_approval,
                     )
                     ensure_not_cancelled()
                     self.service.materialize_short_term(
                         learner_id=learner_id,
                         proposal=short_diagnosis.learning_plan_proposal,
                         now=context.get("now"),
+                        medical_safety_approval=short_audit.medical_safety_approval,
                         current_long_term_plan=long_result.long_term_plan.model_dump(mode="json"),
                     )
                     ensure_not_cancelled()
@@ -197,9 +217,19 @@ class LearningPlanServiceAdapter:
                 proposal=diagnosis.learning_plan_proposal,
                 compiled_plan_contract=diagnosis.compiled_plan_contract,
                 parent_plan_constraints=parent_constraints,
+                prerequisite_assessment=dict(
+                    getattr(diagnosis, "audit_evidence", {}) or {}
+                ).get("prerequisite_assessment"),
             )
             if audit.subject_digest != expected_digest:
                 raise RuntimeError("plan audit approval does not match current proposal")
+            if audit.subject_type != {"long_term": "long_term_plan", "short_term": "short_term_plan"}[plan_scope]:
+                raise RuntimeError("plan audit subject type does not match proposal")
+            verify_plan_safety_approval(
+                audit.medical_safety_approval,
+                proposal=diagnosis.learning_plan_proposal,
+                learner_id=str(context["learner_id"]), scope=plan_scope,
+            )
         learner_id = str(context["learner_id"])
         try:
             with self.service.mutation_lock(learner_id):
@@ -254,6 +284,7 @@ class LearningPlanServiceAdapter:
                         learner_id=learner_id,
                         proposal=diagnosis.learning_plan_proposal,
                         now=context.get("now"),
+                        medical_safety_approval=audit.medical_safety_approval,
                     )
                     ensure_not_cancelled()
                 elif plan_scope == "short_term":
@@ -262,6 +293,7 @@ class LearningPlanServiceAdapter:
                         learner_id=learner_id,
                         proposal=diagnosis.learning_plan_proposal,
                         now=context.get("now"),
+                        medical_safety_approval=audit.medical_safety_approval,
                         current_long_term_plan=context.get("current_long_term_plan") or {},
                     )
                     ensure_not_cancelled()
@@ -290,8 +322,50 @@ class LearningPlanServiceAdapter:
                     ensure_not_cancelled()
         except PlanWriteConflictError as exc:
             return concurrent_change_result(str(exc))
+        except LearningStateChangedError as exc:
+            return self._learning_state_conflict(context, str(exc))
         ensure_not_cancelled()
         return envelope(context, "learning_plan_service", "learning_plan_result", result)
+
+    @staticmethod
+    def _learning_state_conflict(context: dict, reason: str) -> AgentEnvelope:
+        return envelope(context, "learning_plan_service", "learning_state_conflict",
+                        LearningPlanClarificationResult(
+                            clarification_questions=["学习状态已变化或暂时无法核实，是否读取最新状态后重新生成？"],
+                            reason=reason + " 本次结果未发布，也未标记任何任务完成。",
+                            requested_scope=context.get("plan_scope"),
+                        ))
+
+    @staticmethod
+    async def _validate_learning_state(context: dict) -> None:
+        snapshot = context.get("current_learning_state")
+        registry = context.get("tool_registry")
+        if snapshot is None:
+            # Legacy isolated callers have no bound state tool; live orchestration
+            # must supply a snapshot before reaching this publication boundary.
+            from competition_app.exam_scope import current_exam_workspace
+            workspace = current_exam_workspace()
+            if (registry is not None and registry.has_tool("get_current_learning_state")
+                    and workspace is not None and workspace.exam_track_id):
+                raise LearningStateChangedError("缺少本轮学习状态快照。")
+            return
+        if registry is None:
+            raise LearningStateChangedError("无法核验学习状态快照。")
+        validation_tool = ("validate_current_learning_state"
+                           if registry.has_tool("validate_current_learning_state")
+                           else "get_current_learning_state")
+        try:
+            fresh = await registry.invoke(validation_tool, "learning_plan_service")
+        except PermissionError as exc:
+            raise LearningStateChangedError("当前考试或账号工作区已变化。") from exc
+        if (snapshot.get("learner_id") != context.get("learner_id")
+                or fresh.get("exam_track_id") != snapshot.get("exam_track_id")
+                or fresh.get("source_version") != snapshot.get("source_version")
+                or fresh.get("availability") == "stale"
+                or fresh.get("facts_availability") == "unavailable"
+                or snapshot.get("facts_availability") == "unavailable"
+                or fresh.get("review", {}).get("availability") == "unavailable"):
+            raise LearningStateChangedError("考试、计划或学习记录已变化，或当前记录无法可靠读取。")
 
     async def _materialize_daily_task_with_backfill(
         self,
@@ -369,6 +443,7 @@ class LearningPlanServiceAdapter:
         cancellation_check = context.get("cancellation_check")
         if callable(cancellation_check):
             cancellation_check()
+        await self._validate_learning_state(context)
         return self.service.materialize_daily_task(
             learner_id=learner_id,
             proposal=diagnosis.learning_plan_proposal,

@@ -70,6 +70,7 @@ from competition_app.llm.terminal import (
 )
 from competition_app.runtime.terminal_trace import TerminalTrace
 from competition_app.runtime.model_trace import ModelTraceRecorder
+from competition_app.llm.response_diagnostics import safe_response_diagnostics
 from competition_app.runtime.debug_trace import (
     DebugTraceConfig,
     DebugTraceManager,
@@ -1364,9 +1365,54 @@ class ApplicationContainer:
             load_learning_planning_context,
             allowed_agents={"diagnosis_agent"},
         )
+        from competition_app.services.current_learning_state import CurrentLearningStateReader
+
+        learning_state_reader = CurrentLearningStateReader(
+            plan_repository,
+            backend_handoff_runtime.load_current_learning_facts if backend_handoff_runtime is not None else None,
+            ReviewService(
+                review_service.repository,
+                canonical_mapping_provider=(backend_handoff_runtime.read_canonical_knowledge_point_ids
+                                            if backend_handoff_runtime is not None else None),
+            ),
+        )
+        async def read_current_learning_state(*, view: str = "overview", book_id: str | None = None,
+                                              section_id: str | None = None,
+                                              cursor: int | None = None, limit: int = 8) -> dict:
+            import asyncio
+            return await asyncio.to_thread(
+                learning_state_reader.read, view=view, book_id=book_id,
+                section_id=section_id, cursor=cursor, limit=limit,
+            )
+
+        tool_registry.register(
+            "get_current_learning_state",
+            read_current_learning_state,
+            allowed_agents={"planner_agent", "knowledge_base_agent", "diagnosis_agent", "audit_agent", "learning_plan_service"},
+        )
+        # Publication holds the repository's reentrant mutation lock. Validation
+        # must run on that same thread, not wait for a worker acquiring its lock.
+        tool_registry.register(
+            "validate_current_learning_state",
+            learning_state_reader.read,
+            allowed_agents={"learning_plan_service"},
+        )
+        # Keep the legacy tool only for isolated compatibility callers; live
+        # workflows must use the authenticated, canonical state projection.
+        def compatible_learning_path_progress(external_user_id: str) -> dict:
+            from competition_app.exam_scope import current_exam_workspace
+            workspace = current_exam_workspace()
+            if workspace is not None and workspace.exam_track_id:
+                if workspace.learner_id != external_user_id:
+                    raise PermissionError("learning state owner mismatch")
+                return learning_state_reader.read()
+            if settings.mode == "live":
+                raise PermissionError("learning state requires an authenticated exam workspace")
+            return load_learning_path_progress(external_user_id)
+
         tool_registry.register(
             "get_learning_path_progress",
-            load_learning_path_progress,
+            compatible_learning_path_progress,
             allowed_agents={"diagnosis_agent"},
         )
         tool_registry.register(
@@ -1771,7 +1817,10 @@ class StreamingChatModel:
             setattr(error, "last_error_details", safe_details)
         timing_details = getattr(self.inner, "last_timing_details", None)
         if isinstance(timing_details, dict):
-            safe_timing: dict[str, int | float] = {}
+            safe_timing: dict[str, Any] = {}
+            response_diagnostics = safe_response_diagnostics(timing_details.get("response_diagnostics"))
+            if response_diagnostics:
+                safe_timing["response_diagnostics"] = response_diagnostics
             for key, maximum in (
                 ("queue_wait_ms", 86_400_000),
                 ("provider_duration_ms", 86_400_000),

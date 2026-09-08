@@ -41,6 +41,10 @@ from competition_app.tools.video_segment_index import VideoSegmentIndex
 from competition_app.tools.question_channel_reservation import reserve_raw_question_items
 
 
+# The shipped repository/BM25 loader is heavyweight; bound process-wide overlap.
+_QUESTION_SEARCH_LOCK = threading.Lock()
+
+
 @dataclass(frozen=True)
 class KnowledgeDeliveryPaths:
     """Paths belonging to the 2026-07-18 backend delivery.
@@ -1277,6 +1281,10 @@ class KnowledgeDeliveryBackend:
             if root not in sys.path:
                 sys.path.insert(0, root)
             module = importlib.import_module(name)
+            if name == "retrieval.hybrid_question_retrieval":
+                from competition_app.tools.bounded_question_vector import vector_question_hits
+
+                module.vector_question_hits = vector_question_hits
             self._modules[name] = module
             return module
 
@@ -1414,7 +1422,7 @@ class KnowledgeDeliveryBackend:
         if scope == "user" and owner is None:
             raise ValueError("user scope requires owner_id")
         return await asyncio.to_thread(
-            self._search_questions,
+            self._search_questions_serialized,
             query,
             kp_ids or [],
             limit,
@@ -1424,6 +1432,10 @@ class KnowledgeDeliveryBackend:
             difficulty_min,
             difficulty_max,
         )
+
+    def _search_questions_serialized(self, *args, **kwargs) -> QuestionSearchResult:
+        with _QUESTION_SEARCH_LOCK:
+            return self._search_questions(*args, **kwargs)
 
     def _search_questions(
         self,

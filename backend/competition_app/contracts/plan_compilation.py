@@ -10,6 +10,10 @@ from competition_app.contracts.base import ContractModel
 PlanScope: TypeAlias = Literal["long_term", "short_term", "daily_task"]
 
 
+class PlanCompilationError(ValueError):
+    """The bounded document/compiler repair budget has been exhausted."""
+
+
 class PlanSourceAnchor(ContractModel):
     """Verbatim evidence for one compiler-derived field."""
 
@@ -63,6 +67,10 @@ class CompiledLongTermContract(ContractModel):
     long_term_plan_content: str = Field(min_length=1)
     total_duration_days: int = Field(gt=0, le=3_650)
     stages: list[CompiledLongTermStage] = Field(min_length=1)
+    selected_stage_id: str | None = None
+    selected_books: list[str] = Field(default_factory=list, max_length=2)
+    selection_reason: str | None = None
+    selection_mode: Literal["new_learning", "review", "diagnostic"] | None = None
     field_anchors: dict[str, list[PlanSourceAnchor]] = Field(default_factory=dict)
 
 
@@ -75,6 +83,7 @@ class CompiledShortTermContract(ContractModel):
     completion_criteria: str = Field(min_length=1)
     selected_stage_id: str | None = None
     selected_books: list[str] = Field(min_length=1, max_length=2)
+    selection_mode: Literal["new_learning", "review", "diagnostic"] | None = None
     field_anchors: dict[str, list[PlanSourceAnchor]] = Field(default_factory=dict)
 
 
@@ -120,6 +129,7 @@ class PlanCompilationEnvelope(ContractModel):
 
     result: PlanContractCompilerResult
     source_digest: str = Field(min_length=64, max_length=64)
+    route_source_digest: str | None = Field(default=None, min_length=64, max_length=64)
     revision_count: int = Field(default=0, ge=0, le=1)
 
     @model_validator(mode="after")

@@ -7,11 +7,13 @@ from pydantic import BaseModel, Field
 
 from competition_app.llm.schemas import ThreeLayerPlanningModelOutput
 from competition_app.services.prerequisite_policy import normalize_course_name
+from competition_app.services.planning_prerequisites import missing_execution_prerequisites
 
 
 class PlanningValidationResult(BaseModel):
     valid: bool
     issues: list[str] = Field(default_factory=list)
+    diagnostics: list[dict[str, str]] = Field(default_factory=list)
 
 
 class PlanningValidator:
@@ -38,8 +40,10 @@ class PlanningValidator:
         force_prerequisite_daily_task: bool = False,
         required_prerequisite_courses: set[str] | None = None,
         temporary_focus_overlay: dict[str, Any] | None = None,
+        completed_textbooks: set[str] | None = None,
     ) -> PlanningValidationResult:
         issues: list[str] = []
+        diagnostics: list[dict[str, str]] = []
         actions = {
             "long": long_term_action,
             "short": short_term_action,
@@ -67,6 +71,7 @@ class PlanningValidator:
                 and stage_duration_total != output.total_duration_days
             ):
                 issues.append("长期规划总期限必须等于各阶段期限之和。")
+                diagnostics.append({"code": "duration_sum_mismatch", "field_path": "/total_duration_days"})
             for index, stage in enumerate(output.long_term_plan_stages, start=1):
                 if not str(self._field(stage, "stage_name") or "").strip():
                     issues.append(f"长期规划第{index}阶段缺少具体阶段名称。")
@@ -204,6 +209,7 @@ class PlanningValidator:
             if phases:
                 if len(structured_stages) != len(phases):
                     issues.append("long_term_plan_stages 未完整对应系统可信的长期阶段。")
+                    diagnostics.append({"code": "route_stage_missing", "field_path": "/stages"})
                 else:
                     for index, (structured, trusted) in enumerate(
                         zip(structured_stages, phases), start=1
@@ -228,6 +234,7 @@ class PlanningValidator:
                             issues.append(
                                 f"long_term_plan_stages 的第{index}个长期阶段书目与系统可信路线不一致。"
                             )
+                            diagnostics.append({"code": "route_books_mismatch", "field_path": "/stages/*/books"})
                         trusted_goal = str(
                             self._field(trusted, "objective") or "完成本阶段目标"
                         )
@@ -235,12 +242,19 @@ class PlanningValidator:
                             issues.append(
                                 f"long_term_plan_stages 的第{index}个长期阶段目标与系统可信路线不一致。"
                             )
+                            diagnostics.append({"code": "route_goal_mismatch", "field_path": "/stages/*/goal"})
         validate_textbook_selection = active_scope is None or active_scope in {
             "long_term",
             "short_term",
             "full",
         }
         if textbook_route is not None and validate_textbook_selection:
+            completed = {self._normalized_book_name(book) for book in (completed_textbooks or set())}
+            if output.selection_mode not in {"review", "diagnostic"} and any(
+                self._normalized_book_name(book) in completed for book in output.selected_books
+            ):
+                issues.append("已记录整本完成的教材不得重新作为新学任务；如需复习或诊断，必须明确学习用途，完成记录不等于掌握或通过测验。")
+                diagnostics.append({"code": "completed_book_new_learning", "field_path": "/selection_mode"})
             expected_route_id = str(self._field(textbook_route, "route_id") or "")
             if output.selected_textbook_route_id != expected_route_id:
                 issues.append("教材路线选择与系统已解析路线不一致。")
@@ -274,13 +288,11 @@ class PlanningValidator:
                     else getattr(selected_stage, "stage_id", None)
                 )
                 allowed_books = list(stage_books) + [
-                    book
-                    for book in prerequisite_books
-                    if any(
-                        str(self._field(rule, "before_stage_id") or "")
-                        == str(selected_stage_id_value or "")
-                        for rule in (self._field(textbook_route, "prerequisites") or [])
-                    )
+                    f"《{self._field(rule, 'course')}》"
+                    for rule in (self._field(textbook_route, "prerequisites") or [])
+                    if self._field(rule, "course")
+                    and str(self._field(rule, "before_stage_id") or "")
+                    == str(selected_stage_id_value or "")
                 ]
                 outside_stage = [
                     book
@@ -309,14 +321,19 @@ class PlanningValidator:
                     self._normalized_book_name(course)
                     for course in (unmet_prerequisite_courses or set())
                 }
-                # 短期计划若已把前置课程教材选入本周期教材（例如长期规划把
-                # 进入 stage-2 前的《中医诊断学》前置训练安排在本阶段前若干天），
-                # 视为前置训练已纳入计划而非缺失，不应触发强前置门禁。
+                # A prerequisite book exempts only itself; dependent books in
+                # the same selection must still satisfy their own prerequisites.
                 selected_book_names = {
                     self._normalized_book_name(str(book))
                     for book in (output.selected_books or [])
                 }
-                missing_prerequisites = []
+                missing_prerequisites = (
+                    [] if temporary_preview_authorized else
+                    missing_execution_prerequisites(
+                        textbook_route, str(output.selected_stage_id or ""),
+                        list(output.selected_books), confirmed - unmet,
+                    )
+                )
                 declared_unmet_prerequisites = []
                 for rule in self._field(textbook_route, "prerequisites") or []:
                     before_stage = stages_by_id_for_order.get(
@@ -325,16 +342,16 @@ class PlanningValidator:
                     before_order = int(self._field(before_stage, "order") or 0)
                     course = str(self._field(rule, "course") or "")
                     normalized_course = self._normalized_book_name(course)
+                    applies_to = self._field(rule, "applies_to_books") or []
+                    if applies_to and not selected_book_names.intersection(
+                        self._normalized_book_name(str(book)) for book in applies_to
+                    ):
+                        continue
                     if before_order and selected_order >= before_order:
                         if normalized_course in unmet:
                             declared_unmet_prerequisites.append(course)
-                        elif (
-                            normalized_course not in confirmed
-                            and normalized_course not in selected_book_names
-                            and not temporary_preview_authorized
-                        ):
-                            missing_prerequisites.append(course)
                 if missing_prerequisites:
+                    diagnostics.append({"code": "prerequisite_unconfirmed", "field_path": "/selected_books"})
                     issues.append(
                         "所选阶段的强前置尚未确认："
                         + "、".join(missing_prerequisites)
@@ -371,6 +388,13 @@ class PlanningValidator:
                             continue
                         if self._normalized_book_name(course) in confirmed:
                             continue
+                        # Unknown book-scoped prerequisites gate dependent
+                        # execution, not the entire future route overview.
+                        if (
+                            self._field(rule, "applies_to_books")
+                            and self._normalized_book_name(course) not in unmet
+                        ):
+                            continue
                         before_order = before_order_by_stage.get(
                             str(self._field(rule, "before_stage_id") or "")
                         ) or 0
@@ -380,6 +404,7 @@ class PlanningValidator:
                         if not self._prerequisite_scheduled_in_body(
                             output.long_term_plan_content, course
                         ):
+                            diagnostics.append({"code": "prerequisite_training_missing", "field_path": "/long_term_plan_content"})
                             issues.append(
                                 "长期规划已覆盖到需要前置课程“"
                                 + course
@@ -397,7 +422,9 @@ class PlanningValidator:
             issues.append(
                 f"当日任务严重超时：预计{output.estimated_minutes}分钟，预算{available_minutes}分钟。"
             )
-        return PlanningValidationResult(valid=not issues, issues=issues)
+        if len(issues) > len(diagnostics):
+            diagnostics.append({"code": "planning_rule_rejected", "field_path": "/"})
+        return PlanningValidationResult(valid=not issues, issues=issues, diagnostics=diagnostics[:20])
 
     @classmethod
     def _temporary_focus_overlay_issues(

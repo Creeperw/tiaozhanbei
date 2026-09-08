@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from competition_app.contracts.planning_request import PlanningRequestScope
+
 
 class PlannerRouteSelectionOutput(BaseModel):
     """Minimal semantic classification contract for Planner stage one.
@@ -95,6 +97,7 @@ class PlannerModelOutput(BaseModel):
             "其他任务返回null。"
         ),
     )
+    planning_request_scope: PlanningRequestScope | None = None
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = Field(
         default=None,
         description=(
@@ -409,6 +412,7 @@ class PlannerLearnerDataQueryOutput(PlannerBranchOutput):
 
 class PlannerLearningPlanOutput(PlannerBranchOutput):
     task_type: Literal["learning_plan"]
+    planning_request_scope: PlanningRequestScope
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_action: Literal["reuse", "create_or_update", "clarify"] | None = None
     current_turn_available_minutes: int | None = Field(
@@ -670,6 +674,7 @@ class LearningTaskModelOutput(StrictModelOutput):
 
 
 class LongTermPlanStageModelOutput(StrictModelOutput):
+    acceptance: list[str] = Field(default_factory=list)
     stage: int = Field(ge=1, description="从 1 开始且连续的长期学习阶段编号。")
     stage_name: str = Field(
         default="",
@@ -698,6 +703,10 @@ class LongTermPlanStageModelOutput(StrictModelOutput):
 
 
 class LongTermPlanningModelOutput(StrictModelOutput):
+    selected_stage_id: str | None = None
+    selected_books: list[str] = Field(default_factory=list, max_length=2)
+    selection_reason: str | None = None
+    selection_mode: Literal["new_learning", "review", "diagnostic"] | None = None
     selected_path_candidate_id: str | None = Field(
         default=None,
         description="从系统提供的路径候选中选择；不得生成候选ID。",
@@ -729,6 +738,7 @@ class LongTermPlanningModelOutput(StrictModelOutput):
 
 
 class ShortTermPlanningModelOutput(StrictModelOutput):
+    selection_mode: Literal["new_learning", "review", "diagnostic"] | None = None
     selected_path_candidate_id: str | None = Field(
         default=None,
         description="从系统提供的路径候选中选择；不得生成候选ID。",
@@ -796,6 +806,7 @@ class ThreeLayerPlanningModelOutput(StrictModelOutput):
     choice inside a trusted textbook route.
     """
 
+    selection_mode: Literal["new_learning", "review", "diagnostic"] | None = None
     selected_path_candidate_id: str | None = Field(
         default=None,
         description="从系统提供的路径候选中选择；不得生成候选ID。",
@@ -1091,32 +1102,43 @@ class LearningAnalysisModelOutput(StrictModelOutput):
         return self
 
 
+class KnowledgeExternalQuery(StrictModelOutput):
+    source: Literal["web", "video", "reference", "question"]
+    query: str = Field(min_length=1, max_length=300)
+
+
 class KnowledgeRetrievalPlanModelOutput(StrictModelOutput):
-    kp_query: str = Field(
+    kp_query: str | None = Field(
+        default=None,
         min_length=1,
         max_length=300,
-        description="供 get_kp_with_content 使用的知识点检索语句，只保留知识对象、范围和必要限定词。",
+        description="智能体决定需要教材证据时给出聚焦查询；不需要时为 null。仅查本地教材，不自动联网。",
     )
     kp_concepts: list[str] = Field(
         default_factory=list,
         description=(
             "从题干与每个选项中抽取的 2-8 个核心概念清单（医学实体/术语，如"
             "「观察性研究」「原始数据」「异质性」）；每个选项的辨析概念都必须覆盖。"
-            "系统会把每个概念当作一路独立检索并行执行（本地教材切片 + 网络概念"
-            "定义，RQ-RAG 多路分解思想），首轮就按概念覆盖证据，并用它校验总结"
+            "每个概念用于一路本地教材检索，不自动搜索网络定义；首轮按概念覆盖证据，并用它校验总结"
             "覆盖与驱动补充检索。概念必须是可独立检索的教材术语且互不重叠，"
             "不得是「说法是否正确」这类流程性描述。"
         ),
     )
-    question_query: str = Field(
+    question_query: str | None = Field(
+        default=None,
         min_length=1,
         max_length=300,
-        description="供 get_question_with_content 使用的题目检索语句；Knowledge Agent 每次执行都必须提供。",
+        description="智能体决定需要正式题库候选时给出查询；不需要时为 null，不强制查题。",
+    )
+    external_queries: list[KnowledgeExternalQuery] = Field(
+        default_factory=list,
+        max_length=4,
+        description="由知识智能体独立决定外部查询的来源和聚焦查询词；无需联网时为空，不因用户提到日期而自动查询。",
     )
     retrieval_reason: str = Field(
         min_length=1,
         max_length=500,
-        description="说明知识点和题目两条检索语句如何由用户诉求得到，以及各自服务什么下游任务。",
+        description="说明选择各来源或不检索的依据；已有信息足够或无可靠检索范围时可全部不查，不编造主题。",
     )
 
 
@@ -1235,6 +1257,12 @@ class KnowledgeModelOutput(StrictModelOutput):
         ),
     )
 
+    supplemental_external_queries: list[KnowledgeExternalQuery] = Field(
+        default_factory=list,
+        max_length=3,
+        description="证据不足时由智能体选择外部来源与查询；无需外部补检时为空。最终提取时必须为空。",
+    )
+
     @model_validator(mode="after")
     def validate_retrieval_phase_exclusivity(self) -> "KnowledgeModelOutput":
         """Keep gap assessment and final extraction as mutually exclusive phases."""
@@ -1248,7 +1276,7 @@ class KnowledgeModelOutput(StrictModelOutput):
                 raise ValueError(
                     "an insufficient-evidence decision must not contain a final summary"
                 )
-        elif self.supplemental_queries:
+        elif self.supplemental_queries or self.supplemental_external_queries:
             raise ValueError(
                 "a finalized knowledge output must not request supplemental retrieval"
             )
@@ -1771,6 +1799,16 @@ class AuditModelOutput(StrictModelOutput):
             "可选：模型回显的已核验合同摘要（如 scope、total_duration_days、stages），"
             "仅用于审核留痕与追溯，不参与审核决定。"
         ),
+    )
+
+
+class PlanAuditModelOutput(AuditModelOutput):
+    medical_safety: Literal["safe", "unsafe", "uncertain"] = Field(
+        description=(
+            "独立核验整份计划的医疗教育边界。safe表示仅教学备考且不存在真实患者诊疗指令；"
+            "unsafe表示含真实患者诊断、处方、剂量指导或疗效承诺；无法确认则uncertain。"
+            "免责声明不是越界，也不能为同文中的实际越界指令免责。详细依据写入audit_report。"
+        )
     )
 
 

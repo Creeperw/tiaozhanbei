@@ -21,6 +21,7 @@ class TextbookPrerequisiteRule(ContractModel):
     course: str = Field(min_length=1)
     before_stage_id: str = Field(min_length=1)
     reason: str = Field(min_length=1)
+    applies_to_books: list[str] = Field(default_factory=list)
 
 
 class TextbookEquivalenceGroup(ContractModel):
@@ -61,6 +62,9 @@ class TextbookLearningRoute(ContractModel):
             for rule in self.prerequisites
         ):
             raise ValueError("prerequisite must reference a route stage")
+        known_books = {book for stage in self.stages for book in stage.books}
+        if any(book not in known_books for rule in self.prerequisites for book in rule.applies_to_books):
+            raise ValueError("prerequisite must reference a route textbook")
         return self
 
 

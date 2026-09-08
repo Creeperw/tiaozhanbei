@@ -406,8 +406,8 @@ async def test_direct_client_executes_internal_result_validator() -> None:
     assert exc_info.value.reason == "business_schema_invalid"
     assert len(requests) == 2
     repair_message = json.loads(requests[1].content)["messages"][-1]["content"]
-    assert "complete, substantive learner-facing content" in repair_message
-    assert "title, outline, questions" in repair_message
+    assert "Repair only the current Planner decision JSON" in repair_message
+    assert "Do not write learner-facing content" in repair_message
 
 
 @pytest.mark.asyncio
@@ -491,6 +491,8 @@ async def test_planner_branch_raw_validation_repairs_cross_task_pollution() -> N
 def test_planner_branch_clears_orphan_budget_tuple_without_relaxing_contract() -> None:
     request = "今天学习阴阳学说"
     orphan = {
+        "planning_request_scope": {"mode": "explicit_focus", "objects": ["阴阳学说"],
+                                   "source_quote": "学习阴阳学说", "clarification_question": None},
         "task_type": "learning_plan",
         "plan_scope": "daily_task",
         "plan_action": "create_or_update",
@@ -520,6 +522,8 @@ def test_planner_branch_clears_orphan_budget_tuple_without_relaxing_contract() -
 def test_planner_branch_preserves_complete_anchored_budget_tuple(scope: str) -> None:
     request = "我今天有 30 分钟学习阴阳学说"
     complete = {
+        "planning_request_scope": {"mode": "explicit_focus", "objects": ["阴阳学说"],
+                                   "source_quote": "学习阴阳学说", "clarification_question": None},
         "task_type": "learning_plan",
         "plan_scope": "daily_task",
         "plan_action": "create_or_update",
@@ -555,6 +559,8 @@ def test_planner_branch_clears_untrusted_partial_budget_tuple(
     overrides: dict[str, object],
 ) -> None:
     result = {
+        "planning_request_scope": {"mode": "explicit_focus", "objects": ["阴阳学说"],
+                                   "source_quote": "学习阴阳学说", "clarification_question": None},
         "task_type": "learning_plan",
         "plan_scope": "daily_task",
         "plan_action": "create_or_update",
@@ -583,6 +589,8 @@ def test_planner_branch_clears_untrusted_partial_budget_tuple(
 async def test_orphan_budget_tuple_does_not_trigger_provider_repair() -> None:
     requests: list[httpx.Request] = []
     orphan = {
+        "planning_request_scope": {"mode": "explicit_focus", "objects": ["阴阳学说"],
+                                   "source_quote": "学习阴阳学说", "clarification_question": None},
         "task_type": "learning_plan",
         "plan_scope": "daily_task",
         "plan_action": "create_or_update",

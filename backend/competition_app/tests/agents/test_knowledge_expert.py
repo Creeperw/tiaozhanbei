@@ -139,15 +139,15 @@ async def test_knowledge_agent_uses_retrieval_tool() -> None:
 
 
 @pytest.mark.asyncio
-async def test_knowledge_agent_falls_back_to_concrete_user_topic() -> None:
+async def test_knowledge_agent_does_not_rewrite_unmatched_query() -> None:
     retrieval = GenericQueryRetrievalTool()
     ctx = context()
     ctx["user_request"] = "给我讲讲感冒的知识点"
 
     output = await KnowledgeBaseAgent(retrieval, GenericQueryModel()).run(ctx)
 
-    assert retrieval.queries == ["中医药基础知识点", "感冒"]
-    assert output.payload.query == "感冒"
+    assert retrieval.queries == ["中医药基础知识点"]
+    assert output.payload.query == "中医药基础知识点"
 
 
 @pytest.mark.asyncio
@@ -182,18 +182,14 @@ async def test_knowledge_agent_extracts_each_evidence_with_system_filled_source(
 
 
 @pytest.mark.asyncio
-async def test_knowledge_agent_uses_user_request_when_retrieval_planner_transport_fails() -> None:
+async def test_knowledge_agent_does_not_search_when_retrieval_planner_transport_fails() -> None:
     retrieval = GenericQueryRetrievalTool()
     ctx = context()
     ctx["user_request"] = "请讲解理中丸"
 
-    output = await KnowledgeBaseAgent(
-        retrieval, RetrievalPlanTransportFailureModel()
-    ).run(ctx)
-
-    assert retrieval.queries == ["请讲解理中丸"]
-    assert output.payload.query == "请讲解理中丸"
-    assert output.payload.summary_evidence_ids == ["E_1"]
+    with pytest.raises(ModelResponseError):
+        await KnowledgeBaseAgent(retrieval, RetrievalPlanTransportFailureModel()).run(ctx)
+    assert retrieval.queries == []
 
 
 @pytest.mark.asyncio

@@ -564,6 +564,10 @@ async def test_diagnosis_sends_natural_language_draft_schema_to_the_model(
         "plan_scope": scope,
         "learner_id": "SCOPED_SCHEMA",
         "user_request": "制定对应层级的学习安排",
+        "planning_request_scope": {
+            "mode": "route", "objects": [],
+            "source_quote": "制定对应层级的学习安排", "clarification_question": None,
+        },
         "available_minutes": 30,
         "current_long_term_plan": {"content": "已有长期规划", "status": "active"},
         "current_short_term_plan": {"content": "已有短期计划", "status": "active"},
@@ -582,7 +586,7 @@ async def test_diagnosis_sends_natural_language_draft_schema_to_the_model(
     expected_properties = (
         {"plan_document"}
         if scope == "daily_task"
-        else {"plan_document", "selected_path_candidate_id"}
+        else {"plan_document", "selected_path_candidate_id", "prerequisite_judgments"}
     )
     assert set(schema["properties"]) == expected_properties
     assert schema["required"] == ["plan_document"]

@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from competition_app.llm.validation_diagnostics import safe_validation_issues
+from competition_app.llm.response_diagnostics import PLAN_HEADINGS, safe_response_diagnostics
 from competition_app.runtime.snapshot import _sanitize
 
 
@@ -41,6 +43,8 @@ class ModelCallTrace(BaseModel):
     error_status_code: int | None = None
     error_retry_count: int | None = None
     error_transport_stage: str | None = None
+    validation_issues: list[dict[str, Any]] | None = None
+    planning_validation_issues: list[dict[str, Any]] | None = None
     started_at_ms: int | None = None
     completed_at_ms: int | None = None
     total_duration_ms: int | None = None
@@ -50,6 +54,7 @@ class ModelCallTrace(BaseModel):
     last_reasoning_at_monotonic: float | None = None
     reasoning_delta_count: int | None = None
     response_chars: int | None = None
+    response_diagnostics: dict[str, Any] | None = None
 
 
 _SAFE_TRANSPORT_STAGES = frozenset(
@@ -130,8 +135,16 @@ class ModelTraceRecorder:
 
     @staticmethod
     def _safe_output_summary(agent: str, payload: dict[str, Any]) -> dict[str, Any] | None:
-        """Retain only deterministic compiler diagnostics in minimal mode."""
+        """Retain bounded planning evidence, never prompts or reasoning."""
 
+        if agent == "diagnosis_agent" and isinstance(payload.get("plan_document"), str):
+            document = payload["plan_document"]
+            return {
+                "plan_document_excerpt": _sanitize(document[:12000]),
+                "plan_document_chars": len(document),
+                "plan_document_truncated": len(document) > 12000,
+                "plan_document_headings_present": {h: f"【{h}】" in document for h in PLAN_HEADINGS},
+            }
         if agent != "plan_contract_compiler":
             return None
         issues = payload.get("issues")
@@ -232,6 +245,31 @@ class ModelTraceRecorder:
             }
         )
 
+    def record_planning_validation(self, diagnostics: list[dict[str, str]], *, attempt: int) -> None:
+        """Attach fixed business-rule codes to the current request's draft."""
+        allowed = {
+            ("duration_sum_mismatch", "/total_duration_days"),
+            ("route_stage_missing", "/stages"),
+            ("route_books_mismatch", "/stages/*/books"),
+            ("route_goal_mismatch", "/stages/*/goal"),
+            ("completed_book_new_learning", "/selection_mode"),
+            ("prerequisite_unconfirmed", "/selected_books"),
+            ("prerequisite_training_missing", "/long_term_plan_content"),
+            ("planning_rule_rejected", "/"),
+        }
+        if type(attempt) is not int or attempt not in {1, 2}:
+            return
+        safe = [
+            {"code": item["code"], "field_path": item["field_path"], "attempt": attempt}
+            for item in diagnostics[:20]
+            if isinstance(item, dict) and (item.get("code"), item.get("field_path")) in allowed
+        ]
+        items = self._current()
+        for index in range(len(items) - 1, -1, -1):
+            if items[index].agent == "diagnosis_agent":
+                items[index] = items[index].model_copy(update={"planning_validation_issues": safe})
+                break
+
     def record_transport(
         self,
         index: int,
@@ -248,6 +286,7 @@ class ModelTraceRecorder:
         items[index] = items[index].model_copy(
             update={
                 "transport_input": _sanitize(request_payload) if capture_full else None,
+                "response_diagnostics": safe_response_diagnostics((timing_details or {}).get("response_diagnostics")) or None,
                 "raw_output_text": _sanitize(response_text) if capture_full else None,
                 # Provider reasoning is never needed by the learner-facing
                 # product.  Keep it only in an explicit internal capture.
@@ -311,11 +350,16 @@ class ModelTraceRecorder:
         items[index] = items[index].model_copy(
             update={
                 "error_type": type(error).__name__,
+                "response_diagnostics": safe_response_diagnostics(timing_details.get("response_diagnostics")) or None,
                 "error_reason": reason,
                 "error_cause_type": cause_type,
                 "error_status_code": status_code,
                 "error_retry_count": retry_count,
                 "error_transport_stage": transport_stage,
+                "validation_issues": safe_validation_issues(
+                    (getattr(error, "last_error_details", None) or {}).get("validation_issues")
+                    if isinstance(getattr(error, "last_error_details", None), dict) else None
+                ) or None,
                 "queue_wait_ms": _bounded_diagnostic_int(
                     timing_details.get("queue_wait_ms"), maximum=86_400_000
                 ),

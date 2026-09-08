@@ -210,7 +210,12 @@ def _shared_user_portrait(
         or context.get("multi_scale_learning_state")
         or {}
     )
+    full_state = context.get("multi_scale_learning_state") or {}
+    if hasattr(full_state, "model_dump"):
+        full_state = full_state.model_dump(mode="json")
+    history = full_state.get("historical_learning", {}) if isinstance(full_state, dict) else {}
     return {
+        **({"historical_learning": _compact_value(history, max_items=20, max_text=800)} if history else {}),
         "basic_profile": _compact_value(
             context.get("user_profile") or {}, max_items=18, max_text=800
         ),
@@ -396,6 +401,19 @@ def build_model_context(
     # the original request: knowledge, diagnosis, expert and audit all need to
     # understand what the user actually asked for.
     enriched_payload = dict(payload)
+    if (
+        target_agent not in _SOURCE_BOUNDED_COMPILERS
+        and "compiler" not in target_agent.lower()
+        and isinstance(context.get("current_learning_state"), dict)
+    ):
+        from competition_app.services.current_learning_state import model_learning_state
+        enriched_payload["current_learning_state"] = model_learning_state(context["current_learning_state"])
+    if (
+        context.get("task_type") == "learning_plan"
+        and target_agent not in _SOURCE_BOUNDED_COMPILERS
+        and context.get("planning_request_scope")
+    ):
+        enriched_payload["planning_request_scope"] = _as_json_value(context["planning_request_scope"])
     original_request = str(
         context.get("original_user_request")
         or context.get("user_request")

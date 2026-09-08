@@ -1,0 +1,15 @@
+{
+  "catalog_name": "中医执业资质默认路线参考目录",
+  "catalog_version": "1.0.0",
+  "source": "交付测试资料/项目相对路径/backend/competition/zhongyi-learning-planning/references/tcm-credential-default-routes.json；仅摘录路线标识用于完整性回归",
+  "route_ids": [
+    "tcm_physician_standard_degree",
+    "tcm_formula_course",
+    "tcm_special_expertise_physician",
+    "traditional_medicine_apprenticeship",
+    "licensed_pharmacist_tcm",
+    "health_technical_title_tcm_clinical",
+    "health_technical_title_tcm_pharmacy",
+    "occupational_skill_tcm_healthcare"
+  ]
+}

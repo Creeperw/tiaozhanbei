@@ -12,10 +12,43 @@ class CapturingStubModel(StubChatModel):
     def __init__(self, *, selected_candidate_id: str | None = None) -> None:
         self.last_payload = None
         self.selected_candidate_id = selected_candidate_id
+        self.bound_contract = None
 
     async def complete_json(self, role, payload, on_delta=None):
-        self.last_payload = payload
+        if role != "plan_contract_compiler":
+            self.last_payload = payload
+        data = payload["payload"]
+        if role == "plan_contract_compiler" and data.get("trusted_route", {}).get("binding_mode") == "fixed_route_v1":
+            assert self.bound_contract is not None
+            return {"status": "compiled", "contract": self.bound_contract}
         result = await super().complete_json(role, payload, on_delta)
+        if role == "diagnosis_agent" and data.get("fixed_route_policy"):
+            route = data["default_route"]["textbook_route"]
+            parts = ["【最终目标】建立中医执业医师考试知识框架。", "【能力路径与阶段】"]
+            stages, anchors = [], {}
+            for index, stage in enumerate(route["stages"]):
+                summary = "使用" + "、".join(stage["books"]) + "形成知识卡片，通过闭卷说明验收。"
+                quote = f"{stage['stage_id']} {stage['name']} {'、'.join(stage['books'])}，用时30天。{summary}"
+                parts.append(quote)
+                stages.append({"stage_id": stage["stage_id"], "duration_days": 30,
+                               "schedule_summary": summary, "acceptance": ["通过闭卷说明验收。"]})
+                for field, text in (("stage_id", quote), ("duration_days", "用时30天"), ("schedule_summary", summary)):
+                    anchors[f"/stages/{index}/{field}"] = [{"source_field": "plan_document", "source_quote": text}]
+            parts.extend([
+                "【阶段里程碑】每阶段提交知识卡片并闭卷说明，达标后晋级。进入后续阶段前，在阶段前3天使用《中医诊断学》教材训练四诊八纲，完成诊断练习，测验达到80分后验收。",
+                "【资源预算】每天30分钟，保留机动时间。", "【重规划条件】持续不达标或时间变化时调整。",
+                "【保温底线】每周回顾一次知识卡片。",
+                "当前执行阶段stage-1，选用《中医学基础》，用途新学，依据：建立基础框架。",
+            ])
+            result = {"plan_document": "\n".join(parts)}
+            self.bound_contract = {"scope": "long_term", "stages": stages, "field_anchors": anchors,
+                                   "selected_stage_id": "stage-1", "selected_books": ["《中医学基础》"],
+                                   "selection_reason": "建立基础框架。", "selection_mode": "new_learning"}
+        if role == "diagnosis_agent" and result.get("plan_document"):
+            result["plan_document"] += "\n当前执行阶段stage-1，选用《中医学基础》，用途新学，依据：建立基础框架。"
+        if role == "plan_contract_compiler" and result.get("status") == "compiled" and result["contract"].get("scope") == "long_term":
+            result["contract"].update(selected_stage_id="stage-1", selected_books=["《中医学基础》"],
+                                      selection_reason="建立基础框架", selection_mode="new_learning")
         if role == "diagnosis_agent" and self.selected_candidate_id:
             result = {
                 **result,
@@ -31,8 +64,8 @@ def multiscale_state(learner_id: str) -> dict:
         "learner_id": learner_id,
         "generated_at": "2026-07-24T08:00:00+00:00",
         "macro": {
-            "approved_route": {"route_id": "ROUTE_1"},
-            "current_stage": {"phase_id": "P1", "name": "基础阶段"},
+            "approved_route": {"route_id": "tcm_physician_standard_degree"},
+            "current_stage": {"phase_id": "stage-1", "name": "基础阶段"},
         },
         "meso": {
             "current_short_term_plan": {},
@@ -64,7 +97,7 @@ def path_candidates(learner_id: str) -> dict:
     eligible = {
         "candidate_id": "PATH_ELIGIBLE",
         "scope": "long_term",
-        "stage": {"phase_id": "P1", "name": "基础阶段"},
+        "stage": {"phase_id": "stage-1", "name": "基础阶段"},
         "books": [{"name": "《中医学基础》"}],
         "knowledge_points": [{"kp_id": "KP_DUE", "name": "四君子汤"}],
         "estimated_minutes": 0,
@@ -88,8 +121,9 @@ def path_candidates(learner_id: str) -> dict:
         **eligible,
         "candidate_id": "PATH_BLOCKED",
         "eligible": False,
-        "blocked_reasons": ["prerequisite_not_satisfied:中医诊断学"],
+        "blocked_reasons": ["parent_plan_missing"],
         "hard_constraint_results": [
+            {"key": "parent_plan_available", "passed": False, "reason": "parent_plan_missing"},
             {
                 "key": "prerequisite_satisfied",
                 "passed": False,
@@ -106,6 +140,7 @@ def path_candidates(learner_id: str) -> dict:
         "generated_at": "2026-07-24T08:00:00+00:00",
         "state_digest": "a" * 24,
         "items": [eligible, blocked],
+        "prerequisite_evidence": {"route_id": "textbook_tcm_physician"},
         "counts": {
             "returned": 2,
             "eligible": 1,
@@ -131,6 +166,7 @@ def build_use_case(
     registry = container.review_card_use_case.orchestrator.agent_registry
     registry.get("planner_agent").chat_model = planner_model
     registry.get("diagnosis_agent").chat_model = diagnosis_model
+    registry.get("diagnosis_agent").plan_contract_compiler.chat_model = diagnosis_model
     container.review_card_use_case.multiscale_state_loader = (
         lambda learner_id, **_: multiscale_state(learner_id)
     )

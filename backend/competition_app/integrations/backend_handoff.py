@@ -1054,6 +1054,83 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def load_current_learning_facts(
+        self, external_user_id: str, *, exam_track_id: str,
+        books: list[str], book_id: str | None = None,
+        section_id: str | None = None, cursor: int | None = None, limit: int = 8,
+        task: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Read only existing identity and exam-scoped facts; never repair data."""
+        database = importlib.import_module("APP.backend.database")
+        projection = importlib.import_module("APP.backend.current_learning_state_service")
+        targets = importlib.import_module("APP.backend.learning_target_service")
+        atlas = importlib.import_module("APP.backend.knowledge_atlas_service").atlas_service
+        with database.SessionLocal() as db, db.no_autoflush:
+            identity = db.query(database.ExternalIdentityLink).filter(
+                database.ExternalIdentityLink.provider == "competition_app",
+                database.ExternalIdentityLink.external_user_id == external_user_id,
+            ).one_or_none()
+            if identity is None:
+                return {"availability": "unavailable", "reason": "identity_missing", "books": []}
+            target = targets.get_active_learning_target(db, identity.user_id)
+            if target is None or target.exam_track_id != exam_track_id:
+                raise PermissionError("active exam changed or is not bound")
+            records = projection.read_completion_records(db, identity.user_id, exam_track_id)
+            mastery = [{
+                "kp_id": row.kp_id, "score": row.mastery_score,
+                "confidence": row.mastery_confidence, "attempt_count": row.attempt_count,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                "source_ref": f"learner_exam_progress_states:{row.id}",
+            } for row in db.query(database.LearnerExamProgressState).filter(
+                database.LearnerExamProgressState.learner_id == identity.user_id,
+                database.LearnerExamProgressState.exam_track_id == exam_track_id,
+                database.LearnerExamProgressState.attempt_count > 0,
+            ).all()]
+            if not books:
+                books = list(dict.fromkeys(str(payload.get("book")) for _, payload in reversed(records)
+                                           if payload.get("book")))
+            if book_id is not None and book_id not in books:
+                raise ValueError("book_id must belong to the current plan")
+            identity_service = importlib.import_module("APP.backend.knowledge_point_identity_service")
+            mapping = identity_service.canonical_map_for_ids(db, [row["kp_id"] for row in mastery])
+            canonical_mastery = []
+            for canonical_id in dict.fromkeys(mapping.values()):
+                candidates = [row for row in mastery if mapping.get(row["kp_id"]) == canonical_id]
+                chosen = next((row for row in candidates if row["kp_id"] == canonical_id), None)
+                if chosen is None and len(candidates) == 1:
+                    chosen = candidates[0]
+                if chosen is not None:
+                    canonical_mastery.append({**chosen, "source_kp_id": chosen["kp_id"], "kp_id": canonical_id})
+            selected = [book_id] if book_id else books[:1]
+            results = [projection.project_textbook(
+                book, atlas, records, canonical_mastery, cursor=cursor,
+                limit=limit, section_id=section_id,
+            ) for book in selected]
+            task = task or {}
+            execution = [{
+                "task_item_id": row.task_item_id, "status": row.status,
+                "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                "source_ref": f"daily_task_items:{row.id}",
+            } for row in db.query(database.DailyTaskItemRecord).filter(
+                database.DailyTaskItemRecord.user_id == identity.user_id,
+                database.DailyTaskItemRecord.host_task_id == task.get("task_id", ""),
+                database.DailyTaskItemRecord.host_task_version == task.get("version", 0),
+            ).all()] if task else []
+            return {
+                "availability": "available" if results and all(
+                    item["availability"] == "available" for item in results
+                ) else "partial",
+                "books": results,
+                "available_books": books,
+                "target_version": {"id": target.id, "syllabus_version": target.syllabus_version,
+                                   "updated_at": target.updated_at.isoformat() if target.updated_at else None},
+                "record_version": [projection.completion_evidence(row, payload)
+                                   for row, payload in records],
+                "mastery_version": canonical_mastery,
+                "task_execution": execution,
+            }
+
     def load_review_dashboard(self, external_user_id: str, *, history_limit: int = 100) -> dict[str, Any]:
         """Return user-owned mastery, review state and history for presentation."""
 
@@ -2965,6 +3042,28 @@ class BackendHandoffRuntime:
         return auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
             db, SimpleNamespace(user_id=external_user_id)
         )
+
+    def read_canonical_knowledge_point_ids(
+        self, external_user_id: str, kp_ids: tuple[str, ...],
+    ) -> dict[str, str]:
+        from competition_app.exam_scope import current_exam_workspace
+        workspace = current_exam_workspace(external_user_id)
+        if workspace is None or not workspace.exam_track_id:
+            raise PermissionError("review mapping requires bound exam workspace")
+        database = importlib.import_module("APP.backend.database")
+        identity_service = importlib.import_module("APP.backend.knowledge_point_identity_service")
+        targets = importlib.import_module("APP.backend.learning_target_service")
+        with database.SessionLocal() as db, db.no_autoflush:
+            identity = db.query(database.ExternalIdentityLink).filter(
+                database.ExternalIdentityLink.provider == "competition_app",
+                database.ExternalIdentityLink.external_user_id == external_user_id,
+            ).one_or_none()
+            if identity is None:
+                raise PermissionError("review mapping identity missing")
+            target = targets.get_active_learning_target(db, identity.user_id)
+            if target is None or target.exam_track_id != workspace.exam_track_id:
+                raise PermissionError("review mapping exam mismatch")
+            return identity_service.canonical_map_for_ids(db, kp_ids)
 
     def canonicalize_knowledge_point_ids(
         self,

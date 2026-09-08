@@ -21,7 +21,8 @@ from competition_app.llm.base import ChatModel
 from competition_app.llm.openai_compatible import ModelResponseError
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
-from competition_app.llm.schemas import AuditModelOutput
+from competition_app.llm.schemas import AuditModelOutput, PlanAuditModelOutput
+from competition_app.services.plan_safety import issue_plan_safety_approval
 from competition_app.services.plan_contract_validator import PlanContractValidator
 from competition_app.services.plan_audit import plan_audit_subject_digest
 from competition_app.contracts.local_repair import RepairIssue
@@ -1078,10 +1079,13 @@ class AuditAgent:
             proposal=proposal,
             compiled_plan_contract=compilation,
             parent_plan_constraints=parent_plan_constraints,
+            prerequisite_assessment=dict(
+                getattr(diagnosis, "audit_evidence", {}) or {}
+            ).get("prerequisite_assessment"),
         )
         protocol_valid = True
         try:
-            model_output = AuditModelOutput.model_validate(
+            model_output = PlanAuditModelOutput.model_validate(
                 await self.chat_model.complete_json(
                     "audit_agent",
                     build_model_context(
@@ -1106,7 +1110,7 @@ class AuditAgent:
                             "producer_evidence": dict(
                                 getattr(diagnosis, "audit_evidence", {}) or {}
                             ),
-                            "output_schema": AuditModelOutput.model_json_schema(),
+                            "output_schema": PlanAuditModelOutput.model_json_schema(),
                         },
                         permission_note=(
                             "只输出详细自然语言审核报告、审核决定和问题；"
@@ -1183,7 +1187,9 @@ class AuditAgent:
             ]
         if model_output.decision == "pass":
             compiled_model_issues = [
-                issue.model_copy(update={"blocking": False})
+                issue.model_copy(update={"blocking": True})
+                if issue.issue_type in {"safety_violation", "unresolved"}
+                else issue.model_copy(update={"blocking": False})
                 for issue in compiled_model_issues
             ]
         deterministic_issues = self._plan_deterministic_issues(
@@ -1194,7 +1200,7 @@ class AuditAgent:
             issue for issue in compiled_model_issues if issue.blocking
         ]
         unsafe_or_unresolved = any(
-            issue.issue_type == "safety_violation"
+            issue.issue_type in {"safety_violation", "unresolved"}
             for issue in model_blocking_issues
         )
         decision = (
@@ -1251,6 +1257,9 @@ class AuditAgent:
                     )[:8_000]
                 }
             )
+        medical_safety = getattr(model_output, "medical_safety", "uncertain")
+        if medical_safety != "safe" or unsafe_or_unresolved:
+            decision = "needs_human_review"
         findings = [*deterministic_findings, *model_output.findings]
         audit_report = self._decision_consistent_report(
             decision, model_output.audit_report
@@ -1295,6 +1304,11 @@ class AuditAgent:
             ),
             plan_scope=plan_scope,
         )
+        if decision == "pass" and protocol_valid and medical_safety == "safe":
+            result.medical_safety_approval = issue_plan_safety_approval(
+                proposal=proposal, learner_id=str(context["learner_id"]),
+                scope=plan_scope, audit_id=result.audit_result_id,
+            )
         return envelope(context, "audit_agent", "audit_result", result)
 
     @staticmethod

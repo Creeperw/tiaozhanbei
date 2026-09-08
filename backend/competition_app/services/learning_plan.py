@@ -28,6 +28,7 @@ from competition_app.services.daily_task_scheduler import (
     reconcile_daily_task_schedule,
 )
 from competition_app.services.default_route import DefaultRouteRepository
+from competition_app.services.plan_safety import verify_plan_safety_approval
 
 
 _REAL_PATIENT_PATTERN = re.compile(
@@ -1313,10 +1314,16 @@ class LearningPlanService:
         proposal: LearningPlanProposal,
         *,
         now: datetime | None = None,
+        medical_safety_approval: dict[str, Any] | None = None,
     ) -> LearningPlanResult:
         if not learner_id:
             raise ValueError("learner_id is required")
-        validate_medical_education_safety(proposal)
+        if medical_safety_approval is not None:
+            verify_plan_safety_approval(
+                medical_safety_approval, proposal=proposal, learner_id=learner_id, scope="long_term"
+            )
+        else:
+            validate_medical_education_safety(proposal)
         self._validate_publishable_long_term_stages(
             proposal.long_term_plan_stages
         )
@@ -1389,10 +1396,16 @@ class LearningPlanService:
         *,
         current_long_term_plan: dict[str, Any],
         now: datetime | None = None,
+        medical_safety_approval: dict[str, Any] | None = None,
     ) -> LearningPlanResult:
         if not learner_id:
             raise ValueError("learner_id is required")
-        validate_medical_education_safety(proposal)
+        if medical_safety_approval is not None:
+            verify_plan_safety_approval(
+                medical_safety_approval, proposal=proposal, learner_id=learner_id, scope="short_term"
+            )
+        else:
+            validate_medical_education_safety(proposal)
         timestamp = now or datetime.now(timezone.utc)
         long_plan = LongTermPlan.model_validate(current_long_term_plan)
         self._validate_short_term_parent_duration(long_plan, proposal)
@@ -1447,52 +1460,9 @@ class LearningPlanService:
         long_plan: LongTermPlan,
         proposal: LearningPlanProposal,
     ) -> None:
-        stages = list(long_plan.stages or [])
-        if not stages:
-            raise ValueError("short-term plan requires a long-term parent stage")
-        selected_stage_id = cls._field(proposal.textbook_selection, "stage_id")
+        from competition_app.services.parent_stage import resolve_parent_stage
 
-        def stage_number(value: Any) -> int | None:
-            # "stage-2" / "stage2" -> 2
-            match = re.match(r"stage[-_]?(\d+)$", str(value or ""), re.IGNORECASE)
-            return int(match.group(1)) if match else None
-
-        selected_stage: Any = None
-        if selected_stage_id:
-            selected_stage = next(
-                (
-                    stage
-                    for stage in stages
-                    if str(cls._field(stage, "stage_id") or "") == str(selected_stage_id)
-                ),
-                None,
-            )
-            if selected_stage is None:
-                # 落库阶段可能没有 stage_id，只有数字 stage（stage-N 命名约定）。
-                number = stage_number(selected_stage_id)
-                if number is not None:
-                    selected_stage = next(
-                        (
-                            stage
-                            for stage in stages
-                            if int(cls._field(stage, "stage") or 0) == number
-                        ),
-                        None,
-                    )
-        if selected_stage is None:
-            selected_stage = stages[0]
-
-        # 用户已声明学完的课程会被长期规划写成“完成确认”型阶段（duration
-        # 极小，如 1 天）。父级当前阶段若停留在这样的完成确认阶段，短期计划
-        # 按长期规划正文从后续实质阶段开始时不应受其天数约束，因此推进到
-        # 第一个实质学习阶段再校验。
-        if len(stages) > 1:
-            current_index = stages.index(selected_stage)
-            for stage in stages[current_index:]:
-                duration = cls._field(stage, "duration_days")
-                if isinstance(duration, int) and duration > 2:
-                    selected_stage = stage
-                    break
+        _, selected_stage = resolve_parent_stage(long_plan)
 
         parent_duration = cls._field(selected_stage, "duration_days")
         short_duration = cls._field(

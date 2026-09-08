@@ -69,6 +69,8 @@ class _AgentRegistry:
 
 
 class _Orchestrator:
+    tool_registry = None
+
     def __init__(
         self,
         planner: _Planner,

@@ -33,6 +33,12 @@ def _planner_request(user_request: str, **overrides) -> dict:
     return request
 
 
+def _route_scope(payload):
+    return {"mode": "route", "objects": [],
+            "source_quote": payload["payload"]["user_request"][:300],
+            "clarification_question": None}
+
+
 @pytest.mark.parametrize(
     "task_type",
     [
@@ -212,6 +218,7 @@ class CapturingPlannerModel:
             "plan_scope": None,
             "plan_action": None,
             "routing_reason": "短对话只制定计划，不需要压缩或生成资源。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -253,6 +260,7 @@ class CurrentTurnBudgetPlannerModel:
             "plan_scope": "daily_task",
             "plan_action": "create_or_update",
             "current_turn_available_minutes": self.minutes,
+            "planning_request_scope": _route_scope(payload),
             "current_turn_available_minutes_source_quote": self.source_quote,
             "current_turn_available_minutes_scope": self.budget_scope,
             "requires_clarification": False,
@@ -534,6 +542,7 @@ class LongTermPlanWithoutKnowledgeModel:
             "clarification_question": None,
             "requires_knowledge_support": False,
             "routing_reason": "用户画像和学情足以生成长期规划，无需教材检索。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -550,6 +559,7 @@ class ShortTermPlanWithKnowledgeModel:
             "clarification_question": None,
             "requires_knowledge_support": True,
             "routing_reason": "本周计划围绕指定知识对象，需要教材知识支持。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -577,6 +587,7 @@ class PlanWithoutScopeModel:
             "plan_scope": None,
             "plan_action": None,
             "routing_reason": "用户要求制定学习安排。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -594,6 +605,7 @@ class GenericPlanIncorrectlyDefaultsToLongTermModel:
                 "requires_clarification": False,
                 "clarification_question": None,
                 "routing_reason": "模型根据显式层级决定重新评估该层规划。",
+                "planning_request_scope": _route_scope(payload),
             }
         return {
             "task_type": "learning_plan",
@@ -605,6 +617,7 @@ class GenericPlanIncorrectlyDefaultsToLongTermModel:
                 "这次希望制定或调整哪一层：长期规划、短期计划，还是当日任务？"
             ),
             "routing_reason": "模型结合已有计划判断需要先确认目标层级。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -620,6 +633,7 @@ class ScopeIgnoringPlannerModel:
             "requires_clarification": False,
             "clarification_question": None,
             "routing_reason": "系统给出的规划层级覆盖第一阶段的错误分类。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -635,6 +649,7 @@ class DailyTaskMislabelingPlannerModel:
             "requires_clarification": False,
             "clarification_question": None,
             "routing_reason": "用户询问今天学什么，属于制定短期学习计划。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -650,6 +665,7 @@ class DailyTaskSemanticPlannerModel:
             "requires_clarification": False,
             "clarification_question": None,
             "routing_reason": "用户承接上文要求生成今天的任务。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -667,6 +683,7 @@ class ReuseMisjudgmentPlannerModel:
             "requires_clarification": False,
             "clarification_question": None,
             "routing_reason": "模型误以为已有当日任务，直接复用。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 
@@ -697,6 +714,7 @@ class AmbiguousDailyThenScopedPlannerModel:
             "requires_clarification": True,
             "clarification_question": "请确认要操作哪一层计划。",
             "routing_reason": "主路由没有确定计划层级。",
+            "planning_request_scope": _route_scope(payload),
         }
 
 

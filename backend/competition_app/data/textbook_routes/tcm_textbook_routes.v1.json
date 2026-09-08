@@ -101,10 +101,10 @@
       "reviewed_by": "user_curated_route_2026_07_19",
       "source_refs": ["user-textbook-routes-md-2026-07-19", "user-textbook-routes-json-2026-07-19"],
       "prerequisites": [
-        {"course": "无机化学", "before_stage_id": "stage-1", "reason": "无机化学实验必须有对应理论基础。"},
-        {"course": "有机化学", "before_stage_id": "stage-1", "reason": "有机化学实验必须有对应理论基础。"},
-        {"course": "细胞生物学", "before_stage_id": "stage-2", "reason": "细胞生物学实验必须有对应理论基础。"},
-        {"course": "分析化学", "before_stage_id": "stage-5", "reason": "进入中药分析前需要分析化学理论基础。"}
+        {"course": "无机化学", "before_stage_id": "stage-1", "applies_to_books": ["《无机化学实验》"], "reason": "无机化学实验必须有对应理论基础。"},
+        {"course": "有机化学", "before_stage_id": "stage-1", "applies_to_books": ["《有机化学实验》"], "reason": "有机化学实验必须有对应理论基础。"},
+        {"course": "细胞生物学", "before_stage_id": "stage-2", "applies_to_books": ["《细胞生物学实验》"], "reason": "细胞生物学实验必须有对应理论基础。"},
+        {"course": "分析化学", "before_stage_id": "stage-5", "applies_to_books": ["《中药分析》"], "reason": "进入中药分析前需要分析化学理论基础。"}
       ],
       "equivalence_groups": [],
       "stages": [

@@ -47,6 +47,7 @@ class AuditResult(ContractModel):
     ] | None = None
     parent_subject_digest: str | None = Field(default=None, min_length=64, max_length=64)
     plan_scope: Literal["long_term", "short_term", "daily_task"] | None = None
+    medical_safety_approval: dict[str, object] | None = None
 
 
 class ResourceVersion(ContractModel):

@@ -93,6 +93,7 @@ class _AgentRegistry:
 class _Orchestrator:
     def __init__(self, planner):
         self.agent_registry = _AgentRegistry(planner)
+        self.tool_registry = None
 
 
 class _SnapshotExporter:
@@ -441,6 +442,31 @@ async def test_execute_memory_failure_is_persisted_as_failed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_planner_validation_issues_reach_failure_state() -> None:
+    from competition_app.llm.openai_compatible import ModelResponseError
+
+    recorder = ModelTraceRecorder()
+    issues = [{"field_path": "/planning_request_scope/source_quote",
+               "rule": "current_message_quote", "attempt": 2}]
+
+    class InvalidPlanner:
+        async def run(self, context):
+            index = recorder.begin("planner_agent", {"private": "user input"})
+            error = ModelResponseError("invalid output", reason="business_schema_invalid")
+            error.last_error_details = {"validation_issues": issues, "response_body": "private"}
+            recorder.fail(index, error)
+            raise error
+
+    use_case = _use_case(planner=InvalidPlanner(), model_trace_recorder=recorder)
+    use_case.orchestrator.tool_registry = None
+    with pytest.raises(ModelResponseError):
+        await use_case.execute(_request("THREAD_VALIDATION_DIAGNOSTICS"))
+    state = use_case.get_run_state("THREAD_VALIDATION_DIAGNOSTICS")
+    assert state["failure_model_trace"][0]["validation_issues"] == issues
+    assert "private" not in str(state)
+
+
+@pytest.mark.asyncio
 async def test_execute_cancellation_is_not_converted_to_failed() -> None:
     use_case = _use_case(planner=_CancelledPlanner())
 
@@ -450,6 +476,39 @@ async def test_execute_cancellation_is_not_converted_to_failed() -> None:
     state = use_case.get_run_state("THREAD_PHASE2_CANCEL")
     assert state is not None
     assert state["status"] == "running"
+
+
+@pytest.mark.asyncio
+async def test_first_business_rejection_survives_later_compilation_failure() -> None:
+    from competition_app.contracts.plan_compilation import PlanCompilationError
+
+    recorder = ModelTraceRecorder()
+
+    class FailedPlanning:
+        async def run(self, context):
+            index = recorder.begin("diagnosis_agent", {})
+            recorder.record_transport(index, request_payload=None, response_text=None, timing_details={
+                "response_diagnostics": {"attempts": [{"finish_reason": "length", "done_received": True, "completion_tokens": 42, "private": "secret"}]},
+            })
+            recorder.succeed(index, {"plan_document": "完整计划"})
+            recorder.record_planning_validation([
+                {"code": "prerequisite_unconfirmed", "field_path": "/selected_books"},
+            ], attempt=1)
+            recorder.begin("plan_contract_compiler", {})
+            raise PlanCompilationError("编译修订失败")
+
+    use_case = _use_case(planner=FailedPlanning(), model_trace_recorder=recorder)
+    use_case.orchestrator.tool_registry = None
+    with pytest.raises(PlanCompilationError):
+        await use_case.execute(_request("THREAD_BUSINESS_DIAGNOSTICS"))
+    state = use_case.get_run_state("THREAD_BUSINESS_DIAGNOSTICS")
+    assert state["failure_model_trace"][0]["response_diagnostics"] == {
+        "attempts": [{"finish_reason": "length", "done_received": True, "completion_tokens": 42}],
+    }
+    assert "secret" not in str(state)
+    assert state["failure_model_trace"][0]["planning_validation_issues"] == [{
+        "code": "prerequisite_unconfirmed", "field_path": "/selected_books", "attempt": 1,
+    }]
 
 
 @pytest.mark.asyncio

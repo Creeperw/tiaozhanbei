@@ -21,6 +21,7 @@ from competition_app.contracts.plan_compilation import (
     PlanContractNeedsRevision,
 )
 from competition_app.llm.base import ChatModel
+from competition_app.contracts.route_binding import binding_schema, bind_stages, document_issues, quote_within_stage
 from competition_app.llm.openai_compatible import ModelResponseError
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
@@ -153,8 +154,14 @@ class PlanContractCompilerAgent:
         diagnosis_output: dict[str, Any],
         trusted_route: dict[str, Any],
         parent_plan_constraints: dict[str, Any],
+        extraction_feedback: list[dict[str, Any]] | None = None,
     ) -> PlanCompilationEnvelope:
         source_digest = self._digest(diagnosis_output)
+        if "plan_document" in diagnosis_output and plan_scope == "long_term" and trusted_route.get("binding_mode") == "fixed_route_v1":
+            return await self._compile_route_bound_document(
+                context, diagnosis_output, trusted_route, parent_plan_constraints,
+                extraction_feedback or [], source_digest,
+            )
 
         # New Diagnosis drafts are natural-language documents.  They must
         # always pass through the compiler model; otherwise a structured
@@ -192,12 +199,17 @@ class PlanContractCompilerAgent:
             "diagnosis_output": diagnosis_output,
             "trusted_route": trusted_route,
             "parent_plan_constraints": parent_plan_constraints,
-            "system_inserted_fields": (
-                []
-                if "plan_document" in diagnosis_output
-                else self._system_inserted_fields(plan_scope)
+            "extraction_feedback": extraction_feedback or [],
+            "extraction_instruction": (
+                "反馈只用于修正本份正文的提取和引文，不得修改或补造业务值。"
+                "总天数未写出时省略，由系统对有原文锚点的阶段天数求和。"
+                "选择理由与安排摘要直接摘录完整原句，既有阶段ID允许引用。"
             ),
-            "output_schema": self._model_output_schema(include_managed_text=False),
+            "system_inserted_fields": self._system_inserted_fields(plan_scope),
+            "output_schema": self._model_output_schema(
+                include_managed_text=False,
+                document_source="plan_document" in diagnosis_output,
+            ),
         }
         try:
             raw = await self.chat_model.complete_json(
@@ -259,7 +271,7 @@ class PlanContractCompilerAgent:
                 plan_scope,
             )
         )
-        result = self._strip_prerequisite_books(result, diagnosis_output)
+        result = self._strip_prerequisite_books(result, diagnosis_output, trusted_route)
         issues = self._source_issues(result, diagnosis_output, plan_scope)
         result_issues = (
             result.issues
@@ -321,6 +333,7 @@ class PlanContractCompilerAgent:
                         result = self._strip_prerequisite_books(
                             result,
                             diagnosis_output,
+                            trusted_route,
                         )
                         issues = self._source_issues(
                             result,
@@ -696,6 +709,7 @@ class PlanContractCompilerAgent:
         self,
         result: PlanContractCompilerResult,
         diagnosis_output: dict[str, Any],
+        trusted_route: dict[str, Any] | None = None,
     ) -> PlanContractCompilerResult:
         """后端确定性守卫：文档明确标注"（前置训练）"的教材（如
         "《中医诊断学》（前置训练）"）不属于该阶段主教材，不得进入合同
@@ -722,7 +736,9 @@ class PlanContractCompilerAgent:
             return result
         stripped: list[str] = []
         for stage in contract.stages:
-            kept = [book for book in stage.books if book not in prereq_books]
+            trusted_stages = (trusted_route or {}).get("stages") or (trusted_route or {}).get("phases") or []
+            trusted_books = set(trusted_stages[stage.stage - 1].get("books") or []) if 0 < stage.stage <= len(trusted_stages) else set()
+            kept = [book for book in stage.books if book not in prereq_books or book in trusted_books]
             if kept and len(kept) != len(stage.books):
                 removed = sorted(set(stage.books) & prereq_books)
                 stripped.append(f"stage-{stage.stage}: {removed}")
@@ -1168,6 +1184,7 @@ class PlanContractCompilerAgent:
         cls,
         *,
         include_managed_text: bool = False,
+        document_source: bool = False,
     ) -> dict[str, Any]:
         """Build the compiler schema for document or legacy sources."""
 
@@ -1198,6 +1215,33 @@ class PlanContractCompilerAgent:
                     strip_managed_fields(nested)
 
         strip_managed_fields(schema)
+        if document_source:
+            long_definition = schema["$defs"]["CompiledLongTermContract"]
+            long_definition["required"] = [
+                field for field in long_definition["required"]
+                if field != "total_duration_days"
+            ]
+            long_definition["properties"]["total_duration_days"]["description"] = (
+                "仅正文明确写出总天数时提取；没有总数时省略，由系统对有原文证据的阶段天数求和。"
+            )
+            for name in ("CompiledLongTermContract", "CompiledShortTermContract"):
+                definition = schema["$defs"][name]
+                required = definition.setdefault("required", [])
+                fields = ["selected_stage_id", "selected_books", "selection_mode"]
+                if name == "CompiledLongTermContract":
+                    fields.append("selection_reason")
+                for field in fields:
+                    if field not in required:
+                        required.append(field)
+                    prop = definition["properties"][field]
+                    prop.pop("default", None)
+                    if "anyOf" in prop:
+                        non_null = [p for p in prop.pop("anyOf") if p.get("type") != "null"]
+                        prop.update(non_null[0])
+                    if prop.get("type") == "string":
+                        prop["minLength"] = 1
+                    if field == "selected_books":
+                        prop["minItems"] = 1
         return schema
 
     @staticmethod
@@ -1713,6 +1757,199 @@ class PlanContractCompilerAgent:
         )
         return CompiledPlanContractResult(status="compiled", contract=contract)
 
+    async def _compile_route_bound_document(
+        self, context: dict[str, Any], diagnosis_output: dict[str, Any],
+        trusted_route: dict[str, Any], parent_plan_constraints: dict[str, Any],
+        extraction_feedback: list[dict[str, Any]], source_digest: str,
+    ) -> PlanCompilationEnvelope:
+        # One shared extraction budget for initial drafts AND business revisions.
+        # Keep the exact authored document; a copying error is not an author task.
+        for attempt in range(2):
+            observation: dict[str, Any] = {}
+            try:
+                result = await self._compile_route_bound_document_impl(
+                    context, diagnosis_output, trusted_route, parent_plan_constraints,
+                    extraction_feedback, source_digest, observation,
+                )
+            except ModelResponseError as exc:
+                if not attempt or exc.reason not in {"business_schema_invalid", "invalid_json"}:
+                    raise
+                return result.model_copy(update={"revision_count": 1})
+            if result.result.status != "compiled":
+                try:
+                    from competition_app.llm.compiler_failure_evidence import capture_failure
+
+                    capture_failure(context, diagnosis_output, trusted_route, observation.get("raw"), result)
+                except Exception:
+                    pass
+            if attempt:
+                result = result.model_copy(update={"revision_count": 1})
+            if result.result.status == "compiled" or self.document_revision_required(
+                result, str(diagnosis_output.get("plan_document") or "")
+            ):
+                return result
+            extraction_feedback = [issue.model_dump(mode="json") for issue in result.result.issues]
+        return result
+
+    @staticmethod
+    def document_revision_required(envelope: PlanCompilationEnvelope, document: str) -> bool:
+        if envelope.result.status == "compiled":
+            return False
+        # Recompute a document fact locally. Model-reported paths/codes cannot
+        # turn an extraction failure into permission to rewrite the source.
+        # Concrete business corrections remain owned by PlanningValidator.
+        return bool(document_issues(document))
+
+    async def _compile_route_bound_document_impl(
+        self, context: dict[str, Any], diagnosis_output: dict[str, Any],
+        trusted_route: dict[str, Any], parent_plan_constraints: dict[str, Any],
+        extraction_feedback: list[dict[str, Any]], source_digest: str,
+        observation: dict[str, Any],
+    ) -> PlanCompilationEnvelope:
+        stages = trusted_route.get("stages") or []
+        if not stages or any(
+            not stage.get("stage_id") or not stage.get("name")
+            or not stage.get("books") or not stage.get("goal") for stage in stages
+        ):
+            raise ValueError("fixed route binding requires complete trusted stages")
+        if len({stage["stage_id"] for stage in stages}) != len(stages):
+            raise ValueError("fixed route stage identities must be unique")
+        route_digest = self._digest(trusted_route)
+        missing_sections = document_issues(str(diagnosis_output.get("plan_document") or ""))
+        if missing_sections:
+            return PlanCompilationEnvelope(
+                result=PlanContractNeedsRevision(status="needs_revision", issues=missing_sections),
+                source_digest=source_digest, route_source_digest=route_digest,
+            )
+        skill = prompt_skill_registry.load("plan_contract_compiler", "compile_plan_contract")
+        payload = {
+            "plan_scope": "long_term", "diagnosis_output": diagnosis_output,
+            "trusted_route": trusted_route, "parent_plan_constraints": parent_plan_constraints,
+            "extraction_feedback": extraction_feedback,
+            "extraction_instruction": (
+                "若有 extraction_feedback，仅修正同一份正文的提取与引文，不请求作者改稿。"
+                "schedule_summary 与 acceptance 必须直接摘录连续原文，可保留完整多行安排；"
+                "禁止把多个节点概括、压缩或拼成新句。不得因上次锚点错误声称正文缺字段。"
+            ),
+            "system_inserted_fields": self._system_inserted_fields("long_term"),
+            "route_binding_instruction": (
+                "fixed_route_v1：逐阶段从正文引用既有 stage_id，并提取 duration_days、"
+                "schedule_summary、acceptance。不要输出 stage/stage_name/books/goal；"
+                "这些固定字段由系统绑定可信路线，不能从正文改写。每个阶段必须有明确的"
+                "个性化安排、正数天数和原文锚点，不得补齐缺失阶段。"
+                "每个 /stages/N/stage_id 锚点须引用该阶段完整连续原文段，包含阶段ID、"
+                "该阶段全部教材、天数、安排和验收；不要只引用孤立ID。"
+                "正文若真正删除教材、跳过阶段或改变路线目标，仍返回 needs_revision；仅措辞差异不改变固定目标。"
+                "当前 selected_books、用途和理由仍是正文决策，不从路线默认选择。"
+            ),
+            "output_schema": binding_schema(self._model_output_schema(document_source=True), stages),
+        }
+        raw = await self.chat_model.complete_json(
+            "plan_contract_compiler", build_model_context(
+                context, target_agent="plan_contract_compiler", prompt_skill=skill, payload=payload,
+                permission_note="只提取当前层正文的个性化安排与既有阶段引用；固定路线字段由系统绑定，不补造学习决策。",
+            ),
+        )
+        observation["raw"] = raw
+        if isinstance(raw, dict) and raw.get("status") == "compiled":
+            # Every referenced stage must be present in the authored document.
+            doc = str(diagnosis_output.get("plan_document") or "")
+            last_position = -1
+            contract_raw = raw.get("contract") or {}
+            for index, stage in enumerate(contract_raw.get("stages", [])):
+                stage_id = str(stage.get("stage_id") or "")
+                if not stage_id or re.search(rf"(?<![\w-]){re.escape(stage_id)}(?![\w-])", doc) is None:
+                    return PlanCompilationEnvelope(result=PlanContractNeedsRevision(
+                        status="needs_revision", issues=[{"code": "source_anchor_missing", "category": "invalid", "field_path": "/stages"}],
+                    ), source_digest=source_digest, route_source_digest=route_digest)
+                entries = (contract_raw.get("field_anchors") or {}).get(f"/stages/{index}/stage_id", [])
+                trusted = next((item for item in stages if item["stage_id"] == stage_id), None)
+                positions = []
+                for entry in entries:
+                    quote = entry.get("source_quote") if isinstance(entry, dict) else None
+                    if not isinstance(quote, str) or not quote or entry.get("source_field") != "plan_document":
+                        continue
+                    position = doc.find(quote)
+                    if (
+                        trusted and position >= last_position and position >= 0
+                        and re.search(rf"(?<![\w-]){re.escape(stage_id)}(?![\w-])", quote)
+                        and all(str(book) in quote for book in trusted["books"])
+                        and str(stage.get("schedule_summary") or "") in quote
+                        and re.search(rf"(?<!\d){stage.get('duration_days')}(?!\d)", quote)
+                        and quote_within_stage(doc, quote, stage_id, stages)
+                    ):
+                        positions.append(position + len(quote))
+                if not positions:
+                    # Failure-only observations. Never change gate semantics or
+                    # let a diagnostic sink failure replace the original result.
+                    try:
+                        from competition_app.llm.anchor_diagnostics import stage_anchor_diagnostics
+
+                        self.logger.warning(
+                            "stage_anchor_rejected source_digest=%s route_digest=%s details=%s",
+                            source_digest, route_digest,
+                            json.dumps(stage_anchor_diagnostics(
+                                doc, stage, trusted, stages, entries, last_position, index,
+                            ), ensure_ascii=False, sort_keys=True),
+                        )
+                    except Exception:
+                        pass
+                    return PlanCompilationEnvelope(result=PlanContractNeedsRevision(
+                        status="needs_revision", issues=[{"code": "source_anchor_invalid", "category": "invalid", "field_path": f"/stages/{index}/stage_id"}],
+                    ), source_digest=source_digest, route_source_digest=route_digest)
+                last_position = min(positions)
+            for index, stage in enumerate(stages):
+                if any(str(book) not in doc for book in stage["books"]):
+                    return PlanCompilationEnvelope(result=PlanContractNeedsRevision(
+                        status="needs_revision", issues=[{"code": "route_book_missing", "category": "missing", "field_path": f"/stages/{index}/books"}],
+                    ), source_digest=source_digest, route_source_digest=route_digest)
+        normalized = bind_stages(raw, stages)
+        # Keep route authority local: never trust a similarly named author field.
+        sources = {**diagnosis_output, "trusted_route_binding": [
+            {"stage": index + 1, "stage_name": stage["name"], "books": stage["books"], "goal": stage["goal"]}
+            for index, stage in enumerate(stages)
+        ]}
+        fixed_anchors = {
+            path: entries for path, entries in (normalized.get("contract", {}).get("field_anchors") or {}).items()
+            if re.fullmatch(r"/stages/\d+/(stage|stage_name|books|goal)", path)
+        }
+        normalized = self._backfill_anchors(normalized, diagnosis_output, "long_term")
+        if normalized.get("status") == "compiled":
+            normalized["contract"]["field_anchors"].update(fixed_anchors)
+        try:
+            result = self._parse(self._inject_system_fields(normalized, sources, "long_term"))
+        except (ValueError, ValidationError):
+            return PlanCompilationEnvelope(result=PlanContractNeedsRevision(
+                status="needs_revision", issues=[{"code": "schema_invalid", "category": "invalid", "field_path": "/contract"}],
+            ), source_digest=source_digest, route_source_digest=route_digest)
+        issues = self._source_issues(result, sources, "long_term")
+        if isinstance(result, CompiledPlanContractResult):
+            for path, anchors in result.contract.field_anchors.items():
+                fixed_path = re.fullmatch(r"/stages/\d+/(stage|stage_name|books|goal)", path)
+                if not fixed_path and any(anchor.source_field != "plan_document" for anchor in anchors):
+                    issues.append({"code": "source_anchor_invalid", "category": "invalid", "field_path": path})
+            for index, stage in enumerate(result.contract.stages):
+                if any(item not in str(diagnosis_output.get("plan_document") or "") for item in stage.acceptance):
+                    issues.append({"code": "source_value_not_verbatim", "category": "invalid", "field_path": f"/stages/{index}/acceptance"})
+                for field in ("duration_days", "schedule_summary"):
+                    path = f"/stages/{index}/{field}"
+                    anchors = result.contract.field_anchors.get(path, [])
+                    value = getattr(stage, field)
+                    if not any(
+                        anchor.source_field == "plan_document"
+                        and anchor.source_quote in str(diagnosis_output.get("plan_document") or "")
+                        and (
+                            re.search(rf"(?<!\d){value}(?!\d)", anchor.source_quote) is not None
+                            if field == "duration_days"
+                            else str(value) in anchor.source_quote
+                        )
+                        for anchor in anchors
+                    ):
+                        issues.append({"code": "source_value_not_verbatim", "category": "invalid", "field_path": path})
+        if issues:
+            result = PlanContractNeedsRevision(status="needs_revision", issues=issues)
+        return PlanCompilationEnvelope(result=result, source_digest=source_digest, route_source_digest=route_digest)
+
     @classmethod
     def _backfill_anchors(
         cls,
@@ -1746,6 +1983,12 @@ class PlanContractCompilerAgent:
             for key, value in diagnosis_output.items()
         }
         required = cls._required_anchor_paths(plan_scope)
+        if "plan_document" in diagnosis_output and plan_scope == "long_term":
+            required = required | {"/selected_stage_id", "/selected_books", "/selection_reason", "/selection_mode"}
+        if contract.get("selection_mode") is not None:
+            required = required | {"/selection_mode"}
+        if contract.get("selected_stage_id") is not None:
+            required = required | {"/selected_stage_id"}
         rebuilt = deepcopy(raw)
         rebuilt_contract = rebuilt["contract"]
         rebuilt_anchors = rebuilt_contract["field_anchors"]
@@ -1788,19 +2031,30 @@ class PlanContractCompilerAgent:
             return node
 
         def _backfill(path: str) -> None:
-            if _anchors_verbatim(path):
-                return
             value = _resolve_path(path)
             if value is None:
                 return
             candidates = value if isinstance(value, list) else [value]
             if not candidates:
                 return
+            if _anchors_verbatim(path):
+                if path not in {"/selected_stage_id", "/selected_books", "/selection_reason", "/selection_mode"}:
+                    return
+                quotes = [entry["source_quote"] for entry in rebuilt_anchors[path]]
+                expected = [
+                    {"new_learning": "新学", "review": "复习", "diagnostic": "诊断"}.get(item, item)
+                    if path == "/selection_mode" else item
+                    for item in candidates
+                ]
+                if all(any(str(item) in quote for quote in quotes) for item in expected):
+                    return
             recovered: list[dict[str, str]] = []
             for item in candidates:
                 if item is None:
                     continue
                 quote = cls._source_text(item)
+                if path == "/selection_mode":
+                    quote = {"new_learning": "新学", "review": "复习", "diagnostic": "诊断"}.get(quote, quote)
                 if not quote:
                     recovered = []
                     break
@@ -1850,6 +2104,37 @@ class PlanContractCompilerAgent:
         contract = normalized.get("contract")
         if not isinstance(contract, dict):
             return normalized
+        if plan_scope == "long_term" and "plan_document" in diagnosis_output:
+            # Arithmetic is system work, not a second prose-generation task.
+            # Derive only from individually anchored integer durations. Never
+            # replace an explicit conflicting total or invent a missing stage.
+            stages = contract.get("stages")
+            source = diagnosis_output["plan_document"]
+            anchors = contract.get("field_anchors") or {}
+            duration_anchors: list[dict[str, str]] = []
+            total = 0
+            if isinstance(stages, list) and stages and isinstance(source, str):
+                for index, stage in enumerate(stages):
+                    days = stage.get("duration_days") if isinstance(stage, dict) else None
+                    entries = anchors.get(f"/stages/{index}/duration_days", [])
+                    valid = [
+                        entry for entry in entries
+                        if isinstance(entry, dict)
+                        and entry.get("source_field") == "plan_document"
+                        and isinstance(entry.get("source_quote"), str)
+                        and entry["source_quote"] in source
+                        and type(days) is int and days > 0
+                        and re.search(rf"(?<!\d){days}(?!\d)", entry["source_quote"])
+                    ]
+                    if not valid:
+                        duration_anchors = []
+                        break
+                    total += days
+                    duration_anchors.append(valid[0])
+                if duration_anchors and contract.get("total_duration_days", total) == total:
+                    contract["total_duration_days"] = total
+                    anchors["/total_duration_days"] = duration_anchors
+                    contract["field_anchors"] = anchors
         field = field_names[0]
         value = diagnosis_output.get(field)
         source_field = field
@@ -1927,6 +2212,23 @@ class PlanContractCompilerAgent:
                         }
                     )
         required_paths = cls._required_anchor_paths(contract.scope)
+        for name in ("selected_stage_id", "selected_books", "selection_reason", "selection_mode"):
+            value = getattr(contract, name, None)
+            if value is None or value == []:
+                continue
+            values = value if isinstance(value, list) else [value]
+            quotes = [anchor.source_quote for anchor in contract.field_anchors.get(f"/{name}", [])]
+            for item in values:
+                expected = {"new_learning": "新学", "review": "复习", "diagnostic": "诊断"}.get(item, item) if name == "selection_mode" else item
+                if not any(str(expected) in quote for quote in quotes):
+                    issues.append({"code": "source_value_not_verbatim", "category": "invalid", "field_path": f"/{name}"})
+        if "plan_document" in diagnosis_output and contract.scope == "long_term":
+            required_paths = required_paths | {"/selected_stage_id", "/selected_books", "/selection_reason", "/selection_mode"}
+            for name in ("selected_stage_id", "selected_books", "selection_reason", "selection_mode"):
+                if not getattr(contract, name, None):
+                    issues.append({"code": "missing_required_field", "category": "missing", "field_path": f"/{name}"})
+        if getattr(contract, "selection_mode", None) is not None:
+            required_paths = required_paths | {"/selection_mode"}
         # The compiler model anchors each stage through per-field sub-paths
         # (``/stages/0/stage_name``, ``/stages/0/books``, ...) instead of a
         # single top-level ``/stages`` anchor.  When every stage's required

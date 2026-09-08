@@ -557,7 +557,7 @@ async def test_generic_plan_scope_followup_resumes_without_repeating_question(
 
     assert interrupted.status == "interrupted"
     assert interrupted.interrupt["requested_scope"] == "unspecified"
-    assert resumed.status == "success"
+    assert resumed.status == "success", json.dumps(resumed.interrupt, ensure_ascii=False)
     assert resumed.learning_plan.generated_scope == "long_term"
     assert resumed.learning_plan.long_term_plan is not None
     assert resumed.learning_plan.short_term_plan is None
@@ -672,6 +672,10 @@ async def test_current_fact_request_returns_a_source_bounded_web_answer(tmp_path
     assert result.resource is not None
     assert "配套练习" not in result.resource.content
     assert any("网络搜索服务" in note for note in result.resource.safety_notes)
+    answer = str(result.resource.content)
+    assert "四君子汤" not in answer
+    assert "以上为网络检索到的当前信息" not in answer
+    assert "无法核验所请求的实时信息" in answer
 
 
 @pytest.mark.asyncio
@@ -853,7 +857,7 @@ async def test_real_repository_resolver_route_context_reaches_diagnosis_and_form
         {
             key: phase.model_dump().get(key)
             for key in (
-                "name", "objective", "books", "learning_focus",
+                "phase_id", "stage_id", "name", "objective", "books", "learning_focus",
                 "sequence_basis", "exit_evidence",
             )
         }

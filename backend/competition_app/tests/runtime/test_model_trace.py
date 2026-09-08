@@ -5,6 +5,21 @@ import pytest
 from competition_app.runtime.model_trace import ModelTraceRecorder
 
 
+def test_planning_failure_evidence_is_bounded_without_prompt_or_reasoning():
+    from competition_app.application.personalized_review_card import PersonalizedReviewCardUseCase
+
+    recorder = ModelTraceRecorder()
+    index = recorder.begin("diagnosis_agent", {"user_request": "private prompt"})
+    recorder.succeed(index, {"plan_document": "规划正文" * 4000, "reasoning": "private reasoning"})
+    item = recorder.items[0]
+    summary = PersonalizedReviewCardUseCase._failure_model_output_summary(item)
+    assert len(summary["plan_document_excerpt"]) == 12000
+    assert summary["plan_document_chars"] == 16000
+    assert summary["plan_document_truncated"] is True
+    assert item.raw_input is None
+    assert "private" not in str(summary)
+
+
 def test_model_trace_defaults_to_digest_only_without_raw_payloads() -> None:
     recorder = ModelTraceRecorder()
     index = recorder.begin("diagnosis_agent", {"api_key": "secret", "topic": "感冒"})

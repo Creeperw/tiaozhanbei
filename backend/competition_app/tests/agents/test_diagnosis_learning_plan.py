@@ -24,6 +24,111 @@ from competition_app.contracts.textbook_route import (
 from competition_app.llm.stub import StubChatModel
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reason", ["business_schema_invalid", "invalid_json", "transport_error"])
+async def test_legacy_compiler_retry_format_failure_preserves_revision_feedback(reason, monkeypatch) -> None:
+    from competition_app.contracts.plan_compilation import PlanCompilationEnvelope
+    from competition_app.llm.openai_compatible import ModelResponseError
+
+    class RevisionReached(Exception):
+        pass
+
+    class DraftModel:
+        def __init__(self):
+            self.calls = []
+
+        async def complete_json(self, role, payload, **kwargs):
+            data = payload["payload"]
+            self.calls.append(data)
+            if "compiler_revision_issues" in data:
+                assert data["previous_plan_document"] == "待补全阶段时长的规划正文"
+                assert data["compiler_revision_issues"][0]["field_path"] == "/total_duration_days"
+                raise RevisionReached()
+            return {"plan_document": "待补全阶段时长的规划正文"}
+
+    class Compiler:
+        calls = 0
+
+        async def compile(self, *args, **kwargs):
+            self.calls += 1
+            if self.calls == 2:
+                raise ModelResponseError("invalid retry response", reason=reason)
+            return PlanCompilationEnvelope.model_validate({
+                "source_digest": "a" * 64,
+                "result": {"status": "needs_revision", "issues": [{
+                    "code": "missing_required_field", "category": "missing",
+                    "field_path": "/total_duration_days",
+                    "source_refs": ["plan_document"],
+                }]},
+            })
+
+    context = build_context("diagnosis")
+    context["plan_scope"] = "long_term"
+    context["system_data"]["completed_courses"] = ["中医诊断学"]
+    context["dependency_outputs"] = {
+        "knowledge": await build_knowledge(build_context("knowledge")),
+        "route_resolution": textbook_route_output(),
+    }
+    model = DraftModel()
+    agent = DiagnosisAgent(model)
+    # The old outer retry applies only to non-fixed routes. Fixed routes now
+    # own their extraction budget inside the compiler across all call sites.
+    monkeypatch.setattr(agent, "_compiler_route_context", lambda *args: {})
+    agent.plan_contract_compiler = Compiler()
+    expected = ModelResponseError if reason == "transport_error" else RevisionReached
+    with pytest.raises(expected):
+        await agent.run(context)
+    assert agent.plan_contract_compiler.calls == 2
+    assert len(model.calls) == (1 if reason == "transport_error" else 2)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("issue_path", ["/field_anchors", "/plan_document/stages"])
+async def test_fixed_route_extraction_exhaustion_never_rewrites_author_document(issue_path):
+    from competition_app.agents.diagnosis import PlanCompilationError
+    from competition_app.contracts.plan_compilation import PlanCompilationEnvelope
+    from competition_app.tests.agents.test_fixed_route_binding import fixture
+
+    doc, _, _ = fixture()
+
+    class DraftModel:
+        calls = 0
+
+        async def complete_json(self, role, payload, **kwargs):
+            self.calls += 1
+            assert "compiler_revision_issues" not in payload["payload"]
+            return {"plan_document": doc}
+
+    class Compiler:
+        calls = 0
+
+        async def compile(self, *args, **kwargs):
+            self.calls += 1
+            assert kwargs["diagnosis_output"]["plan_document"] == doc
+            assert kwargs["trusted_route"]["binding_mode"] == "fixed_route_v1"
+            return PlanCompilationEnvelope.model_validate({
+                "source_digest": "a" * 64, "revision_count": 1,
+                "result": {"status": "needs_revision", "issues": [{
+                    "code": "schema_invalid", "category": "invalid",
+                    "field_path": issue_path,
+                }]},
+            })
+
+    context = build_context("diagnosis")
+    context["plan_scope"] = "long_term"
+    context["dependency_outputs"] = {
+        "knowledge": await build_knowledge(build_context("knowledge")),
+        "route_resolution": textbook_route_output(),
+    }
+    model = DraftModel()
+    agent = DiagnosisAgent(model)
+    agent.plan_contract_compiler = Compiler()
+    with pytest.raises(PlanCompilationError, match="不触发作者重写"):
+        await agent.run(context)
+    assert model.calls == 1
+    assert agent.plan_contract_compiler.calls == 1
+
+
 def test_unscoped_output_repairs_empty_books_from_trusted_route() -> None:
     normalized = DiagnosisAgent._normalize_unscoped_planning_output(
         {
@@ -475,6 +580,10 @@ class StringStructuredPlanningFieldsDiagnosisModel(CapturingDiagnosisModel):
 
 def build_context(step_id: str) -> dict:
     return {
+        "user_request": "根据学情安排学习计划",
+        "planning_request_scope": {"mode": "route", "objects": [],
+                                   "source_quote": "根据学情安排学习计划",
+                                   "clarification_question": None},
         "case_id": "CASE_1",
         "trace_id": "TRACE_1",
         "request_id": "REQ_1",
@@ -495,6 +604,14 @@ def build_context(step_id: str) -> dict:
 
 async def build_knowledge(context: dict):
     return await KnowledgeBaseAgent(FakeRetrievalTool()).run(context)
+
+
+def set_requested_focus(context, names):
+    request = "本周专门学习" + "、".join(names)
+    context.update(user_request=request, planning_request_scope={
+        "mode": "explicit_focus", "objects": names, "source_quote": request,
+        "clarification_question": None,
+    })
 
 
 @pytest.mark.asyncio
@@ -1142,7 +1259,7 @@ def test_diagnosis_prefers_authorized_prerequisite_snapshot_over_stale_profile()
         "eligible": [],
         "blocked": [],
         "prerequisite_evidence": {
-            "route_id": "textbook_tcm_physician",
+            "route_id": "textbook_formula",
             "required_courses": ["中医诊断学"],
             "satisfied_courses": [],
             "unmet_courses": ["中医诊断学"],
@@ -1151,7 +1268,9 @@ def test_diagnosis_prefers_authorized_prerequisite_snapshot_over_stale_profile()
         },
     }
 
-    confirmed, unmet = DiagnosisAgent._prerequisite_course_evidence(context, {})
+    confirmed, unmet = DiagnosisAgent._prerequisite_course_evidence(
+        context, DiagnosisAgent._trusted_route_context(textbook_route_output().payload)
+    )
 
     assert confirmed == set()
     assert unmet == {"中医诊断学"}
@@ -1159,6 +1278,15 @@ def test_diagnosis_prefers_authorized_prerequisite_snapshot_over_stale_profile()
 
 @pytest.mark.asyncio
 async def test_scoped_plan_discards_stale_persisted_textbook_selection() -> None:
+    class ScopedDocumentModel(TextbookSelectingDiagnosisModel):
+        async def complete_json(self, role, payload, on_delta=None):
+            if role == "diagnosis_agent":
+                from competition_app.llm.stub_planning import fixed_route_document
+
+                route = payload["payload"]["default_route"]["textbook_route"]
+                return {"plan_document": fixed_route_document(route), "prerequisite_judgments": []}
+            return await super().complete_json(role, payload, on_delta)
+
     diagnosis_context = build_context("diagnosis")
     diagnosis_context["dependency_outputs"] = {
         "knowledge": await build_knowledge(build_context("knowledge")),
@@ -1180,7 +1308,7 @@ async def test_scoped_plan_discards_stale_persisted_textbook_selection() -> None
     }
 
     result = (
-        await DiagnosisAgent(TextbookSelectingDiagnosisModel()).run(diagnosis_context)
+        await DiagnosisAgent(ScopedDocumentModel()).run(diagnosis_context)
     ).payload
     selection = result.learning_plan_proposal.textbook_selection
 
@@ -1374,6 +1502,7 @@ async def test_diagnosis_builds_evidence_authorized_formula_preview_without_adva
         },
     )
 
+    set_requested_focus(diagnosis_context, ["四君子汤", "参苓白术散", "理中丸"])
     result = (await DiagnosisAgent(model).run(diagnosis_context)).payload
 
     proposal = result.learning_plan_proposal
@@ -1431,12 +1560,9 @@ async def test_diagnosis_clarifies_incomplete_requested_focus_before_model_call(
         },
     )
 
-    result = (await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)).payload
-
-    assert result.requires_clarification
-    assert result.learning_plan_proposal is None
-    assert result.interrupt_type == "planning_focus_resolution"
-    assert "不会静默替换" in str(result.clarification_reason)
+    set_requested_focus(diagnosis_context, ["四君子汤", "参苓白术散", "理中丸"])
+    with pytest.raises(ValueError, match="证据提取尚未完成"):
+        await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)
 
 
 @pytest.mark.asyncio
@@ -1492,11 +1618,9 @@ async def test_diagnosis_rejects_tampered_focus_evidence_before_model_call() -> 
         },
     )
 
-    result = (await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)).payload
-
-    assert result.requires_clarification
-    assert result.interrupt_type == "planning_focus_resolution"
-    assert "一致性复核" in str(result.clarification_reason)
+    set_requested_focus(diagnosis_context, ["四君子汤"])
+    with pytest.raises(ValueError, match="一致性复核"):
+        await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)
 
 
 @pytest.mark.asyncio
@@ -1576,11 +1700,9 @@ async def test_diagnosis_clarifies_when_focus_book_maps_to_multiple_route_stages
         },
     )
 
-    result = (await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)).payload
-
-    assert result.requires_clarification
-    assert result.interrupt_type == "planning_focus_resolution"
-    assert "无法唯一映射" in str(result.clarification_reason)
+    set_requested_focus(diagnosis_context, ["四君子汤"])
+    with pytest.raises(ValueError, match="唯一映射"):
+        await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)
 
 
 @pytest.mark.asyncio
@@ -1979,6 +2101,7 @@ def _course_resume_context(state: str) -> dict:
             },
             "path_candidates": {
                 "prerequisite_evidence": {
+                    "route_id": "textbook_formula",
                     "required_courses": ["中医诊断学"],
                     "satisfied_courses": (
                         ["中医诊断学"] if state == "satisfied" else []

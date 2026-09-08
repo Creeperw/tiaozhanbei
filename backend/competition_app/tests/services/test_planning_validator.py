@@ -618,7 +618,7 @@ def test_validator_accepts_prerequisite_training_book_in_short_term_plan() -> No
     assert not any("中医诊断学" in issue and "前置" in issue for issue in result.issues)
 
 
-def test_validator_accepts_declared_unmet_prerequisite_when_plan_includes_it() -> None:
+def test_validator_rejects_dependent_selection_even_when_future_remediation_is_mentioned() -> None:
     value = output(
         long_term_plan_content=(
             output().long_term_plan_content
@@ -636,7 +636,8 @@ def test_validator_accepts_declared_unmet_prerequisite_when_plan_includes_it() -
         unmet_prerequisite_courses={"中医诊断学"},
     )
 
-    assert result.valid, result.issues
+    assert not result.valid
+    assert any("所选阶段的强前置尚未确认" in issue for issue in result.issues)
 
 
 def test_validator_accepts_natural_cycle_nodes_and_classic_short_titles() -> None:

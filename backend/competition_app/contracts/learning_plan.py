@@ -98,6 +98,7 @@ class TextbookSelectionContext(ContractModel):
     stage_name: str = Field(min_length=1)
     books: list[str] = Field(min_length=1, max_length=2)
     reason: str = Field(min_length=1)
+    selection_mode: Literal["new_learning", "review", "diagnostic"] | None = None
 
 
 class ShortTermLearningPackage(ContractModel):
@@ -195,6 +196,8 @@ class DailyTaskItemSpec(ContractModel):
 
 class LearningPlanProposal(ContractModel):
     model_config = ConfigDict(extra="forbid")
+
+    prerequisite_assessment: dict[str, Any] | None = None
 
     long_term_plan_content: str = Field(min_length=1)
     short_term_plan_content: str = Field(min_length=1)

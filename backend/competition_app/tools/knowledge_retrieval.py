@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from copy import copy
 from uuid import uuid4
 
 from competition_app.contracts.knowledge import EvidenceItem, EvidencePack
@@ -181,6 +182,7 @@ class KnowledgeRetrievalTool:
         query: str,
         limit: int | None = None,
         concepts: list[str] | None = None,
+        local_only: bool = False,
     ) -> EvidencePack:
         """Retrieve knowledge points together with their textbook content.
 
@@ -194,6 +196,12 @@ class KnowledgeRetrievalTool:
         检索（本地教材切片 + 网络概念定义）并行执行，全部证据合并去重后
         再统一截断，首轮就覆盖各选项辨析概念，而不是事后才发现缺概念。
         """
+        if local_only:
+            # Request-local view: never mutate the shared tool while other
+            # learners or paper workflows may still be using its providers.
+            local = copy(self)
+            local.exa_retriever = None
+            return await local.get_kp_with_content(query, limit, concepts)
         if limit is None:
             limit = self.exa_limit + self.textbook_limit
         if limit <= 0:
@@ -220,7 +228,7 @@ class KnowledgeRetrievalTool:
         clean_concepts = [
             concept
             for concept in (str(c).strip() for c in (concepts or []))
-            if concept and self._is_retrievable_concept(concept)
+            if concept and 1 <= len(concept) <= 300
         ][:6]
         if not clean_concepts:
             return self._select_evidence(main_pack, limit)
@@ -419,15 +427,10 @@ class KnowledgeRetrievalTool:
         return await self.exa_retriever.search_questions(query, limit=limit)
 
     async def search_web_resources(self, query: str, limit: int = 5):
-        """Search general web content for knowledge or current facts.
-
-        Keeps a light medicine context suffix so concept lookups stay on-topic
-        (textbook gaps are covered here); time-sensitive facts like official
-        dates/weather also flow through this tool.
-        """
+        """Search the agent's query without adding a system-selected topic."""
         if self.exa_retriever is None:
             return []
-        return await self.exa_retriever.search_web_knowledge(query, limit=limit)
+        return await self.exa_retriever.search_web(query, limit=limit)
 
     async def livecrawl_web_resources(self, urls: list[str], max_chars: int = 3000):
         """Livecrawl specific URLs to re-fetch fresh content (bypass cache).

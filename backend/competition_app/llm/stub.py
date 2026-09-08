@@ -112,6 +112,8 @@ class StubChatModel:
     def _diagnosis_plan_document(result: dict[str, Any]) -> str:
         """Render the stub's business result as prose, never as a contract JSON."""
 
+        if result.get("plan_document"):
+            return str(result["plan_document"])
         parts: list[str] = []
         if result.get("long_term_plan_content"):
             parts.extend([
@@ -120,6 +122,12 @@ class StubChatModel:
             ])
         if result.get("total_duration_days") is not None:
             parts.extend(["## 总周期", f"{result.get('total_duration_days')}天"])
+            parts.extend([
+                f"当前阶段：{result.get('selected_stage_id') or ''}",
+                f"当前教材：{'；'.join(result.get('selected_books') or [])}",
+                f"当前用途：{result.get('selection_mode') or 'diagnostic'}",
+                f"选择依据：{result.get('selection_reason') or '先诊断当前阶段基础。'}",
+            ])
         for stage in result.get("long_term_plan_stages") or []:
             if not isinstance(stage, dict):
                 continue
@@ -198,7 +206,14 @@ class StubChatModel:
                     for quote in stage_quotes
                 ]),
             ])
-            return {"status": "compiled", "contract_version": "1.0", "contract": {"scope": scope, "long_term_plan_content": content, "total_duration_days": int(total_match.group(1)), "stages": stages, "field_anchors": anchors}}
+            selection = {}
+            for key, label in (("selected_stage_id", "当前阶段"), ("selected_books", "当前教材"), ("selection_mode", "当前用途"), ("selection_reason", "选择依据")):
+                match = re.search(rf"(?m)^{label}：([^\n]+)$", document)
+                if match:
+                    text = match.group(1)
+                    selection[key] = text.split("；") if key == "selected_books" else text
+                    anchors.update([anchor(f"/{key}", text)])
+            return {"status": "compiled", "contract_version": "1.0", "contract": {"scope": scope, "long_term_plan_content": content, "total_duration_days": int(total_match.group(1)), "stages": stages, "field_anchors": anchors, **selection}}
         if scope == "short_term":
             content = cls._section(document, "短期规划正文", ("周期", "推进节点", "预期产出", "完成标准", "选用阶段", "选用教材"))
             duration = re.search(r"(?m)^## 周期\s*\n(\d+)天", document)
@@ -802,6 +817,12 @@ class StubChatModel:
             if selected_task_type == "learning_plan":
                 result = {
                     "task_type": selected_task_type,
+                    "planning_request_scope": {
+                        "mode": "route",
+                        "objects": [],
+                        "source_quote": request_text[:300],
+                        "clarification_question": None,
+                    },
                     "plan_scope": emitted_scope or "unspecified",
                     "plan_action": plan_action or "clarify",
                     "requires_clarification": plan_action == "clarify",
@@ -856,6 +877,13 @@ class StubChatModel:
             phase = str(business_payload.get("phase", "process_retrieved_content"))
             if phase == "plan_retrieval":
                 request_text = str(business_payload.get("user_request", ""))
+                # Exact offline scenario, not production routing or a semantic classifier.
+                if request_text == "距离下次执业医师资格考试还有多久？":
+                    return self._emit({
+                        "kp_query": None, "kp_concepts": [], "question_query": None,
+                        "external_queries": [{"source": "web", "query": "国家医学考试网 执业医师资格考试 考试时间"}],
+                        "retrieval_reason": "考试日期需要当前官方网络证据，不应检索方剂教材。",
+                    }, on_delta)
                 retrieval_context = business_payload.get("retrieval_context", {})
                 context_text = " ".join(
                     str(retrieval_context.get(name, ""))
@@ -922,6 +950,10 @@ class StubChatModel:
             diagnosis = business_payload.get("diagnosis_output") or {}
             route = business_payload.get("trusted_route") or {}
             if isinstance(diagnosis.get("plan_document"), str):
+                if scope == "long_term" and route.get("binding_mode") == "fixed_route_v1":
+                    from competition_app.llm.stub_planning import extract_fixed_route
+
+                    return self._emit(extract_fixed_route(diagnosis["plan_document"]), on_delta)
                 return self._emit(
                     self._compile_plan_document(
                         scope,
@@ -1303,7 +1335,8 @@ class StubChatModel:
                 if plan_scope == "long_term":
                     response = {
                         key: response[key]
-                        for key in ("long_term_plan_content", "total_duration_days", "long_term_plan_stages")
+                        for key in ("long_term_plan_content", "total_duration_days", "long_term_plan_stages", "selected_stage_id", "selected_books", "selection_reason", "selection_mode")
+                        if key in response
                     }
                 elif plan_scope == "short_term":
                     response = {
@@ -1343,6 +1376,10 @@ class StubChatModel:
                     response = {
                         "plan_document": self._diagnosis_plan_document(response)
                     }
+                    if plan_scope == "long_term" and textbook_route.get("stages"):
+                        from competition_app.llm.stub_planning import fixed_route_document
+
+                        response = {"plan_document": fixed_route_document(textbook_route, f"{topic}（{route_context.get('goal_name') or topic}）"), "prerequisite_judgments": []}
                 return self._emit(response, on_delta)
             current_long = business_payload.get("long_term_plan", {})
             current_short = business_payload.get("short_term_plan", {})
@@ -1544,12 +1581,17 @@ class StubChatModel:
                 topic = str(business_payload.get("topic", "当前主题"))
                 if business_payload.get("external_information_request"):
                     evidence = str(business_payload.get("retrieval_summary") or "").strip()
+                    semantic_evidence = business_payload.get("semantic_evidence") or []
+                    verified_web = any(
+                        item.get("source_url") and item.get("authority") != "system_notice"
+                        for item in semantic_evidence
+                    )
                     return self._emit({
                         "title": f"{topic}查询结果",
                         "explanation_content": (
                             (evidence + "\n\n") if evidence else ""
                         )
-                        + "以上为网络检索到的当前信息；考试日期、天气等内容可能变化，建议以相关官方发布页面为最终依据。",
+                        + ("以上为网络检索到的当前信息；考试日期等内容可能变化，请以官方发布页面为准。" if verified_web else "本次未获取可核验的官方网络证据，无法确认考试日期或计算倒计时；请以官方发布页面为准。"),
                         "uncertainty": [],
                     }, on_delta)
                 evidence_items = business_payload.get("semantic_evidence") or []
@@ -1778,6 +1820,17 @@ class StubChatModel:
                 "blueprint_content": None,
             }, on_delta)
         if role == "audit_agent":
+            if business_payload.get("plan_scope") in {"long_term", "short_term"}:
+                # Offline fixture only; live uses the configured semantic model.
+                return self._emit(
+                    {
+                        "decision": "pass",
+                        "medical_safety": "safe",
+                        "findings": [],
+                        "audit_report": "离线规划审核固定样例；不代表真实模型的医疗语义判断。",
+                    },
+                    on_delta,
+                )
             if business_payload.get("exam_paper") is not None:
                 # Match the paper-audit contract exactly: a passing semantic
                 # audit has no findings, and native structured findings are an

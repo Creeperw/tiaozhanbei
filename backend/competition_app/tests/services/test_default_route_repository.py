@@ -11,11 +11,9 @@ from competition_app.services.default_route import DefaultRouteRepository
 
 DATA_DIRECTORY = Path(__file__).resolve().parents[2] / "data" / "default_routes"
 SOURCE_CATALOG = (
-    Path(__file__).resolve().parents[3]
-    / "competition"
-    / "zhongyi-learning-planning"
-    / "references"
-    / "tcm-credential-default-routes.json"
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "default_route_catalog_ids.json"
 )
 
 
@@ -248,4 +246,4 @@ def test_application_seed_preserves_every_source_catalog_route_id() -> None:
         for route in DefaultRouteRepository._load_payload(seed_file)["routes"]
     }
 
-    assert {route["route_id"] for route in source_payload["routes"]} == application_route_ids
+    assert set(source_payload["route_ids"]) == application_route_ids

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from competition_app.agents.common import envelope
 from competition_app.contracts.agent_context import build_model_context
+from competition_app.contracts.planning_request import PlanningRequestScope
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.execution import (
     DEFAULT_PROVIDER_TIMEOUT_SECONDS,
@@ -89,6 +90,7 @@ PLANNER_TASK_SKILL_WHITELIST: dict[str, str] = {
 
 class PlannerDecision(BaseModel):
     task_type: str
+    planning_request_scope: PlanningRequestScope | None = None
     review_adjustment: Literal[
         "reduce_capacity",
         "increase_capacity",
@@ -157,6 +159,20 @@ class PlannerAgent:
                 route_selection.task_type,
                 context,
             )
+            if frozen_task_type == "learning_plan" and "current_learning_state" not in context:
+                from competition_app.exam_scope import current_exam_workspace
+                registry = context.get("tool_registry")
+                workspace = current_exam_workspace(str(context.get("learner_id") or ""))
+                if (registry is not None and registry.has_tool("get_current_learning_state")
+                    and workspace is not None and workspace.exam_track_id):
+                    context["current_learning_state"] = await registry.invoke(
+                        "get_current_learning_state", "planner_agent",
+                        trace_recorder=context.get("trace_recorder"),
+                        safe_input_summary={"current_learner": True},
+                        safe_output_summary_factory=lambda value: {
+                            "snapshot_id": value.get("snapshot_id"), "availability": value.get("availability")
+                        },
+                    )
             branch_skill_name = PLANNER_TASK_SKILL_WHITELIST[frozen_task_type]
             branch_skill = prompt_skill_registry.load(
                 "planner_agent",
@@ -273,15 +289,21 @@ class PlannerAgent:
                     scope_resolution is not None
                     and scope_resolution.plan_scope != "unspecified"
                 ):
+                    request_scope = normalized_output.get("planning_request_scope") or {}
+                    resolved_action = (
+                        "create_or_update"
+                        if request_scope.get("mode") == "clarify"
+                        else scope_resolution.plan_action
+                    )
                     normalized_output = {
                         **normalized_output,
                         "plan_scope": scope_resolution.plan_scope,
-                        "plan_action": scope_resolution.plan_action,
+                        "plan_action": resolved_action,
                         "requires_clarification": False,
                         "clarification_question": None,
                         "selected_agents": self._agents_for_resolved_plan_scope(
                             scope_resolution.plan_scope,
-                            scope_resolution.plan_action,
+                            resolved_action,
                         ),
                         "routing_reason": scope_resolution.reason,
                     }
@@ -350,6 +372,7 @@ class PlannerAgent:
             "planner_decision",
             PlannerDecision(
                 task_type=model_output.task_type,
+                planning_request_scope=model_output.planning_request_scope,
                 review_adjustment=model_output.review_adjustment,
                 plan_scope=model_output.plan_scope,
                 plan_action=model_output.plan_action,
@@ -509,6 +532,9 @@ class PlannerAgent:
                 "planner branch attempted to change the frozen task type"
             )
         request = str(context.get("user_request") or "")
+        request_scope = getattr(branch_output, "planning_request_scope", None)
+        if request_scope is not None:
+            request_scope.validate_request(request, list(context.get("messages") or []))
         budget_quote = getattr(
             branch_output, "current_turn_available_minutes_source_quote", None
         )
@@ -1114,6 +1140,10 @@ class PlannerAgent:
             # planning and must not be injected merely because the task is a
             # learning plan. Dependency completion below only adds true backend
             # requirements such as DefaultRouteResolver for Diagnosis.
+            request_scope = raw.get("planning_request_scope") or {}
+            if request_scope.get("mode") == "clarify":
+                plan_action = "create_or_update"
+                requires_knowledge_support = False
             selected = (
                 ["learning_plan_service"]
                 if plan_action == "reuse"
@@ -1130,6 +1160,9 @@ class PlannerAgent:
                     else len(selected),
                     "audit_agent",
                 )
+            request_scope = raw.get("planning_request_scope") or {}
+            if request_scope.get("mode") == "explicit_focus":
+                requires_knowledge_support = True
             if plan_action != "reuse" and requires_knowledge_support:
                 selected.insert(0, "knowledge_base_agent")
         elif task_type not in {"learner_data_query", "casual_conversation"}:
@@ -1277,6 +1310,9 @@ class PlannerAgent:
             review_adjustment_source_quote = None
         return {
             "task_type": task_type,
+            "planning_request_scope": (
+                raw.get("planning_request_scope") if task_type == "learning_plan" else None
+            ),
             "review_adjustment": review_adjustment,
             "review_adjustment_source_quote": review_adjustment_source_quote,
             "plan_scope": plan_scope,

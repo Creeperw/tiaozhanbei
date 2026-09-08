@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
+from competition_app.contracts.plan_compilation import PlanCompilationError
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.agent_communication import CognitiveGapAnalyzer
 from competition_app.runtime.local_repair import LocalRepairController
@@ -510,6 +511,38 @@ class Orchestrator:
         step_context["dependency_outputs"] = dependency_outputs
         step_context["tool_registry"] = self.tool_registry
         step_context["trace_recorder"] = trace
+        if (
+            step_context.get("task_type") == "learning_plan"
+            and step.agent in {"knowledge_base_agent", "diagnosis_agent", "audit_agent", "learning_plan_service"}
+            and self.tool_registry.has_tool("get_current_learning_state")
+        ):
+            from competition_app.exam_scope import current_exam_workspace
+            workspace = current_exam_workspace()
+            if workspace is not None and workspace.learner_id != str(root_context.get("learner_id") or ""):
+                raise PermissionError("learning state owner mismatch")
+            if workspace is not None and workspace.exam_track_id:
+                # Concurrent knowledge/diagnosis steps share one read operation.
+                snapshot = root_context.get("current_learning_state")
+                pending = root_context.get("_learning_state_read")
+                if snapshot is None and pending is None:
+                    pending = asyncio.create_task(self.tool_registry.invoke(
+                        "get_current_learning_state", step.agent,
+                        trace_recorder=trace,
+                        safe_input_summary={"current_learner": True},
+                        safe_output_summary_factory=lambda value: {
+                            "snapshot_id": value.get("snapshot_id"),
+                            "availability": value.get("availability"),
+                        },
+                    ))
+                    root_context["_learning_state_read"] = pending
+                if snapshot is None:
+                    try:
+                        snapshot = await pending
+                    finally:
+                        root_context.pop("_learning_state_read", None)
+                root_context["current_learning_state"] = snapshot
+                step_context["current_learning_state"] = snapshot
+                step_context.pop("_learning_state_read", None)
         if self.evolution_rule_registry is not None:
             strategies = self.evolution_rule_registry.resolve(
                 target_agent=step.agent,
@@ -677,7 +710,7 @@ class Orchestrator:
                 # Model adapters already own transport retry, structured-output
                 # repair and provider failover.  Re-running the whole Agent here
                 # multiplies those attempts and repeats completed tool work.
-                if isinstance(exc, ModelResponseError):
+                if isinstance(exc, (ModelResponseError, PlanCompilationError)):
                     trace.record(step.step_id, step.agent, "failed", attempt, type(exc).__name__)
                     raise
                 if attempt <= step.max_retries:

@@ -34,6 +34,9 @@ class ToolRegistry:
             raise ValueError(f"tool already registered: {name}")
         self._tools[name] = ToolDefinition(name, handler, frozenset(allowed_agents))
 
+    def has_tool(self, name: str) -> bool:
+        return name in self._tools
+
     async def invoke(
         self,
         name: str,

@@ -42,7 +42,7 @@ def test_model_agent_context_has_uniform_metadata_and_business_payload() -> None
     assert "任务目标" in parsed.task_instructions
     assert parsed.permission_note == "只读最小数据切片"
     assert parsed.prompt_skill_id == "diagnosis.create_learning_plan"
-    assert parsed.prompt_skill_version == "1.13.0"
+    assert parsed.prompt_skill_version == "1.14.0"
     assert parsed.payload["user_profile"] == {}
     assert parsed.payload["original_user_request"] == "请结合我的学习状态制定计划"
     assert parsed.payload["request_context"] == {
@@ -193,6 +193,8 @@ def test_business_agent_receives_only_relevant_bounded_syllabus_evidence() -> No
 
 def test_source_bounded_compiler_cannot_use_profile_history_or_syllabus_to_fill_fields() -> None:
     context = {
+        "task_type": "learning_plan",
+        "planning_request_scope": {"mode": "explicit_focus", "objects": ["范围并非正文事实"]},
         "trace_id": "TRACE_COMPILER",
         "request_id": "REQ_COMPILER",
         "learner_id": "USER_1",
@@ -220,6 +222,7 @@ def test_source_bounded_compiler_cannot_use_profile_history_or_syllabus_to_fill_
 
     shared = value["payload"]["shared_context"]
     assert shared["source_bounded_compiler"] is True
+    assert "planning_request_scope" not in value["payload"]
     assert shared["user_profile"] == {}
     assert shared["compressed_conversation"] == ""
     assert shared["recent_conversation"] == []

@@ -105,6 +105,7 @@ class AdvisoryPlanRevisionModel:
             return compiled
         return {
             "decision": "revise",
+            "medical_safety": "safe",
             "findings": ["可以进一步润色第二个推进节点的表达。"],
             "audit_report": "合同已通过，但文字仍可润色。",
         }
@@ -122,11 +123,13 @@ class RejectThenPassPlanModel:
         if self.calls == 1:
             return {
                 "decision": "reject",
+                "medical_safety": "safe",
                 "findings": ["当前推进节点与学习目标衔接不够清楚。"],
                 "audit_report": "建议重新生成推进节点。",
             }
         return {
             "decision": "pass",
+            "medical_safety": "safe",
             "findings": [],
             "audit_report": "修订后可执行。",
         }
@@ -139,6 +142,7 @@ class RepairedPlanStillRejectedModel:
             return compiled
         return {
             "decision": "reject",
+            "medical_safety": "safe",
             "findings": ["还可以进一步优化学习节奏。"],
             "audit_report": "仍有可优化空间。",
         }
@@ -151,6 +155,7 @@ class PlanFactualRouteMismatchModel:
             return compiled
         return {
             "decision": "revise",
+            "medical_safety": "safe",
             "findings": [
                 "当前规划正文与可信教材路线明确相反，属于事实错误，需要按可信路线重写。"
             ],

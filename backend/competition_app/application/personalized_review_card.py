@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import re
 from contextvars import ContextVar
+from competition_app.llm.provider_session import bind_provider_session, reset_provider_session
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
@@ -379,6 +380,7 @@ class PersonalizedReviewCardUseCase:
             resumed=False,
             user_request=request.user_request,
         )
+        provider_session_token = bind_provider_session(thread_id)
         try:
             if self.model_trace_recorder:
                 self.model_trace_recorder.reset()
@@ -427,6 +429,7 @@ class PersonalizedReviewCardUseCase:
             # terminal "persistence" marker would otherwise misclassify a
             # later, unrelated audit failure in a reused worker context.
             _FAILURE_STEP_CONTEXT.reset(failure_step_token)
+            reset_provider_session(provider_session_token)
 
     async def _execute_review_task_adjustment(
         self,
@@ -1142,6 +1145,7 @@ class PersonalizedReviewCardUseCase:
         planner = self.orchestrator.agent_registry.get("planner_agent")
         planner_context = dict(context)
         planner_context["step_id"] = "planner"
+        planner_context["tool_registry"] = self.orchestrator.tool_registry
         public_context_summary = {
             "user_request": effective_user_request[:1200],
             "original_user_request": clean_user_request[:1200],
@@ -1202,6 +1206,8 @@ class PersonalizedReviewCardUseCase:
             )
         else:
             planner_output = await planner.run(planner_context)
+        if isinstance(planner_context.get("current_learning_state"), dict):
+            context["current_learning_state"] = planner_context["current_learning_state"]
         # The transport-level value is a UI fallback.  When the semantic
         # Planner confirms that the current user message explicitly states a
         # tighter (or otherwise different) budget, that current-turn fact must
@@ -1580,6 +1586,10 @@ class PersonalizedReviewCardUseCase:
         # after its parent has been materialized.
         context["requested_plan_scope"] = planner_output.payload.plan_scope
         context["planner_plan_action"] = planner_output.payload.plan_action
+        request_scope = planner_output.payload.planning_request_scope
+        context["planning_request_scope"] = (
+            request_scope.model_dump(mode="json") if request_scope is not None else None
+        )
         context["requires_learning_plan_output"] = bool(
             planner_output.payload.requires_learning_plan_output
         )
@@ -1756,6 +1766,7 @@ class PersonalizedReviewCardUseCase:
         failure_step_token = _FAILURE_STEP_CONTEXT.set(None)
         record_debug_trace("run_resumed", request=request)
         record_debug_trace("run_started", resumed=True, user_request=request.answer)
+        provider_session_token = bind_provider_session(thread_id)
         try:
             if self.model_trace_recorder:
                 # Mirror the execute() reset: each HTTP request runs in a
@@ -1782,6 +1793,7 @@ class PersonalizedReviewCardUseCase:
             raise
         finally:
             _FAILURE_STEP_CONTEXT.reset(failure_step_token)
+            reset_provider_session(provider_session_token)
 
     async def _resume_started_run(
         self,
@@ -1890,6 +1902,41 @@ class PersonalizedReviewCardUseCase:
         run_state = self.get_run_state(thread_id) or {}
         interrupt_payload = run_state.get("interrupt") or {}
 
+        if (
+            interrupt_payload.get("interrupt_type") == "planning_focus_resolution"
+            or interrupt_payload.get("interrupt_type") == "plan_scope_resolution"
+        ) and not continuation.context.get("pending_prerequisite"):
+            # The answer can change the requested objects. Re-run semantic
+            # understanding and retrieval rather than resuming Diagnosis with
+            # stale dependencies (also migrates pre-scope-contract checkpoints).
+            self.raise_if_run_cancelled(thread_id)
+            await self.orchestrator.abandon_thread(thread_id)
+            self._continuations.pop(thread_id, None)
+            return await self._execute_started_run(
+                request=ReviewCardRequest(
+                    learner_id=continuation.request.learner_id,
+                    user_request=request.answer,
+                    user_profile=continuation.request.user_profile,
+                    available_minutes=continuation.request.available_minutes,
+                    thread_id=thread_id,
+                    conversation_id=conversation_id,
+                    current_page=request.current_page,
+                    plan_scope_hint=(
+                        request.plan_scope
+                        or (
+                            continuation.context.get("requested_plan_scope")
+                            if interrupt_payload.get("interrupt_type") == "planning_focus_resolution"
+                            else None
+                        )
+                    ),
+                ),
+                thread_id=thread_id,
+                conversation_id=conversation_id,
+                conversation_source="user",
+                execution_id=continuation.execution_id,
+                case_id=continuation.case_id,
+            )
+
         # A child planning request may be paused by Diagnosis because its
         # parent layer is missing (for example daily_task -> short_term).
         # The answer is a confirmation for the already selected workflow, not
@@ -1917,7 +1964,26 @@ class PersonalizedReviewCardUseCase:
                 return bool(str(value.get("plan_id") or "").strip())
             return bool(str(getattr(value, "plan_id", "") or "").strip())
 
-        if is_course_status_resume:
+        original_course_scope = (
+            continuation.context.get("requested_plan_scope")
+            or continuation.request.plan_scope
+        )
+        if is_course_status_resume and original_course_scope not in {
+            "long_term", "short_term", "daily_task"
+        }:
+            raise RuntimeError("课程确认缺少可信原始规划范围，不能自动切换为今日任务")
+        if is_course_status_resume and original_course_scope in {"long_term", "short_term"}:
+            # A course question is not authorization to create a different layer
+            # or to materialize a missing parent. Re-evaluate facts in the same
+            # Diagnosis node using the original scope and the new user answer.
+            continuation.context["plan_scope"] = original_course_scope
+            continuation.context["continued_plan_scope"] = original_course_scope
+            continuation.context["plan_scope_hint"] = original_course_scope
+            resume_payload["plan_scope"] = original_course_scope
+            continuation.context.pop("force_prerequisite_daily_task", None)
+            continuation.context.pop("prerequisite_resume_pending", None)
+            continuation.context.pop("prerequisite_task_mode", None)
+        if is_course_status_resume and original_course_scope == "daily_task":
             required_courses = list(dict.fromkeys(
                 str(item).strip().strip("《》")
                 for item in interrupt_payload.get(
@@ -2325,6 +2391,47 @@ class PersonalizedReviewCardUseCase:
             child_scope=child_scope,
             original_request=original_request,
         )
+        async def refresh_child_learning_state() -> None:
+            """Begin the next generation against the just-published parent.
+
+            Never refresh at the publication gate: the child must generate and
+            audit against this new baseline, then pass the normal freshness gate.
+            """
+            registry = getattr(self.orchestrator, "tool_registry", None)
+            previous = continuation.context.get("current_learning_state")
+            if registry is None or not registry.has_tool("get_current_learning_state"):
+                if previous is not None:
+                    raise RuntimeError("父计划已发布，但无法读取下层规划所需的最新学习状态。")
+                return  # Legacy isolated callers without a bound state reader.
+            cancellation_check()
+            fresh = await registry.invoke("get_current_learning_state", "diagnosis_agent")
+            cancellation_check()
+            if (
+                fresh.get("learner_id") != continuation.request.learner_id
+                or (previous is not None and fresh.get("exam_track_id") != previous.get("exam_track_id"))
+                or not fresh.get("source_version")
+                or fresh.get("availability") not in {"available", "partial"}
+                or fresh.get("facts_availability") not in {"available", "partial"}
+                or fresh.get("review", {}).get("availability") != "available"
+            ):
+                raise RuntimeError("父计划已发布，但最新学习状态无法可靠核实；下层计划未生成。")
+            for layer, context_key, id_key in (
+                ("long_term_plan", "current_long_term_plan", "plan_id"),
+                ("short_term_plan", "current_short_term_plan", "plan_id"),
+                ("learning_task", "current_learning_task", "task_id"),
+            ):
+                record = continuation.context.get(context_key)
+                expected = (
+                    {"id": record[id_key], "version": record["version"]}
+                    if record else None
+                )
+                if layer not in fresh.get("plan_versions", {}) or fresh["plan_versions"][layer] != expected:
+                    raise RuntimeError("父计划发布后计划版本再次变化；下层计划未生成，请读取最新状态。")
+            continuation.context["current_learning_state"] = fresh
+            parent_context["current_learning_state"] = fresh
+            continuation.context.pop("_learning_state_read", None)
+            parent_context.pop("_learning_state_read", None)
+
         async def materialize(scope: str) -> Any:
             """Materialize one scope, recursively satisfying its parent."""
             cancellation_check()
@@ -2400,6 +2507,13 @@ class PersonalizedReviewCardUseCase:
                     context=parent_context,
                 )
                 cancellation_check()
+            if execution_result.status == "interrupted":
+                raise _PrerequisiteInterrupted(
+                    thread_id=run_thread,
+                    interrupt=execution_result.interrupt or {},
+                    scope=scope,
+                    confirmation=confirmation,
+                )
             if execution_result.status != "success":
                 detail = (
                     execution_result.error_message
@@ -2422,6 +2536,7 @@ class PersonalizedReviewCardUseCase:
                 if plan_record is None:
                     raise RuntimeError("前置短期计划未发布")
                 continuation.context["current_short_term_plan"] = plan_record.model_dump(mode="json")
+            await refresh_child_learning_state()
             return plan_record
 
         if isinstance(pending, dict) and pending.get("thread_id"):
@@ -2514,6 +2629,7 @@ class PersonalizedReviewCardUseCase:
                 continuation.context["current_long_term_plan"] = plan_record.model_dump(mode="json")
             else:
                 continuation.context["current_short_term_plan"] = plan_record.model_dump(mode="json")
+            await refresh_child_learning_state()
             return str(pending.get("confirmation") or "").strip() or None
 
         plan = await materialize(parent_scope)
@@ -3155,6 +3271,21 @@ class PersonalizedReviewCardUseCase:
                         "agent": item.agent,
                         "error_type": item.error_type,
                         **(
+                            {"response_diagnostics": item.response_diagnostics}
+                            if item.response_diagnostics
+                            else {}
+                        ),
+                        **(
+                            {"planning_validation_issues": item.planning_validation_issues}
+                            if item.planning_validation_issues
+                            else {}
+                        ),
+                        **(
+                            {"validation_issues": item.validation_issues}
+                            if item.validation_issues
+                            else {}
+                        ),
+                        **(
                             {"error_reason": item.error_reason}
                             if item.error_reason
                             else {}
@@ -3320,6 +3451,16 @@ class PersonalizedReviewCardUseCase:
     def _failure_model_output_summary(item: ModelCallTrace) -> dict[str, object]:
         """Keep actionable compiler diagnostics without persisting full prompts."""
 
+        if item.agent == "diagnosis_agent" and isinstance(item.raw_output, dict):
+            # Only persisted on failed runs; public run status excludes traces.
+            document = item.raw_output.get("plan_document_excerpt")
+            if isinstance(document, str):
+                return {
+                    "plan_document_excerpt": document[:12000],
+                    "plan_document_chars": item.raw_output.get("plan_document_chars"),
+                    "plan_document_truncated": item.raw_output.get("plan_document_truncated"),
+                    "plan_document_headings_present": item.raw_output.get("plan_document_headings_present"),
+                }
         if item.agent != "plan_contract_compiler" or not isinstance(item.raw_output, dict):
             return {}
         output = item.raw_output
@@ -4452,9 +4593,17 @@ class PersonalizedReviewCardUseCase:
         meso = state.get("meso") if isinstance(state.get("meso"), dict) else {}
         due = meso.get("due_review_knowledge_points")
         constraints = state.get("hard_constraints")
+        history = state.get("historical_learning")
+        history = history if isinstance(history, dict) else {}
         return {
             "has_long_term_plan": bool(current_long_term_plan),
             "has_short_term_plan": bool(current_short_term_plan),
+            **({"historical_learning": {
+                key: history[key] for key in (
+                    "has_history", "attempt_count", "knowledge_point_count",
+                    "audit_status", "recent_active_days", "recent_behavior_window_days",
+                ) if key in history
+            }} if history else {}),
             "due_review_count": len(due) if isinstance(due, list) else 0,
             "data_quality": (
                 state.get("data_quality")

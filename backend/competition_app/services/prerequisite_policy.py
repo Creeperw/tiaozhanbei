@@ -158,7 +158,9 @@ def all_prerequisite_courses(route_like: Any) -> list[str]:
     return courses
 
 
-def required_courses_for_stage(route_like: Any, stage_id: str | None) -> list[str]:
+def required_courses_for_stage(
+    route_like: Any, stage_id: str | None, *, selected_books: Iterable[str] | None = None
+) -> list[str]:
     """Project route-level ``before_stage_id`` rules onto a target stage.
 
     Prerequisites are cumulative: a rule required before stage 2 remains
@@ -186,6 +188,11 @@ def required_courses_for_stage(route_like: Any, stage_id: str | None) -> list[st
             course = str(_field(rule, "course") or "").strip().strip("《》")
             if not course or before_order is None or target_order < before_order:
                 continue
+            applies_to = _field(rule, "applies_to_books", []) or []
+            if applies_to and selected_books is not None:
+                selected = {normalize_course_name(book) for book in selected_books}
+                if not selected.intersection(normalize_course_name(book) for book in applies_to):
+                    continue
             if normalize_course_name(course) not in {
                 normalize_course_name(item) for item in courses
             }:

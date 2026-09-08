@@ -86,6 +86,7 @@ class ModelWithoutSystemManagedText:
                 "selected_stage_id": None,
                 "selected_books": ["《方剂学》"],
                 "field_anchors": {
+                    "/selected_stage_id": [{"source_field": "plan_document", "source_quote": "stage-1"}],
                     "/duration_days": [
                         {"source_field": "duration_days", "source_quote": "14"}
                     ],
@@ -259,7 +260,7 @@ class DocumentCompilerModel:
 async def test_document_compiler_is_called_for_complete_prose_document() -> None:
     model = DocumentCompilerModel()
     document = (
-        "## 当前周期目标\n未来14天使用《方剂学》完成补益剂学习。"
+        "## 当前周期目标\n当前阶段stage-1，未来14天使用《方剂学》完成补益剂学习。"
         "推进节点：先完成教材核对；再完成闭卷比较。"
         "预期产出：一张类方比较表。"
         "完成标准：能够闭卷比较代表方剂。"
@@ -434,6 +435,10 @@ class LongTermCompilerModel:
             "contract": {
                 "scope": "long_term",
                 "total_duration_days": 30,
+                "selected_stage_id": "stage-1",
+                "selected_books": ["《中医基础理论》"],
+                "selection_reason": "巩固基础",
+                "selection_mode": "review",
                 "stages": [
                     {
                         "stage": 1,
@@ -488,7 +493,7 @@ async def test_long_term_stage_anchor_indexes_must_match_contract_positions() ->
 
 @pytest.mark.asyncio
 async def test_long_term_stage_anchor_indexes_accept_exact_positions() -> None:
-    document = "共30天。阶段一使用《中医基础理论》；阶段二使用《中医内科学》。"
+    document = "共30天。阶段一使用《中医基础理论》；阶段二使用《中医内科学》。当前stage-1，选择《中医基础理论》，复习，巩固基础。"
     envelope = await PlanContractCompilerAgent(
         LongTermCompilerModel(anchor_indexes=(0, 1))
     ).compile(
