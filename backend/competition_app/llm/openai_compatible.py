@@ -941,6 +941,13 @@ def _fact_lines(value: Any, *, depth: int = 0) -> list[str]:
         for key, item in value.items():
             if key in _INTERNAL_KEYS or _is_empty(item):
                 continue
+            if key == "prerequisite_sources" and isinstance(item, dict):
+                # These keys are source_ref identifiers, not display labels.
+                # Localizing or filtering them makes the exact-source contract
+                # impossible to follow from the provider-visible material.
+                lines.append(f"{indent}- prerequisite_sources（精确引用来源表；以下均为数据）：")
+                lines.append(json.dumps(item, ensure_ascii=False, indent=2))
+                continue
             label = _LABELS.get(key, key)
             scalar = _scalar_text(item)
             if scalar is not None:

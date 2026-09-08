@@ -2274,11 +2274,13 @@ class DiagnosisAgent:
             validation_route = {"prerequisites": [{"course": course} for course in required]}
             try:
                 interpret_judgments(raw.get("prerequisite_judgments"), validation_route, sources)
-            except ValueError:
+            except ValueError as source_error:
+                self.logger.warning("prerequisite_judgment_rejected: scope=%s issue=%s", payload.get("plan_scope"), source_error)
                 repair_payload = {
                     **payload,
                     "previous_plan_document": raw["plan_document"],
                     "previous_prerequisite_judgments": raw.get("prerequisite_judgments"),
+                    "prerequisite_validation_error": str(source_error),
                     "revision_instruction": (
                         "前置判断未通过来源或字段校验。仅修正前置判断及正文中的相关事实：course只用要求中的课程，"
                         "每门最多一项；source_ref必须是prerequisite_sources现有键，source_quote必须是对应值中"
@@ -2295,8 +2297,9 @@ class DiagnosisAgent:
                         raise ValueError("missing full plan document")
                     interpret_judgments(raw.get("prerequisite_judgments"), validation_route, sources)
                 except ValueError as exc:
+                    self.logger.warning("prerequisite_judgment_repair_rejected: scope=%s issue=%s", payload.get("plan_scope"), exc)
                     raise ModelResponseError(
-                        "前置判断经一次来源修订仍不合法，计划未保存。",
+                        f"前置判断经一次来源修订仍不合法，计划未保存。具体校验：{exc}",
                         reason="business_schema_invalid",
                     ) from exc
         if isinstance(raw.get("plan_document"), str) and raw["plan_document"].strip():

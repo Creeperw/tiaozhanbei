@@ -1,6 +1,42 @@
 from competition_app.llm.openai_compatible import OpenAICompatibleChatModel, _format_user_data
 
 
+def test_planning_source_map_is_lossless_at_provider_message_boundary() -> None:
+    import json
+
+    from competition_app.agents.diagnosis import DiagnosisAgent
+    from competition_app.services.planning_prerequisites import judgment_sources
+
+    context = {
+        "user_request": "未来7天先诊断。\n不得认定为已掌握。",
+        "original_user_request": "只补短期计划",
+        "user_profile": {"learning_background": "学过《中医学基础》"},
+    }
+    sources = judgment_sources(context)
+    # Exact-reference maps are machine contracts, including otherwise hidden keys.
+    sources["status"] = "unknown"
+    sources["empty"] = ""
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1", api_key="test", model="test-model",
+    )
+    messages = client._build_messages(
+        "diagnosis_agent",
+        {"payload": {
+            "plan_scope": "short_term",
+            "user_request": context["user_request"],
+            "prerequisite_sources": sources,
+            "output_schema": DiagnosisAgent._planning_draft_schema("short_term"),
+        }},
+        strict_json=False, business_json=True,
+    )
+    material = messages[1]["content"]
+    assert json.dumps(sources, ensure_ascii=False, indent=2) in material
+    assert sources == {**judgment_sources(context), "status": "unknown", "empty": ""}
+    # Ordinary context remains natural language; only exact-reference data is exempt.
+    assert "用户这次想解决的问题：" in material
+    assert "source_ref" in messages[0]["content"]
+
+
 def test_model_prompt_separates_dialogue_external_information_and_profile() -> None:
     rendered = _format_user_data({
         "user_request": "请讲解感冒",

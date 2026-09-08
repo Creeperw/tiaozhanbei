@@ -5,7 +5,7 @@ def test_prompt_skill_registry_loads_approved_task_skill() -> None:
     skill = prompt_skill_registry.load("diagnosis_agent", "learning_plan")
 
     assert skill.skill_id == "diagnosis.create_learning_plan"
-    assert skill.version == "1.13.0"
+    assert skill.version == "1.14.0"
     assert "plan_document` 使用六栏" in skill.instructions
     assert "plan_document" in skill.instructions
     assert "物理换行硬约束" in skill.instructions

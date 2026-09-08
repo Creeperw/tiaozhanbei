@@ -5,6 +5,8 @@ import json
 from copy import deepcopy
 from typing import Any
 
+from pydantic import ValidationError
+
 from competition_app.contracts.prerequisite import PrerequisiteJudgment
 from competition_app.services.prerequisite_policy import (
     all_prerequisite_courses, normalize_course_name, required_courses_for_stage,
@@ -41,15 +43,28 @@ def interpret_judgments(raw: Any, route: Any, sources: dict[str, str]) -> dict[s
     canonical = {normalize_course_name(name): name for name in required}
     if raw is not None and (not isinstance(raw, list) or len(raw) > 20):
         raise ValueError("prerequisite judgments must be a bounded list")
-    judgments = [PrerequisiteJudgment.model_validate(item) for item in (raw or [])]
+    judgments = []
+    for index, value in enumerate(raw or []):
+        try:
+            judgments.append(PrerequisiteJudgment.model_validate(value))
+        except ValidationError as exc:
+            fields = [
+                {"field": ".".join(map(str, error["loc"])), "type": error["type"]}
+                for error in exc.errors(include_input=False, include_url=False)[:8]
+            ]
+            raise ValueError(f"prerequisite_judgments[{index}] invalid fields: {json.dumps(fields)}") from exc
     seen = set()
-    for item in judgments:
+    for index, item in enumerate(judgments):
         key = normalize_course_name(item.course)
-        if key not in canonical or key in seen:
-            raise ValueError("prerequisite judgment must name a unique route-owned course")
+        if key not in canonical:
+            raise ValueError(f"prerequisite_judgments[{index}].course is not a route-owned course")
+        if key in seen:
+            raise ValueError(f"prerequisite_judgments[{index}].course duplicates a route-owned course")
         seen.add(key)
-        if item.source_ref not in sources or item.source_quote not in sources[item.source_ref]:
-            raise ValueError("prerequisite judgment has no exact authorized source quote")
+        if item.source_ref not in sources:
+            raise ValueError(f"prerequisite_judgments[{index}].source_ref is not an authorized source key")
+        if item.source_quote not in sources[item.source_ref]:
+            raise ValueError(f"prerequisite_judgments[{index}].source_quote has no exact authorized source quote")
         item.course = canonical[key]
     by_course = {item.course: item.status for item in judgments}
     textbook = unwrap_textbook_route(route)
