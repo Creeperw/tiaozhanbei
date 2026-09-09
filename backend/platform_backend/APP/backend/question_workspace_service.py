@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import threading
+import time
 import unicodedata
 import uuid
 from pathlib import Path
@@ -193,10 +194,23 @@ def _llm_extract_questions(markdown: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen_stems: set[str] = set()
     for chunk in chunks:
-        response = client.chat([
+        messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": chunk},
-        ], temperature=0.1, max_tokens=8192)
+        ]
+        for attempt in range(3):
+            try:
+                response = client.chat(messages, temperature=0.1, max_tokens=8192)
+                break
+            except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+                if attempt == 2:
+                    raise
+                # Only retry connection establishment, not an uncertain response,
+                # completed chunks, file parsing or publication. Reuse the client
+                # so endpoint, credentials and provider session stay unchanged.
+                _LOGGER.warning("question extraction connection retry attempt=%s type=%s",
+                                attempt + 1, type(exc).__name__)
+                time.sleep(2 ** attempt)
         for value in _json_payload(response).get("items", []):
             row = _normalize_llm_row(value)
             if row is None:
