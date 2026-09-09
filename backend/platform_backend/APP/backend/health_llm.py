@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import httpx
 
 from APP.backend.config import LLM_TIMEOUT_SECONDS
+from competition_app.llm.upload_provider import new_upload_session, upload_provider_headers
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +167,12 @@ class LLMClient:
         self.model = model
         self.api_key = api_key
         self.mode = mode
+        self.provider_session = new_upload_session()
+
+    def _openai_headers(self) -> Dict[str, str]:
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        headers.update(upload_provider_headers(self.base_url, self.provider_session))
+        return headers
 
     def _is_api(self) -> bool:
         return self.mode == "api"
@@ -196,7 +203,7 @@ class LLMClient:
         }
         if extra_body:
             payload.update(extra_body)
-        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else None
+        headers = self._openai_headers()
         with httpx.Client(timeout=LLM_TIMEOUT_SECONDS) as client:
             res = client.post(
                 f"{self.base_url}/chat/completions", json=payload, headers=headers
@@ -215,7 +222,7 @@ class LLMClient:
         }
         if extra_body:
             payload.update(extra_body)
-        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else None
+        headers = self._openai_headers()
         with httpx.Client(timeout=LLM_TIMEOUT_SECONDS) as client:
             with client.stream(
                 "POST",

@@ -9,7 +9,7 @@ export const getKnowledgeScopeNotice = (scope, isAdmin) => {
 };
 
 export const getSearchFeedback = ({ isSearching, error, hasQueried, resultCount }) => {
-  if (isSearching) return { tone: 'loading', text: '正在检索公共与个人知识…' };
+  if (isSearching) return { tone: 'loading', text: '正在通过多智能体共享工具检索…' };
   if (error) return { tone: 'error', text: error };
   if (hasQueried && resultCount === 0) return { tone: 'empty', text: '未找到相关内容' };
   return null;

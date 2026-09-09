@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import { Button, EmptyState, InlineError, Skeleton, StatusBadge } from './ui';
+import UploadProgress from './resource-upload/UploadProgress';
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff,.doc,.docx,.xls,.xlsx,.md,.markdown,.txt,.csv';
 const ALLOWED = new Set(['pdf', 'png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'doc', 'docx', 'xls', 'xlsx', 'md', 'markdown', 'txt', 'csv']);
@@ -34,7 +35,7 @@ const responseError = (response, payload, fallback) => {
   return detail || fallback;
 };
 
-export default function UserSyllabusPage() {
+export default function UserSyllabusPage({ onBusyChange }) {
   const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -47,6 +48,7 @@ export default function UserSyllabusPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  useEffect(() => { onBusyChange?.(uploading); }, [uploading, onBusyChange]);
 
   const load = async () => {
     setLoading(true);
@@ -271,7 +273,7 @@ export default function UserSyllabusPage() {
                   <span className="user-syllabus-page__record-icon"><FileText aria-hidden="true" size={20} /></span>
                   <div className="user-syllabus-page__record-copy">
                     <strong>{item.title}</strong>
-                    <span>{item.subject || '未填写科目'} · {item.exam_type || '未填写考试类型'} · {STATUS_LABELS[item.processing_status] || item.processing_status}</span>
+                    <span>{item.subject || '未填写科目'} · {item.exam_type || '未填写考试类型'} · <UploadProgress progress={item.progress} fallback={STATUS_LABELS[item.processing_status] || item.processing_status} /></span>
                   </div>
                   <div className="user-syllabus-page__record-actions">
                     {item.is_active ? <StatusBadge status="success">已激活</StatusBadge> : <Button variant="secondary" onClick={() => activate(item.syllabus_id)}>设为当前考纲</Button>}

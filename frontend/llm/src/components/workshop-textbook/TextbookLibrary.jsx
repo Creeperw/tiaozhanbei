@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, BookOpen, Check, ChevronDown, EyeOff, FileUp, ImagePlus, LoaderCircle, Search, Upload, X } from 'lucide-react';
 import {
   filterTextbookViewModels,
@@ -8,6 +8,7 @@ import {
 } from './textbookLibraryModel';
 import { loadTextbookCategories, loadTextbookImportStatus, uploadTextbook } from './textbookPdfApi';
 import './textbookLibrary.css';
+import UploadProgress from '../resource-upload/UploadProgress';
 
 const IMPORT_STEPS = [
   { key: 'upload', label: '上传文件' },
@@ -44,7 +45,7 @@ function progressSummary(book) {
   return '学习中';
 }
 
-function TextbookUploadDialog({ onClose, onUploaded }) {
+export function TextbookUploadDialog({ onClose, onUploaded, embedded = false, onBusyChange }) {
   const [categories, setCategories] = useState(['中医药']);
   const [file, setFile] = useState(null);
   const [cover, setCover] = useState(null);
@@ -59,6 +60,9 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
   const [taskId, setTaskId] = useState(null);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
+  const [pollRevision, setPollRevision] = useState(0);
+  const inFlight = useRef(false);
+  useEffect(() => { onBusyChange?.(submitting); }, [submitting, onBusyChange]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,13 +79,17 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
     const poll = async () => {
       try {
         const payload = await loadTextbookImportStatus(taskId, { signal: controller.signal });
+        if (controller.signal.aborted) return;
         setProgress(payload);
         if (payload.status === 'done') {
+          setSubmitting(false);
+          setTaskId(null);
           onUploaded?.(payload.book);
-          onClose();
+          if (!embedded) onClose?.();
           return;
         }
         if (payload.status === 'failed') {
+          setTaskId(null);
           setError(payload.error?.code === 'TEXTBOOK_TOC_EXTRACTION_FAILED'
             ? '目录未提取成功：该 PDF 未包含可确认的目录页。'
             : payload.error?.message || '教材处理失败');
@@ -101,7 +109,7 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
       controller.abort();
       if (timer) window.clearTimeout(timer);
     };
-  }, [taskId, onClose, onUploaded]);
+  }, [taskId, onClose, onUploaded, embedded, pollRevision]);
 
   const visibleSteps = matchLocal
     ? IMPORT_STEPS
@@ -109,10 +117,12 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (inFlight.current || submitting) return;
     if (!file) { setError('请选择教材 PDF'); return; }
     if (creatingCategory && !newCategory.trim()) { setError('请输入新类别名称'); return; }
     if (file.size > 200 * 1024 * 1024 && !confirmLarge) { setConfirmLarge(true); return; }
-    setSubmitting(true); setError('');
+    inFlight.current = true;
+    setSubmitting(true); setError(''); setProgress(null);
     const body = new FormData();
     body.append('file', file);
     body.append('title', title.trim());
@@ -125,11 +135,8 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
     try {
       const payload = await uploadTextbook(body);
       setTaskId(payload.task_id);
-      setProgress({
-        status: 'running',
-        step: payload.step || 'upload',
-        step_label: payload.step_label || '已接收文件，准备处理',
-      });
+      setProgress(payload);
+      setPollRevision(value => value + 1);
     } catch (reason) {
       setError(reason.code === 'TEXTBOOK_TOO_LARGE'
         ? '教材超过 200MB 大小限制，未上传。'
@@ -137,16 +144,18 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
           ? '目录未提取成功：该 PDF 未包含可确认的目录页。'
           : reason.message || '教材上传失败');
       setSubmitting(false);
+    } finally {
+      inFlight.current = false;
     }
   };
 
   return (
-    <div className="textbook-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="textbook-upload-title">
-      <button className="textbook-upload-dialog__backdrop" type="button" aria-label="关闭上传窗口" onClick={submitting ? undefined : onClose} />
+    <div className={embedded ? 'textbook-upload-inline' : 'textbook-upload-dialog'} role={embedded ? 'region' : 'dialog'} aria-modal={embedded ? undefined : true} aria-labelledby="textbook-upload-title">
+      {!embedded && <button className="textbook-upload-dialog__backdrop" type="button" aria-label="关闭上传窗口" onClick={submitting ? undefined : onClose} />}
       <form className="textbook-upload-dialog__panel" onSubmit={submit}>
         <header>
           <div><span><FileUp size={18} /></span><div><h2 id="textbook-upload-title">上传教材</h2><p>目录由多模态模型识别，正文由 MinerU 处理</p></div></div>
-          <button type="button" aria-label="关闭" disabled={submitting} onClick={onClose}><X size={18} /></button>
+          {!embedded && <button type="button" aria-label="关闭" disabled={submitting} onClick={onClose}><X size={18} /></button>}
         </header>
         <div className="textbook-upload-dialog__fields">
           <label className="textbook-upload-dialog__file">
@@ -181,6 +190,9 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
           </label>
         </div>
         {error && <p className="textbook-upload-dialog__error" role="alert">{error}</p>}
+        {embedded && progress && <UploadProgress progress={progress.progress} fallback={progress.step_label} />}
+        {embedded && progress?.retry_allowed === false && progress?.status === 'failed' && <p role="alert">请先检查教材书架，勿重复上传；本任务不会自动重跑。</p>}
+        {taskId && !submitting && <button type="button" onClick={() => { setError(''); setSubmitting(true); setPollRevision(value => value + 1); }}>重新查询任务进度</button>}
         {confirmLarge && !submitting && (
           <div className="textbook-upload-dialog__confirm" role="alertdialog" aria-label="大文件确认">
             <strong>当前教材超过大小限制（200MB），解析质量可能下降，是否继续？</strong>
@@ -209,7 +221,7 @@ function TextbookUploadDialog({ onClose, onUploaded }) {
             </ol>
           </div>
         )}
-        <footer><button type="button" disabled={submitting} onClick={onClose}>取消</button><button type="submit" disabled={submitting}>{submitting ? <LoaderCircle className="is-spinning" /> : <Upload size={17} />}开始上传</button></footer>
+        <footer>{!embedded && <button type="button" disabled={submitting} onClick={onClose}>取消</button>}<button type="submit" disabled={submitting || Boolean(taskId)}>{submitting ? <LoaderCircle className="is-spinning" /> : <Upload size={17} />}开始上传</button></footer>
       </form>
     </div>
   );
@@ -222,6 +234,7 @@ export default function TextbookLibrary({
   remainingCount = 0,
   onExpandAll,
   onUploaded,
+  onUploadRequested,
   onDelete,
   onToggleHidden,
   progressLoading = false,
@@ -326,8 +339,8 @@ export default function TextbookLibrary({
         </div>
         </div>
         <div className="textbook-library__title-actions">
-          {onUploaded && (
-            <button type="button" className="textbook-library__upload-button" onClick={() => setUploadOpen(true)}>
+          {(onUploaded || onUploadRequested) && (
+            <button type="button" className="textbook-library__upload-button" onClick={() => onUploadRequested ? onUploadRequested() : setUploadOpen(true)}>
               <Upload size={15} />上传教材
             </button>
           )}

@@ -24,6 +24,7 @@ class _Client:
 
     def post(self, _url, *, json, headers):
         self.payload = json
+        self.headers = headers
         return _Response()
 
 
@@ -54,3 +55,15 @@ def test_openai_compatible_client_normalizes_max_tokens_to_integer() -> None:
     assert message["content"] == "OK"
     assert transport.payload["max_tokens"] == 2048
     assert isinstance(transport.payload["max_tokens"], int)
+
+
+def test_upload_client_preserves_provider_session_across_calls():
+    transport = _Client()
+    client = LLMClient("https://opencode.ai/zen/go/v1", "model", api_key="test", mode="local")
+    with patch("APP.backend.health_llm.httpx.Client", return_value=transport):
+        client.chat([])
+        session = transport.headers["x-opencode-session"]
+        client.chat([])
+    assert transport.headers["x-opencode-session"] == session
+    assert transport.headers["Authorization"] == "Bearer test"
+    assert LLMClient("https://example.com/v1", "model", mode="local")._openai_headers() == {}

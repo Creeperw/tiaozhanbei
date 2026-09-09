@@ -32,7 +32,7 @@ class MinerUPdfParserTests(unittest.TestCase):
                 runtime_root=root / "runtime",
             )
             with patch(
-                "APP.backend.mineru_pdf_service.subprocess.run",
+                "competition_app.services.document_parsing.subprocess.run",
                 side_effect=run,
             ):
                 markdown = parser.parse(source)

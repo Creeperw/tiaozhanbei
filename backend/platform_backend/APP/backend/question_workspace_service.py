@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -14,12 +15,14 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 from fastapi import UploadFile
+import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from APP.backend.database import UserQuestionImportJob, UserQuestionItem
 from APP.backend.health_llm import build_llm_client
 from APP.backend.mineru_pdf_service import MinerUPdfParser
+from competition_app.contracts.upload import upload_progress
 from APP.backend.time_utils import utc_now
 from competition_app.contracts.difficulty import parse_difficulty
 
@@ -40,6 +43,7 @@ ALLOWED_CONTENT_TYPES = {
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 _INDEX_LOCKS: dict[int, threading.Lock] = {}
 _INDEX_LOCKS_GUARD = threading.Lock()
+_LOGGER = logging.getLogger(__name__)
 
 
 def _owner_index_lock(owner_user_id: int) -> threading.Lock:
@@ -290,7 +294,7 @@ def _extract_with_mineru(source: Path, extension: str) -> str:
     except ValueError as exc:
         raise QuestionWorkspaceError("PDF/图片解析失败", status_code=422) from exc
     except RuntimeError as exc:
-        raise QuestionWorkspaceError(f"MinerU 解析失败：{exc}", status_code=503) from exc
+        raise QuestionWorkspaceError("MinerU 解析失败，请稍后重试或联系管理员", status_code=503) from exc
     finally:
         if converted_pdf != source:
             converted_pdf.unlink(missing_ok=True)
@@ -355,11 +359,13 @@ async def create_import(
     )
     db.add(job)
     db.commit()
+    stage = "文件解析"
     try:
         if extension == ".pdf" or extension in IMAGE_EXTENSIONS:
             text = await asyncio.to_thread(_extract_with_mineru, stored_path, extension)
         else:
             text = _decode_text(content)
+        stage = "题目抽取"
         try:
             rows = _extract_structured_questions(text)
             rows = await asyncio.to_thread(_complete_missing_answers, rows)
@@ -373,6 +379,17 @@ async def create_import(
         db.commit()
         _remove_failed_upload(stored_path)
         raise
+    except Exception as exc:
+        message = f"{stage}失败，请稍后重试或联系管理员（任务：{job_id}）"
+        status_code = 502 if isinstance(exc, httpx.HTTPError) else 500
+        _LOGGER.error("question import failed job=%s stage=%s type=%s status=%s",
+                      job_id, stage, type(exc).__name__,
+                      exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None)
+        job.status = "failed"
+        job.error_message = message
+        db.commit()
+        _remove_failed_upload(stored_path)
+        raise QuestionWorkspaceError(message, status_code=status_code) from exc
     items = []
     for row in rows:
         has_answer = bool(row["answer"])
@@ -463,6 +480,7 @@ def list_imports(
             "error_message": job.error_message or "",
             "created_at": job.created_at,
             "updated_at": job.updated_at,
+            "progress": upload_progress("personal_questions", job.job_id, job.status),
         }
         for job in jobs
     ]

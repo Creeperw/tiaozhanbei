@@ -10,7 +10,6 @@ import statistics
 import subprocess
 import sys
 import tempfile
-import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -18,9 +17,12 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
-import httpx
 from PIL import Image, ImageDraw
 from pypdf import PdfReader, PdfWriter
+from competition_app.services.document_parsing import DocumentParseError, parse_mineru
+from competition_app.llm.upload_json_client import (
+    UploadModelEndpoint, UploadModelError, complete_upload_json, select_upload_endpoint,
+)
 from competition_app.tools.textbook_chunking import (
     build_chunk_index,
     chunk_book_by_toc,
@@ -38,19 +40,6 @@ class TextbookTocNotFound(TextbookImportError):
     code = TOC_EXTRACTION_FAILED
 class TextbookTooLargeError(TextbookImportError):
     code = "TEXTBOOK_TOO_LARGE"
-def _json_object(value: str) -> dict[str, Any]:
-    text = str(value or "").strip()
-    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE)
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError:
-        start, end = text.find("{"), text.rfind("}")
-        if start < 0 or end <= start:
-            raise TextbookImportError("多模态模型没有返回有效 JSON")
-        payload = json.loads(text[start : end + 1])
-    if not isinstance(payload, dict):
-        raise TextbookImportError("多模态模型返回的数据不是 JSON 对象")
-    return payload
 def _safe_owner(value: str) -> str:
     return re.sub(r"[^0-9A-Za-z_.-]+", "_", str(value or "anonymous"))[:96]
 def _clean_title(value: str) -> str:
@@ -796,93 +785,32 @@ class TextbookImportService:
             content.append(self._image_part(buffer.getvalue()))
         return await self._vision_json(content, max_tokens=8000)
     async def _vision_json(self, user_content: list[dict[str, Any]], max_tokens: int) -> dict[str, Any]:
-        # 目录识别必须看图：优先使用专用视觉模型，未配置时回退聊天模型。
-        base_url = self.vision_base_url or self.chat_base_url
-        model = self.vision_model or self.chat_model
-        api_key = self.vision_api_key or self.chat_api_key
-        request = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "你只负责从教材页面图像识别目录并输出有效 JSON，不输出 Markdown。"},
-                {"role": "user", "content": user_content},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0,
-            "max_tokens": max_tokens,
-        }
-        timeout = httpx.Timeout(max(self.timeout_seconds, 600.0), connect=30.0)
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json=request,
+        try:
+            endpoint = select_upload_endpoint(
+                UploadModelEndpoint(self.chat_base_url, self.chat_model, self.chat_api_key),
+                vision_base_url=self.vision_base_url, vision_model=self.vision_model,
+                vision_api_key=self.vision_api_key,
             )
-            if response.status_code == 400 and "response_format" in response.text:
-                request.pop("response_format", None)
-                response = await client.post(
-                    f"{self.chat_base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {self.chat_api_key}"},
-                    json=request,
-                )
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                raise TextbookImportError(f"多模态模型调用失败（HTTP {response.status_code}）") from exc
-            body = response.json()
-            result = body.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return _json_object(result)
+            return await complete_upload_json(
+                endpoint, system="你只负责从教材页面图像识别目录并输出有效 JSON，不输出 Markdown。",
+                user_content=user_content, max_tokens=max_tokens,
+                timeout_seconds=self.timeout_seconds,
+            )
+        except UploadModelError as exc:
+            raise TextbookImportError(str(exc)) from exc
     def _run_mineru(self, pdf_path: Path, output_dir: Path) -> tuple[Path, dict[int, str]]:
-        script = self.mineru_pipeline_root / "parse_question_pdf.py"
-        config = self.mineru_pipeline_root / "pipeline_config.json"
-        if not script.is_file() or not config.is_file():
-            raise TextbookImportError("MinerU 处理管线不完整")
         output_dir.mkdir(parents=True, exist_ok=True)
         pdf_inputs = self._split_for_mineru(pdf_path, output_dir)
-        env = os.environ.copy()
-        env["MINERU_TOKEN"] = self.mineru_token
-        command = [
-            sys.executable,
-            str(script),
-            "--config", str(config),
-            "--output-dir", str(output_dir),
-        ]
-        for item in pdf_inputs:
-            command.extend(["--pdf", str(item)])
-        completed = None
-        for attempt in range(3):
-            completed = subprocess.run(
-                command,
-                cwd=self.mineru_pipeline_root,
-                env=env,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=24 * 60 * 60,
-                check=False,
-            )
-            if completed.returncode == 0:
-                break
-            detail = (completed.stderr or completed.stdout or "").lower()
-            if "download failed after retries" not in detail or attempt >= 2:
-                break
-            time.sleep(4 * (attempt + 1))
-        assert completed is not None
-        if completed.returncode != 0:
-            detail = (completed.stderr or completed.stdout or "MinerU 解析失败").strip()
-            if "download failed after retries" in detail.lower():
-                raise TextbookImportError(
-                    "MinerU 已完成解析，但结果文件下载失败；请检查到 cdn-mineru.openxlab.org.cn 的网络后重试"
-                )
-            raise TextbookImportError(detail[-1500:])
-        markdown_files = sorted(output_dir.rglob("*_clean.md")) or sorted(output_dir.rglob("*.md"))
-        if not markdown_files:
-            raise TextbookImportError("MinerU 未生成教材 Markdown")
         combined = output_dir / "textbook_full_clean.md"
-        combined.write_text(
-            "\n\n".join(path.read_text(encoding="utf-8-sig") for path in markdown_files),
-            encoding="utf-8",
-        )
+        try:
+            parsed = parse_mineru(
+                pdf_inputs, pipeline_root=self.mineru_pipeline_root,
+                token=self.mineru_token, output_dir=output_dir, attempts=3,
+                exclude_markdown=(combined,),
+            )
+        except DocumentParseError as exc:
+            raise TextbookImportError(str(exc)) from exc
+        combined.write_text(parsed.markdown, encoding="utf-8")
         page_text = self._mineru_page_text(output_dir)
         return combined, page_text
     def _split_for_mineru(self, pdf_path: Path, output_dir: Path) -> list[Path]:

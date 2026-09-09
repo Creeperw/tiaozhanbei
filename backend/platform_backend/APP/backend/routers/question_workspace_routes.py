@@ -18,6 +18,7 @@ from APP.backend.contracts.question import (
     QuestionWorkspaceCollection,
 )
 from APP.backend.database import UserModel, get_db
+from competition_app.contracts.upload import upload_progress
 from APP.backend.question_workspace_service import (
     QuestionWorkspaceError,
     confirm_item,
@@ -61,12 +62,15 @@ async def upload_questions(
     db: Session = Depends(get_db),
 ):
     try:
-        return await create_import(
+        result = await create_import(
             db,
             owner_user_id=current_user.id,
             upload=file,
             upload_root=QUESTION_WORKSPACE_UPLOAD_ROOT,
         )
+        return {**result, "progress": upload_progress(
+            "personal_questions", result["job_id"], result["status"],
+        )}
     except QuestionWorkspaceError as exc:
         _raise_workspace_error(exc)
 
@@ -105,6 +109,7 @@ def read_import(
     return {
         "job_id": job.job_id,
         "status": job.status,
+        "progress": upload_progress("personal_questions", job.job_id, job.status),
         "item_count": job.item_count,
         "original_filename": job.original_filename,
         "created_at": job.created_at,

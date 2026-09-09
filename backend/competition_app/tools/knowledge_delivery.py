@@ -5,6 +5,7 @@ import ast
 import hashlib
 import importlib
 import json
+import logging
 import math
 import os
 import re
@@ -39,10 +40,20 @@ from competition_app.legacy_asset_compat import (
 )
 from competition_app.tools.video_segment_index import VideoSegmentIndex
 from competition_app.tools.question_channel_reservation import reserve_raw_question_items
+from competition_app.llm.upload_provider import new_upload_session, upload_provider_headers
+from competition_app.services.document_parsing import parse_mineru
 
 
 # The shipped repository/BM25 loader is heavyweight; bound process-wide overlap.
 _QUESTION_SEARCH_LOCK = threading.Lock()
+_LOGGER = logging.getLogger(__name__)
+
+
+def _pipeline_failure(run_dir: Path, completed: Any, stage: str) -> RuntimeError:
+    # Raw provider/child stderr may contain credentials, signed URLs or document text.
+    # Keep only process metadata in the server log and expose an opaque reference.
+    _LOGGER.error("upload pipeline failed stage=%s run=%s exit=%s", stage, run_dir.name, completed.returncode)
+    return RuntimeError(f"{stage}失败，请联系管理员检查服务配置（记录：{run_dir.name}）")
 
 
 @dataclass(frozen=True)
@@ -1281,6 +1292,35 @@ class KnowledgeDeliveryBackend:
             if root not in sys.path:
                 sys.path.insert(0, root)
             module = importlib.import_module(name)
+            if name == "question_pipeline.llm":
+                original = module.OpenAICompatibleChatClient
+                if not getattr(original, "_upload_provider_compatible", False):
+                    class UploadChatClient(original):
+                        _upload_provider_compatible = True
+
+                        def __init__(self, *args: Any, **kwargs: Any):
+                            super().__init__(*args, **kwargs)
+                            self.provider_session = new_upload_session()
+
+                        def complete_text(self, system: str, user: str) -> str:
+                            key = os.getenv(self.api_key_env, "")
+                            if not key:
+                                raise RuntimeError("题目导入模型密钥未配置")
+                            headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+                            headers.update(upload_provider_headers(self.base_url, self.provider_session))
+                            request = urllib.request.Request(
+                                f"{self.base_url}/chat/completions",
+                                data=json.dumps({"model": self.model, "temperature": 0,
+                                    "messages": [{"role": "system", "content": system},
+                                                 {"role": "user", "content": user}]}).encode("utf-8"),
+                                headers=headers, method="POST",
+                            )
+                            body = module.request_json(request, timeout=self.timeout)
+                            if not isinstance(body.get("choices"), list) or not body["choices"]:
+                                raise ValueError("Chat API 响应缺少 choices")
+                            return str(body["choices"][0]["message"]["content"])
+
+                    module.OpenAICompatibleChatClient = UploadChatClient
             if name == "retrieval.hybrid_question_retrieval":
                 from competition_app.tools.bounded_question_vector import vector_question_hits
 
@@ -1670,7 +1710,7 @@ class KnowledgeDeliveryBackend:
         module = self._module("exam_pipeline.service")
         self._patch_exam_user_kp_layout(module)
         return await asyncio.to_thread(
-            module.query_exam_knowledge,
+            self._personal_call, owner, module.query_exam_knowledge,
             query,
             owner,
             self.paths.public_data,
@@ -1694,7 +1734,7 @@ class KnowledgeDeliveryBackend:
         module = self._module("exam_pipeline.service")
         self._patch_exam_user_kp_layout(module)
         return await asyncio.to_thread(
-            module.ingest_user_exam,
+            self._personal_call, owner, module.ingest_user_exam,
             path,
             owner,
             self.paths.public_data,
@@ -1887,34 +1927,10 @@ class KnowledgeDeliveryBackend:
 
     def _parse_pdf_to_markdown(self, path: Path, owner: str, mineru_token: str) -> str:
         output_dir = self.paths.runtime_root / "pdf_runs" / owner / uuid4().hex
-        command = [
-            sys.executable,
-            str(self.paths.component_root / "knowledge_upload_pipeline" / "parse_question_pdf.py"),
-            "--config",
-            str(self.paths.component_root / "knowledge_upload_pipeline" / "pipeline_config.json"),
-            "--output-dir",
-            str(output_dir),
-            "--pdf",
-            str(path),
-        ]
-        env = os.environ.copy()
-        env["MINERU_TOKEN"] = mineru_token
-        completed = subprocess.run(
-            command,
-            cwd=self.paths.component_root / "knowledge_upload_pipeline",
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=24 * 60 * 60,
-            check=False,
-        )
-        if completed.returncode != 0:
-            message = (completed.stderr or completed.stdout or "PDF 解析失败").strip()
-            raise RuntimeError(message[-4000:])
-        markdown_files = sorted(output_dir.rglob("*.md"))
-        if not markdown_files:
-            raise RuntimeError("MinerU 未生成 Markdown")
-        return "\n\n".join(path.read_text(encoding="utf-8-sig") for path in markdown_files)
+        return parse_mineru(
+            [path], pipeline_root=self.paths.component_root / "knowledge_upload_pipeline",
+            token=mineru_token, output_dir=output_dir, prefer_clean=False,
+        ).markdown
 
     def _ingest_knowledge_text(
         self,
@@ -1924,6 +1940,20 @@ class KnowledgeDeliveryBackend:
         apply: bool,
         source_path: Path | None = None,
         mineru_token: str = "",
+    ) -> dict[str, Any]:
+        return self._personal_call(owner, self._ingest_knowledge_text_locked,
+                                   text, owner, title, apply, source_path, mineru_token)
+
+    def _personal_call(self, owner, function, *args):
+        from competition_app.services.personal_knowledge_storage import owner_lock
+        from competition_app.services.personal_knowledge_management import recover_personal
+        with owner_lock(self.paths.runtime_root, owner):
+            recover_personal(self, owner)
+            return function(*args)
+
+    def _ingest_knowledge_text_locked(
+        self, text: str, owner: str, title: str, apply: bool,
+        source_path: Path | None = None, mineru_token: str = "",
     ) -> dict[str, Any]:
         run_dir = self.paths.runtime_root / "knowledge_runs" / owner / uuid4().hex
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -1968,6 +1998,7 @@ class KnowledgeDeliveryBackend:
         config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
         command = [
             sys.executable,
+            str(Path(__file__).with_name("upload_pipeline_runner.py")),
             str(self.paths.component_root / "knowledge_upload_pipeline" / "ingest_content.py"),
             "--config",
             str(config_path),
@@ -1986,11 +2017,11 @@ class KnowledgeDeliveryBackend:
             command.extend(["--file", str(source_path)])
         else:
             command.extend(["--text", text])
-        if mineru_token:
-            command.extend(["--mineru-token", mineru_token])
         if apply:
             command.append("--apply")
         env = os.environ.copy()
+        env["COMPETITION_UPLOAD_SESSION"] = new_upload_session()
+        env["COMPETITION_PERSONAL_MANAGEMENT"] = "1"
         env["COMPETITION_KB_CHAT_KEY"] = self.chat_api_key
         env["COMPETITION_KB_EMBEDDING_KEY"] = self.embedding_api_key
         if mineru_token:
@@ -2005,8 +2036,7 @@ class KnowledgeDeliveryBackend:
             check=False,
         )
         if completed.returncode != 0:
-            message = (completed.stderr or completed.stdout or "知识导入失败").strip()
-            raise RuntimeError(message[-4000:])
+            raise _pipeline_failure(run_dir, completed, "资料解析与知识点生成")
         result_path = run_dir / "result.json"
         if not result_path.is_file():
             raise RuntimeError("知识导入未生成 result.json")
@@ -2066,15 +2096,13 @@ class KnowledgeDeliveryBackend:
         source_root.mkdir(parents=True, exist_ok=True)
         shutil.copytree(normalized_books, source_root, dirs_exist_ok=True)
 
-        chapter_script = (
-            Path(__file__).resolve().parents[2]
-            / "competition"
-            / "knowledge_atlas_chapters"
-            / "2026-07-22"
-            / "chapter_hierarchy.py"
-        )
+        chapter_root = Path(os.environ.get("KNOWLEDGE_ATLAS_CHAPTER_ROOT") or (
+            Path(__file__).resolve().parents[2] / "competition"
+            / "knowledge_atlas_chapters" / "2026-07-22"
+        ))
+        chapter_script = chapter_root / "chapter_hierarchy.py"
         if not chapter_script.is_file():
-            raise RuntimeError(f"章节映射脚本不存在：{chapter_script}")
+            raise RuntimeError("章节生成服务未配置，请联系管理员")
 
         output_dir = delivery / "03_pipeline_chunks"
         completed = subprocess.run(
@@ -2096,8 +2124,7 @@ class KnowledgeDeliveryBackend:
             check=False,
         )
         if completed.returncode != 0:
-            message = (completed.stderr or completed.stdout or "章节映射生成失败").strip()
-            raise RuntimeError(message[-4000:])
+            raise _pipeline_failure(run_dir, completed, "章节映射生成")
 
         report_path = output_dir / "chapter_hierarchy_report.json"
         if not report_path.is_file():

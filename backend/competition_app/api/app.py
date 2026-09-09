@@ -19,6 +19,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.routing import Match
 
 from competition_app.application.container import ApplicationContainer
+from competition_app.services.upload_tasks import (
+    UploadTaskStore, finish_upload_work, textbook_fingerprint, textbook_task_response,
+)
 from competition_app.application.personalized_review_card import (
     ReviewCardRequest,
     WorkflowResumeRequest,
@@ -599,6 +602,10 @@ class ResourceRecommendationEventRequest(BaseModel):
 
 def create_app(container: ApplicationContainer, *, auth_required: bool = True) -> FastAPI:
     backend_handoff = container.backend_handoff_runtime
+    textbook_task_store = UploadTaskStore(
+        container.runtime_root or container.textbook_import_service.runtime_root.parent
+    )
+    textbook_upload_tasks: set[asyncio.Task] = set()
     review_push_tasks: set[asyncio.Task] = set()
     # A browser SSE connection is only a subscriber. Keeping strong references
     # here makes the workflow itself independent from page/session navigation.
@@ -821,6 +828,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         try:
             yield
         finally:
+            # Uploads may be writing in worker threads. Do not cancel their
+            # coroutine and release ownership while the thread still publishes.
+            if textbook_upload_tasks:
+                await finish_upload_work(asyncio.gather(*list(textbook_upload_tasks), return_exceptions=True))
             if daily_task_dispatcher is not None:
                 daily_task_dispatcher.cancel()
                 try:
@@ -1507,6 +1518,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return user.user_id if user is not None else "anonymous"
 
     def knowledge_error(exc: Exception) -> HTTPException:
+        from competition_app.services.personal_knowledge_storage import PersonalKnowledgeBusy
+        if isinstance(exc, PersonalKnowledgeBusy):
+            return HTTPException(status_code=409, detail=str(exc))
         if isinstance(exc, KeyError):
             return HTTPException(status_code=404, detail=str(exc).strip("'"))
         if isinstance(exc, (ValueError, LookupError)):
@@ -2378,8 +2392,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         items = container.textbook_import_service.categories()
         return {"items": items, "total": len(items)}
 
-    textbook_import_tasks: dict[str, dict[str, Any]] = {}
-
     @app.post("/api/v1/textbooks/import", status_code=202)
     async def import_textbook(
         request: Request,
@@ -2400,66 +2412,65 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 detail={"code": "TEXTBOOK_TOO_LARGE", "message": "当前教材超过大小限制（200MB），解析质量可能下降"},
             )
         cover_content = await cover.read() if cover is not None else None
-        # 清理已结束的旧任务，防止字典无限膨胀
-        if len(textbook_import_tasks) > 200:
-            stale = [key for key, value in textbook_import_tasks.items()
-                     if value.get("status") in {"done", "failed"}]
-            for key in stale[: len(stale) - 50]:
-                textbook_import_tasks.pop(key, None)
-        task_id = f"TBI_{uuid4().hex}"
-        state: dict[str, Any] = {
-            "task_id": task_id,
-            "status": "running",
-            "step": "upload",
-            "step_label": "已接收文件，准备处理",
-            "error": None,
-            "book": None,
-        }
-        textbook_import_tasks[task_id] = state
+        filename = file.filename or "textbook.pdf"
+        cover_media_type = (cover.content_type or "") if cover is not None else ""
+        fingerprint = textbook_fingerprint(content, cover_content, {
+            "filename": filename, "title": title, "description": description,
+            "category": category, "new_category": new_category,
+            "match_local": match_local, "allow_large": allow_large,
+            "cover_media_type": cover_media_type,
+        })
+        state, lease = await finish_upload_work(asyncio.to_thread(textbook_task_store.start, user.user_id, fingerprint))
+        if lease is None:
+            return textbook_task_response(state)
 
         def report(step: str, label: str) -> None:
-            state["step"] = step
-            state["step_label"] = label
+            lease.update(step=step, step_label=label)
 
         async def run() -> None:
+            published = False
             try:
-                item = await container.textbook_import_service.import_pdf(
+                item = await finish_upload_work(container.textbook_import_service.import_pdf(
                     owner_id=user.user_id,
-                    filename=file.filename or "textbook.pdf",
+                    filename=filename,
                     content=content,
                     title=title,
                     description=description,
                     category=category,
                     new_category=new_category,
                     cover_content=cover_content,
-                    cover_media_type=(cover.content_type or "") if cover is not None else "",
+                    cover_media_type=cover_media_type,
                     match_local=match_local,
                     allow_large=allow_large,
                     progress=report,
-                )
+                ))
+                published = True
                 public_item = container.textbook_pdf_service.by_id(
                     str(item["book_id"]), user.user_id
                 )
-                state.update({
-                    "status": "done",
-                    "step": "done",
-                    "step_label": "教材处理完成",
-                    "book": public_item,
-                })
+                if public_item is None:
+                    raise RuntimeError("published textbook is unavailable")
+                lease.complete(public_item)
             except TextbookTocNotFound as exc:
-                state.update({"status": "failed", "step": "toc",
-                              "error": {"code": exc.code, "message": str(exc)}})
+                lease.fail(exc.code, "目录未提取成功，请检查教材目录页。", retry_allowed=not published)
             except TextbookImportError as exc:
-                state.update({"status": "failed",
-                              "error": {"code": exc.code, "message": str(exc)}})
-            except Exception as exc:
-                state.update({"status": "failed", "step": "failed",
-                              "error": {"code": "TEXTBOOK_IMPORT_FAILED",
-                                        "message": f"教材处理失败：{type(exc).__name__}: {exc}"}})
+                lease.fail(exc.code, "教材处理失败，请检查文件及解析服务配置。", retry_allowed=not published)
+            except asyncio.CancelledError:
+                # A forced stop has uncertain publication results; no auto replay.
+                raise
+            except Exception:
+                lease.fail("TEXTBOOK_IMPORT_FAILED", "教材处理异常，结果待核实；请先检查教材书架。")
+            finally:
+                lease.close()
 
-        asyncio.create_task(run())
-        return {"task_id": task_id, "status": "running",
-                "step": state["step"], "step_label": state["step_label"]}
+        task = asyncio.create_task(run())
+        textbook_upload_tasks.add(task)
+        def upload_done(done: asyncio.Task) -> None:
+            textbook_upload_tasks.discard(done)
+            if not done.cancelled():
+                done.exception()  # Retrieve failures (e.g. disk full); disk state remains recoverable.
+        task.add_done_callback(upload_done)
+        return textbook_task_response(state)
 
     @app.get("/api/v1/textbooks/knowledge-graphs")
     async def list_textbook_knowledge_graphs(request: Request) -> dict:
@@ -2474,12 +2485,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="未找到该教材的知识图谱")
         return item
 
+    @app.get("/api/v1/textbooks/imports")
+    async def textbook_import_history(request: Request, limit: int = Query(50, ge=1, le=100)) -> dict:
+        user = current_user(request)
+        states = await asyncio.to_thread(textbook_task_store.list, user.user_id, limit)
+        return {"items": [textbook_task_response(state) for state in states]}
+
     @app.get("/api/v1/textbooks/import/{task_id}")
-    async def textbook_import_status(task_id: str) -> dict:
-        state = textbook_import_tasks.get(task_id)
-        if state is None:
-            raise HTTPException(status_code=404, detail="导入任务不存在")
-        return state
+    async def textbook_import_status(task_id: str, request: Request) -> dict:
+        user = current_user(request)
+        try:
+            state = await asyncio.to_thread(textbook_task_store.get, user.user_id, task_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="导入任务不存在") from None
+        return textbook_task_response(state)
 
     @app.get("/api/v1/textbooks/pdfs/resolve")
     async def resolve_textbook_pdf(book: str, request: Request) -> dict:
@@ -5613,6 +5632,37 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     async def warm_knowledge_backend() -> dict:
         return await asyncio.to_thread(knowledge_backend().map.warm)
 
+    @app.post("/api/v1/knowledge/content/search")
+    async def search_knowledge_content(
+        payload: ExamKnowledgeQueryRequest, request: Request
+    ) -> dict:
+        if current_user(request) is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        query = payload.query.strip()
+        if not query:
+            raise HTTPException(status_code=422, detail="检索内容不能为空")
+        tool = container.question_retrieval_tool
+        if tool is None:
+            raise HTTPException(status_code=503, detail="多智能体教材检索工具暂不可用")
+        try:
+            # Reuse the exact tool registered for the knowledge agent. This
+            # read-only endpoint neither plans queries nor adds web searches.
+            pack = await tool.get_kp_with_content(
+                query, limit=payload.limit, local_only=True
+            )
+        except LookupError:
+            return {"evidence_items": [], "risk_notes": [], "scope": "public"}
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="多智能体教材检索失败，请稍后重试") from exc
+        return {
+            "evidence_items": [
+                item.model_dump(mode="json") for item in pack.evidence_items
+                if item.resource_type == "textbook"
+            ],
+            "risk_notes": pack.risk_notes,
+            "scope": "public",
+        }
+
     @app.post("/api/v1/knowledge/questions/search")
     async def search_knowledge_questions(
         payload: KnowledgeQuestionSearchRequest, request: Request
@@ -5685,6 +5735,61 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             )
         except Exception as exc:
             raise knowledge_error(exc) from exc
+
+    @app.get("/api/v1/knowledge/content/library")
+    async def personal_knowledge_library(request: Request) -> dict:
+        owner = knowledge_owner(request)
+        backend = knowledge_backend()
+        try:
+            return await asyncio.to_thread(personal_library_read, backend, owner)
+        except Exception as exc:
+            raise personal_library_error(exc, '个人资料目录暂不可用，请稍后重试') from exc
+
+    def personal_library_read(backend, owner, document_id=None):
+        from competition_app.services.personal_knowledge_library import PersonalKnowledgeLibrary
+        from competition_app.services.personal_knowledge_storage import owner_lock
+        from competition_app.services.personal_knowledge_management import recover_personal
+        with owner_lock(backend.paths.runtime_root, owner, read=True):
+            recover_personal(backend, owner)
+            library = PersonalKnowledgeLibrary(backend.paths.runtime_root, owner)
+            return library.overview() if document_id is None else library.document(document_id)
+
+    def personal_library_error(exc, message):
+        from competition_app.services.personal_knowledge_storage import PersonalKnowledgeBusy
+        if isinstance(exc, PersonalKnowledgeBusy):
+            return HTTPException(status_code=409, detail='个人资料正在处理，请完成后重试')
+        if isinstance(exc, KeyError):
+            return HTTPException(status_code=404, detail='个人资料不存在')
+        return HTTPException(status_code=503, detail=message)
+
+    @app.post('/api/v1/knowledge/content/library/rebuild')
+    async def rebuild_personal_knowledge(request: Request) -> dict:
+        from competition_app.services.personal_knowledge_management import manage_personal_knowledge
+        owner, backend = knowledge_owner(request), knowledge_backend()
+        try:
+            return await asyncio.to_thread(manage_personal_knowledge, backend, owner)
+        except Exception as exc:
+            raise personal_library_error(exc, '个人索引重建失败，未完成的变更将恢复，请稍后重试') from exc
+
+    @app.delete('/api/v1/knowledge/content/library/{document_id}')
+    async def delete_personal_knowledge(document_id: str, request: Request) -> dict:
+        from competition_app.services.personal_knowledge_management import manage_personal_knowledge
+        owner, backend = knowledge_owner(request), knowledge_backend()
+        try:
+            return await asyncio.to_thread(manage_personal_knowledge, backend, owner, document_id)
+        except Exception as exc:
+            raise personal_library_error(exc, '个人资料删除失败，未完成的变更将恢复，请稍后重试') from exc
+
+    @app.get("/api/v1/knowledge/content/library/{document_id}")
+    async def personal_knowledge_document(document_id: str, request: Request) -> dict:
+        owner = knowledge_owner(request)
+        backend = knowledge_backend()
+        try:
+            return await asyncio.to_thread(personal_library_read, backend, owner, document_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="个人资料不存在") from exc
+        except Exception as exc:
+            raise personal_library_error(exc, '个人资料读取失败，请稍后重试') from exc
 
     @app.get("/api/v1/knowledge/content/recognition-reports")
     async def list_knowledge_recognition_reports(

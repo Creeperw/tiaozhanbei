@@ -10,7 +10,7 @@ test('describes personal and public knowledge boundaries', () => {
 });
 
 test('prioritizes search loading and errors before empty results', () => {
-  assert.deepEqual(getSearchFeedback({ isSearching: true, error: '', hasQueried: true, resultCount: 0 }), { tone: 'loading', text: '正在检索公共与个人知识…' });
+  assert.deepEqual(getSearchFeedback({ isSearching: true, error: '', hasQueried: true, resultCount: 0 }), { tone: 'loading', text: '正在通过多智能体共享工具检索…' });
   assert.deepEqual(getSearchFeedback({ isSearching: false, error: '服务暂不可用', hasQueried: true, resultCount: 0 }), { tone: 'error', text: '服务暂不可用' });
   assert.deepEqual(getSearchFeedback({ isSearching: false, error: '', hasQueried: true, resultCount: 0 }), { tone: 'empty', text: '未找到相关内容' });
   assert.equal(getSearchFeedback({ isSearching: false, error: '', hasQueried: false, resultCount: 0 }), null);

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
 from pathlib import Path
 from uuid import uuid4
+
+from competition_app.services.document_parsing import parse_mineru, validate_mineru
 
 
 # The integrated host projects its settings only while importing this package.
@@ -43,15 +43,7 @@ class MinerUPdfParser:
         ).expanduser()
 
     def validate(self) -> None:
-        if not self.token:
-            raise RuntimeError("MinerU 服务端密钥未配置")
-        required = (
-            self.pipeline_root / "parse_question_pdf.py",
-            self.pipeline_root / "pipeline_config.json",
-        )
-        missing = [str(path) for path in required if not path.is_file()]
-        if missing:
-            raise RuntimeError("MinerU PDF 管线不完整：" + "；".join(missing))
+        validate_mineru(self.pipeline_root, self.token)
 
     def parse(self, file_path: Path) -> str:
         self.validate()
@@ -59,40 +51,7 @@ class MinerUPdfParser:
         if not source.is_file() or source.suffix.lower() != ".pdf":
             raise ValueError("MinerU 只处理有效 PDF 文件")
         output_dir = self.runtime_root / "mineru_pdf_runs" / uuid4().hex
-        output_dir.mkdir(parents=True, exist_ok=True)
-        env = os.environ.copy()
-        env["MINERU_TOKEN"] = self.token
-        completed = subprocess.run(
-            [
-                sys.executable,
-                str(self.pipeline_root / "parse_question_pdf.py"),
-                "--config",
-                str(self.pipeline_root / "pipeline_config.json"),
-                "--output-dir",
-                str(output_dir),
-                "--pdf",
-                str(source),
-            ],
-            cwd=self.pipeline_root,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=24 * 60 * 60,
-            check=False,
-        )
-        if completed.returncode != 0:
-            detail = (
-                completed.stderr
-                or completed.stdout
-                or "MinerU PDF 解析失败"
-            ).strip()
-            raise RuntimeError(detail[-4000:])
-        markdown_files = sorted(output_dir.rglob("*_clean.md"))
-        if not markdown_files:
-            markdown_files = sorted(output_dir.rglob("*.md"))
-        if not markdown_files:
-            raise RuntimeError("MinerU 未生成 Markdown")
-        return "\n\n".join(
-            path.read_text(encoding="utf-8-sig")
-            for path in markdown_files
-        )
+        return parse_mineru(
+            [source], pipeline_root=self.pipeline_root, token=self.token,
+            output_dir=output_dir,
+        ).markdown

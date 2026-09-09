@@ -26,6 +26,32 @@ const previewItem = {
 describe('QuestionWorkspacePage', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it('refreshes persisted failed imports after an upload error', async () => {
+    let failed = false;
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      if (url.endsWith('/question-workspace/questions')) return response({ items: [] });
+      if (options.method === 'POST') {
+        failed = true;
+        return response({ detail: '题目抽取失败，请稍后重试' }, false, 502);
+      }
+      if (url.endsWith('/question-workspace/imports')) return response({ items: failed ? [{
+        job_id: 'FAILED_1', status: 'failed', item_count: 0,
+        original_filename: 'failed.pdf', error_message: '题目抽取失败',
+      }] : [] });
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+    render(<QuestionWorkspacePage />);
+    await screen.findByText('还没有已激活的个人题目');
+    fireEvent.change(screen.getByLabelText('选择题目文件'), {
+      target: { files: [new File(['pdf'], 'failed.pdf', { type: 'application/pdf' })] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '解析并预览' }));
+    await screen.findByText('题目抽取失败，请稍后重试');
+    const history = screen.getByRole('region', { name: '导入历史' });
+    await waitFor(() => expect(within(history).getByText(/失败 · 0 题/)).toBeInTheDocument());
+    expect(within(history).getByText('failed.pdf')).toBeInTheDocument();
+  });
+
   it('uploads an allowed file, previews questions, and confirms an item', async () => {
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       if (url.endsWith('/question-workspace/questions')) return response({ items: [] });

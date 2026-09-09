@@ -3,6 +3,14 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import TextbookLibrary from './TextbookLibrary';
 
+it('delegates upload to the shared entry when supplied', () => {
+  const onUploadRequested = vi.fn();
+  render(<TextbookLibrary onUploadRequested={onUploadRequested} />);
+  fireEvent.click(screen.getByRole('button', { name: '上传教材' }));
+  expect(onUploadRequested).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
 function textbook(overrides = {}) {
   return {
     id: 'BOOK_1',

@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import AliasChoices, ConfigDict, Field
 
 from APP.backend.contracts.common import ContractModel, PageMeta
+from competition_app.contracts.upload import UploadProgress
 
 
 QuestionStatus = Literal[
@@ -54,6 +55,7 @@ class QuestionRevisionRequest(ContractModel):
 
 class QuestionImportJob(ContractModel):
     job_id: str
+    progress: UploadProgress | None = None
     status: QuestionStatus
     item_count: int = Field(ge=0)
     original_filename: str
@@ -64,6 +66,7 @@ class QuestionImportJob(ContractModel):
 
 class QuestionImportCreated(ContractModel):
     job_id: str
+    progress: UploadProgress | None = None
     status: QuestionStatus
     item_count: int = Field(ge=0)
     items: list[QuestionWorkspaceItem] = Field(default_factory=list)
@@ -71,6 +74,7 @@ class QuestionImportCreated(ContractModel):
 
 class QuestionImportDetail(ContractModel):
     job_id: str
+    progress: UploadProgress | None = None
     status: QuestionStatus
     item_count: int = Field(ge=0)
     original_filename: str

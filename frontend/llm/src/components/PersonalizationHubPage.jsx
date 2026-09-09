@@ -65,7 +65,7 @@ export default function PersonalizationHubPage({ navigationContext = {}, onNavig
         {renderedTab === 'reports' && <LearningInsightsReportPage onNavigate={onNavigate} currentUser={currentUser} />}
         {renderedTab === 'review' && <ReviewDashboardPanel />}
         {renderedTab === 'memory' && <PersonalizationPage onBackHome={null} embedded view="memory" />}
-        {renderedTab === 'resources' && <ResourceUploadPage />}
+        {renderedTab === 'resources' && <ResourceUploadPage initialType={navigationContext.uploadType} onNavigate={onNavigate} />}
       </main>
     </div>
   );

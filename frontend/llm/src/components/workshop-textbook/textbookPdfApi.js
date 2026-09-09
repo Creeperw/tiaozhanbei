@@ -105,6 +105,8 @@ export const loadTextbookImportStatus = (taskId, { signal } = {}) => request(
   { signal },
 );
 
+export const loadTextbookImports = ({ signal } = {}) => request('/textbooks/imports?limit=50', { signal });
+
 export const uploadTextbook = async (formData, { signal } = {}) => {
   const response = await fetchWithAuth('/api/v1/textbooks/import', {
     method: 'POST',

@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -132,12 +133,11 @@ def build_backend(tmp_path: Path) -> KnowledgeDeliveryBackend:
     )
     # The implementation modules are loaded from the real handoff package while
     # all data and runtime writes remain isolated in this fixture.
-    real_component = (
-        Path(__file__).resolve().parents[3]
-        / "competition"
-        / "知识星球视频知识库_前端交接包_2026-07-18"
-        / "知识库管理组件"
-    )
+    real_component = Path(os.environ.get(
+        "KNOWLEDGE_TEST_COMPONENT_ROOT",
+        str(Path(__file__).resolve().parents[4] / "assets" / "knowledge"
+            / "releases" / "2026-07-18" / "component"),
+    ))
     paths = KnowledgeDeliveryPaths(
         component_root=real_component,
         public_data=paths.public_data,

@@ -4,25 +4,24 @@ import asyncio
 import base64
 from concurrent.futures import ThreadPoolExecutor
 import json
-import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import textwrap
-import time
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import httpx
 from docx import Document
 from openpyxl import load_workbook
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
 from pypdf import PdfReader
+from competition_app.services.document_parsing import DocumentParseError, parse_mineru
+from competition_app.llm.upload_json_client import UploadModelEndpoint, UploadModelError, complete_upload_json
+from competition_app.contracts.upload import upload_progress
 
 USER_SYLLABUS_UNSUPPORTED_FILE = "USER_SYLLABUS_UNSUPPORTED_FILE"
 USER_SYLLABUS_EXTRACTION_FAILED = "USER_SYLLABUS_EXTRACTION_FAILED"
@@ -65,34 +64,6 @@ def _safe_owner(value: str) -> str:
     if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,160}", owner):
         raise ValueError("owner_id 格式无效")
     return owner
-
-
-def _json_object(raw: Any) -> dict[str, Any]:
-    if isinstance(raw, dict):
-        return raw
-    if isinstance(raw, list):
-        raw = "".join(
-            str(item.get("text") or item.get("content") or "") if isinstance(item, dict) else str(item)
-            for item in raw
-        )
-    text = str(raw or "").strip()
-    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.I)
-    try:
-        value = json.loads(text)
-    except json.JSONDecodeError:
-        start, end = text.find("{"), text.rfind("}")
-        if start < 0 or end <= start:
-            raise UserSyllabusError(USER_SYLLABUS_INVALID_STRUCTURE, "多模态模型未返回有效 JSON")
-        try:
-            value = json.loads(text[start : end + 1])
-        except json.JSONDecodeError as exc:
-            snippet = text[start : end + 1].replace("\n", " ")[:200]
-            raise UserSyllabusError(
-                USER_SYLLABUS_INVALID_STRUCTURE,
-                f"多模态模型返回的 JSON 无法解析（片段：{snippet}）") from exc
-    if not isinstance(value, dict):
-        raise UserSyllabusError(USER_SYLLABUS_INVALID_STRUCTURE, "考纲结构必须是 JSON 对象")
-    return value
 
 
 class UserSyllabusService:
@@ -227,14 +198,21 @@ class UserSyllabusService:
             return []
         rows = [self._read_json(path / "manifest.json", {}) for path in owner_dir.iterdir()
                 if path.is_dir() and (path / "manifest.json").is_file()]
-        return sorted((row for row in rows if row.get("syllabus_id")),
+        return sorted((self._with_progress(row) for row in rows if row.get("syllabus_id")),
                       key=lambda row: str(row.get("updated_at") or ""), reverse=True)
+
+    @staticmethod
+    def _with_progress(manifest: dict[str, Any]) -> dict[str, Any]:
+        return {**manifest, "progress": upload_progress(
+            "syllabus", str(manifest.get("syllabus_id") or ""),
+            str(manifest.get("processing_status") or ""),
+        )}
 
     def get(self, owner_id: str, syllabus_id: str) -> dict[str, Any]:
         run_dir = self._require_dir(_safe_owner(owner_id), syllabus_id)
         structured = self._read_json(run_dir / "structured.json", None)
         return {
-            "manifest": self._read_json(run_dir / "manifest.json", {}),
+            "manifest": self._with_progress(self._read_json(run_dir / "manifest.json", {})),
             "structured": structured,
             "mappings": self._read_jsonl(run_dir / "mappings.jsonl"),
         }
@@ -347,47 +325,18 @@ class UserSyllabusService:
         return merged
 
     def _mineru_markdown(self, pdf_path: Path, output_dir: Path) -> Path:
-        if not self.mineru_token:
-            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 服务端密钥未配置")
         if not self.mineru_pipeline_root:
             raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 处理管线未配置")
-        script = self.mineru_pipeline_root / "parse_question_pdf.py"
-        config = self.mineru_pipeline_root / "pipeline_config.json"
-        if not script.is_file() or not config.is_file():
-            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 处理管线不完整")
-        output_dir.mkdir(parents=True, exist_ok=True)
-        env = os.environ.copy()
-        env["MINERU_TOKEN"] = self.mineru_token
-        command = [
-            sys.executable, str(script),
-            "--config", str(config), "--output-dir", str(output_dir),
-            "--pdf", str(pdf_path),
-        ]
-        completed = None
-        for attempt in range(3):
-            completed = subprocess.run(
-                command, cwd=self.mineru_pipeline_root, env=env,
-                capture_output=True, text=True, encoding="utf-8", errors="replace",
-                timeout=24 * 60 * 60, check=False,
-            )
-            if completed.returncode == 0:
-                break
-            detail = (completed.stderr or completed.stdout or "").lower()
-            if "download failed after retries" not in detail or attempt >= 2:
-                break
-            time.sleep(4 * (attempt + 1))
-        assert completed is not None
-        if completed.returncode != 0:
-            detail = (completed.stderr or completed.stdout or "MinerU 解析失败").strip()
-            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, detail[-1500:] or "MinerU 解析失败")
-        markdown_files = sorted(output_dir.rglob("*_clean.md")) or sorted(output_dir.rglob("*.md"))
-        if not markdown_files:
-            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 未生成考纲 Markdown")
         combined = output_dir / "syllabus_full_clean.md"
-        combined.write_text(
-            "\n\n".join(path.read_text(encoding="utf-8-sig") for path in markdown_files),
-            encoding="utf-8",
-        )
+        try:
+            parsed = parse_mineru(
+                [pdf_path], pipeline_root=self.mineru_pipeline_root,
+                token=self.mineru_token, output_dir=output_dir, attempts=3,
+                exclude_markdown=(combined,),
+            )
+        except DocumentParseError as exc:
+            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, str(exc)) from exc
+        combined.write_text(parsed.markdown, encoding="utf-8")
         return combined
 
     async def _extract_markdown_batches(self, markdown: Path) -> list[dict[str, Any]]:
@@ -428,58 +377,16 @@ class UserSyllabusService:
         }], 8000)
 
     async def _vision_json(self, user_content: list[dict[str, Any]], max_tokens: int) -> dict[str, Any]:
-        payload: dict[str, Any] = {"model": self.chat_model, "messages": [
-            {"role": "system", "content": "你只负责识别和结构化用户考纲，输出有效 JSON，不输出 Markdown。"},
-            {"role": "user", "content": user_content}],
-            "response_format": {"type": "json_object"}, "temperature": 0, "max_tokens": max_tokens,
-            "reasoning_effort": "none"}
-        timeout = httpx.Timeout(max(self.timeout_seconds, 600.0), connect=30.0)
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            for attempt in range(3):
-                try:
-                    response = await client.post(f"{self.chat_base_url}/chat/completions",
-                        headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
-                    if response.status_code == 400:
-                        lowered = response.text.lower()
-                        if "response_format" in lowered:
-                            payload.pop("response_format", None)
-                            response = await client.post(f"{self.chat_base_url}/chat/completions",
-                                headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
-                        elif "reasoning_effort" in lowered:
-                            payload.pop("reasoning_effort", None)
-                            response = await client.post(f"{self.chat_base_url}/chat/completions",
-                                headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
-                    if response.status_code in (408, 429, 500, 502, 503, 504):
-                        if attempt < 2:
-                            await asyncio.sleep(2 * (attempt + 1))
-                            continue
-                        raise UserSyllabusError(
-                            USER_SYLLABUS_EXTRACTION_FAILED,
-                            f"多模态模型调用失败（HTTP {response.status_code}）")
-                    response.raise_for_status()
-                    raw = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-                    if not str(raw or "").strip():
-                        if attempt < 2:
-                            await asyncio.sleep(2 * (attempt + 1))
-                            continue
-                        raise UserSyllabusError(
-                            USER_SYLLABUS_EXTRACTION_FAILED, "多模态模型未返回内容（推理过长或参数被忽略）")
-                    try:
-                        return _json_object(raw)
-                    except UserSyllabusError:
-                        if attempt < 2:
-                            await asyncio.sleep(2 * (attempt + 1))
-                            continue
-                        raise
-                except UserSyllabusError:
-                    raise
-                except (httpx.HTTPStatusError, httpx.TransportError) as exc:
-                    if attempt < 2:
-                        await asyncio.sleep(2 * (attempt + 1))
-                        continue
-                    raise UserSyllabusError(
-                        USER_SYLLABUS_EXTRACTION_FAILED,
-                        f"多模态模型调用失败：{type(exc).__name__}: {exc}") from exc
+        try:
+            return await complete_upload_json(
+                UploadModelEndpoint(self.chat_base_url, self.chat_model, self.chat_api_key),
+                system="你只负责识别和结构化用户考纲，输出有效 JSON，不输出 Markdown。",
+                user_content=user_content, max_tokens=max_tokens,
+                timeout_seconds=self.timeout_seconds, attempts=3, reasoning_effort="none",
+            )
+        except UploadModelError as exc:
+            code = USER_SYLLABUS_INVALID_STRUCTURE if exc.invalid_structure else USER_SYLLABUS_EXTRACTION_FAILED
+            raise UserSyllabusError(code, str(exc)) from exc
 
     @staticmethod
     def _image_part(content: bytes) -> dict[str, Any]:

@@ -1,6 +1,7 @@
 import tempfile
 import threading
 import unittest
+import httpx
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
@@ -97,6 +98,32 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
             "/question-workspace/imports",
             files={"file": ("questions.md", STRUCTURED_MARKDOWN.encode("utf-8"), "text/markdown")},
         )
+
+    def test_model_transport_and_provider_failures_end_job_without_leaking_details(self):
+        request = httpx.Request("POST", "https://model.example/chat/completions")
+        errors = [
+            httpx.ConnectError("private-token TLS failure", request=request),
+            httpx.HTTPStatusError("private-token provider error", request=request,
+                                  response=httpx.Response(400, request=request)),
+            RuntimeError("/srv/private traceback private-token"),
+        ]
+        for error in errors:
+            with self.subTest(error=type(error).__name__), patch(
+                "APP.backend.question_workspace_service._llm_extract_questions", side_effect=error
+            ):
+                result = self.client.post("/question-workspace/imports", files={
+                    "file": ("unstructured.md", b"A question requiring model extraction", "text/markdown")
+                })
+                self.assertEqual(result.status_code, 502 if isinstance(error, httpx.HTTPError) else 500)
+                self.assertNotIn("private-token", result.text)
+                self.assertNotIn("/srv/private", result.text)
+        with self.Session() as db:
+            jobs = db.query(database.UserQuestionImportJob).all()
+            self.assertEqual(len(jobs), 3)
+            self.assertTrue(all(job.status == "failed" for job in jobs))
+            self.assertTrue(all("题目抽取失败" in job.error_message for job in jobs))
+            self.assertTrue(all(not Path(job.stored_path).exists() for job in jobs))
+            self.assertEqual(db.query(database.UserQuestionItem).count(), 0)
 
     def test_runtime_schema_creates_persistent_question_workspace_tables(self):
         with tempfile.TemporaryDirectory() as directory:

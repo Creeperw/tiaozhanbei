@@ -19,13 +19,15 @@ import { getKnowledgeScopeNotice, getSearchFeedback } from '../knowledgePageStat
 import QuestionWorkspacePage from './QuestionWorkspacePage';
 import KnowledgeWorkspaceNav from './knowledge-atlas/KnowledgeWorkspaceNav';
 import KnowledgeRecognitionReports from './knowledge-reports/KnowledgeRecognitionReports';
+import { uploadIntent } from './resource-upload/uploadNavigation';
+import { uploadKnowledgeFiles } from './resource-upload/knowledgeUpload';
 
 const scopeLabel = {
   personal: '个人',
   public: '公共',
 };
 
-const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
+const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
   const isAdmin = currentUser?.role === 'admin';
   const [activeScope, setActiveScope] = useState('personal');
   const [activeWorkspace, setActiveWorkspace] = useState(
@@ -46,14 +48,24 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   const [filesError, setFilesError] = useState('');
   const [searchQuery, setSearchQuery] = useState(() => knowledgeQueryFromContext(navigationContext));
   const [searchResults, setSearchResults] = useState([]);
+  const [searchKind, setSearchKind] = useState('content');
+  const [searchWarning, setSearchWarning] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isManaging, setIsManaging] = useState(false);
+  const managementInFlight = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [contextBrief, setContextBrief] = useState(null);
   const [recognitionReportsVersion, setRecognitionReportsVersion] = useState(0);
+  const [uploadNotice, setUploadNotice] = useState('');
+  const [document, setDocument] = useState(null);
+  const [documentError, setDocumentError] = useState('');
+  const [documentLoading, setDocumentLoading] = useState(false);
+  const statsRequest = useRef(0);
+  const documentRequest = useRef(0);
 
   const fileInputRef = useRef(null);
   const dragCounter = useRef(0);
@@ -71,28 +83,61 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   }, [navigationContext.view]);
 
   const fetchStats = useCallback(async () => {
+    const version = ++statsRequest.current;
     setStatusError('');
     try {
-      const res = await fetchWithAuth(`${API_BASE}/knowledge/status?scope=${activeScope}`);
+      const res = await fetchWithAuth(activeScope === 'personal'
+        ? `${MAIN_API_BASE}/knowledge/content/library`
+        : `${API_BASE}/knowledge/status?scope=public`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || '向量库状态加载失败');
-      setStats(data);
+      if (version === statsRequest.current) setStats(activeScope === 'personal' ? data.stats || {} : data);
     } catch (error) {
-      setStatusError(error.message || '向量库状态加载失败');
+      if (version === statsRequest.current) setStatusError(error.message || '向量库状态加载失败');
     }
   }, [activeScope]);
 
   const fetchFiles = useCallback(async () => {
     setFilesError('');
-    try {
-      const res = await fetchWithAuth(`${API_BASE}/knowledge/files?scope=all`);
+    const results = await Promise.allSettled([
+      `${MAIN_API_BASE}/knowledge/content/library`,
+      `${API_BASE}/knowledge/files?scope=all`,
+    ].map(async url => {
+      const res = await fetchWithAuth(url);
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.detail || '文件列表加载失败');
-      setFileList(Array.isArray(data.files) ? data.files : []);
-    } catch (error) {
-      setFilesError(error.message || '文件列表加载失败');
-    }
+      if (!res.ok) throw new Error('目录加载失败');
+      return Array.isArray(data.files) ? data.files : [];
+    }));
+    setFileList(results.flatMap((result, index) => result.status === 'fulfilled'
+      ? result.value.map(file => ({ ...file, storage: index === 0 ? 'delivery' : 'legacy' })) : []));
+    const failures = results.flatMap((result, index) => result.status === 'rejected'
+      ? [index === 0 ? '个人导入目录加载失败' : '旧资料目录加载失败'] : []);
+    setFilesError(failures.join('；'));
   }, []);
+
+  const openDocument = async file => {
+    const version = ++documentRequest.current;
+    setDocument(null);
+    setDocumentError('');
+    setDocumentLoading(true);
+    try {
+      const res = await fetchWithAuth(`${MAIN_API_BASE}/knowledge/content/library/${encodeURIComponent(file.id)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error('个人资料读取失败，请重试');
+      if (version === documentRequest.current) setDocument(data);
+    } catch {
+      if (version === documentRequest.current) setDocumentError('个人资料读取失败，请重试');
+    } finally {
+      if (version === documentRequest.current) setDocumentLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    documentRequest.current += 1;
+    setDocument(null);
+    setDocumentError('');
+    setDocumentLoading(false);
+  }, [activeScope]);
 
   const fetchCatalog = useCallback(async () => {
     setCatalogLoading(true);
@@ -157,78 +202,33 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   const progressScale = progressValue / 100;
 
   const processUpload = useCallback(async (filesArray) => {
+    if (managementInFlight.current) return;
     if (!filesArray || filesArray.length === 0) return;
     const uploadScope = isAdmin ? activeScope : 'personal';
     if (uploadScope === 'public' && !isAdmin) return;
 
     setIsUploading(true);
     setUploadError('');
+    setUploadNotice('');
 
     try {
-      const textbookFiles = uploadScope === 'personal'
-        ? filesArray.filter(file => /\.(pdf|md|txt)$/i.test(file.name || ''))
-        : [];
-      const legacyFiles = filesArray.filter(file => !textbookFiles.includes(file));
-      let latestChapterCount = 0;
-
-      for (const file of textbookFiles) {
-        setStats(prev => ({
-          ...prev,
-          is_processing: true,
-          status: `正在解析《${file.name}》并生成章节、切片和知识点...`,
-          progress: 0,
-        }));
-        const params = new URLSearchParams({
-          filename: file.name,
-          title: file.name.replace(/\.[^.]+$/, '') || '用户教材',
-          apply: 'true',
-        });
-        const res = await fetchWithAuth(`${MAIN_API_BASE}/knowledge/content/import-file?${params}`, {
-          method: 'POST',
-          body: file,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          const detail = typeof data.detail === 'string'
-            ? data.detail
-            : data.detail?.message || data.error || '教材导入失败';
-          throw new Error(detail);
-        }
-        if (data.chapter_hierarchy?.ok !== true) {
-          throw new Error('教材已处理，但后端没有生成章节层级数据。');
-        }
-        latestChapterCount += Number(data.chapter_hierarchy.chapter_nodes || 0);
-      }
-
-      if (legacyFiles.length > 0) {
-        const formData = new FormData();
-        legacyFiles.forEach(file => formData.append('files', file));
-        const res = await fetchWithAuth(`${API_BASE}/knowledge/upload?scope=${uploadScope}`, {
-          method: 'POST',
-          body: formData,
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.detail || '上传失败');
-        }
-        setStats(prev => ({ ...prev, is_processing: true, status: '准备构建向量索引...', progress: 0 }));
-      } else if (textbookFiles.length > 0) {
-        setStats(prev => ({
-          ...prev,
-          is_processing: false,
-          status: `教材导入完成，已生成 ${latestChapterCount} 个章节`,
-          progress: 100,
-        }));
+      const result = await uploadKnowledgeFiles(filesArray, {
+        scope: uploadScope,
+        onStage: status => setStats(prev => ({ ...prev, is_processing: true, status, progress: 0 })),
+      });
+      if (!result.legacyPending && result.contentCount > 0) {
+        setUploadNotice(`教材导入完成，已生成 ${result.chapterCount} 个章节`);
       }
       await fetchFiles();
-      if (textbookFiles.length > 0) setRecognitionReportsVersion(value => value + 1);
+      await fetchStats();
+      if (result.contentCount > 0) setRecognitionReportsVersion(value => value + 1);
     } catch (e) {
       setStats(prev => ({ ...prev, is_processing: false }));
       setUploadError(e.message || '上传失败，请检查网络或后端服务');
     } finally {
       setIsUploading(false);
     }
-  }, [activeScope, fetchFiles, isAdmin]);
+  }, [activeScope, fetchFiles, fetchStats, isAdmin]);
 
   const handleFileUpload = (e) => {
     processUpload(Array.from(e.target.files || []));
@@ -260,61 +260,120 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
     setIsDragging(false);
     dragCounter.current = 0;
     if (activeScope === 'public' && !isAdmin) return;
+    if (activeScope === 'personal' && onNavigate) {
+      setUploadNotice('请在统一上传面板选择个人知识资料后重新选择文件。');
+      onNavigate(uploadIntent('knowledge'));
+      return;
+    }
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       processUpload(Array.from(e.dataTransfer.files));
     }
-  }, [activeScope, isAdmin, processUpload]);
+  }, [activeScope, isAdmin, processUpload, onNavigate]);
 
   const handleDeleteFile = async (file) => {
-    if (!file?.can_delete) return;
-    if (!window.confirm(`确定要删除「${file.name}」及其向量数据吗？此操作无法撤销。`)) return;
-
+    if (!file?.can_delete || managementInFlight.current || isUploading) return;
+    const personal = file.storage === 'delivery';
+    if (!window.confirm(personal
+      ? `确定从个人有效资料中删除「${file.name}」吗？仅由此资料支撑的知识点、关联和向量将移除；历史学习记录、识别报告及恢复备份保留，已激活题目不变。`
+      : `确定要删除「${file.name}」及其向量数据吗？此操作无法撤销。`)) return;
+    managementInFlight.current = true;
+    setIsManaging(true);
+    setUploadNotice('');
     try {
-      const res = await fetchWithAuth(`${API_BASE}/knowledge/files/${encodeURIComponent(file.name)}?scope=${file.scope}`, {
+      const url = personal
+        ? `${MAIN_API_BASE}/knowledge/content/library/${encodeURIComponent(file.id)}`
+        : `${API_BASE}/knowledge/files/${encodeURIComponent(file.name)}?scope=${file.scope}`;
+      const res = await fetchWithAuth(url, {
         method: 'DELETE',
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || '删除失败');
       }
+      documentRequest.current += 1;
+      setDocument(null);
+      setDocumentLoading(false);
+      setDocumentError('');
       await fetchFiles();
       await fetchStats();
+      setUploadNotice(personal ? '个人有效资料及其索引已更新；历史记录和恢复备份保留。' : '删除完成');
     } catch (e) {
       alert(e.message || '网络异常，无法删除');
+    } finally {
+      managementInFlight.current = false;
+      setIsManaging(false);
     }
   };
 
   const triggerRebuild = async () => {
+    if (managementInFlight.current || isUploading) return;
     if (activeScope === 'public' && !isAdmin) return;
+    const personal = activeScope === 'personal';
+    if (personal && !window.confirm('根据当前有效知识点重建个人向量索引？不会重新解析文件，不修改公共库或已激活题目。')) return;
+    managementInFlight.current = true;
+    setIsManaging(true);
+    setUploadNotice('');
     try {
-      const res = await fetchWithAuth(`${API_BASE}/knowledge/rebuild?scope=${activeScope}`, { method: 'POST' });
+      const url = personal ? `${MAIN_API_BASE}/knowledge/content/library/rebuild` : `${API_BASE}/knowledge/rebuild?scope=${activeScope}`;
+      const res = await fetchWithAuth(url, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || '重建失败');
       }
-      setStats(prev => ({ ...prev, is_processing: true, status: '准备扫描...', progress: 0 }));
+      if (personal) {
+        await fetchFiles();
+        await fetchStats();
+        setUploadNotice('个人向量索引已重建并校验。');
+      } else {
+        setStats(prev => ({ ...prev, is_processing: true, status: '准备扫描...', progress: 0 }));
+      }
     } catch (e) {
       alert(e.message || '重建失败');
+    } finally {
+      managementInFlight.current = false;
+      setIsManaging(false);
     }
   };
 
   const handleSearchTest = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || isSearching) return;
     setIsSearching(true);
     setSearchError('');
+    setSearchWarning('');
     setHasSearched(true);
     setSearchResults([]);
     try {
-      const res = await fetchWithAuth(`${API_BASE}/knowledge/search_test`, {
+      const res = await fetchWithAuth(`${MAIN_API_BASE}/knowledge/${searchKind === 'questions' ? 'questions' : 'content'}/search`, {
         method: 'POST',
-        body: JSON.stringify({ query: searchQuery, top_k: 5 }),
+        body: JSON.stringify({ query: searchQuery.trim(), limit: 5, ...(searchKind === 'questions' ? { scope: 'all' } : {}) }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || '检索失败，请稍后重试');
+        throw new Error(typeof data.detail === 'string' ? data.detail : data.detail?.message || '检索失败，请稍后重试');
       }
-      const data = await res.json();
-      setSearchResults(Array.isArray(data) ? data : []);
+      if (searchKind === 'questions') {
+        if (!Array.isArray(data.items)) throw new Error('题目检索返回格式异常');
+        setSearchResults(data.items.map(item => ({
+          id: item.question_id,
+          source: item.question_id,
+          scope: '正式题库 / 当前用户题目',
+          content: [item.stem, item.options?.join('\n'), item.reference_answer ? `答案：${item.reference_answer}` : '', item.analysis ? `解析：${item.analysis}` : ''].filter(Boolean).join('\n\n'),
+          channels: (item.retrieval?.channels || []).map(channel => ({ vector: '向量', bm25: 'BM25', bridge: '知识点关联' }[channel] || channel)).join(' · '),
+          score: item.retrieval?.channel_scores?.vector,
+          scoreLabel: '向量通道分',
+        })));
+        if (data.vector_degraded) setSearchWarning('向量通道暂不可用，本次结果来自知识点关联 / BM25，不代表向量检索成功。');
+      } else {
+        if (!Array.isArray(data.evidence_items)) throw new Error('教材检索返回格式异常');
+        setSearchResults(data.evidence_items.map(item => ({
+          id: item.evidence_id,
+          source: item.source_label || item.source_id,
+          scope: 'public',
+          content: item.content_summary,
+          score: item.confidence,
+          scoreLabel: '工具置信度',
+        })));
+      }
     } catch (e) {
       setSearchError(e.message || '检索失败，请稍后重试');
     } finally {
@@ -347,7 +406,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
         {workspaceNavigation}
         <main className="knowledge-page__main knowledge-page__main--questions">
           <section className="knowledge-page__questions" aria-label="题目数据">
-            <QuestionWorkspacePage />
+            <QuestionWorkspacePage onUploadRequested={onNavigate ? () => onNavigate(uploadIntent('question')) : undefined} />
           </section>
         </main>
       </div>
@@ -370,12 +429,14 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
           <div className="grid grid-cols-2 gap-2 text-sm">
             <button
               onClick={() => setActiveScope('personal')}
+              disabled={isManaging || isUploading}
               className={`rounded-xl border px-3 py-2 flex items-center justify-center gap-2 transition-colors ${activeScope === 'personal' ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-semibold' : 'bg-white border-slate-100 text-slate-700 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               <User size={15} />个人库
             </button>
             <button
               onClick={() => setActiveScope('public')}
+              disabled={isManaging || isUploading}
               className={`rounded-xl border px-3 py-2 flex items-center justify-center gap-2 transition-colors ${activeScope === 'public' ? 'bg-teal-50 border-teal-200 text-teal-800 font-semibold' : 'bg-white border-slate-100 text-slate-700 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               <ShieldCheck size={15} />公共库
@@ -399,15 +460,17 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
               <div key={`${file.scope}-${file.name}-${idx}`} className="group flex items-center justify-between px-3 py-2 text-sm text-slate-700 bg-white/85 rounded-xl border border-slate-100 hover:border-emerald-100 hover:bg-emerald-50/40 transition-[background-color,border-color]">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <FileText size={16} className={file.scope === 'public' ? 'text-teal-500 shrink-0' : 'text-emerald-500 shrink-0'} />
-                  <span className="truncate" title={file.name}>{file.name}</span>
+                  {file.storage === 'delivery' ? (
+                    <button className="truncate text-left underline underline-offset-2" title={file.name} onClick={() => openDocument(file)}>{file.name}</button>
+                  ) : <span className="truncate" title={file.name}>{file.name}</span>}
                   <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] border ${file.scope === 'public' ? 'bg-teal-50 text-teal-700 border-teal-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{scopeLabel[file.scope]}</span>
                 </div>
                 {file.can_delete ? (
-                  <button onClick={() => handleDeleteFile(file)} className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity p-1" title="删除文件及向量数据">
+                  <button disabled={isManaging || isUploading} onClick={() => handleDeleteFile(file)} className="text-rose-400 hover:text-rose-600 disabled:opacity-40 transition-opacity p-1" title={`删除${file.name}及向量数据`}>
                     <Trash2 size={14} />
                   </button>
                 ) : (
-                  <span className="text-[10px] text-slate-500">只读</span>
+                  <span className="text-[10px] text-slate-500">{file.storage === 'delivery' ? `${file.chunk_count} 切片` : '旧资料'}</span>
                 )}
               </div>
             ))}
@@ -428,7 +491,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
           <div className="absolute inset-0 z-50 bg-emerald-50/90 border-4 border-dashed border-emerald-300 rounded-3xl m-4 flex items-center justify-center backdrop-blur-sm pointer-events-none">
             <div className="bg-white p-8 rounded-3xl shadow-xl flex flex-col items-center animate-in zoom-in-95 duration-200">
               <UploadCloud size={64} className="text-emerald-600 mb-4" />
-              <p className="text-2xl font-bold text-slate-800 mb-2">松开鼠标，上传到{scopeLabel[activeScope]}知识库</p>
+              <p className="text-2xl font-bold text-slate-800 mb-2">{activeScope === 'personal' && onNavigate ? '松开鼠标，前往统一上传面板重新选择文件' : `松开鼠标，上传到${scopeLabel[activeScope]}知识库`}</p>
               <p className="text-slate-600">支持格式: .txt, .md, .pdf, .json, .jsonl</p>
             </div>
           </div>
@@ -480,7 +543,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
               </div>
               {catalog.embedding?.state && (
                 <p className={`mt-3 rounded-xl px-3 py-2 text-xs ${catalog.embedding.state === 'ready' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
-                  Embedding：{catalog.embedding.state}{catalog.embedding.model_id ? ` · ${catalog.embedding.model_id}` : ''}{catalog.embedding.error ? ` · ${catalog.embedding.error}` : ''}
+                  旧全库索引服务：{catalog.embedding.state}{catalog.embedding.model_id ? ` · ${catalog.embedding.model_id}` : ''}{catalog.embedding.error ? ` · ${catalog.embedding.error}` : ''}。下方资料检索使用多智能体共享工具，不以此状态判断是否可用。
                 </p>
               )}
             </div>
@@ -494,8 +557,8 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
             </div>
             <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row">
               <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || stats.is_processing || !canWriteActiveScope}
+                onClick={() => activeScope === 'personal' && onNavigate ? onNavigate(uploadIntent('knowledge')) : fileInputRef.current?.click()}
+                disabled={isManaging || isUploading || stats.is_processing || !canWriteActiveScope}
                 className="flex w-full items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-[background-color,opacity] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-emerald-200 sm:w-auto"
               >
                 {isUploading ? <RefreshCw className="animate-spin" size={18} /> : <UploadCloud size={18} />}
@@ -504,7 +567,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
               <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".txt,.md,.pdf,.json,.jsonl" />
               <button
                 onClick={triggerRebuild}
-                disabled={stats.is_processing || !canWriteActiveScope}
+                disabled={isManaging || isUploading || stats.is_processing || !canWriteActiveScope}
                 className="flex w-full items-center justify-center gap-2 px-4 py-2 bg-white border border-emerald-100 text-emerald-900 rounded-xl hover:bg-emerald-50 transition-[color,background-color,opacity] disabled:opacity-50 disabled:text-emerald-800 sm:w-auto"
               >
                 <Zap size={18} className="text-amber-500" />
@@ -531,18 +594,35 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
             </div>
           )}
 
+          {uploadNotice && <p role="status" className="mb-4 text-emerald-800">{uploadNotice}</p>}
+          {isManaging && <p role="status">正在更新个人资料或索引，请勿重复操作...</p>}
+          {activeScope === 'personal' && <p className="mb-4 text-sm text-slate-600">统计来自当前有效的个人教材；旧格式资料单独保留。删除仅移除有效资料及关联索引，历史学习记录、识别报告和恢复备份保留；重建不会重新解析文件。</p>}
+          {documentLoading && <p role="status">正在读取个人资料...</p>}
+          {documentError && <p role="alert">{documentError}</p>}
+          {document && <section aria-label="个人资料原文" className="mb-6 rounded-2xl border border-emerald-100 bg-white p-5">
+            <h2 className="font-semibold text-slate-900">{document.name}</h2>
+            <p className="text-sm text-slate-500">以下为已入库的解析切片原文，仅本人可见。</p>
+            {(document.chunks || []).map(chunk => <article key={chunk.id} className="mt-4">
+              <h3 className="font-medium">{chunk.title}</h3>
+              <p className="whitespace-pre-wrap text-slate-700">{chunk.text}</p>
+            </article>)}
+          </section>}
+
           {activeScope === 'personal' && (
-            <KnowledgeRecognitionReports refreshToken={recognitionReportsVersion} />
+            <div>
+              <p className="mb-2 text-xs text-slate-500">以下识别审查为导入时的历史快照，保留已删除资料的历史报告，不代表当前有效资料数量。</p>
+              <KnowledgeRecognitionReports refreshToken={recognitionReportsVersion} />
+            </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatsCard icon={<FileText className="text-emerald-500" />} label={`${scopeLabel[activeScope]}文档数`} value={stats.total_documents} sub="个源文件" />
-            <StatsCard icon={<Layers className="text-teal-500" />} label="向量切片" value={stats.total_chunks} sub="个文本块" />
+            <StatsCard icon={<Layers className="text-teal-500" />} label={activeScope === 'personal' ? '解析切片' : '向量切片'} value={stats.total_chunks} sub={activeScope === 'personal' ? `${stats.total_knowledge_points ?? 0} 个知识点 · ${stats.total_vectors ?? 0} 条向量` : '个文本块'} />
             <StatsCard
               icon={stats.is_processing ? <RefreshCw className="animate-spin text-emerald-500" /> : <CheckCircle className="text-emerald-500" />}
-              label="系统状态"
+              label={activeScope === 'personal' ? '个人导入索引状态' : '旧索引服务状态'}
               value={stats.status}
-              sub={stats.is_processing ? `进度: ${stats.progress}%` : '等待任务'}
+              sub={stats.is_processing ? `进度: ${stats.progress}%` : '独立于下方共享检索'}
               highlight={stats.is_processing}
             />
           </div>
@@ -572,15 +652,32 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
             <div className="knowledge-workbench__search-heading">
               <p>Evidence search</p>
               <h1><Search size={20} />资料检索</h1>
-              <span>先检索，再阅读；每条结果保留来源、范围与相似度。</span>
+              <span>复用多智能体检索工具；手动选择教材或题目，每条结果保留真实来源。</span>
             </div>
+            <div className="mb-3 flex items-center gap-3">
+              <label htmlFor="knowledge-search-kind" className="text-sm text-slate-700">检索类型</label>
+              <select id="knowledge-search-kind" value={searchKind} disabled={isSearching} onChange={event => {
+                setSearchKind(event.target.value);
+                setSearchResults([]);
+                setSearchError('');
+                setSearchWarning('');
+                setHasSearched(false);
+              }} className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm">
+                <option value="content">教材资料</option>
+                <option value="questions">题目</option>
+              </select>
+            </div>
+            <p className="mb-3 text-xs text-slate-500">{searchKind === 'content'
+              ? '范围：公共教材知识点及关联原文，与多智能体教材工具一致；不检索个人上传文件或古籍全库，不自动联网。'
+              : '范围：正式题库与当前用户题目，与多智能体题目工具一致；使用向量、BM25、知识点关联混合检索。'}</p>
             <div className="knowledge-workbench__search-box bg-white p-2 rounded-2xl shadow-sm border border-emerald-100 flex flex-col gap-2 mb-6 transition-shadow sm:flex-row sm:items-center">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchTest()}
-                placeholder="输入问题测试公共知识 + 个人知识联合召回效果..."
+                maxLength={2000}
+                placeholder={searchKind === 'content' ? '输入知识主题，检索教材资料...' : '输入题干或知识主题，检索题目...'}
                 className="flex-1 px-4 py-3 outline-none text-slate-700 placeholder-slate-400 bg-transparent"
               />
               <button onClick={handleSearchTest} disabled={isSearching} className="w-full px-6 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-[background-color,opacity] disabled:opacity-50 font-medium sm:w-auto">
@@ -589,16 +686,18 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
             </div>
 
             <div className="knowledge-workbench__search-results space-y-4">
+              {searchWarning && <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{searchWarning}</p>}
               {searchResults.map((result, idx) => (
-                <div key={idx} className="bg-white/90 p-5 rounded-2xl border border-emerald-50 shadow-sm hover:shadow-md transition-shadow group animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div key={result.id || idx} className="bg-white/90 p-5 rounded-2xl border border-emerald-50 shadow-sm hover:shadow-md transition-shadow group animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-xs rounded font-medium border border-emerald-100">Top {idx + 1}</span>
                       <span className={`px-2 py-0.5 text-xs rounded-full border ${result.scope === 'public' ? 'bg-teal-50 text-teal-700 border-teal-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{scopeLabel[result.scope] || result.scope}</span>
                       <span className="text-xs text-slate-400 font-mono">{result.source}</span>
                     </div>
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{(result.score * 100).toFixed(1)}% 相似度</span>
+                    {Number.isFinite(result.score) && <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{(result.score * 100).toFixed(1)}% {result.scoreLabel}</span>}
                   </div>
+                  {result.channels && <p className="mb-2 text-xs text-slate-500">命中通道：{result.channels}</p>}
                   <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap pl-3 border-l-2 border-emerald-100 group-hover:border-emerald-400 transition-colors">
                     {result.content}
                   </p>

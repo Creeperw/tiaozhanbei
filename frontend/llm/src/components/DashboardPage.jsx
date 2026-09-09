@@ -11,6 +11,7 @@ import {
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import PageLoadingSpinner from './PageLoadingSpinner';
 import TextbookLibrary from './workshop-textbook/TextbookLibrary';
+import { uploadIntent } from './resource-upload/uploadNavigation';
 import { deleteUploadedTextbook, loadTextbookPdfCatalog, setUploadedTextbookHidden } from './workshop-textbook/textbookPdfApi';
 import { buildTextbookViewModels } from './workshop-textbook/textbookLibraryModel';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
@@ -861,6 +862,7 @@ export default function DashboardPage({
                   </section>}
                   <TextbookLibrary
                     books={textbookViewModels}
+                    onUploadRequested={() => onNavigate?.(uploadIntent('textbook'))}
                     initialFilter="planned"
                     emptyText="当前计划暂未匹配到教材"
                     onOpen={openTextbook}

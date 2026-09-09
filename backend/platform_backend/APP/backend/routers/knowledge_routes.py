@@ -21,6 +21,7 @@ from APP.backend.knowledge_agent_service import align_knowledge_points, build_ev
 from APP.backend.document_ingestion_service import ingest_document
 from APP.backend.question_ingestion_service import QuestionIngestionService
 from APP.backend.pdf_question_ingestion_service import PdfQuestionIngestionService
+from competition_app.contracts.upload import upload_progress
 from APP.backend.question_ingestion_task_service import QuestionIngestionTaskService
 from APP.backend.database import QuestionIngestionTaskRecord
 from APP.backend.mineru_pdf_service import MinerUPdfParser
@@ -404,6 +405,7 @@ def _question_ingestion_task_payload(task: QuestionIngestionTaskRecord) -> dict:
     return {
         "task_id": task.task_id,
         "status": task.status,
+        "progress": upload_progress("admin_questions", task.task_id, task.status),
         "outcome_status": task_result.get("status"),
         "published_question_id": task.published_question_id,
         "error_code": task.error_code,

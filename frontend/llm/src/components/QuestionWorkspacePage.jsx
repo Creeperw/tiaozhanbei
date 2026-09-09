@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button, EmptyState, InlineError, Skeleton, StatusBadge } from './ui';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import UploadProgress from './resource-upload/UploadProgress';
 
 const ALLOWED_EXTENSIONS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'md', 'txt']);
 
@@ -29,7 +30,7 @@ function statusLabel(status) {
   }[status] || status;
 }
 
-export default function QuestionWorkspacePage() {
+export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange }) {
   const [activeQuestions, setActiveQuestions] = useState([]);
   const [importJobs, setImportJobs] = useState([]);
   const [previewItems, setPreviewItems] = useState([]);
@@ -41,6 +42,7 @@ export default function QuestionWorkspacePage() {
   const [draftAnswers, setDraftAnswers] = useState({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  useEffect(() => { onBusyChange?.(uploading); }, [uploading, onBusyChange]);
 
   const activeIds = useMemo(
     () => new Set(activeQuestions.map((item) => item.question_id)),
@@ -86,6 +88,8 @@ export default function QuestionWorkspacePage() {
     setUploading(true);
     setError('');
     setNotice('');
+    setPreviewItems([]);
+    setActiveImportJobId('');
     const body = new FormData();
     body.append('file', selectedFile);
     try {
@@ -112,6 +116,13 @@ export default function QuestionWorkspacePage() {
         : '解析完成，请逐题核对后确认导入。');
     } catch (uploadError) {
       setError(uploadError.message || '题目解析失败');
+      try {
+        const historyResponse = await fetchWithAuth(`${API_BASE}/question-workspace/imports`);
+        const history = await readJsonResponse(historyResponse, {});
+        if (historyResponse.ok && Array.isArray(history.items)) setImportJobs(history.items);
+      } catch {
+        // Keep the original import error if refreshing history also fails.
+      }
     } finally {
       setUploading(false);
     }
@@ -279,7 +290,7 @@ export default function QuestionWorkspacePage() {
         </div>
       </div>
 
-      <div className="question-workspace__upload-card">
+      {onUploadRequested ? <Button onClick={onUploadRequested}><UploadCloud size={17} />上传个人题库</Button> : <div className="question-workspace__upload-card">
         <div className="question-workspace__dropzone">
           <UploadCloud aria-hidden="true" size={28} />
           <label htmlFor="question-workspace-file">选择题目文件</label>
@@ -297,7 +308,7 @@ export default function QuestionWorkspacePage() {
           <FileText aria-hidden="true" size={17} />
           解析并预览
         </Button>
-      </div>
+      </div>}
 
       {error && <InlineError message={error} />}
       {notice && <p className="question-workspace__notice" role="status">{notice}</p>}
@@ -318,7 +329,8 @@ export default function QuestionWorkspacePage() {
                 <Archive aria-hidden="true" size={18} />
                 <div>
                   <strong>{job.original_filename}</strong>
-                  <span>{statusLabel(job.status)} · {job.item_count || 0} 题</span>
+                  {job.progress ? <span><UploadProgress progress={job.progress} /> · {job.item_count || 0} 题</span>
+                    : <span>{statusLabel(job.status)} · {job.item_count || 0} 题</span>}
                   {job.error_message && <small>{job.error_message}</small>}
                 </div>
                 {['preview_ready', 'needs_human_review'].includes(job.status) && (
