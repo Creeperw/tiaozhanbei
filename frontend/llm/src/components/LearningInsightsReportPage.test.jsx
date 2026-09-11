@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -47,7 +48,73 @@ describe('LearningInsightsReportPage', () => {
     });
     fetchJsonWithAuthFallback.mockResolvedValue({ data: { lifetime: { focus_minutes: 5160 } } });
   });
+
+  it('does not render a missing formal accuracy as a zero score', async () => {
+    loadResourceEffectiveness.mockResolvedValue({ error: '', effectiveness: null });
+    loadReportsData.mockResolvedValue({
+      error: '',
+      report: {
+        dimensions: [{ key: 'accuracy', value: null }],
+        activity_trends: { series: [] },
+        data_quality: {},
+        resource_match_report: { target: {}, summary: {}, matches: [] },
+      },
+    });
+
+    render(<LearningInsightsReportPage onNavigate={vi.fn()} />);
+
+    expect(await screen.findByText('暂无有效计分作答')).toBeInTheDocument();
+    expect(screen.getByText('暂无', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.queryByText('0%', { selector: 'span' })).not.toBeInTheDocument();
+  });
+
+  it('never invents a weak-point count and does not call the coverage figure a weak concept', async () => {
+    // ``items.length || 3`` used to render 「优先巩固以下 3 个知识点」 directly
+    // above 「暂无可确认的薄弱知识点。」, so the card contradicted itself.  The
+    // coverage figure counts recommendation targets (weak points ∪ today's task
+    // knowledge points), so it must not be labelled 「薄弱概念」 either.
+    loadResourceEffectiveness.mockResolvedValue({ error: '', effectiveness: null });
+    loadReportsData.mockResolvedValue({
+      error: '',
+      report: {
+        dimensions: [],
+        activity_trends: { series: [] },
+        data_quality: {},
+        weak_points: [],
+        resource_match_report: {
+          target: {},
+          summary: { matched_count: 1, target_count: 1 },
+          matches: [],
+          no_match_reason: '',
+        },
+      },
+    });
+
+    render(<LearningInsightsReportPage onNavigate={vi.fn()} />);
+
+    const card = await screen.findByRole('region', { name: '薄弱知识点' });
+    expect(within(card).getByText('暂无可确认的薄弱知识点。')).toBeInTheDocument();
+    expect(within(card).queryByText(/优先巩固以下/)).not.toBeInTheDocument();
+    expect(screen.getByText('已覆盖 1/1 个目标知识点')).toBeInTheDocument();
+    expect(screen.queryByText(/个薄弱概念/)).not.toBeInTheDocument();
+  });
+
   afterEach(() => vi.unstubAllGlobals());
+
+  it('uses the declared Beijing window and preserves two-decimal score precision', async () => {
+    loadResourceEffectiveness.mockResolvedValue({ error: '', effectiveness: null });
+    loadReportsData.mockResolvedValue({ error: '', report: {
+      window: { days: 30, start_at: '2026-08-08T00:00:00+08:00', end_at: '2026-09-06T17:00:00+08:00' },
+      dimensions: [{ key: 'accuracy', value: .7454 }],
+      activity_trends: { series: [{ date: '2026-09-06' }] },
+      data_quality: { question_count: 65, completed_practice_count: 65 },
+      resource_match_report: { target: {}, summary: {}, matches: [] },
+    } });
+    render(<LearningInsightsReportPage onNavigate={vi.fn()} />);
+    expect(await screen.findByText('近30天（08.08-09.06）')).toBeInTheDocument();
+    expect(screen.getAllByText('74.54%').length).toBeGreaterThan(0);
+    expect(screen.queryByText('75%', { selector: 'span' })).not.toBeInTheDocument();
+  });
 
   it('renders the reference-style report and removes the retired report sections', async () => {
     const onNavigate = vi.fn();
@@ -147,9 +214,9 @@ describe('LearningInsightsReportPage', () => {
     expect(await screen.findByText('累计学习时长')).toBeInTheDocument();
     expect(screen.getByText('5160')).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: '学情报告快捷入口' })).not.toBeInTheDocument();
-    expect(screen.getByText('练习活动')).toBeInTheDocument();
-    expect(screen.getByText('正式练习得分率')).toBeInTheDocument();
-    expect(screen.getByText(/仅统计审核通过的正式批改结果/)).toBeInTheDocument();
+    expect(screen.getByText('近30天作答')).toBeInTheDocument();
+    expect(screen.getByText('练习得分率')).toBeInTheDocument();
+    expect(screen.getByText(/总得分 \/ 总满分，含有效历史作答/)).toBeInTheDocument();
     expect(screen.getByText('活跃天数')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '能力分析' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '学习能力雷达图' })).toBeInTheDocument();
@@ -175,7 +242,7 @@ describe('LearningInsightsReportPage', () => {
     expect(screen.queryByText('复习队列')).not.toBeInTheDocument();
     expect(screen.queryByText('多尺度学习状态')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: '针对薄弱点的学习推荐' })).toBeInTheDocument();
-    expect(screen.getByText('已匹配 1/1 个薄弱概念')).toBeInTheDocument();
+    expect(screen.getByText('已覆盖 1/1 个目标知识点')).toBeInTheDocument();
     expect(screen.getByText('四君子汤知识卡')).toBeInTheDocument();
     expect(await screen.findByRole('region', { name: '资源推荐效果' })).toBeInTheDocument();
     const effectsToggle = screen.getByRole('button', { name: /推荐效果（近 30 天）/ });
@@ -200,6 +267,8 @@ describe('LearningInsightsReportPage', () => {
     expect(recordResourceRecommendationEvent).toHaveBeenCalledTimes(1);
     expect(observer.disconnect).toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '匹配依据' }));
+    expect(screen.getByRole('region', { name: '针对薄弱点的学习推荐' }).querySelector('article').textContent).not.toMatch(/\d+(?:\.\d+)?%/);
+    expect(screen.queryByText(/^覆盖率 /)).not.toBeInTheDocument();
     expect(screen.getByText('资源知识点与当前薄弱点、计划知识点的交集')).toBeInTheDocument();
     expect(screen.getByText('入学问卷中确认的资源偏好')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '打开资源' }));

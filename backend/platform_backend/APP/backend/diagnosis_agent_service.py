@@ -221,18 +221,65 @@ def build_l0_baseline(onboarding_answers: dict[str, Any], learner_group: str = "
     }
 
 
+ONBOARDING_MEMORY_TITLE = "入学学情调查"
+ONBOARDING_MEMORY_SOURCE = "onboarding_survey"
+_ONBOARDING_PLACEHOLDERS = {"", "未填写", "未选择", "未选择用户群体"}
+
+
+def _render_onboarding_memory_text(normalized: dict[str, Any]) -> str:
+    """把入学问卷渲染成学习者能读懂的自然语言。
+
+    这条记忆既会显示在「学习记忆」列表里，也会被 ``_render_memory_brief``
+    渲染进智能体的「长期偏好与背景」上下文，所以它必须是可读文本，不能是
+    问卷的原始 JSON。
+    """
+    lines: list[str] = []
+
+    def add(label: str, value: Any) -> None:
+        if isinstance(value, (list, tuple, set)):
+            text = "、".join(str(item).strip() for item in value if str(item).strip())
+        else:
+            text = str(value).strip() if value is not None else ""
+        if text and text not in _ONBOARDING_PLACEHOLDERS:
+            lines.append(f"{label}：{text}")
+
+    add("用户群体", normalized.get("user_group"))
+    add("学历", normalized.get("education"))
+    add("专业或身份", normalized.get("major_or_role"))
+    add("中医基础", normalized.get("tcm_foundation"))
+    add("已学课程", normalized.get("learned_courses"))
+    add("长期目标", normalized.get("long_term_goal"))
+    add("短期目标", normalized.get("short_term_goal"))
+    add("目标考试或课程", normalized.get("target_exam_or_course"))
+    minutes = normalized.get("daily_available_minutes")
+    if minutes:
+        lines.append(f"每日可投入时间：{minutes} 分钟")
+    add("偏好学习时段", normalized.get("preferred_time_slot"))
+    add("资源偏好", normalized.get("resource_preference"))
+    add("学习方式", normalized.get("learning_mode"))
+    add("设备环境", normalized.get("device_environment"))
+    add("当前困难", normalized.get("current_difficulties"))
+    add("特别要求", normalized.get("special_requirement"))
+    add("自定义需求", normalized.get("custom_requirements"))
+    return "\n".join(lines)
+
+
 def _upsert_onboarding_memory(db: Session, user_id: int, title: str, content: str, source: str) -> None:
+    # Match on ``source`` (the stable identifier) rather than the title, so that
+    # renaming the memory updates the existing row in place instead of leaving
+    # the old one behind as a duplicate.
     existing = (
         db.query(PersonalizationMemory)
         .filter(
             PersonalizationMemory.user_id == user_id,
-            PersonalizationMemory.title == title,
             PersonalizationMemory.source == source,
             PersonalizationMemory.is_active.is_(True),
         )
+        .order_by(PersonalizationMemory.id.asc())
         .first()
     )
     if existing:
+        existing.title = title
         existing.content = content
         existing.updated_at = _now()
         return
@@ -332,9 +379,9 @@ def submit_onboarding_survey(
     _upsert_onboarding_memory(
         db,
         user_id,
-        "Onboarding Survey",
-        json.dumps(payload, ensure_ascii=False),
-        "onboarding_survey",
+        ONBOARDING_MEMORY_TITLE,
+        _render_onboarding_memory_text(normalized),
+        ONBOARDING_MEMORY_SOURCE,
     )
     if commit:
         db.commit()

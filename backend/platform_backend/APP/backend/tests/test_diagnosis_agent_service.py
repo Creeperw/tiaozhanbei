@@ -80,6 +80,79 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_onboarding_memory_is_readable_text_not_survey_json(self):
+        service = self._service()
+        sample = self._load_sample(profile_id=self.SAMPLE_PROFILE_ID)
+
+        db = self.Session()
+        try:
+            db.add(database.UserModel(id=1, username="learner", email="learner@example.com", hashed_password="x"))
+            db.commit()
+
+            service.submit_onboarding_survey(
+                db,
+                user_id=1,
+                survey_answers=sample["onboarding_answers"],
+                learner_group=sample["user_group"],
+            )
+
+            memory = (
+                db.query(database.PersonalizationMemory)
+                .filter_by(user_id=1, source="onboarding_survey")
+                .one()
+            )
+            # The row is rendered into the memory list *and* into the agents'
+            # 「长期偏好与背景」 context, so it must never be a JSON blob again.
+            self.assertNotIn("{", memory.content)
+            self.assertNotIn("survey_answers", memory.content)
+            self.assertEqual(memory.title, service.ONBOARDING_MEMORY_TITLE)
+            self.assertNotIn("Onboarding Survey", memory.title)
+            for expected in ("用户群体", "每日可投入时间", "资源偏好"):
+                self.assertIn(expected, memory.content)
+        finally:
+            db.close()
+
+    def test_resubmitting_the_survey_updates_the_memory_in_place(self):
+        service = self._service()
+        sample = self._load_sample(profile_id=self.SAMPLE_PROFILE_ID)
+
+        db = self.Session()
+        try:
+            db.add(database.UserModel(id=1, username="learner", email="learner@example.com", hashed_password="x"))
+            db.commit()
+
+            # A row written by the old code: English title, raw JSON content.
+            db.add(database.PersonalizationMemory(
+                user_id=1,
+                category="note",
+                importance="normal",
+                title="Onboarding Survey",
+                content=json.dumps({"status": "onboarding_completed", "survey_answers": {}}, ensure_ascii=False),
+                source="onboarding_survey",
+                is_active=True,
+                confidence=0.82,
+            ))
+            db.commit()
+
+            service.submit_onboarding_survey(
+                db,
+                user_id=1,
+                survey_answers=sample["onboarding_answers"],
+                learner_group=sample["user_group"],
+            )
+
+            rows = (
+                db.query(database.PersonalizationMemory)
+                .filter_by(user_id=1, source="onboarding_survey")
+                .all()
+            )
+            # Renaming must not leave the legacy row behind as a duplicate.
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0].title, service.ONBOARDING_MEMORY_TITLE)
+            self.assertNotIn("{", rows[0].content)
+        finally:
+            db.close()
+
     def test_normalizes_existing_frontend_aliases_and_chinese_duration(self):
         service = self._service()
 

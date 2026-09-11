@@ -162,4 +162,123 @@ describe('PersonalizationPage single-task views', () => {
     expect(await screen.findByText('案例训练')).toBeInTheDocument();
     expect(screen.queryByText('视频 练习题')).not.toBeInTheDocument();
   });
+
+  it('shows readable content instead of an 「未命名」 placeholder when a title is missing', async () => {
+    // The memory-extraction agent is allowed to return content without a title
+    // (the backend normalises a missing title to ""), so the placeholder used to
+    // hide memories that are perfectly readable.
+    const content = '用户需从《中医学基础》绪论开始学习，已作为起点确认。';
+    fetchWithAuth.mockImplementation(async (url) => {
+      if (url.includes('/personalization/memories')) {
+        return {
+          ok: true,
+          json: async () => ([{
+            id: 1,
+            category: 'note',
+            title: '',
+            content,
+            source: 'memory_agent',
+            importance: 'normal',
+            is_active: true,
+            updated_at: '2026-09-01T00:00:00Z',
+          }]),
+        };
+      }
+      if (url.includes('/personalization/candidates')) {
+        return {
+          ok: true,
+          json: async () => ([{
+            id: 2,
+            status: 'pending',
+            title: '',
+            content,
+            source: 'memory_agent',
+            importance: 'normal',
+            reason: '记忆管理智能体识别为重要信息',
+            updated_at: '2026-09-01T00:00:00Z',
+          }]),
+        };
+      }
+      return { ok: true, json: async () => responseFor(url) };
+    });
+
+    render(<PersonalizationPage embedded view="unified" />);
+
+    expect(await screen.findAllByText(content)).not.toHaveLength(0);
+    expect(screen.queryByText('未命名')).not.toBeInTheDocument();
+    expect(screen.queryByText('未命名候选')).not.toBeInTheDocument();
+  });
+
+  it('shows readable names instead of internal enums for memory sources and categories', async () => {
+    // memory source/category are fixed backend enums, so the page translates
+    // them.  Values such as onboarding_survey or memory_agent used to be printed
+    // verbatim, which reads like a system fault to the learner.
+    fetchWithAuth.mockImplementation(async (url) => {
+      if (url.includes('/personalization/overview')) {
+        return {
+          ok: true,
+          json: async () => ({
+            profile: {},
+            stats: {
+              by_category: { note: 1, legacy_unknown_category: 1 },
+              by_source: {
+                onboarding_survey: 1,
+                memory_agent: 1,
+                synthetic_judge_usage_v2: 1,
+                legacy_unknown_source: 1,
+              },
+            },
+          }),
+        };
+      }
+      if (url.includes('/personalization/memories')) {
+        return {
+          ok: true,
+          json: async () => ([{
+            id: 11,
+            category: 'note',
+            // 标题刻意与来源标签不同名，否则标题会把「来源已映射」这件事掩盖掉。
+            title: '每日学习时间安排',
+            content: '每日可投入时间：35 分钟',
+            source: 'onboarding_survey',
+            importance: 'normal',
+            is_active: true,
+            updated_at: '2026-09-11T12:00:00Z',
+          }]),
+        };
+      }
+      if (url.includes('/personalization/candidates')) {
+        return {
+          ok: true,
+          json: async () => ([{
+            id: 12,
+            status: 'pending',
+            title: '',
+            content: '用户需从《中医学基础》绪论开始学习。',
+            source: 'memory_agent',
+            importance: 'normal',
+            reason: '记忆管理智能体识别为重要信息',
+            updated_at: '2026-09-11T12:00:00Z',
+          }]),
+        };
+      }
+      return { ok: true, json: async () => responseFor(url) };
+    });
+
+    const { container } = render(<PersonalizationPage embedded view="unified" />);
+
+    // 「入学学情调查」只可能来自 source 枚举映射（记忆标题是「每日学习时间安排」）。
+    expect(await screen.findAllByText('入学学情调查')).not.toHaveLength(0);
+    expect(screen.getAllByText('记忆管理智能体')).not.toHaveLength(0);
+    expect(screen.getAllByText('示例数据导入')).not.toHaveLength(0);
+    expect(screen.getByText('其他来源')).toBeInTheDocument();
+    expect(screen.getByText('其他分类')).toBeInTheDocument();
+    // 未登记的枚举值不得原样出现在页面上。
+    const rendered = container.textContent;
+    expect(rendered).not.toContain('onboarding_survey');
+    expect(rendered).not.toContain('memory_agent');
+    expect(rendered).not.toContain('synthetic_judge_usage_v2');
+    expect(rendered).not.toContain('legacy_unknown_source');
+    expect(rendered).not.toContain('legacy_unknown_category');
+  });
 });

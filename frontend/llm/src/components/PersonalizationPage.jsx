@@ -18,8 +18,39 @@ const emptyMemory = { category: 'short_term', importance: 'important', title: ''
 const emptyCandidate = { title: '', content: '', importance: 'normal', reason: '' };
 
 const categoryLabels = { long_term: '长期记忆', short_term: '短期记忆', preference: '偏好', feedback: '反馈', note: '备注' };
-const sourceLabels = { manual: '手动录入', auto_extract: '智能体抽取', agent: '智能体', feedback: '反馈', md_upload: 'MD 导入' };
+// 记忆来源是后端固定枚举（personalization_memories.source / memory_candidates.source），
+// 不是自由文本，因此按枚举映射成中文。后端新增来源时需在此登记。
+const sourceLabels = {
+  manual: '手动录入',
+  auto_extract: '智能体抽取',
+  agent: '智能体',
+  memory_agent: '记忆管理智能体',
+  memory_agent_confirmed: '记忆管理智能体',
+  feedback: '反馈',
+  md_upload: 'MD 导入',
+  onboarding_survey: '入学学情调查',
+  candidate_promote: '候选确认',
+  synthetic_judge_usage_v2: '示例数据导入',
+  phase3_seed: '示例数据导入',
+};
 const candidateStatusLabels = { pending: '待确认', promoted: '已晋升', ignored: '已忽略' };
+
+// 未登记的枚举值不原样透出：onboarding_survey、memory_agent 这类内部标识对
+// 学习者没有意义，直接显示会让人以为是系统故障。
+const UNKNOWN_CATEGORY_LABEL = '其他分类';
+const UNKNOWN_SOURCE_LABEL = '其他来源';
+
+const formatCategory = (value) => {
+  const key = String(value ?? '').trim();
+  if (!key) return UNKNOWN_CATEGORY_LABEL;
+  return categoryLabels[key] || UNKNOWN_CATEGORY_LABEL;
+};
+
+const formatSource = (value) => {
+  const key = String(value ?? '').trim();
+  if (!key) return UNKNOWN_SOURCE_LABEL;
+  return sourceLabels[key] || UNKNOWN_SOURCE_LABEL;
+};
 
 const userProfileColumns = {
   background: [
@@ -617,7 +648,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
               {categoryEntries.length === 0 && <div className="text-sm text-gray-400 py-6 text-center">暂无分类数据</div>}
               {categoryEntries.map(([key, count]) => (
                 <div key={key} className="grid grid-cols-[88px_1fr_36px] items-center gap-3">
-                  <span className="text-sm text-gray-600">{categoryLabels[key] || key}</span>
+                  <span className="text-sm text-gray-600">{formatCategory(key)}</span>
                   <div className="h-3 bg-emerald-50 rounded-full overflow-hidden shadow-inner shadow-emerald-100/60">
                     <div className="h-full rounded-full bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] transition-[width] duration-200" style={{ width: `${Math.max(8, (count / maxCategoryCount) * 100)}%` }} />
                   </div>
@@ -632,7 +663,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
               {sourceEntries.length === 0 && <span className="text-sm text-gray-400">暂无来源数据</span>}
               {sourceEntries.map(([key, count]) => (
                 <span key={key} className="px-3 py-2 rounded-2xl bg-gradient-to-br from-white to-emerald-50/80 border border-emerald-100 text-sm text-slate-600 shadow-sm shadow-emerald-50">
-                  {sourceLabels[key] || key} <b className="text-emerald-600 ml-1">{count}</b>
+                  {formatSource(key)} <b className="text-emerald-600 ml-1">{count}</b>
                 </span>
               ))}
             </div>
@@ -745,9 +776,14 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded-full">{candidateStatusLabels[c.status] || c.status}</span>
                               <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full">{c.importance === 'low' ? '低重要性' : '普通'}</span>
-                              <span className="text-xs bg-white border px-2 py-1 rounded-full text-gray-500">{sourceLabels[c.source] || c.source}</span>
+                              <span className="text-xs bg-white border px-2 py-1 rounded-full text-gray-500">{formatSource(c.source)}</span>
                             </div>
-                            <h4 className="font-semibold mt-2 truncate">{c.title || '未命名候选'}</h4>
+                            {/* The extraction agent is allowed to return content without a
+                                title (the backend normalises that to ""), so an empty
+                                title means "the model had nothing to summarise", not
+                                "this candidate is empty".  A 「未命名候选」 placeholder
+                                would hide content that is perfectly readable. */}
+                            {c.title?.trim() ? <h4 className="font-semibold mt-2 truncate">{c.title}</h4> : null}
                           </div>
                           <div className="flex gap-1 shrink-0">
                             {c.status === 'pending' && <button onClick={() => promoteCandidate(c.id, 'short_term')} className="px-2 py-1 text-xs rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100">转短期</button>}
@@ -790,12 +826,15 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                       <div className="flex justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded-full">{categoryLabels[m.category] || m.category}</span>
+                            <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded-full">{formatCategory(m.category)}</span>
                             <span className={`text-xs px-2 py-1 rounded-full ${m.importance === 'important' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>{m.importance === 'important' ? '重要' : '普通'}</span>
-                            <span className="text-xs bg-white border px-2 py-1 rounded-full text-gray-500">{sourceLabels[m.source] || m.source}</span>
+                            <span className="text-xs bg-white border px-2 py-1 rounded-full text-gray-500">{formatSource(m.source)}</span>
                             {!m.is_active && <span className="text-xs bg-red-50 text-red-500 px-2 py-1 rounded-full">已停用</span>}
                           </div>
-                          <h3 className="font-semibold mt-2 truncate">{m.title || '未命名'}</h3>
+                          {/* Same as the candidate list: an empty title is allowed, so
+                              render the heading only when there is one instead of
+                              showing a 「未命名」 placeholder. */}
+                          {m.title?.trim() ? <h3 className="font-semibold mt-2 truncate">{m.title}</h3> : null}
                         </div>
                         <div className="flex gap-1 shrink-0">
                           <button onClick={() => startEdit(m)} className={softIconButtonClass}><Edit2 size={16}/></button>

@@ -54,19 +54,16 @@ const formatMonthDay = (date) => (
 
 function reportDateRange(report, series) {
   const days = Number(report.window?.days) || 30;
+  const declaredStart = parseDateKey(report.window?.start_at);
+  const declaredEnd = parseDateKey(report.window?.end_at);
+  if (declaredStart && declaredEnd) {
+    return `近${days}天（${formatMonthDay(declaredStart)}-${formatMonthDay(declaredEnd)}）`;
+  }
   const latestKey = series.map((item) => String(item?.date || '').slice(0, 10))
     .filter((value) => parseDateKey(value))
     .sort()
     .at(-1);
   const end = parseDateKey(latestKey) || new Date();
-  const today = new Date();
-  if (
-    end.getFullYear() === today.getFullYear()
-    && end.getMonth() === today.getMonth()
-    && end.getDate() === today.getDate()
-  ) {
-    end.setDate(end.getDate() - 1);
-  }
   const start = new Date(end);
   start.setDate(start.getDate() - days + 1);
   return `近${days}天（${formatMonthDay(start)}-${formatMonthDay(end)}）`;
@@ -101,8 +98,6 @@ function calculateSummary(report, series, lifetimeFocusMinutes = null) {
   const activitySummary = report.activity_summary || {};
   const counters = activitySummary.counters || {};
   const focusSessions = counters.focus_sessions || {};
-  const tasks = counters.learning_tasks || {};
-  const activities = counters.activities || {};
   const accuracy = (report.dimensions || []).find((item) => item.key === 'accuracy');
   const windowFocusMinutes = Number.isFinite(Number(focusSessions.active_seconds))
     ? Number(focusSessions.active_seconds) / 60
@@ -113,8 +108,8 @@ function calculateSummary(report, series, lifetimeFocusMinutes = null) {
   const activeDays = Number.isFinite(Number(dataQuality.login_days))
     ? Number(dataQuality.login_days)
     : series.reduce((total, item) => total + Math.max(0, Number(item?.login_days) || 0), 0);
-  const questionCount = integer(dataQuality.question_count ?? dataQuality.attempt_count ?? activities.by_type?.question_attempt ?? accuracy?.evidence_count);
-  const completedPractice = integer(dataQuality.completed_practice_count ?? activities.by_type?.question_attempt ?? tasks.by_status?.completed ?? questionCount);
+  const questionCount = integer(dataQuality.question_count ?? dataQuality.attempt_count);
+  const completedPractice = integer(dataQuality.completed_practice_count ?? dataQuality.question_count ?? dataQuality.attempt_count);
   return {
     totalFocusMinutes: integer(totalFocusMinutes),
     averageFocusMinutes: integer(windowFocusMinutes / Math.max(Number(activitySummary.window_days) || 30, 1)),
@@ -239,7 +234,11 @@ function WeakPointsCard({ weakPoints, onNavigate }) {
     <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-200/45 sm:p-6" aria-label="薄弱知识点">
       <div>
         <h2 className="text-xl font-bold text-slate-950">薄弱知识点</h2>
-        <p className="mt-2 text-base text-slate-500">优先巩固以下 {items.length || 3} 个知识点</p>
+        <p className="mt-2 text-base text-slate-500">
+          {items.length > 0
+            ? `优先巩固以下 ${items.length} 个知识点`
+            : '完成练习并产生有效作答后，这里会列出需要优先巩固的知识点'}
+        </p>
       </div>
       {items.length > 0 ? (
         <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -294,6 +293,7 @@ const matchComponentLabels = {
 
 const matchSourceLabels = {
   'resource.kp_ids intersect target.kp_ids': '资源知识点与当前薄弱点、计划知识点的交集',
+  'matched_resource_kps / resource_kps': '依据资源自身涉及的知识点与当前学习目标的关联',
   'user_profiles.survey_json.resource_preference': '入学问卷中确认的资源偏好',
   'user_profiles.survey_json.preferences.resource_preference': '问卷偏好设置中确认的资源偏好',
   'user_profiles.exercise_preferences': '学习画像中的资源形式偏好',
@@ -376,10 +376,8 @@ function ResourceMatchCard({ item, busyEvent, completed, onEvent, onVisible }) {
           </span>
           <h3 className="mt-1 text-base font-bold leading-6 text-slate-950">{item.title}</h3>
         </div>
-        <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-emerald-800">
-          匹配 {percent(item.score)}
-        </span>
       </div>
+      {item.matched_kp_names?.length > 0 && <p className="mt-3 text-sm font-medium text-emerald-800">针对知识点：{item.matched_kp_names.join('、')}</p>}
       <p className="mt-3 text-sm leading-6 text-slate-600">{(item.reasons || []).join('；') || '作为当前学习目标的补充资源。'}</p>
       <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1"><Clock3 size={13} />约 {integer(item.estimated_minutes)} 分钟</span>
@@ -403,7 +401,7 @@ function ResourceMatchCard({ item, busyEvent, completed, onEvent, onVisible }) {
                 {matchSourceLabels[item.component_sources?.[key]] || item.component_sources?.[key] || '由当前学习数据计算'}
               </dd>
               <dd className="font-mono font-semibold tabular-nums text-emerald-800">
-                {value === null || value === undefined ? '未纳入' : percent(value)}
+                {value === null || value === undefined ? '证据不足，未纳入' : '已纳入参考'}
               </dd>
             </div>
           ))}
@@ -476,6 +474,11 @@ function ResourceMatchSection({
       item,
     ]),
   ).values()].slice(0, 6);
+  // ``matched_count`` / ``target_count`` count the recommendation targets, and
+  // the backend builds that set from the weak points *plus* today's task
+  // knowledge points (``learning_governance_service.build_resource_match_report``).
+  // Labelling it 「薄弱概念」 made the number contradict the weak-point card
+  // whenever the two sets differed.
   const matchedCount = integer(resourceReport.summary?.matched_count);
   const targetCount = integer(resourceReport.summary?.target_count);
   return (
@@ -486,8 +489,8 @@ function ResourceMatchSection({
           <p className="mt-2 text-sm leading-6 text-slate-500">结合当前薄弱点、今日任务、资源偏好和可用时间推荐；使用反馈会进入效果闭环。</p>
         </div>
         <div className="text-right">
-          <strong className="text-base text-emerald-800">已匹配 {matchedCount}/{targetCount} 个薄弱概念</strong>
-          <span className="block text-xs text-slate-500">覆盖率 {percent(resourceReport.summary?.coverage)}</span>
+          <strong className="text-base text-emerald-800">已覆盖 {matchedCount}/{targetCount} 个目标知识点</strong>
+          <span className="block text-xs text-slate-500">薄弱点与今日任务知识点的覆盖情况</span>
         </div>
       </div>
       <div className="mt-5"><ResourceEffectivenessSummary effectiveness={effectiveness} /></div>
@@ -603,6 +606,10 @@ export default function LearningInsightsReportPage({ onNavigate }) {
     () => calculateSummary(report, trendSeries, lifetimeFocusMinutes),
     [lifetimeFocusMinutes, report, trendSeries],
   );
+  const hasFormalAccuracy = summary.accuracy !== null
+    && summary.accuracy !== undefined
+    && summary.accuracy !== ''
+    && Number.isFinite(Number(summary.accuracy));
   const dateRange = useMemo(() => reportDateRange(report, trendSeries), [report, trendSeries]);
   const weakPoints = useMemo(() => [...new Map(
     (report.weak_points || []).map((item, index) => [
@@ -631,8 +638,8 @@ export default function LearningInsightsReportPage({ onNavigate }) {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="学习结论">
         <SummaryMetric icon={Clock3} label="累计学习时长" value={summary.totalFocusMinutes} unit="分钟" detail={`近30天日均 ${summary.averageFocusMinutes} 分钟（取整）`} />
-        <SummaryMetric icon={ClipboardCheck} label="练习活动" value={summary.completedPractice} unit="次" detail={`正式答题 ${summary.questionCount} 条（与活动次数口径不同）`} tone="teal" />
-        <SummaryMetric icon={CheckCircle2} label="正式练习得分率" value={summary.accuracy === undefined ? '—' : percent(summary.accuracy)} detail="仅统计审核通过的正式批改结果" />
+        <SummaryMetric icon={ClipboardCheck} label="近30天作答" value={summary.completedPractice} unit="题" tone="teal" />
+        <SummaryMetric icon={CheckCircle2} label="练习得分率" value={hasFormalAccuracy ? percent(summary.accuracy, 2) : '暂无'} detail={hasFormalAccuracy ? '总得分 / 总满分，含有效历史作答' : '暂无有效计分作答'} />
         <SummaryMetric icon={CalendarDays} label="活跃天数" value={summary.activeDays} unit="天" detail="本月" tone="teal" />
       </section>
 
