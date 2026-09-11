@@ -53,6 +53,10 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# Local validation scratch: debug-trace drop-ins, run ids, staged uploads.
+# 仅用于本机排查，不进入版本库。
+.validation/
+
 # Translations
 *.mo
 *.pot
