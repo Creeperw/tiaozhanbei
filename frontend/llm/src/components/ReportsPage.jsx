@@ -170,6 +170,7 @@ const matchComponentLabels = {
 
 const matchSourceLabels = {
   'resource.kp_ids intersect target.kp_ids': '资源知识点与当前薄弱点、计划知识点的交集',
+  'matched_resource_kps / resource_kps': '依据资源自身涉及的知识点与当前学习目标的关联',
   'user_profiles.exercise_preferences/custom_needs': '学习画像中的资源偏好与自定义需求',
   not_available_excluded_from_weighting: '当前没有可靠数据，本项未参与加权',
   neutral_default_no_quality_evidence: '暂无质量证据，采用中性基线',
@@ -198,8 +199,8 @@ function ResourceMatchCard({ item }) {
           <span className="text-xs font-medium text-emerald-800">{typeLabel}</span>
           <h4 className="mt-1 text-sm font-semibold leading-6 text-slate-950">{item.title}</h4>
         </div>
-        <span className="font-mono text-sm font-semibold tabular-nums text-emerald-800">{percent(item.score)}</span>
       </div>
+      {item.matched_kp_names?.length > 0 && <p className="mt-3 text-xs font-medium text-emerald-800">针对知识点：{item.matched_kp_names.join('、')}</p>}
       <p className="mt-3 text-xs leading-5 text-slate-600">{(item.reasons || []).join('；')}</p>
       <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1"><Clock3 size={13} />约 {item.estimated_minutes || 0} 分钟</span>
@@ -225,7 +226,7 @@ function ResourceMatchCard({ item }) {
                     {matchSourceLabels[item.component_sources?.[key]] || item.component_sources?.[key] || '由当前学习数据计算'}
                   </dd>
                   <dd className="font-mono font-semibold tabular-nums text-emerald-800">
-                    {value === null || value === undefined ? '未纳入' : percent(value)}
+                    {value === null || value === undefined ? '证据不足，未纳入' : '已纳入参考'}
                   </dd>
                 </div>
               ))}
@@ -339,7 +340,7 @@ export default function ReportsPage() {
       <section className="rounded-[28px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div><div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><DatabaseZap size={16} />资源匹配报告</div><p className="mt-2 text-sm text-slate-600">按知识点覆盖、资源质量、形式偏好和可用时间综合排序。</p></div>
-          <div className="text-right"><div className="font-mono text-xl font-semibold tabular-nums text-slate-950">{percent(resourceReport.summary?.coverage)}</div><div className="text-xs text-slate-500">当前目标覆盖</div></div>
+          <div className="text-right"><div className="text-sm font-semibold text-slate-950">已覆盖 {resourceReport.summary?.matched_count || 0} 个目标知识点</div><div className="text-xs text-slate-500">整组推荐覆盖情况</div></div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {(resourceReport.matches || []).slice(0, 6).map((item) => <ResourceMatchCard key={`${item.resource_type}-${item.resource_id}`} item={item} />)}

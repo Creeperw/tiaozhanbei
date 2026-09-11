@@ -5,6 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatInterface from './ChatInterface';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
 import { formatMessageTime } from '../chatTime';
+import { loadAllLearningHistory } from '../legacyLearningClient';
+
+vi.mock('../legacyLearningClient', () => ({
+  loadAllLearningHistory: vi.fn(),
+  loadLegacySessionMessages: vi.fn(),
+}));
+vi.mock('./LegacyConversation', () => ({
+  default: ({ session, onNewConversation }) => <section aria-label="历史会话内容">{session.title}<button onClick={onNewConversation}>另开新对话</button></section>,
+}));
 
 vi.mock('../utils/api', () => ({
   API_BASE: 'http://api.test',
@@ -67,9 +76,27 @@ function deferred() {
 describe('ChatInterface session workspace', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadAllLearningHistory.mockResolvedValue({ items: [], total: 0 });
     localStorage.clear();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     document.execCommand = vi.fn(() => true);
+  });
+
+  it('does not fetch or display obsolete read-only sessions', async () => {
+    loadAllLearningHistory.mockResolvedValue({ items: [{ id: 'same-id', title: '导入会话' }], total: 1 });
+    fetchWithAuth.mockImplementation((url, options = {}) => {
+      if (url.endsWith('/conversations') && options.method === 'POST') return Promise.resolve(jsonResponse({ id: 'new-id', title: '新对话' }));
+      if (url.endsWith('/conversations')) return Promise.resolve(jsonResponse([{ id: 'same-id', title: '正式会话' }]));
+      if (url.endsWith('/messages')) return Promise.resolve(jsonResponse([]));
+      throw new Error(`unexpected: ${url}`);
+    });
+    render(<ChatInterface currentUser="alice" embedded />);
+    await screen.findByRole('textbox', { name: '向智能助教提问' });
+    expect(loadAllLearningHistory).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /导入会话/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('历史 · 只读')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '历史会话内容' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('正式会话').length).toBeGreaterThan(0);
   });
 
   it('restores a cached session immediately without a forced full-screen transition', async () => {

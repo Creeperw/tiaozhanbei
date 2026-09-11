@@ -21,6 +21,8 @@ import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import OnboardingSurveyPanel from './OnboardingSurveyPanel';
 import PageLoadingSpinner from './PageLoadingSpinner';
+import LegacyPlanSummary from './LegacyPlanSummary';
+import { ASSISTANT_WORKFLOW_COMPLETED_EVENT } from '../assistantWorkflowEvents';
 import {
   adaptClassicRouteStage,
   adaptPlannedPathNode,
@@ -806,6 +808,8 @@ function HomeLearningRoute({
                 directDrill
                 summaryLabel=""
                 homeCompact
+                progressLabel="当前教材完成率"
+                progressUnit={routeState.nodes.every((node) => node.node_type === 'book') ? '本教材' : '阶段'}
               />
               <div className="home-portal__route-current-stage">
                 <div className="home-portal__route-current-stage-copy">
@@ -851,6 +855,7 @@ function HomeLearningRoute({
       )}
       {renderedRouteView === 'details' && (
         <div className="home-portal__route-details" role="region" aria-label="长期规划和短期规划说明" tabIndex="0">
+          <LegacyPlanSummary />
           {planningDetails.loading && <div className="home-portal__route-details-state" role="status">正在读取规划说明…</div>}
           {!planningDetails.loading && planningDetails.error && <div className="home-portal__route-details-state" role="alert">{planningDetails.error}</div>}
           {!planningDetails.loading && !planningDetails.error && (
@@ -975,6 +980,16 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   }, [userCacheKey]);
 
   useEffect(() => {
+    const refreshPersistedLearning = () => {
+      clearQualificationRoutePageCache();
+      setRouteRevision((value) => value + 1);
+      setSummaryRevision((value) => value + 1);
+    };
+    window.addEventListener(ASSISTANT_WORKFLOW_COMPLETED_EVENT, refreshPersistedLearning);
+    return () => window.removeEventListener(ASSISTANT_WORKFLOW_COMPLETED_EVENT, refreshPersistedLearning);
+  }, [userCacheKey]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => setCountdownTick((value) => value + 1), 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
@@ -1045,6 +1060,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       stage: continuation ? current.stage : '正在为您规划学习路径',
       detail: continuation ? '已收到补充信息，正在继续规划…' : '正在准备用户画像与学情调研结果…',
       error: '',
+      errorCode: '',
       sessionId: continuation?.sessionId || '',
       runId: continuation?.runId || '',
       stageIndex: continuation?.stageIndex || 0,
@@ -1092,6 +1108,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         ...current,
         active: true,
         error: reason.visible || reason.message || '学习路径规划未完成',
+        errorCode: reason.code || 'planning_failed',
         sessionId: reason.sessionId || current.sessionId,
         runId: reason.runId || current.runId,
         stageIndex: Number.isInteger(reason.stageIndex) ? reason.stageIndex : current.stageIndex,
@@ -1361,6 +1378,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             <h1>请先选择资格考试</h1>
             <p>从顶部“资格考试”菜单选择并保存目标后，这里会加载对应的教材与个性化学习路径。</p>
           </div>
+          <LegacyPlanSummary />
         </section>
       </div>
     );
@@ -1457,7 +1475,12 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
                 : <><span /><span /><LoaderCircle size={34} /></>}
             </div>
             <span>个性化学习路径</span>
-            <h2>{pathPlanning.error ? '规划需要你补充信息' : pathPlanning.stage}</h2>
+            <h2>{pathPlanning.error
+              ? pathPlanning.clarificationRequired ? '规划需要你补充信息'
+                : pathPlanning.errorCode === 'waiting_human_review' ? '规划等待审核处理'
+                  : pathPlanning.errorCode === 'connection_lost' ? '规划连接中断，可恢复查询'
+                    : '学习路径规划未完成'
+              : pathPlanning.stage}</h2>
             {!pathPlanning.error && !pathPlanning.complete && (
               <div className="home-portal__planning-bar" role="progressbar" aria-label="学习路径规划进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow={pathPlanning.progress}>
                 <i style={{ width: `${Math.min(100, Math.max(0, pathPlanning.progress))}%` }} />
@@ -1484,6 +1507,14 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             )}
             {(pathPlanning.complete || pathPlanning.error) && (
               <div className="home-portal__planning-actions">
+                {pathPlanning.errorCode === 'connection_lost' && pathPlanning.sessionId && pathPlanning.runId && (
+                  <button type="button" onClick={() => void startPersonalizedPathPlanning(customRequirementsDraft, {
+                    sessionId: pathPlanning.sessionId,
+                    runId: pathPlanning.runId,
+                    stageIndex: pathPlanning.stageIndex,
+                    recover: true,
+                  })}>恢复原任务查询</button>
+                )}
                 {pathPlanning.clarificationRequired && pathPlanning.runId && (
                   <button
                     type="button"

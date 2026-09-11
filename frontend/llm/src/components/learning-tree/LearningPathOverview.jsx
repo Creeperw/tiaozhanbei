@@ -152,6 +152,8 @@ export default function LearningPathOverview({
   directDrill = false,
   summaryLabel = '顺序学习路径',
   homeCompact = false,
+  progressLabel = '总体学习进度',
+  progressUnit = '阶段',
 }) {
   const stageRef = useRef(null);
   const [stageAspectRatio, setStageAspectRatio] = useState(2);
@@ -291,7 +293,7 @@ export default function LearningPathOverview({
           )}
         </svg>
 
-        <div className="learning-path-orbit__core" aria-label={`总体学习进度 ${progress}%`}>
+        <div className="learning-path-orbit__core" aria-label={`${progressLabel} ${progress}%`}>
           <svg aria-hidden="true" viewBox="0 0 120 120">
             <circle className="learning-path-orbit__core-track" cx="60" cy="60" r="49" pathLength="100" />
             <circle
@@ -304,8 +306,8 @@ export default function LearningPathOverview({
             />
           </svg>
           <span>{progress}%</span>
-          <small>总体进度</small>
-          <em>{orderedNodes.filter((node) => node.status === 'completed').length} / {orderedNodes.length || 0} 阶段</em>
+          <small>{progressLabel === '总体学习进度' ? '总体进度' : progressLabel}</small>
+          <em>{orderedNodes.filter((node) => node.status === 'completed').length} / {orderedNodes.length || 0} {progressUnit}</em>
         </div>
 
         {orderedNodes.map((node, index) => {

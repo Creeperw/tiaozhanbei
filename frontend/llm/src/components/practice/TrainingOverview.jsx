@@ -63,7 +63,7 @@ export default function TrainingOverview({ onOpenModule, overviewStats, weakKnow
   const stats = normalizeTrainingOverviewStats(overviewStats);
   const recentCard = resumableTrainingCards.find((card) => card.key === stats.recentTaskKey)
     || overviewTrainingCards[2];
-  const formatPercent = (value) => value === null ? '--' : `${value}%`;
+  const formatPercent = (value) => value === null ? '--' : `${Number(value).toFixed(2)}%`;
   const formatHours = (value) => value === null ? '--' : `${value} 小时`;
   const formatQuestions = (value) => value === null ? '累计练习待接入' : `累计练习 ${value} 题`;
   const { CalendarDays: CalendarIcon, Target: TargetIcon } = trainingIcons;
@@ -184,8 +184,8 @@ export default function TrainingOverview({ onOpenModule, overviewStats, weakKnow
           <section className="practice-overview__stats-panel" aria-labelledby="practice-stats-title">
             <h2 id="practice-stats-title" className="practice-overview__utilities-title">学习数据</h2>
             <div className="practice-overview__hero-summary" role="region" aria-label="学习概览">
-              <OverviewSummaryMetric icon={CalendarIcon} label="近 30 天练习" value={stats.windowPracticeCount === null ? '--' : `${stats.windowPracticeCount} 题`} hint="正式审核完成题目" />
-              <OverviewSummaryMetric icon={TargetIcon} label="平均正确率" value={formatPercent(stats.averageAccuracy)} hint={stats.averageAccuracy === null ? '暂无数据' : '继续保持'} />
+              <OverviewSummaryMetric icon={CalendarIcon} label="近 30 天练习" value={stats.windowPracticeCount === null ? '--' : `${stats.windowPracticeCount} 题`} hint="已完成作答，含历史记录" />
+              <OverviewSummaryMetric icon={TargetIcon} label="练习得分率" value={formatPercent(stats.averageAccuracy)} hint={stats.averageAccuracy === null ? '暂无数据' : '总得分 / 总满分'} />
               <OverviewSummaryMetric icon={Clock3} label="近 30 天专注" value={formatHours(stats.totalHours)} hint={formatQuestions(stats.totalQuestions)} tone="purple" />
             </div>
           </section>

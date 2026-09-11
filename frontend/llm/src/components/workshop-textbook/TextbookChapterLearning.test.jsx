@@ -15,6 +15,7 @@ vi.mock('./textbookChapterApi', () => ({
   loadSectionLearningDetail: vi.fn(),
   loadSectionQuestions: vi.fn().mockResolvedValue({ items: [] }),
   loadTextbookProgress: vi.fn().mockResolvedValue({ completed_section_ids: [], last_section_id: '' }),
+  submitSectionExamAnswer: vi.fn().mockResolvedValue({}),
 }));
 
 const chapter = { id: 'CH_1', name: '第一章 绪论', children_count: 2 };

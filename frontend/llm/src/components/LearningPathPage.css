@@ -168,6 +168,70 @@
   font-size: 0.82rem;
 }
 
+.learning-path-page__legacy-plans {
+  margin-top: 0.75rem;
+}
+
+.learning-path-page__legacy-plans-note {
+  margin: 0 0 0.75rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.learning-path-page__legacy-plans-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.learning-path-page__legacy-plan {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 88%);
+  padding: 0.9rem 1rem;
+}
+
+.learning-path-page__legacy-plan-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.learning-path-page__legacy-plan-heading h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.learning-path-page__legacy-plan-heading span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+}
+
+.learning-path-page__legacy-plan p {
+  margin: 0.55rem 0 0;
+  color: #475569;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.learning-path-page__legacy-plan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin-top: 0.7rem;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
 .learning-path-page__route .learning-stage--embedded {
   flex: 1;
   padding: 30px 16px 0;

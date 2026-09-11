@@ -162,7 +162,7 @@ export function normalizeTrainingOverviewStats(stats = {}) {
 const scoreAsPercentage = (value) => {
   const parsed = finiteNumberOrNull(value);
   if (parsed === null) return null;
-  return Math.round((parsed <= 1 ? parsed * 100 : parsed) * 10) / 10;
+  return Math.round((parsed <= 1 ? parsed * 100 : parsed) * 100) / 100;
 };
 
 const weakPointIdentity = (kpId, kpName) => {
@@ -350,20 +350,9 @@ export const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}
     : [];
   const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
   const focusMinutes = focusMinutesFromStatistics(statistics);
-  const todayStr = String(activitySummary?.calculated_at || new Date().toISOString()).slice(0, 10);
-  const todayActivities = recentActivities.filter(
-    (activity) => isScoredTrainingActivity(activity)
-      && String(activity.timestamp || activity.created_at || '').slice(0, 10) === todayStr,
-  );
-  const todayScores = todayActivities.map((activity) => finiteNumberOrNull(activity?.score))
-    .filter((score) => score !== null);
-  const todayAccuracy = todayScores.length > 0
-    ? todayScores.reduce((sum, score) => sum + (score <= 1 ? score * 100 : score), 0) / todayScores.length
-    : null;
-
   return normalizeTrainingOverviewStats({
     streakDays: nonNegativeNumberOrNull(checkin?.streak),
-    todayAccuracy: todayAccuracy !== null ? Math.round(todayAccuracy * 10) / 10 : null,
+    todayAccuracy: scoreAsPercentage(statistics?.today?.score_rate),
     windowPracticeCount: nonNegativeNumberOrNull(currentWindow.questions_completed),
     todayGoal: DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
     averageAccuracy: scoreAsPercentage(currentWindow.score_rate),

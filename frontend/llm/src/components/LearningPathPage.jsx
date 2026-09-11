@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { API_BASE, MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { loadAllLearningHistory } from '../legacyLearningClient.js';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import { adaptPlannedPathNode, loadPlannedLearningPath } from './learning-tree/learningPathApi';
@@ -16,6 +17,46 @@ function formatReviewDate(value) {
 function reviewEntryTitle(entry) {
   const unit = entry?.memory_unit || {};
   return unit.prompt_abstract || entry?.task?.title || unit.kp_id || '待复习知识点';
+}
+
+function formatHistoricalPlanDate(value) {
+  if (!value) return '日期待记录';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function HistoricalPlans({ state }) {
+  if (state.status === 'loading') return <div className="learning-path-page__route-state" role="status">正在读取历史计划…</div>;
+  if (state.status === 'error') return <div className="learning-path-page__route-state" role="alert">{state.error}</div>;
+  if (state.status === 'loaded' && state.items.length === 0) return <div className="learning-path-page__route-state">暂无历史计划记录</div>;
+  if (state.status !== 'loaded') return null;
+  return (
+    <div className="learning-path-page__legacy-plans" aria-label="历史学习计划">
+      <p className="learning-path-page__legacy-plans-note">以下计划来自旧版归档，仅供查看，不代表当前考试路径，也不能直接执行。</p>
+      <div className="learning-path-page__legacy-plans-list">
+        {state.items.map((item, index) => (
+          <article className="learning-path-page__legacy-plan" key={item.id ?? `${item.title}-${index}`}>
+            <div className="learning-path-page__legacy-plan-heading">
+              <h4>{item.title || '未命名历史计划'}</h4>
+              <span>未审核</span>
+            </div>
+            <p>{item.summary || '暂无计划摘要。'}</p>
+            <div className="learning-path-page__legacy-plan-meta">
+              <span>状态：{item.status || '未记录'}</span>
+              <time>创建于：{formatHistoricalPlanDate(item.created_at)}</time>
+              <span>来源：历史归档</span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function selectedExamTrackId(targetPayload) {
+  const candidate = targetPayload?.target ?? targetPayload;
+  const examTrackId = candidate?.exam_track_id;
+  return typeof examTrackId === 'string' && examTrackId.trim() ? examTrackId.trim() : '';
 }
 
 function normalizePercent(value) {
@@ -184,6 +225,8 @@ function ReviewTaskRail({ items, learningItems, onOpen, onOpenLearning }) {
 }
 
 function LearningRoute({ onNavigate }) {
+  const [targetState, setTargetState] = useState({ status: 'loading', target: null, error: '' });
+  const [historicalPlans, setHistoricalPlans] = useState({ status: 'loading', items: [], total: 0, error: '' });
   const [routeView, setRouteView] = useState('orbit');
   const [routeState, setRouteState] = useState({
     loading: true,
@@ -204,6 +247,48 @@ function LearningRoute({ onNavigate }) {
   const pendingDrillsRef = useRef(new Map());
   const planningGenerationRef = useRef(0);
   const planningRequestRef = useRef(null);
+  const historicalPlansRequestRef = useRef(null);
+  const targetExamTrackId = selectedExamTrackId(targetState.target);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchWithAuth(`${API_BASE}/personalization/learning-target`)
+      .then(async (response) => ({ response, payload: await readJsonResponse(response, null) }))
+      .then(({ response, payload }) => {
+        if (!response.ok) {
+          const detail = payload?.detail;
+          throw new Error(typeof detail === 'string' ? detail : detail?.message || '学习目标暂时无法读取');
+        }
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('学习目标响应格式无效');
+        if (!cancelled) setTargetState({ status: 'loaded', target: payload, error: '' });
+      })
+      .catch((error) => {
+        if (!cancelled) setTargetState({ status: 'error', target: null, error: error.message || '学习目标暂时无法读取' });
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (targetState.status !== 'loaded') return undefined;
+    let cancelled = false;
+    historicalPlansRequestRef.current?.abort();
+    const controller = new AbortController();
+    historicalPlansRequestRef.current = controller;
+    loadAllLearningHistory('plans', { signal: controller.signal })
+      .then((history) => {
+        if (!cancelled && historicalPlansRequestRef.current === controller) setHistoricalPlans({ status: 'loaded', items: history.items, total: history.total, error: '' });
+      })
+      .catch((error) => {
+        if (!cancelled && historicalPlansRequestRef.current === controller && error?.name !== 'AbortError') setHistoricalPlans({ status: 'error', items: [], total: 0, error: error.message || '历史计划加载失败' });
+      })
+      .finally(() => {
+        if (historicalPlansRequestRef.current === controller) historicalPlansRequestRef.current = null;
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [targetState.status, targetExamTrackId]);
 
   useEffect(() => {
     const pendingDrills = pendingDrillsRef.current;
@@ -214,10 +299,16 @@ function LearningRoute({ onNavigate }) {
       planningGenerationRef.current += 1;
       pendingDrills.clear();
       planningRequestRef.current = null;
+      historicalPlansRequestRef.current?.abort();
     };
   }, []);
 
   useEffect(() => {
+    if (targetState.status !== 'loaded') return undefined;
+    if (!targetExamTrackId) {
+      setRouteState({ loading: false, error: '', nodes: [], stages: [] });
+      return undefined;
+    }
     let cancelled = false;
     loadPlannedLearningPath()
       .then((payload) => {
@@ -251,7 +342,7 @@ function LearningRoute({ onNavigate }) {
         }
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [targetState.status, targetExamTrackId]);
 
   const edges = routeState.nodes.slice(1).map((node, index) => ({
     from: routeState.nodes[index].membership_id,
@@ -355,11 +446,11 @@ function LearningRoute({ onNavigate }) {
       <header className="learning-path-page__route-header">
         <div className="learning-path-page__route-kicker">
           <h2>学习路径规划</h2>
-          {routeView !== 'details' && (
+          {routeView !== 'details' && targetState.status === 'loaded' && targetExamTrackId && (
             <button type="button" onClick={showPlanningDetails}>了解详情</button>
           )}
         </div>
-        {routeView === 'orbit' ? (
+        {routeView === 'orbit' && targetState.status === 'loaded' && targetExamTrackId ? (
           <button
             type="button"
             className="learning-path-page__route-full-link"
@@ -367,22 +458,31 @@ function LearningRoute({ onNavigate }) {
           >
             查看完整学习路径 <ArrowRight aria-hidden="true" size={14} />
           </button>
-        ) : (
+        ) : routeView !== 'orbit' ? (
           <button type="button" onClick={returnToOrbit}>返回短期学习路径</button>
-        )}
+        ) : null}
       </header>
 
+      {targetState.status === 'loaded' && targetExamTrackId && <HistoricalPlans state={historicalPlans} />}
       {routeView === 'orbit' && (
         <div className="learning-path-page__route-orbit-layout">
           <h3 className="learning-path-page__route-summary">短期学习路径</h3>
-          {routeState.loading && <div className="learning-path-page__route-state">正在读取学习路径…</div>}
-          {!routeState.loading && routeState.error && (
+          {targetState.status === 'loading' && <div className="learning-path-page__route-state" role="status">正在读取学习目标…</div>}
+          {targetState.status === 'error' && <div className="learning-path-page__route-state" role="alert">{targetState.error}</div>}
+          {targetState.status === 'loaded' && !targetExamTrackId && (
+            <>
+              <div className="learning-path-page__route-state">尚未选择考试，当前没有正式学习路径。</div>
+              <HistoricalPlans state={historicalPlans} />
+            </>
+          )}
+          {targetState.status === 'loaded' && targetExamTrackId && routeState.loading && <div className="learning-path-page__route-state">正在读取学习路径…</div>}
+          {targetState.status === 'loaded' && targetExamTrackId && !routeState.loading && routeState.error && (
             <div className="learning-path-page__route-state" role="alert">{routeState.error}</div>
           )}
-          {!routeState.loading && !routeState.error && routeState.stages.length === 0 && (
+          {targetState.status === 'loaded' && targetExamTrackId && !routeState.loading && !routeState.error && routeState.stages.length === 0 && (
             <div className="learning-path-page__route-state">尚未生成学习路径</div>
           )}
-          {!routeState.loading && !routeState.error && routeState.stages.length > 0 && (
+          {targetState.status === 'loaded' && targetExamTrackId && !routeState.loading && !routeState.error && routeState.stages.length > 0 && (
             <LearningPathOverview
               nodes={routeState.nodes}
               edges={edges}
@@ -401,7 +501,7 @@ function LearningRoute({ onNavigate }) {
         </div>
       )}
 
-      {!routeState.loading && !routeState.error && routeState.stages.length > 0 && routeView === 'cards' && (
+      {targetState.status === 'loaded' && targetExamTrackId && !routeState.loading && !routeState.error && routeState.stages.length > 0 && routeView === 'cards' && (
         <LearningStageLanding
           compact
           stages={routeState.stages}

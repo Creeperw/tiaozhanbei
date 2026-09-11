@@ -64,7 +64,7 @@ function TaskPanel({ taskType, initialMode, navigationContext, selectedKnowledge
     return <KnowledgePointTrainingHub initialKnowledgePoint={selectedKnowledgePoint} taskItemId={taskItemId} onResult={onResult} />;
   }
   if (['question_training', 'special_training'].includes(taskType)) {
-    return <QuestionTrainingPanel enabled selectedKnowledgePoint={selectedKnowledgePoint} initialMode={initialMode} onResult={onResult} taskItemId={taskItemId} />;
+    return <QuestionTrainingPanel enabled selectedKnowledgePoint={selectedKnowledgePoint} initialMode={initialMode} onResult={onResult} taskItemId={taskItemId} practiceOrigin={taskType} />;
   }
   return <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-[15px] leading-6 text-slate-600">此模块正在准备中，暂不支持提交任务。</div>;
 }

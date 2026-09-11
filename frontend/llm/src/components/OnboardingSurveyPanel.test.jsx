@@ -94,6 +94,26 @@ describe('OnboardingSurveyPanel', () => {
     vi.unstubAllGlobals();
   });
 
+  it('restores and saves exactly 35 minutes without rounding to a range', async () => {
+    const groups = [{ key: 'low', title: '低（low）', baseline_background: { education_major: '非医学专业', foundation_level: '了解基础术语' } }];
+    const requests = installRequests({ groupTemplate: { groups }, savedSurvey: { learner_group: 'low', daily_available_minutes: 35 } });
+    const onSaved = vi.fn();
+    render(<OnboardingSurveyPanel lockedTarget={target} onSaved={onSaved} />);
+    await screen.findByRole('radio', { name: /低（low）/ });
+    continueStep();
+    expect(screen.getByRole('spinbutton', { name: '每日准确可用时间（分钟）' })).toHaveValue(35);
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '0' } });
+    continueStep();
+    expect(screen.getByRole('alert')).toHaveTextContent('整数分钟');
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '35' } });
+    continueStep();
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    fireEvent.click(screen.getByRole('button', { name: '完成并进入学习' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    expect(JSON.parse(requests.find(r => r.url.endsWith('/training/onboarding/survey')).options.body).preferences.daily_available_minutes).toBe(35);
+  });
+
   it('offers exactly three baseline classes and submits the selected background', async () => {
     const groups = [
       ['low', '低（low）', '非医学专业，无系统中医学学习经历', '零基础非医学专业'],

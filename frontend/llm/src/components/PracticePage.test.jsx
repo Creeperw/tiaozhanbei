@@ -203,7 +203,7 @@ describe('PracticePage training modules', () => {
 
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
     expect(within(learningOverview).getByText('6 题')).toBeInTheDocument();
-    expect(within(learningOverview).getByText('82%')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('82.00%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('46 小时')).toBeInTheDocument();
     expect(within(learningOverview).getByText('累计练习 386 题')).toBeInTheDocument();
   });
@@ -261,7 +261,7 @@ describe('PracticePage training modules', () => {
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
     expect(within(learningOverview).getByText('近 30 天练习')).toBeInTheDocument();
     expect(within(learningOverview).getByText('7 题')).toBeInTheDocument();
-    expect(within(learningOverview).getByText('84%')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('84.00%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('2.1 小时')).toBeInTheDocument();
     expect(within(learningOverview).getByText('近 30 天专注')).toBeInTheDocument();
     expect(within(learningOverview).getByText('累计练习 42 题')).toBeInTheDocument();

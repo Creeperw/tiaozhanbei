@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BrainCircuit, CalendarClock, CheckCircle2, History, RefreshCw } from 'lucide-react';
 
 import { emptyReviewDashboard, loadReviewDashboard } from '../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import MasteryHeatmap from './MasteryHeatmap';
+import { loadAllLearningHistory } from '../legacyLearningClient.js';
 
 const formatTime = (value) => {
   if (!value) return '尚未安排';
@@ -28,6 +29,65 @@ const readableKnowledgePointName = (...values) => (
     .find((value) => !isOpaqueKnowledgePointLabel(value))
   || '未命名知识点'
 );
+
+function historicalMasteryPercent(value) {
+  if (value === null || value === undefined || value === '') return '未记录';
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '未记录';
+  return `${Math.round(Math.max(0, Math.min(1, number)) * 100)}%`;
+}
+
+function HistoricalMasterySection({ state, onLoad }) {
+  const [open, setOpen] = useState(false);
+  const toggle = () => {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (nextOpen && state.status === 'idle') onLoad();
+  };
+  return (
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4" aria-label="历史掌握记录">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-bold text-slate-900">历史掌握记录</h4>
+          <p className="mt-1 text-xs leading-5 text-slate-500">旧版掌握快照仅作参考，不写入当前正式状态或平均掌握度。</p>
+        </div>
+        <button type="button" aria-expanded={open} onClick={toggle} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50">
+          {open ? '收起历史掌握' : '查看历史掌握'}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-4">
+          {state.status === 'loading' && <p role="status" className="rounded-xl bg-white px-3 py-4 text-center text-xs text-slate-500">正在读取历史掌握记录…</p>}
+          {state.status === 'error' && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs text-rose-800">{state.error}</p>}
+          {state.status === 'loaded' && state.items.length === 0 && <p className="rounded-xl bg-white px-3 py-4 text-center text-xs text-slate-500">暂无历史掌握记录。</p>}
+          {state.status === 'loaded' && state.items.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500">共 {state.total} 条历史记录 · 来源：旧版归档 · 未审核</p>
+              {state.items.map((item, index) => (
+                <article key={item.id ?? `${item.kp_id}-${index}`} className="rounded-xl border border-white bg-white p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900" title={item.kp_id || ''}>{item.kp_name ? item.kp_name : `未命名知识点（ID：${item.kp_id || '未提供'}）`}</p>
+                      <p className="mt-1 text-xs text-slate-500">记录日期：{formatTime(item.last_review_at || item.created_at)}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-800">未审核</span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                    <span>掌握值 {historicalMasteryPercent(item.mastery)}</span>
+                    <span>置信度 {historicalMasteryPercent(item.confidence)}</span>
+                    <span>复习次数 {Number.isFinite(Number(item.review_count)) ? Number(item.review_count) : '未记录'}</span>
+                    <span>错题次数 {Number.isFinite(Number(item.wrong_count)) ? Number(item.wrong_count) : '未记录'}</span>
+                    <span>来源：旧版归档</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function ReviewQueueCard({ entries, names, dueCount, loading }) {
   return (
@@ -74,7 +134,9 @@ export default function ReviewDashboardPanel() {
   const [dashboard, setDashboard] = useState(emptyReviewDashboard);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [historicalMastery, setHistoricalMastery] = useState({ status: 'idle', items: [], total: 0, error: '' });
   const [refreshKey, setRefreshKey] = useState(0);
+  const historicalMasteryRequestRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -86,6 +148,25 @@ export default function ReviewDashboardPanel() {
     });
     return () => { active = false; };
   }, [refreshKey]);
+
+  useEffect(() => () => historicalMasteryRequestRef.current?.abort(), []);
+
+  const loadHistoricalMastery = async () => {
+    historicalMasteryRequestRef.current?.abort();
+    const controller = new AbortController();
+    historicalMasteryRequestRef.current = controller;
+    setHistoricalMastery((current) => ({ ...current, status: 'loading', error: '' }));
+    try {
+      const history = await loadAllLearningHistory('mastery', { signal: controller.signal });
+      if (historicalMasteryRequestRef.current !== controller) return;
+      setHistoricalMastery({ status: 'loaded', items: history.items, total: history.total, error: '' });
+    } catch (historyError) {
+      if (historicalMasteryRequestRef.current !== controller || historyError?.name === 'AbortError') return;
+      setHistoricalMastery({ status: 'error', items: [], total: 0, error: historyError.message || '历史掌握记录加载失败' });
+    } finally {
+      if (historicalMasteryRequestRef.current === controller) historicalMasteryRequestRef.current = null;
+    }
+  };
 
   const names = useMemo(() => new Map(
     (dashboard.mastery || []).map((item) => [
@@ -166,6 +247,7 @@ export default function ReviewDashboardPanel() {
           ))}
           {!loading && (dashboard.mastery || []).length === 0 && <p className="text-sm text-slate-500">尚无经过批改的知识点掌握记录。</p>}
         </div>
+        <HistoricalMasterySection state={historicalMastery} onLoad={loadHistoricalMastery} />
       </section>
 
       <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm" aria-label="最近复习与掌握变化">

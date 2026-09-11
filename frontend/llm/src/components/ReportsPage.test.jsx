@@ -119,6 +119,7 @@ describe('ReportsPage', () => {
     fireEvent.click(basisButton);
     expect(basisButton).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByLabelText('四君子汤知识卡匹配依据详情')).toBeInTheDocument();
+    expect(screen.getByLabelText('四君子汤知识卡匹配依据详情').closest('article').textContent).not.toMatch(/\d+(?:\.\d+)?%/);
     expect(screen.getByText('资源知识点与当前薄弱点、计划知识点的交集')).toBeInTheDocument();
     expect(screen.queryByText(/难度/)).not.toBeInTheDocument();
   });

@@ -228,7 +228,7 @@ export default function OnboardingSurveyPanel({
       ? selectedRouteId
       : current.type === 'custom_requirements'
         ? customRequirements
-        : answers[current.bucket]?.[current.key] || '';
+        : answers[current.bucket]?.[current.key] ?? '';
 
   const setCurrentValue = (value) => {
     setError('');
@@ -259,6 +259,11 @@ export default function OnboardingSurveyPanel({
     }
     if (!selectedRouteId) {
       setError('请选择资格考试');
+      return;
+    }
+    const minutes = submittedAnswers.preferences?.daily_available_minutes;
+    if (minutes !== '' && minutes != null && (!Number.isInteger(Number(minutes)) || Number(minutes) < 1 || Number(minutes) > 1440)) {
+      setError('每日可用时间请输入1至1440之间的整数分钟');
       return;
     }
     if (required) {
@@ -312,6 +317,11 @@ export default function OnboardingSurveyPanel({
   };
 
   const moveForward = async () => {
+    if (current.key === 'daily_available_minutes' && currentValue !== ''
+      && (!Number.isInteger(Number(currentValue)) || Number(currentValue) < 1 || Number(currentValue) > 1440)) {
+      setError('每日可用时间请输入1至1440之间的整数分钟');
+      return;
+    }
     if (current.required && !currentValue) {
       setError('这是必填项，请先选择一个选项');
       return;
@@ -415,6 +425,21 @@ export default function OnboardingSurveyPanel({
         </div>
       )}
 
+      {current.key === 'daily_available_minutes' && !loading && (
+        <label className="registration-journey__custom">
+          每日准确可用时间（分钟）
+          <input
+            type="number"
+            aria-label="每日准确可用时间（分钟）"
+            min="1"
+            max="1440"
+            step="1"
+            value={currentValue}
+            onChange={(event) => setCurrentValue(event.target.value === '' ? '' : Number(event.target.value))}
+          />
+          <span>学习与复习合计上限；可直接填写35等准确分钟数，不必采用区间代表值。</span>
+        </label>
+      )}
       {error && <div className="registration-journey__error" role="alert">{error}</div>}
       <div className="registration-journey__actions">
         <button

@@ -11,7 +11,7 @@ import {
   LoaderCircle,
   XCircle,
 } from 'lucide-react';
-import { loadSectionQuestions } from './textbookChapterApi';
+import { loadSectionQuestions, submitSectionExamAnswer } from './textbookChapterApi';
 
 const typeLabels = {
   single_choice: '单选题',
@@ -33,17 +33,6 @@ const TRUE_FALSE_OPTIONS = [
   { key: '正确', text: '正确', tf: true },
   { key: '错误', text: '错误', tf: true },
 ];
-
-function normalizeTrueFalseAnswer(value) {
-  const s = String(value || '').trim();
-  // 正确类
-  if (/^[√✓✔☑⊤⊨]$/.test(s)) return '正确';
-  if (/^(正确|对|true|yes|是|a|right|correct)$/i.test(s)) return '正确';
-  // 错误类
-  if (/^[×✗✘☒⊥⊭]$/.test(s)) return '错误';
-  if (/^(错误|错|false|no|否|b|wrong|incorrect)$/i.test(s)) return '错误';
-  return s;
-}
 
 function questionTypeBadge(qType) {
   return typeLabels[qType] || qType || '简答题';
@@ -89,35 +78,25 @@ function parseOptions(raw) {
   });
 }
 
-function normalizeAnswer(value) {
-  return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+// The request id identifies one learner answer.  It is minted when the answer
+// changes, so hiding and revealing the same answer again replays the recorded
+// verdict instead of writing a second attempt into the study report.
+let sectionExamRequestSeq = 0;
+function nextRequestId() {
+  sectionExamRequestSeq += 1;
+  return `section-exam-${Date.now().toString(36)}-${sectionExamRequestSeq}`;
 }
 
-function checkAnswer(userAnswer, correctAnswer, questionType) {
-  const user = normalizeAnswer(userAnswer);
-  const correct = normalizeAnswer(correctAnswer);
-  if (!user) return null;
-
-  // 判断题：统一归化为 正确/错误 再比较
-  if (isTrueFalse(questionType)) {
-    return normalizeTrueFalseAnswer(userAnswer) === normalizeTrueFalseAnswer(correctAnswer);
-  }
-
-  if (isMultipleChoice(questionType)) {
-    const userSet = new Set(user.split(',').map((s) => s.trim()).filter(Boolean).sort());
-    const correctSet = new Set(correct.split(',').map((s) => s.trim()).filter(Boolean).sort());
-    if (userSet.size !== correctSet.size) return false;
-    for (const val of userSet) {
-      if (!correctSet.has(val)) return false;
-    }
-    return true;
-  }
-
-  // 单选或文本题
-  return user === correct || correct.includes(user) || user.includes(correct);
-}
-
-export default function SectionExamPanel({ sectionName, kpIds = [], onBack, backLabel }) {
+export default function SectionExamPanel({
+  sectionName,
+  sectionId = '',
+  book = '',
+  chapterId = '',
+  chapterName = '',
+  kpIds = [],
+  onBack,
+  backLabel,
+}) {
   const uniqueKpIds = useMemo(() => [...new Set(kpIds.filter(Boolean))], [kpIds]);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -152,11 +131,15 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack, back
     return () => controller.abort();
   }, [uniqueKpIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setAnswer = (questionId, value) => {
+  const patchQuestion = (questionId, patch) => {
     setQuestionState((prev) => ({
       ...prev,
-      [questionId]: { ...(prev[questionId] || {}), answer: value },
+      [questionId]: { ...(prev[questionId] || {}), ...patch },
     }));
+  };
+
+  const setAnswer = (questionId, value) => {
+    patchQuestion(questionId, { answer: value, requestId: nextRequestId() });
   };
 
   const toggleOption = (questionId, optionKey) => {
@@ -168,30 +151,61 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack, back
         : [...selected, optionKey];
       return {
         ...prev,
-        [questionId]: { ...current, selectedOptions: next, answer: next.sort().join(',') },
+        [questionId]: {
+          ...current,
+          selectedOptions: next,
+          answer: next.sort().join(','),
+          requestId: nextRequestId(),
+        },
       };
     });
   };
 
   const setSingleOption = (questionId, optionKey) => {
-    setQuestionState((prev) => ({
-      ...prev,
-      [questionId]: { ...(prev[questionId] || {}), selectedOptions: [optionKey], answer: optionKey },
-    }));
+    patchQuestion(questionId, {
+      selectedOptions: [optionKey],
+      answer: optionKey,
+      requestId: nextRequestId(),
+    });
   };
 
-  const revealAnswer = (questionId) => {
-    setQuestionState((prev) => {
-      const current = prev[questionId] || {};
-      return { ...prev, [questionId]: { ...current, revealed: true } };
-    });
+  // Grading happens on the server: the verdict the learner sees, the verdict
+  // stored for the study report and the mistake-book entry have to come from
+  // one implementation.  Revealing also records the attempt.
+  const revealAnswer = async (question) => {
+    const questionId = question.question_id;
+    const current = questionState[questionId] || {};
+    if (current.pending) return;
+    patchQuestion(questionId, { pending: true, recordError: '' });
+    try {
+      const verdict = await submitSectionExamAnswer({
+        question_id: questionId,
+        answer: current.answer || '',
+        request_id: current.requestId || nextRequestId(),
+        section_id: sectionId,
+        section_name: sectionName || '',
+        book,
+        chapter_id: chapterId,
+        chapter_name: chapterName,
+      });
+      patchQuestion(questionId, {
+        pending: false,
+        revealed: true,
+        isCorrect: verdict.is_correct,
+        referenceAnswer: verdict.reference_answer || '',
+        referenceOptions: Array.isArray(verdict.reference_options) ? verdict.reference_options : [],
+        analysis: verdict.analysis || '',
+      });
+    } catch (err) {
+      patchQuestion(questionId, {
+        pending: false,
+        recordError: err.message || '作答记录失败，请重试',
+      });
+    }
   };
 
   const hideAnswer = (questionId) => {
-    setQuestionState((prev) => {
-      const current = prev[questionId] || {};
-      return { ...prev, [questionId]: { ...current, revealed: false } };
-    });
+    patchQuestion(questionId, { revealed: false, recordError: '' });
   };
 
   if (loading) {
@@ -254,7 +268,9 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack, back
           const hasOptions = options.length > 0;
           const userAnswer = qState.answer || '';
           const revealed = qState.revealed || false;
-          const isCorrect = revealed ? checkAnswer(userAnswer, q.answer, q.question_type) : null;
+          const pending = qState.pending || false;
+          const isCorrect = revealed ? qState.isCorrect : null;
+          const referenceOptions = Array.isArray(qState.referenceOptions) ? qState.referenceOptions : [];
 
           return (
             <article key={q.question_id} className={`section-exam-question-card ${revealed ? 'is-revealed' : ''}`}>
@@ -280,11 +296,7 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack, back
                     const checked = isMultiple
                       ? (qState.selectedOptions || []).includes(opt.key)
                       : userAnswer === opt.key;
-                    const isCorrectOption = revealed && (
-                      isTF
-                        ? normalizeTrueFalseAnswer(q.answer) === opt.key
-                        : String(q.answer || '').toLowerCase().includes(opt.key.toLowerCase())
-                    );
+                    const isCorrectOption = revealed && referenceOptions.includes(opt.key);
                     return (
                       <label
                         key={opt.key}
@@ -322,10 +334,12 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack, back
                   <button
                     type="button"
                     className="section-exam-reveal-btn"
-                    onClick={() => revealAnswer(q.question_id)}
-                    disabled={!userAnswer}
+                    onClick={() => revealAnswer(q)}
+                    disabled={!userAnswer || pending}
                   >
-                    <Eye size={14} aria-hidden="true" />查看答案
+                    {pending
+                      ? <><LoaderCircle aria-hidden="true" size={14} />正在批改…</>
+                      : <><Eye size={14} aria-hidden="true" />查看答案</>}
                   </button>
                 ) : (
                   <>
@@ -336,18 +350,28 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack, back
                     >
                       <EyeOff size={14} aria-hidden="true" />隐藏答案
                     </button>
-                    {userAnswer && (
-                      <span className={`section-exam-selfcheck ${isCorrect ? 'is-correct' : 'is-incorrect'}`}>
-                        {isCorrect ? (
-                          <><CheckCircle2 size={14} aria-hidden="true" />回答正确</>
-                        ) : (
-                          <><XCircle size={14} aria-hidden="true" />回答错误</>
-                        )}
+                    {userAnswer && isCorrect === true && (
+                      <span className="section-exam-selfcheck is-correct">
+                        <CheckCircle2 size={14} aria-hidden="true" />回答正确
+                      </span>
+                    )}
+                    {userAnswer && isCorrect === false && (
+                      <span className="section-exam-selfcheck is-incorrect">
+                        <XCircle size={14} aria-hidden="true" />回答错误
+                      </span>
+                    )}
+                    {userAnswer && isCorrect === null && (
+                      <span className="section-exam-selfcheck is-self-assessed">
+                        主观题不计分，请对照参考答案自评
                       </span>
                     )}
                   </>
                 )}
               </div>
+
+              {qState.recordError && (
+                <p className="section-exam-record-error" role="alert">{qState.recordError}</p>
+              )}
 
               {/* Revealed answer section */}
               {revealed && (
@@ -355,13 +379,13 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack, back
 
                   <div className="section-exam-answer">
                     <h4><CircleHelp size={14} aria-hidden="true" />参考答案</h4>
-                    <p>{q.answer || '暂无参考答案'}</p>
+                    <p>{qState.referenceAnswer || '暂无参考答案'}</p>
                   </div>
 
-                  {(q.analysis || q.explanation) && (
+                  {qState.analysis && (
                     <div className="section-exam-analysis">
                       <h4><Lightbulb size={14} aria-hidden="true" />解析</h4>
-                      <p>{q.analysis || q.explanation}</p>
+                      <p>{qState.analysis}</p>
                     </div>
                   )}
                 </div>

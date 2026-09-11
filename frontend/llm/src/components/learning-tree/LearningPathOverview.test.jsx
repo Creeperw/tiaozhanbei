@@ -15,6 +15,13 @@ const edges = [
 ];
 
 describe('LearningPathOverview', () => {
+  it('labels textbook completion without claiming overall mastery', () => {
+    render(<LearningPathOverview nodes={nodes} edges={edges} progressLabel="当前教材完成率" progressUnit="本教材" />);
+    expect(screen.getByLabelText('当前教材完成率 54%')).toBeInTheDocument();
+    expect(screen.getByText('1 / 3 本教材')).toBeInTheDocument();
+    expect(screen.queryByLabelText('总体学习进度 54%')).not.toBeInTheDocument();
+  });
+
   it('selects on a single click and drills once on double click', () => {
     const onSelect = vi.fn();
     const onDrill = vi.fn();

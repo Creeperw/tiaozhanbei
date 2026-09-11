@@ -20,7 +20,7 @@ import {
 const historyGroups = [
   { key: 'special_training', title: '专项特训', description: '核心知识点巩固记录', icon: Target, tone: 'cyan' },
   { key: 'topic_training', title: '知识点特训', description: '章节与知识点练习记录', icon: Stethoscope, tone: 'teal' },
-  { key: 'paper_workspace', title: '智能组卷', description: 'AI 生成试卷作答记录', icon: FileCheck2, tone: 'green' },
+  { key: 'paper_workspace', title: '智能组卷', description: '试卷逐题作答记录（题数，不是试卷份数）', icon: FileCheck2, tone: 'green' },
   { key: 'question_training', title: '综合套题', description: '综合题与案例练习记录', icon: CheckCircle2, tone: 'emerald' },
   {
     key: 'ai_patient_simulation',
@@ -56,6 +56,7 @@ function formatActivityDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value).slice(0, 16).replace('T', ' ');
   return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
@@ -167,13 +168,26 @@ export default function TrainingHistoryPanel({ enabled = true }) {
   useEffect(() => {
     if (!enabled) return undefined;
     let active = true;
-    fetchJsonWithAuthFallback({
-      paths: ['/v1/learning-activity/summary?days=90&recent_limit=100'],
-      fallback: { recent_activities: [] },
-      validator: (value) => value && typeof value === 'object' && Array.isArray(value.recent_activities),
-    }).then((result) => {
+    const loadHistory = async () => {
+      const records = [];
+      let offset = 0;
+      do {
+        const result = await fetchJsonWithAuthFallback({
+          paths: [`/v1/practice/history?days=30&offset=${offset}&limit=100`],
+          validator: (value) => value && typeof value === 'object' && Array.isArray(value.recent_activities),
+        });
+        if (!active) return [];
+        records.push(...result.data.recent_activities);
+        const next = result.data.next_offset;
+        if (next === null || next === undefined) break;
+        if (!Number.isInteger(next) || next <= offset) throw new Error('历史分页数据异常');
+        offset = next;
+      } while (active);
+      return records;
+    };
+    loadHistory().then((records) => {
       if (!active) return;
-      setActivities(result.data.recent_activities.filter(isVerifiedPracticeActivity));
+      setActivities(records.filter(isVerifiedPracticeActivity));
       setError('');
     }).catch((reason) => {
       if (!active) return;
@@ -194,7 +208,10 @@ export default function TrainingHistoryPanel({ enabled = true }) {
     return grouped;
   }, [activities]);
 
-  const completedCount = activities.filter((activity) => activityStatus(activity).label === '已完成').length;
+  const questionActivities = activities.filter((activity) => activity.attempt_type !== 'case'
+    && activity.activity_type !== 'case_training');
+  const completedCount = questionActivities.filter((activity) => activityStatus(activity).label === '已完成').length;
+  const caseCount = activities.length - questionActivities.length;
   const latestActivity = activities[0];
   const openGroupHistory = (group, groupActivities) => setSelectedGroup({ key: group.key, title: `${group.title} · 全部记录`, activities: groupActivities });
 
@@ -207,13 +224,13 @@ export default function TrainingHistoryPanel({ enabled = true }) {
           <div className="training-history__summary grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
               <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700"><ListChecks size={15} />练习记录</span>
-              <strong className="mt-1 block text-2xl font-bold text-slate-950">{activities.length}</strong>
-              <span className="text-xs text-slate-500">近 90 天已验证练习活动</span>
+              <strong className="mt-1 block text-2xl font-bold text-slate-950">{questionActivities.length}</strong>
+              <span className="text-xs text-slate-500">近 30 天作答题数；模拟病患另计 {caseCount} 次</span>
             </div>
             <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3">
               <span className="inline-flex items-center gap-2 text-xs font-semibold text-cyan-700"><CheckCircle2 size={15} />已完成</span>
               <strong className="mt-1 block text-2xl font-bold text-slate-950">{completedCount}</strong>
-              <span className="text-xs text-slate-500">已完成的已验证活动</span>
+              <span className="text-xs text-slate-500">与练习概览使用同一作答口径</span>
             </div>
             <div className="rounded-2xl border border-violet-100 bg-violet-50/70 px-4 py-3">
               <span className="inline-flex items-center gap-2 text-xs font-semibold text-violet-700"><CalendarDays size={15} />最近练习</span>

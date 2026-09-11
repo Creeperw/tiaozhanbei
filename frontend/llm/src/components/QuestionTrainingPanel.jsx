@@ -21,6 +21,7 @@ export default function QuestionTrainingPanel({
   initialMode = '',
   onResult,
   taskItemId = '',
+  practiceOrigin = 'question_training',
 }) {
   const [mode, setMode] = useState(() => normalizeInitialMode(initialMode));
 
@@ -63,6 +64,7 @@ export default function QuestionTrainingPanel({
             mode={mode}
             onResult={onResult}
             taskItemId={taskItemId}
+            practiceOrigin={practiceOrigin}
           />
         </div>
       )}

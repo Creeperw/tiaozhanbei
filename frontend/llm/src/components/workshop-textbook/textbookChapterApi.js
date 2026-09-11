@@ -64,3 +64,16 @@ export async function completeTextbookSection(payload, { signal } = {}) {
   }
   return responsePayload;
 }
+
+export async function submitSectionExamAnswer(payload, { signal } = {}) {
+  const response = await fetchWithAuth(`${API_BASE}/training/workspace/section-exam/answers`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    ...(signal ? { signal } : {}),
+  });
+  const responsePayload = await readJsonResponse(response, {});
+  if (!response.ok || responsePayload?.ok === false) {
+    throw new Error(responseMessage(responsePayload, `作答记录失败 (${response.status || 'unknown'})`));
+  }
+  return responsePayload;
+}

@@ -220,6 +220,7 @@ export default function KnowledgePointTrainingHub({
           enabled
           selectedKnowledgePoint={selected}
           initialMode="objective"
+          practiceOrigin="topic_training"
           onResult={onResult}
           taskItemId={taskItemId}
         />

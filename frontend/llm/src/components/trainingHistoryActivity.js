@@ -1,7 +1,14 @@
 export function categoryForActivity(activity) {
+  if (activity?.attempt_type === 'paper') return 'paper_workspace';
   const activityType = String(activity?.activity_type || '').trim().toLowerCase();
   const resourceType = String(activity?.resource_type || '').trim().toLowerCase();
   const taskType = String(activity?.task_type || '').trim().toLowerCase();
+  const origin = activity?.practice_origin;
+  if (activityType === 'question_attempt'
+    && ['question', 'user_question'].includes(resourceType)
+    && ['special_training', 'topic_training', 'question_training'].includes(origin)) {
+    return origin;
+  }
   const mappings = {
     'training_workspace_task:special_training': 'special_training',
     'training_workspace_task:topic_training': 'topic_training',

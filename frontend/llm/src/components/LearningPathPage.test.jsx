@@ -1,8 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LearningPathPage from './LearningPathPage';
+import { loadAllLearningHistory } from '../legacyLearningClient.js';
+
+vi.mock('../legacyLearningClient.js', () => ({ loadAllLearningHistory: vi.fn() }));
 
 function response(payload, ok = true, status = 200) {
   return { ok, status, text: async () => JSON.stringify(payload) };
@@ -54,7 +57,7 @@ function installLearningPathFetch(dashboardPayload = {}, options = {}) {
       }));
     }
     if (path.endsWith('/personalization/learning-target')) {
-      return Promise.resolve(response({ target: { exam_track_id: 'track-tcm' } }));
+      return Promise.resolve(response(options.targetPayload || { target: { exam_track_id: 'track-tcm' } }));
     }
     if (path.includes('/learning-path?parent_id=') && options.stageFetch) {
       return options.stageFetch(path);
@@ -78,9 +81,56 @@ function installLearningPathFetch(dashboardPayload = {}, options = {}) {
 }
 
 describe('LearningPathPage', () => {
+  beforeEach(() => {
+    loadAllLearningHistory.mockResolvedValue({ items: [], total: 0, record_scope: 'legacy_archive', audit_status: 'not_evaluated' });
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('shows archived plans in the no-target state without reading or rendering the formal path', async () => {
+    const fetchMock = installLearningPathFetch({}, {
+      targetPayload: { target: null },
+    });
+    loadAllLearningHistory.mockResolvedValue({
+      total: 1,
+      record_scope: 'legacy_archive',
+      audit_status: 'not_evaluated',
+      items: [{
+        id: 10,
+        title: '旧版方剂复习计划',
+        summary: '复习四君子汤和补气方。',
+        status: 'completed',
+        created_at: '2026-07-22T09:00:00Z',
+      }],
+    });
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    expect(await screen.findByText('尚未选择考试，当前没有正式学习路径。')).toBeInTheDocument();
+    expect(await screen.findByText('旧版方剂复习计划')).toBeInTheDocument();
+    expect(screen.getByText('复习四君子汤和补气方。')).toBeInTheDocument();
+    expect(screen.getByText('状态：completed')).toBeInTheDocument();
+    expect(screen.getByText('来源：历史归档')).toBeInTheDocument();
+    expect(screen.getAllByText('未审核').length).toBeGreaterThan(0);
+    expect(screen.queryByText('中医基础与文化语言')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /查看完整学习路径/ })).not.toBeInTheDocument();
+    expect(loadAllLearningHistory).toHaveBeenCalledWith('plans', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    expect(fetchMock).toHaveBeenCalledWith('/api/personalization/learning-target', expect.anything());
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/learning-path'))).toBe(false);
+  });
+
+  it('distinguishes an empty historical plan result from a failed history request', async () => {
+    installLearningPathFetch({}, { targetPayload: { target: null } });
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+    expect(await screen.findByText('暂无历史计划记录')).toBeInTheDocument();
+
+    cleanup();
+    loadAllLearningHistory.mockRejectedValueOnce(new Error('历史计划读取失败'));
+    render(<LearningPathPage currentUser={{ username: 'bob' }} onNavigate={vi.fn()} />);
+    expect(await screen.findByText('历史计划读取失败')).toBeInTheDocument();
+    expect(screen.queryByText('暂无历史计划记录')).not.toBeInTheDocument();
   });
 
   it('renders the learning path plan, short route, task rail, and route data', async () => {
@@ -103,7 +153,7 @@ describe('LearningPathPage', () => {
 
     expect(await screen.findByRole('heading', { name: '学习路径规划' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '短期学习路径' })).toBeInTheDocument();
-    expect(screen.getByText('中医基础与文化语言')).toBeInTheDocument();
+    expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '复习任务' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('button', { name: /四君子汤配伍/ })).toBeInTheDocument();
   });

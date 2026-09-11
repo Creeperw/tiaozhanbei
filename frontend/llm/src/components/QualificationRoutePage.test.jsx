@@ -6,6 +6,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import QualificationRoutePage from './QualificationRoutePage';
+import { ASSISTANT_WORKFLOW_COMPLETED_EVENT } from '../assistantWorkflowEvents';
 import { clearQualificationRoutePageCache } from './qualificationRoutePageCache';
 
 vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasDetail: vi.fn() }));
@@ -144,6 +145,32 @@ describe('QualificationRoutePage', () => {
     buildPersonalizedLearningPath.mockResolvedValue({ sessionId: 'CONV_TEST' });
   });
   afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the history summary outside the horizontal route canvas and refreshes saved tasks', async () => {
+    const dashboard = {
+      current_learning_task: {
+        task_id: 'TASK_OLD', title: '旧绪论任务',
+        items: [{ task_item_id: 'ITEM_OLD', title: '旧绪论任务', estimated_minutes: 20 }],
+      },
+    };
+    const fetchMock = installHomeFetch(dashboard);
+    const mounted = render(<QualificationRoutePage currentUser={{ id: 'refresh-user' }} />);
+    expect((await screen.findAllByText('旧绪论任务')).length).toBeGreaterThan(0);
+    expect(document.querySelector('.home-portal__continuity-summary')).toBeNull();
+    expect(screen.queryByLabelText('已有学习经历')).not.toBeInTheDocument();
+
+    dashboard.current_learning_task = {
+      task_id: 'TASK_NEW', title: '脾主运化新任务',
+      items: [{ task_item_id: 'ITEM_NEW', title: '脾主运化新任务', estimated_minutes: 20 }],
+    };
+    fireEvent(window, new CustomEvent(ASSISTANT_WORKFLOW_COMPLETED_EVENT));
+    expect((await screen.findAllByText('脾主运化新任务')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('旧绪论任务')).not.toBeInTheDocument();
+    mounted.unmount();
+    const count = fetchMock.mock.calls.length;
+    fireEvent(window, new CustomEvent(ASSISTANT_WORKFLOW_COMPLETED_EVENT));
+    expect(fetchMock).toHaveBeenCalledTimes(count);
+  });
 
   it('asks for an exam selection instead of treating the first catalog item as current', async () => {
     installHomeFetch({}, { currentTrackId: null });
@@ -500,6 +527,29 @@ describe('QualificationRoutePage', () => {
     await waitFor(() => expect(buildPersonalizedLearningPath).toHaveBeenCalledTimes(1));
     const callArgs = buildPersonalizedLearningPath.mock.calls[0][0];
     expect(callArgs.customRequirements).toBe('CUSTOM_TEST_0829：希望侧重方剂背诵。');
+  });
+
+  it.each([
+    ['waiting_human_review', '规划等待审核处理'],
+    ['connection_lost', '规划连接中断，可恢复查询'],
+    ['planning_failed', '学习路径规划未完成'],
+  ])('distinguishes %s from a clarification request', async (code, title) => {
+    installHomeFetch({}, { learningPathPayload: { ...routePayload, nodes: [], availability: 'requires_long_term_plan' } });
+    buildPersonalizedLearningPath.mockRejectedValueOnce(Object.assign(new Error('执行状态说明'), {
+      code, sessionId: 'CONV_RECOVER', runId: 'THREAD_RECOVER', stageIndex: 1,
+    }));
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: '个性化路径' }));
+    fireEvent.click(await screen.findByRole('button', { name: '去制定个性化路径' }));
+    fireEvent.click(screen.getByRole('button', { name: '模拟保存调研' }));
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '直接补充信息' })).not.toBeInTheDocument();
+    expect(screen.queryByText('规划需要你补充信息')).not.toBeInTheDocument();
+    if (code === 'connection_lost') {
+      fireEvent.click(screen.getByRole('button', { name: '恢复原任务查询' }));
+      await waitFor(() => expect(buildPersonalizedLearningPath).toHaveBeenCalledTimes(2));
+      expect(buildPersonalizedLearningPath.mock.calls[1][0].continuation).toEqual({ sessionId: 'CONV_RECOVER', runId: 'THREAD_RECOVER', stageIndex: 1, recover: true });
+    }
   });
 
   it('answers a planning clarification inside the progress dialog and resumes the same stage', async () => {

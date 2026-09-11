@@ -2,10 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BookOpenText,
-  ChevronRight,
-  CircleHelp,
   FileText,
-  Lightbulb,
   PenLine,
   Send,
   SkipForward,
@@ -13,6 +10,7 @@ import {
 import {
   loadDailyTaskPracticeQuestion,
   loadPracticeQuestion,
+  loadPracticeQuestionList,
   skipPracticeQuestion,
   submitPracticeAnswer,
   tagPracticeQuestionDifficulty,
@@ -68,23 +66,8 @@ function formatStandardAnswer(value) {
   return text;
 }
 
-function buildGuidance({ isMultiple, isSingle, mode, kpName }) {
-  const steps = [
-    '先圈出题干中的限定条件，明确题目真正要求回答的对象。',
-    kpName
-      ? `围绕“${kpName}”回忆核心概念，再把概念与题干条件逐一对应。`
-      : '先回忆相关核心概念，再把概念与题干条件逐一对应。',
-  ];
-
-  if (isMultiple) steps.push('逐项判断每个选项，不要因为某一项正确就提前结束。');
-  else if (isSingle) steps.push('先排除与题干条件冲突的选项，再比较剩余选项。');
-  else if (mode === 'case') steps.push('按“关键信息—辨析依据—结论”三个层次组织回答。');
-  else steps.push('按“概念—依据—结论”分层表达，避免只罗列关键词。');
-
-  return steps;
-}
-
 function historyStatusLabel(status, result) {
+  if (status === 'reviewed') return '已批改';
   if (status === 'skipped') return '已跳过';
   if (status === 'submitted') return result?.grading?.is_correct ? '回答正确' : '已批改';
   return '作答中';
@@ -96,12 +79,12 @@ export default function AtlasPracticePanel({
   mode = 'objective',
   onResult,
   taskItemId = '',
+  practiceOrigin = 'question_training',
 }) {
   const [question, setQuestion] = useState(null);
   const [answer, setAnswer] = useState('');
   const [selectedAnswers, setSelectedAnswers] = useState([]);
   const [result, setResult] = useState(null);
-  const [hintVisible, setHintVisible] = useState(false);
   const [loadingQuestion, setLoadingQuestion] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [skipping, setSkipping] = useState(false);
@@ -121,6 +104,7 @@ export default function AtlasPracticePanel({
   const historyIndexRef = useRef(-1);
   const kpId = knowledgePoint?.kpId || knowledgePoint?.kp_id || '';
   const kpName = knowledgePoint?.kpName || knowledgePoint?.kp_name || '';
+  const fixedQuestionList = Boolean(kpId || taskItemId);
 
   const replaceHistory = (nextHistory, nextIndex = historyIndexRef.current) => {
     historyRef.current = nextHistory;
@@ -139,7 +123,6 @@ export default function AtlasPracticePanel({
       answer,
       selectedAnswers: [...selectedAnswers],
       result,
-      hintVisible,
       progress,
       status: questionStatus,
       ...overrides,
@@ -159,7 +142,6 @@ export default function AtlasPracticePanel({
     setAnswer(entry.answer || '');
     setSelectedAnswers([...(entry.selectedAnswers || [])]);
     setResult(entry.result || null);
-    setHintVisible(Boolean(entry.hintVisible));
     setProgress(entry.progress || null);
     setQuestionStatus(entry.status || 'active');
     setSubmitting(false);
@@ -176,17 +158,43 @@ export default function AtlasPracticePanel({
     const load = async () => {
       await Promise.resolve();
       if (cancelled || operation !== operationGenerationRef.current) return;
-      if (generation === 0) replaceHistory([], -1);
+      if (generation === 0 || fixedQuestionList) replaceHistory([], -1);
       setQuestion(null);
       setAnswer('');
       setSelectedAnswers([]);
       setResult(null);
-      setHintVisible(false);
       setSubmitting(false);
       setSkipping(false);
       setError('');
       setProgress(null);
       setLoadingQuestion(true);
+      if (fixedQuestionList) {
+        const loaded = await loadPracticeQuestionList({
+          fetcher: fetchJsonWithAuthFallback, taskItemId, kpId, mode, scope, difficulty: difficultyFilter,
+        });
+        if (cancelled || operation !== operationGenerationRef.current) return;
+        const entries = loaded.practice.questions.map((item) => ({
+          question: { ...item, listed: true },
+          answer: item.submitted_answer || '',
+          selectedAnswers: multipleTypes.has(item.question_type)
+            ? String(item.submitted_answer || '').split(',').filter(Boolean) : [],
+          result: null,
+          progress: loaded.practice.progress || null,
+          status: item.reviewed ? 'reviewed' : 'active',
+        }));
+        replaceHistory(entries, entries.length ? 0 : -1);
+        const first = entries[0];
+        setQuestion(first?.question || null);
+        setAnswer(first?.answer || '');
+        setSelectedAnswers(first?.selectedAnswers || []);
+        setQuestionStatus(first?.status || 'active');
+        setProgress(loaded.practice.progress || null);
+        setDifficultyAvailable(false);
+        setAvailableDifficulties([]);
+        setError(loaded.error || '');
+        setLoadingQuestion(false);
+        return;
+      }
       const loaded = taskItemId
         ? await loadDailyTaskPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, taskItemId, excludeQuestionId: excludedQuestionId })
         : await loadPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, mode, kpId, topic: kpName, scope, difficulty: difficultyFilter, excludeQuestionId: excludedQuestionId });
@@ -205,14 +213,10 @@ export default function AtlasPracticePanel({
           answer: '',
           selectedAnswers: [],
           result: null,
-          hintVisible: false,
           progress: loaded.practice.progress || null,
           status: 'active',
         };
-        const nextHistory = [
-          ...historyRef.current.slice(0, historyIndexRef.current + 1),
-          entry,
-        ];
+        const nextHistory = [...historyRef.current.slice(0, historyIndexRef.current + 1), entry];
         replaceHistory(nextHistory, nextHistory.length - 1);
         setQuestionStatus('active');
       }
@@ -221,7 +225,7 @@ export default function AtlasPracticePanel({
     };
     load();
     return () => { cancelled = true; };
-  }, [generation, kpId, kpName, mode, scope, taskItemId, difficultyFilter]);
+  }, [generation, kpId, kpName, mode, scope, taskItemId, difficultyFilter, fixedQuestionList]);
 
   const questionOptions = useMemo(() => {
     const options = Array.isArray(question?.options) ? question.options : [];
@@ -241,7 +245,6 @@ export default function AtlasPracticePanel({
       : []))
     .map((label) => String(label).trim())
     .filter(Boolean))].slice(0, 3);
-  const guidance = buildGuidance({ isMultiple, isSingle, mode, kpName: kpName || knowledgeLabels[0] || '' });
   const favoriteQuestion = {
     resource_id: question?.question_id || question?.id || `${question?.stem || ''}`.slice(0, 80),
     title: `${typeLabel} · ${String(question?.stem || '').slice(0, 80)}`,
@@ -271,6 +274,7 @@ export default function AtlasPracticePanel({
       question,
       answer: submittedAnswer,
       taskItemId,
+      practiceOrigin,
     });
     if (operation === operationGenerationRef.current) {
       if (response.error) setError(response.error);
@@ -341,6 +345,7 @@ export default function AtlasPracticePanel({
       restoreHistoryEntry(historyIndexRef.current + 1);
       return;
     }
+    if (fixedQuestionList) return;
     // Moving on must not re-serve the question just left. The backend treats an
     // exhausted candidate list with an explicit exclusion as "no more questions".
     excludedQuestionIdRef.current = question?.question_id || '';
@@ -387,7 +392,7 @@ export default function AtlasPracticePanel({
           <header>
             <div>
               <strong>题目列表</strong>
-              <small>专项特训练习</small>
+              <small>{fixedQuestionList ? '知识点专练' : '专项特训练习'}</small>
             </div>
             <span>{history.length} 题</span>
           </header>
@@ -396,7 +401,7 @@ export default function AtlasPracticePanel({
               const entryStatus = historyStatusLabel(entry.status, entry.result);
               return (
                 <button
-                  key={`${entry.question?.question_id || 'question'}:${entry.question?.request_id || index}`}
+                  key={`${entry.question?.snapshot_id || entry.question?.question_id || 'question'}:${index}`}
                   type="button"
                   className={`${index === historyIndex ? 'is-current' : ''} is-${entry.status || 'active'}`}
                   aria-current={index === historyIndex ? 'step' : undefined}
@@ -416,7 +421,7 @@ export default function AtlasPracticePanel({
           </nav>
         </aside>
 
-        <div className="practice-question-grid" data-hint-visible={String(hintVisible)}>
+        <div className="practice-question-grid" data-hint-visible="false">
         <div className="practice-answer-workspace">
           <header className="practice-section-heading">
             <span className="practice-section-heading__icon" aria-hidden="true"><PenLine size={20} /></span>
@@ -426,7 +431,7 @@ export default function AtlasPracticePanel({
             </div>
           </header>
 
-          {difficultyAvailable && !taskItemId && (
+          {difficultyAvailable && !fixedQuestionList && (
             <section className="practice-difficulty-filter" aria-label="难度筛选">
               <span className="practice-difficulty-filter__label">难度</span>
               <div className="practice-difficulty-filter__options">
@@ -489,21 +494,6 @@ export default function AtlasPracticePanel({
             </section>
           )}
 
-          <button
-            type="button"
-            className="practice-hint-trigger"
-            aria-label={hintVisible ? '收起答题提示' : '查看答题提示'}
-            aria-expanded={hintVisible}
-            aria-controls="practice-hint-panel"
-            onClick={() => setHintVisible((visible) => !visible)}
-          >
-            <CircleHelp size={21} aria-hidden="true" />
-            <span>
-              <strong>{hintVisible ? '收起答题提示' : '查看答题提示'}</strong>
-              <small>提示只提供解题方向，不会直接显示答案</small>
-            </span>
-            <ChevronRight className={hintVisible ? 'is-expanded' : ''} size={19} aria-hidden="true" />
-          </button>
 
           <section className="practice-answer-block" aria-labelledby="practice-answer-title">
             <div className="practice-subheading" id="practice-answer-title"><FileText size={17} aria-hidden="true" />我的答案 <span>必填</span></div>
@@ -543,6 +533,9 @@ export default function AtlasPracticePanel({
           {questionStatus === 'skipped' && (
             <p className="practice-skipped-notice" role="status">该题已跳过，原作答凭证已失效。</p>
           )}
+          {questionStatus === 'reviewed' && (
+            <p role="status">该题已批改，已保留原作答记录。</p>
+          )}
           {questionStatus === 'active' && !result && (
             <div className="practice-question-footer">
               <Button
@@ -564,7 +557,7 @@ export default function AtlasPracticePanel({
               >
                 <Send size={17} aria-hidden="true" />提交练习任务
               </Button>
-              <Button
+              {!fixedQuestionList && <Button
                 aria-label="跳过该题"
                 className="practice-skip-button"
                 variant="secondary"
@@ -573,7 +566,10 @@ export default function AtlasPracticePanel({
                 loading={skipping}
               >
                 <SkipForward size={17} aria-hidden="true" />跳过该题
-              </Button>
+              </Button>}
+              {fixedQuestionList && historyIndex < history.length - 1 && (
+                <Button variant="secondary" onClick={nextQuestion} disabled={submitting}>下一题</Button>
+              )}
               </div>
             </div>
           )}
@@ -626,7 +622,7 @@ export default function AtlasPracticePanel({
               <small>学习写回：{result.writeback?.status || '未返回'}</small>
             </div>
           )}
-          {(result || questionStatus === 'skipped') && (
+          {(result || questionStatus === 'skipped' || questionStatus === 'reviewed') && (
             <div className="practice-question-footer">
               <Button
                 aria-label="返回上一题"
@@ -640,49 +636,14 @@ export default function AtlasPracticePanel({
               <div className="practice-result-actions">
                 {result && <FavoriteQuestionButton question={favoriteQuestion} source="题目练习" />}
                 {result && <NoteQuestionButton question={favoriteQuestion} source="题目练习" />}
-                <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
+                {(!fixedQuestionList || historyIndex < history.length - 1) && (
+                  <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {hintVisible && <aside
-          id="practice-hint-panel"
-          data-testid="practice-hint-panel"
-          data-visible={String(hintVisible)}
-          className="practice-hint-panel"
-          aria-live="polite"
-        >
-          <header className="practice-hint-panel__heading">
-            <span aria-hidden="true"><Lightbulb size={21} /></span>
-            <div>
-              <h3>答题提示</h3>
-              <p>需要时再展开，保留独立思考空间</p>
-            </div>
-          </header>
-
-            <div className="practice-hint-content">
-              <section>
-                <h4>思路引导</h4>
-                <ol>
-                  {guidance.map((item, index) => (
-                    <li key={item}><span>{index + 1}</span><p>{item}</p></li>
-                  ))}
-                </ol>
-              </section>
-              <section className="practice-hint-note">
-                <h4>作答建议</h4>
-                <p>先写出你的判断，再补充一至两个关键依据。提交后系统才会展示批改反馈。</p>
-              </section>
-              <section className="practice-question-clues">
-                <h4>题目线索</h4>
-                <dl>
-                  <div><dt>题型</dt><dd>{typeLabel}</dd></div>
-                  <div><dt>来源</dt><dd>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</dd></div>
-                </dl>
-              </section>
-            </div>
-        </aside>}
         </div>
       </div>
     </section>

@@ -788,6 +788,10 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                 {selectedSection && sectionExamMode ? (
                   <SectionExamPanel
                     sectionName={selectedSection.name}
+                    sectionId={selectedSection.id}
+                    book={book}
+                    chapterId={selectedChapter?.id || ''}
+                    chapterName={selectedChapter?.name || ''}
                     kpIds={sectionKpIdsMap[selectedSection.id] || []}
                     onBack={() => {
                       if (examEnteredFromContent) {

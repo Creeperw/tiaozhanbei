@@ -6,6 +6,18 @@ import {
 } from './trainingHistoryActivity';
 
 describe('training history activity contract', () => {
+  it.each(['special_training', 'topic_training', 'question_training'])('preserves explicit %s question origin', (origin) => {
+    const activity = { activity_type: 'question_attempt', resource_type: 'question', completion_status: 'completed', practice_origin: origin };
+    expect(categoryForActivity(activity)).toBe(origin);
+    expect(isVerifiedPracticeActivity(activity)).toBe(true);
+  });
+
+  it('does not guess missing or daily-task origins as special training', () => {
+    for (const origin of [undefined, 'daily_task', 'unknown']) {
+      expect(categoryForActivity({ activity_type: 'question_attempt', resource_type: 'question', practice_origin: origin })).toBe('question_training');
+    }
+  });
+
   it('maps the legacy simulated-patient projection by exact activity fields', () => {
     const activity = {
       activity_type: 'case_training',

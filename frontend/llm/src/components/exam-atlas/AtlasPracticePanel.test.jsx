@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import AtlasPracticePanel from './AtlasPracticePanel';
 
 function jsonResponse(payload, ok = true) {
+  // Legacy fixtures also describe a one-question list; grade responses stay unchanged.
+  if ('available' in payload) {
+    const questions = payload.question ? [payload.question] : [];
+    payload = { ...payload, questions, total: questions.length };
+  }
   return Promise.resolve({
     ok,
     status: ok ? 200 : 500,
@@ -14,11 +19,53 @@ function jsonResponse(payload, ok = true) {
 describe('AtlasPracticePanel', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it('loads all questions once, preserves drafts and results across arbitrary navigation', async () => {
+    const requests = [];
+    const questions = [1, 2, 3].map((id) => ({
+      question_id: `q-${id}`, question_type: 'short_answer', stem: `题干${id}`,
+      kp_ids: ['kp-list'], options: [], source_scope: 'public',
+    }));
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      requests.push({ url, options });
+      if (url.includes('/practice/questions')) return jsonResponse({ questions, total: 3 });
+      if (url.includes('/practice/next')) {
+        expect(url).toContain('question_id=q-3');
+        return jsonResponse({ available: true, question: { ...questions[2], request_id: 'claim-3' } });
+      }
+      if (url.endsWith('/practice/grade')) return jsonResponse({
+        grading: { score: 85, is_correct: true, analysis: '批改完成' }, writeback: { status: 'applied' },
+      });
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+    render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-list' }} />);
+    await screen.findByText('题干1');
+    const list = screen.getByRole('complementary', { name: '题目列表' });
+    expect(within(list).getAllByRole('button')).toHaveLength(3);
+    expect(requests).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '第一题草稿' } });
+    fireEvent.click(screen.getByRole('button', { name: '第3题，作答中' }));
+    expect(screen.getByText('题干3')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '第三题答案' } });
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    await screen.findByText(/得分 85/);
+    const body = JSON.parse(requests.find(({ url }) => url.endsWith('/grade')).options.body);
+    expect(body).toMatchObject({ question_id: 'q-3', request_id: 'claim-3', student_answer: '第三题答案' });
+    expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '第1题，作答中' }));
+    expect(screen.getByLabelText('你的答案')).toHaveValue('第一题草稿');
+    fireEvent.click(screen.getByRole('button', { name: '下一题' }));
+    expect(screen.getByText('题干2')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '第3题，回答正确' }));
+    expect(screen.getByText(/得分 85/)).toBeInTheDocument();
+    expect(requests.filter(({ url }) => url.includes('/practice/questions'))).toHaveLength(1);
+  });
+
   it('loads a KP-scoped public question and submits only learner-visible fields', async () => {
     const requests = [];
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       requests.push({ url, options });
-      if (url.includes('/practice/next') && url.includes('kp_id=kp-yinyang')) {
+      if ((url.includes('/practice/next') || url.includes('/practice/questions')) && url.includes('kp_id=kp-yinyang')) {
         return jsonResponse({
           available: true,
           kp_id: 'kp-yinyang',
@@ -67,7 +114,7 @@ describe('AtlasPracticePanel', () => {
     const requests = [];
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       requests.push({ url, options });
-      if (url.includes('/training/practice/next')) {
+      if (url.includes('/practice/next') || url.includes('/practice/questions')) {
         return jsonResponse({
           available: true,
           question: {
@@ -171,13 +218,14 @@ describe('AtlasPracticePanel', () => {
     const requests = [];
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       requests.push({ url, options });
-      if (url.includes('/daily-task-items/ITEM_BOUND/practice/next')) {
+      if (url.includes('/daily-task-items/ITEM_BOUND/practice/')) {
         return jsonResponse({
           available: true,
           progress: { reviewed: 0, required: 1 },
           question: {
             question_id: 'question-bound', question_type: 'short_answer', stem: '绑定题目',
             options: [], kp_ids: ['kp-bound'], request_id: 'request-bound', source_scope: 'daily_task',
+            snapshot_id: 1, question_version_id: 'version-bound',
           },
         });
       }
@@ -193,7 +241,8 @@ describe('AtlasPracticePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
 
     expect(await screen.findByText(/得分 100/)).toBeInTheDocument();
-    expect(requests[0].url).toContain('/daily-task-items/ITEM_BOUND/practice/next');
+    expect(requests[0].url).toContain('/daily-task-items/ITEM_BOUND/practice/questions');
+    expect(requests.some(({ url }) => url.includes('/practice/next?snapshot_id=1'))).toBe(true);
     const body = JSON.parse(requests.find(({ url }) => url.endsWith('/practice/grade')).options.body);
     expect(body).toMatchObject({ request_id: 'request-bound', daily_task_item_id: 'ITEM_BOUND' });
   });
@@ -210,11 +259,11 @@ describe('AtlasPracticePanel', () => {
     expect(await screen.findByText('今日知识点练习已完成')).toHaveAttribute('role', 'status');
   });
 
-  it('excludes the current question when moving on and reports the bank as exhausted', async () => {
+  it('hides next on a single-question list before and after grading', async () => {
     const requests = [];
     vi.stubGlobal('fetch', vi.fn((url) => {
       requests.push(String(url));
-      if (url.includes('/practice/next') && !url.includes('exclude_question_id')) {
+      if (url.includes('/practice/next') || url.includes('/practice/questions')) {
         return jsonResponse({
           available: true,
           kp_id: 'kp-single',
@@ -243,28 +292,22 @@ describe('AtlasPracticePanel', () => {
 
     render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-single', kpName: '单题知识点' }} />);
     expect(await screen.findByText('唯一一道题')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: /选项甲/ }));
     fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
     await screen.findByText(/得分 100/);
 
-    fireEvent.click(screen.getByRole('button', { name: '下一题' }));
-
-    expect(await screen.findByText('该知识点题目已练完')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '返回上一题' })).toBeInTheDocument();
-    const nextRequest = requests.find((url) => url.includes('exclude_question_id'));
-    expect(nextRequest).toBeDefined();
-    expect(nextRequest).toContain('exclude_question_id=question-single');
-
-    // The exhausted state must still let the learner review the answered question.
-    fireEvent.click(screen.getByRole('button', { name: '返回上一题' }));
-    expect(await screen.findByText('唯一一道题')).toBeInTheDocument();
+    expect(requests.filter((url) => url.includes('/practice/questions'))).toHaveLength(1);
+    expect(requests.find((url) => url.includes('exclude_question_id'))).toBeUndefined();
     expect(screen.getByText(/得分 100/)).toBeInTheDocument();
   });
 
-  it('keeps answer guidance hidden until the learner explicitly requests a hint', async () => {
+  it('does not render the removed answer hint control or panel', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url.includes('/practice/next')) {
+      if (url.includes('/practice/next') || url.includes('/practice/questions')) {
         return jsonResponse({
           available: true,
           question: {
@@ -283,23 +326,16 @@ describe('AtlasPracticePanel', () => {
     render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-yinyang', kpName: '阴阳学说' }} />);
 
     expect(await screen.findByText('阴阳关系的基本特征是什么？')).toBeInTheDocument();
-    const revealButton = screen.getByRole('button', { name: '查看答题提示' });
-    expect(revealButton).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: '查看答题提示' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('practice-hint-panel')).not.toBeInTheDocument();
-
-    fireEvent.click(revealButton);
-
-    const hintPanel = screen.getByTestId('practice-hint-panel');
-    expect(screen.getByRole('button', { name: '收起答题提示' })).toHaveAttribute('aria-expanded', 'true');
-    expect(within(hintPanel).getByText('思路引导')).toBeInTheDocument();
-    expect(within(hintPanel).getByText(/阴阳学说/)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '你的答案' })).toBeInTheDocument();
   });
 
   it('lets the learner tag an unlabelled question and then shows the difficulty', async () => {
     const requests = [];
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       requests.push({ url, options });
-      if (url.includes('/practice/next')) {
+      if (url.includes('/practice/next') || url.includes('/practice/questions')) {
         return jsonResponse({
           available: true,
           question: {
@@ -342,7 +378,7 @@ describe('AtlasPracticePanel', () => {
 
   it('shows a real difficulty label without offering the tagging control', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url.includes('/practice/next')) {
+      if (url.includes('/practice/next') || url.includes('/practice/questions')) {
         return jsonResponse({
           available: true,
           question: {
