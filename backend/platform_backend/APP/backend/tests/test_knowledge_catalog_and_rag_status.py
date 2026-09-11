@@ -313,7 +313,7 @@ class KnowledgeCatalogAndRagStatusTests(unittest.TestCase):
                 index_path=index_path, metadata_path=metadata_path, metadata=[]
             )
             with patch("APP.backend.rag_core.Config", Config), patch(
-                "APP.backend.rag_core.VectorDatabase", side_effect=fake_database
+                "APP.backend.rag_core.DiskVectorDatabase", side_effect=fake_database
             ):
                 service._load_scope_dbs("public")
                 catalog = service.get_catalog(scope="public")
@@ -458,7 +458,7 @@ class KnowledgeCatalogAndRagStatusTests(unittest.TestCase):
         ), patch(
             "APP.backend.rag_core.active_question_index_name", return_value="题库-v2"
         ), patch(
-            "APP.backend.rag_core.VectorDatabase", return_value=new_database
+            "APP.backend.rag_core.DiskVectorDatabase", return_value=new_database
         ) as database_factory:
             active = service.ensure_active_question_db()
 
@@ -485,7 +485,7 @@ class KnowledgeCatalogAndRagStatusTests(unittest.TestCase):
         ), patch(
             "APP.backend.rag_core.active_question_index_name", return_value="题库-v2"
         ), patch(
-            "APP.backend.rag_core.VectorDatabase", side_effect=RuntimeError("corrupt target")
+            "APP.backend.rag_core.DiskVectorDatabase", side_effect=RuntimeError("corrupt target")
         ):
             with self.assertRaises(RAGUnavailableError) as captured:
                 service.ensure_active_question_db()

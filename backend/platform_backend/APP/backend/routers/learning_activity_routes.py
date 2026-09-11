@@ -17,9 +17,19 @@ from APP.backend.learning_task_activity_service import (
     start_focus_session,
 )
 from APP.backend.learning_target_service import get_active_learning_target
+from APP.backend.current_learning_state_service import read_completion_records
 from APP.backend.system_data_service import rebuild_system_data, system_data_payload
 
 router = APIRouter(prefix="/learning-activity", tags=["Learning Activity"])
+
+
+@router.get('/continuity')
+def get_learning_continuity(
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from APP.backend.learning_continuity_service import build_learning_continuity
+    return build_learning_continuity(db, current_user.id)
 
 
 @router.get('/history')
@@ -100,26 +110,9 @@ def get_textbook_progress(
 ):
     active_target = get_active_learning_target(db, current_user.id)
     exam_track_id = active_target.exam_track_id if active_target is not None else ""
-    records = db.query(LearningActivityRecord).filter(
-        LearningActivityRecord.user_id == current_user.id,
-        LearningActivityRecord.activity_type == "textbook_section_completed",
-        LearningActivityRecord.resource_type == "textbook_section",
-    ).order_by(LearningActivityRecord.created_at.asc(), LearningActivityRecord.id.asc()).all()
-    book_records = []
-    for record in records:
-        try:
-            payload = json.loads(record.payload_json or "{}")
-        except (TypeError, ValueError):
-            continue
-        record_exam_track_id = str(payload.get("exam_track_id") or "")
-        if (
-            payload.get("book") == book
-            and (
-                record_exam_track_id == exam_track_id
-                if exam_track_id else not record_exam_track_id
-            )
-        ):
-            book_records.append(record)
+    book_records = [row for row, _ in read_completion_records(
+        db, current_user.id, exam_track_id, book
+    )]
     completed_section_ids = list(dict.fromkeys(record.resource_id for record in book_records if record.resource_id))
     return {
         "book": book,

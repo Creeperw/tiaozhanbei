@@ -583,6 +583,29 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
             ["中医诊断学"],
         )
 
+    def test_book_specific_prerequisite_uses_candidate_book_names(self) -> None:
+        for dependent_book, expected in [("《无机化学实验》", True), ("《方剂学》", False)]:
+            with self.subTest(dependent_book=dependent_book):
+                context = approved_plan_context()
+                context["long_term_plan"]["planning_route"]["textbook_route"] = {
+                    "planning_status": "resolved", "route": {
+                        "route_id": "book-scoped", "goal_name": "中医执业医师资格考试",
+                        "prerequisites": [{"course": "无机化学", "before_stage_id": "stage-2",
+                                           "applies_to_books": [dependent_book], "reason": "教材理论依赖"}],
+                        "stages": [{"stage_id": "stage-1", "order": 1, "books": ["《中医学基础》"]},
+                                   {"stage_id": "stage-2", "order": 2, "books": ["《方剂学》", "《无机化学实验》"]}],
+                    },
+                }
+                context["long_term_plan"]["textbook_selection"] = {
+                    "route_id": "book-scoped", "stage_id": "stage-2",
+                    "stage_name": "教材阶段", "books": ["《方剂学》"],
+                }
+                state = build_multiscale_state(self.db, 1, plan_context=context)
+                candidates = build_path_candidates(self.db, 1, state=state, scope="daily_task", plan_context=context)
+                gate = next(value for value in candidates["items"][0]["hard_constraint_results"]
+                            if value["key"] == "prerequisite_satisfied")
+                self.assertEqual(gate["passed"], expected)
+
     def test_current_turn_forgetting_overrides_persisted_completion(self) -> None:
         context = approved_plan_context()
         route = context["long_term_plan"]["planning_route"]

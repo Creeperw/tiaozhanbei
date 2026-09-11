@@ -10,6 +10,8 @@ from uuid import uuid4
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from APP.backend.learning_continuity_service import build_learning_continuity
+
 from APP.backend.database import (
     KnowledgeMasteryState,
     KnowledgePoint,
@@ -1032,6 +1034,7 @@ def build_multiscale_state(
         "macro": macro,
         "meso": meso,
         "micro": micro,
+        "historical_learning": build_learning_continuity(db, user_id, window_days),
         "data_quality": data_quality,
         "hard_constraints": global_constraints,
         "source_refs": source_refs,
@@ -2383,7 +2386,11 @@ def build_path_candidates(
             or ""
         ).strip()
         required_prerequisites = required_courses_for_stage(
-            prerequisite_route, descriptor_stage_id
+            prerequisite_route, descriptor_stage_id,
+            selected_books=[
+                str(book.get("name") or "") if isinstance(book, dict) else str(book)
+                for book in descriptor.get("books") or []
+            ] or None,
         )
         missing_prerequisites = [
             course

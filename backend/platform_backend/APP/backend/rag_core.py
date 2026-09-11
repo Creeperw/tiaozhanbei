@@ -10,6 +10,7 @@ from pathlib import Path
 from collections import defaultdict
 
 from APP.backend.rag_text import Config, TextSplitter, VectorDatabase, iter_single_file
+from APP.backend.rag_disk import DiskVectorDatabase
 from APP.backend.config import EMBEDDING_MODE
 from APP.backend.question_index_v2_service import (
     DEFAULT_QUESTION_COLLECTION,
@@ -282,7 +283,7 @@ class RAGService:
                 idx_path = os.path.join(db_dir, "index.faiss")
                 meta_path = os.path.join(db_dir, "metadata.jsonl")
                 if os.path.exists(idx_path):
-                    db_map[filename] = VectorDatabase(idx_path, meta_path)
+                    db_map[filename] = DiskVectorDatabase(idx_path, meta_path)
         if scope == "public" and active_question_collection in db_map:
             self._active_question_collection = active_question_collection
 
@@ -308,7 +309,7 @@ class RAGService:
                 return active
             target = Path(Config.PUBLIC_INDEX_DIR) / active
             try:
-                candidate = VectorDatabase(
+                candidate = DiskVectorDatabase(
                     str(target / "index.faiss"),
                     str(target / "metadata.jsonl"),
                 )

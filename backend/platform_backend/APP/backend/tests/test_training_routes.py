@@ -1626,6 +1626,7 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
             params={"mode": "objective", "kp_id": "KP_SEQUENCE"},
         ).json()["question"]
         runner_payload = {
+            "audit": {"decision": "pass", "reason": "test"},
             "grading": {
                 "score": 100,
                 "is_correct": True,
@@ -1642,10 +1643,16 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
                     "stem": first["stem"],
                     "student_answer": "A",
                     "request_id": first["request_id"],
+                    "practice_origin": "special_training",
                 },
             )
 
         self.assertEqual(graded.status_code, 200)
+        with self.Session() as db:
+            activity = db.query(database.LearningActivityRecord).filter_by(
+                activity_type="question_attempt", resource_id=first["question_id"],
+            ).one()
+            self.assertEqual(json.loads(activity.payload_json)["practice_origin"], "special_training")
         second = self.client.get(
             "/v1/workshop/practice/next",
             params={"mode": "objective", "kp_id": "KP_SEQUENCE"},

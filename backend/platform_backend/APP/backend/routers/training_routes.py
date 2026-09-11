@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -101,6 +101,7 @@ class PracticeGradeRequest(BaseModel):
     knowledge_points: list[str] = Field(default_factory=list)
     knowledge_point_names: list[str] = Field(default_factory=list)
     request_id: str | None = Field(default=None, max_length=120)
+    practice_origin: Literal['special_training', 'topic_training', 'question_training'] | None = None
 
 
 class OnboardingSurveyRequest(BaseModel):
@@ -388,6 +389,56 @@ def _public_question_options(db: Session, question_id: str) -> list[Any]:
     return _decode_options(row.options_json) if row is not None else []
 
 
+@stable_practice_router.get("/questions")
+def list_practice_questions(
+    kp_id: str = Query(min_length=1, max_length=120),
+    scope: str = Query(default="public", pattern="^(public|user|all)$"),
+    mode: str = Query(default="all", pattern="^(all|objective|case)$"),
+    difficulty: int | None = Query(default=None, ge=1, le=5),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List the entire KP question set without exposing answers or issuing claims."""
+    tags = {
+        row.question_id: row.difficulty
+        for row in db.query(UserQuestionDifficultyTag).filter_by(user_id=current_user.id).all()
+    }
+    registered = {row.kp_id for row in db.query(KnowledgePoint).filter_by(status="active").all()}
+    public = db.query(QuestionBankItem).filter_by(status="active").all() if scope != "user" else []
+    private = db.query(UserQuestionItem).filter_by(
+        owner_user_id=current_user.id, status="active",
+    ).all() if scope != "public" else []
+    options = {
+        row.question_id: _decode_options(row.options_json)
+        for row in db.query(LearningQuestion).all()
+    } if public else {}
+    names = _knowledge_point_names(db, [kp_id])
+    questions = []
+    for source_scope, rows in (("public", public), ("user", private)):
+        for row in rows:
+            kp_ids = _question_kp_ids(row)
+            if kp_id not in kp_ids or not _matches_practice_mode(row.question_type, mode):
+                continue
+            if source_scope == "public" and not set(kp_ids) <= registered:
+                continue
+            level = row.difficulty if row.difficulty is not None else tags.get(row.question_id)
+            if difficulty is not None and level != difficulty:
+                continue
+            questions.append({
+                "question_id": row.question_id,
+                "question_type": _normalized_question_type(row.question_type),
+                "stem": row.stem,
+                "options": _decode_options(row.options_json) if source_scope == "user" else options.get(row.question_id, []),
+                "kp_ids": kp_ids,
+                "kp_names": names,
+                "source_scope": source_scope,
+                "difficulty": level,
+                "difficulty_source": "user_tagged" if row.difficulty is None and level is not None else row.difficulty_source,
+            })
+    questions.sort(key=lambda item: (item["source_scope"], item["question_id"]))
+    return {"questions": questions, "total": len(questions)}
+
+
 @router.get("/practice/next")
 @stable_practice_router.get("/next")
 def next_practice_question(
@@ -398,6 +449,7 @@ def next_practice_question(
     difficulty_min: int | None = Query(default=None, ge=1, le=5),
     difficulty_max: int | None = Query(default=None, ge=1, le=5),
     exclude_question_id: str | None = Query(default=None, min_length=1, max_length=120),
+    question_id: str | None = None,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -453,6 +505,8 @@ def next_practice_question(
             owner_user_id=current_user.id,
             status="active",
         ).all():
+            if question_id and question.question_id != question_id:
+                continue
             question_kp_ids = json.loads(question.kp_ids_json or "[]")
             effective_difficulty = question.difficulty
             if effective_difficulty is None and question.question_id in user_difficulty_tags:
@@ -540,6 +594,8 @@ def next_practice_question(
     for question in db.query(QuestionBankItem).filter(
         QuestionBankItem.status == "active"
     ).all():
+        if question_id and question.question_id != question_id:
+            continue
         question_kp_ids = _question_kp_ids(question)
         if kp_id and kp_id not in question_kp_ids:
             continue
@@ -822,6 +878,12 @@ def grade_practice(
             "dimension_scores": raw_grading.get("dimension_scores", {}),
         }
         cached_explanation = str(private_question.analysis or "").strip()
+        if not cached_explanation:
+            bank_question = db.query(QuestionBankItem).filter_by(
+                question_id=grading_submission["question_id"],
+                status="active",
+            ).one_or_none()
+            cached_explanation = str(bank_question.analysis or "").strip() if bank_question else ""
         generated_explanation = ""
         if not cached_explanation:
             generated_explanation = generate_question_explanation(
@@ -837,7 +899,11 @@ def grade_practice(
             )
         if cached_explanation:
             grading["question_explanation"] = cached_explanation
-            grading["explanation_source"] = "user_question_cache"
+            grading["explanation_source"] = (
+                "user_question_cache"
+                if str(private_question.analysis or "").strip()
+                else "question_bank_cache"
+            )
         elif generated_explanation:
             private_question.analysis = generated_explanation
             grading["question_explanation"] = generated_explanation
@@ -922,6 +988,7 @@ def grade_practice(
                 "request_id": submission["request_id"],
                 "is_correct": is_correct,
                 "question_type": grading_submission["question_type"],
+                "practice_origin": submission.get("practice_origin"),
             }, ensure_ascii=False),
             created_at=_now(),
         ))
@@ -986,7 +1053,13 @@ def grade_practice(
             duration_minutes=0,
             completion_status="completed",
             score=float(grading["score"]) if isinstance(grading.get("score"), (int, float)) else None,
-            payload_json=json.dumps({"request_id": submission["request_id"]}, ensure_ascii=False),
+            payload_json=json.dumps({
+                "request_id": submission["request_id"],
+                "practice_origin": (
+                    "daily_task" if daily_snapshot is not None
+                    else submission.get("practice_origin")
+                ),
+            }, ensure_ascii=False),
             created_at=_now(),
         ))
         rebuild_system_data(db, user_id=current_user.id)

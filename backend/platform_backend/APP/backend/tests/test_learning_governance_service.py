@@ -146,6 +146,9 @@ class LearningGovernanceServiceTests(unittest.TestCase):
 
     def test_builds_explainable_insights_and_resource_report(self):
         now = datetime.utcnow()
+        for index in range(9):
+            self.db.add(database.QuestionAttempt(user_id=1, question_id=f'LEGACY_{index}',
+                score=80, is_correct=False, created_at=now))
         for index in range(4):
             self.db.add(database.LearningQuestionAttempt(
                 attempt_id=f"ATTEMPT_Q0_{index}",
@@ -206,6 +209,33 @@ class LearningGovernanceServiceTests(unittest.TestCase):
             report["matches"][0]["feedback"]["event_endpoint"],
             "/api/v1/resource-recommendations/events",
         )
+
+    def test_weak_points_group_formal_duplicates_before_limit_without_mutating_mastery(self):
+        from APP.backend.learning_governance_service import _weak_point_display_groups
+        from APP.backend.learning_statistics_service import practice_window_start
+        from APP.backend.time_utils import utc_now, as_beijing
+        rows = []
+        for index, (name, source, score) in enumerate([
+            ('阴阳学说', 'formal_question_bank', 0),
+            ('阴阳学说', 'formal_question_bank', .1),
+            ('阴阳学说', 'formal_question_bank', .2),
+            ('先天禀赋', 'formal_question_bank', .3),
+            ('禀赋', 'formal_question_bank', .4),
+            ('阴阳学说', 'manual', .5),
+        ]):
+            key = f'DUP_{index}'
+            self.db.add(database.KnowledgePoint(kp_id=key, name=name, source=source))
+            rows.append({'kp_id': key, 'kp_name': name, 'score': score,
+                         'confidence': .9, 'source_kp_ids': [key]})
+        self.db.flush()
+        grouped = _weak_point_display_groups(self.db, rows)
+        self.assertEqual(len(grouped), 4)
+        self.assertEqual(grouped[0]['source_kp_ids'], ['DUP_0', 'DUP_1', 'DUP_2'])
+        self.assertEqual(grouped[0]['mastery_score'], 0)
+        self.assertEqual(len(grouped[0]['source_mastery']), 3)
+        self.assertEqual(rows[1]['score'], .1)
+        report = build_learning_insights(self.db, 1, days=30)
+        self.assertEqual(report['window']['start_at'], as_beijing(practice_window_start(utc_now(), 30)).isoformat())
 
     def test_resource_preference_provenance_matches_selected_field(self):
         profile = self.db.query(database.UserProfile).filter_by(user_id=1).one()
@@ -439,6 +469,29 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(report["summary"]["matched_count"], 1)
         self.assertEqual(report["summary"]["target_count"], 1)
 
+    def test_focused_resource_score_is_independent_of_other_weak_points(self):
+        def report_for(ids):
+            return build_resource_match_report(self.db, 1, insights={
+                "weak_points": [{"kp_id": key} for key in ids],
+            })
+
+        first = report_for(["KP_FJ_001"])
+        expanded = report_for(["KP_FJ_001", "KP_UNRELATED"])
+        card_first = next(item for item in first["matches"] if item["resource_id"] == "CARD_1")
+        card_expanded = next(item for item in expanded["matches"] if item["resource_id"] == "CARD_1")
+        self.assertEqual(card_first["score"], card_expanded["score"])
+        self.assertEqual(card_expanded["components"]["knowledge_fit"], 1.0)
+        self.assertEqual(card_expanded["matched_kp_ids"], ["KP_FJ_001"])
+        self.assertEqual(expanded["summary"]["coverage"], 0.5)
+        self.db.add(database.QuestionBankItem(
+            question_id="PARTIAL_MATCH", stem="跨知识点题目",
+            kp_ids_json='["KP_FJ_001", "KP_OTHER"]', status="active",
+        ))
+        self.db.flush()
+        partial_report = report_for(["KP_FJ_001"])
+        partial = next(item for item in partial_report["matches"] if item["resource_id"] == "PARTIAL_MATCH")
+        self.assertEqual(partial["components"]["knowledge_fit"], 0.5)
+
     def test_resource_report_is_read_only_and_events_are_per_resource_idempotent(self):
         insights = build_learning_insights(self.db, 1, days=7)
         before = self.db.query(database.LearningActivityRecord).count()
@@ -558,11 +611,11 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(score_rate["evidence_count"], 2)
         self.assertEqual(
             score_rate["formula"],
-            "sum(passed_practice_and_paper_scores)/sum(corresponding_max_scores)",
+            "sum(unified_scored_question_points)/sum(corresponding_maximum_points)",
         )
         self.assertEqual(
             score_rate["source_ids"],
-            ["grading_result_records", "learning_attempts", "audit_result_records"],
+            ["grading_result_records", "learning_attempts", "audit_result_records", "question_attempts", "paper_submissions"],
         )
 
     def test_execution_dimension_declares_daily_atomic_task_provenance(self):

@@ -649,7 +649,14 @@ def ensure_executable_knowledge_bundle(
             if isinstance(answer_value, list)
             else [str(answer_value or "")]
         )
-        answer = json.dumps(answers, ensure_ascii=False)
+        # ``question_bank_items.answer`` and ``question_version_records.answer``
+        # are plain-text columns: the UI renders them verbatim and the graders
+        # compare against them as a single standard answer.  Only
+        # ``learning_questions.answer_json`` holds a JSON array.  Serialising one
+        # value for both contracts stored ``["√"]`` as the standard answer, which
+        # broke reference-answer display and fill-blank grading.
+        answer_text = ", ".join(value for value in answers if value)
+        answer_json = json.dumps(answers, ensure_ascii=False)
         analysis = str(row.get("explanation") or "")
         options = row.get("options") if isinstance(row.get("options"), list) else []
 
@@ -664,7 +671,7 @@ def ensure_executable_knowledge_bundle(
         existing_kp_ids = set(json.loads(item.kp_ids_json or "[]"))
         existing_kp_ids.add(kp_id)
         item.stem = stem
-        item.answer = answer
+        item.answer = answer_text
         item.analysis = analysis
         item.kp_ids_json = json.dumps(sorted(existing_kp_ids), ensure_ascii=False)
         item.question_type = question_type
@@ -681,7 +688,7 @@ def ensure_executable_knowledge_bundle(
         mirror.question_type = question_type
         mirror.question_content = stem
         mirror.options_json = json.dumps(options, ensure_ascii=False)
-        mirror.answer_json = answer
+        mirror.answer_json = answer_json
         mirror.explanation = analysis
         mirror.difficulty = None
         mirror.difficulty_source = None
@@ -716,7 +723,7 @@ def ensure_executable_knowledge_bundle(
             db.add(version)
         version.question_type = question_type
         version.stem = stem
-        version.answer = answer
+        version.answer = answer_text
         version.analysis = analysis
         version.standard_difficulty = None
         version.difficulty_source = None

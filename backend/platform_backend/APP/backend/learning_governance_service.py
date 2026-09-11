@@ -581,6 +581,36 @@ def _mastery_rows(db: Session, user_id: int) -> list[dict[str, Any]]:
     ]
 
 
+def _weak_point_display_groups(db: Session, heatmap: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Group equivalent presentation labels, not persisted knowledge identities."""
+    from APP.backend.knowledge_point_identity_service import normalize_knowledge_point_label
+    definitions = {str(row.kp_id): row for row in db.query(KnowledgePoint).filter(
+        KnowledgePoint.kp_id.in_([item['kp_id'] for item in heatmap])).all()}
+    groups: dict[tuple, dict[str, Any]] = {}
+    for item in heatmap:
+        if item['score'] >= 0.7:
+            continue
+        definition = definitions.get(item['kp_id'])
+        key = ('id', item['kp_id'])
+        if definition is not None and definition.source == 'formal_question_bank' and definition.name:
+            key = ('formal_question_bank', normalize_knowledge_point_label(definition.name),
+                   normalize_knowledge_point_label(definition.description))
+        group = groups.setdefault(key, {
+            'kp_id': item['kp_id'], 'kp_name': item['kp_name'],
+            'mastery_score': item['score'], 'confidence': item['confidence'],
+            'reason': '当前掌握度较低，建议优先补强。',
+            'source_kp_ids': [], 'source_mastery': [],
+            'grouping_basis': 'same_formal_source_label_description' if key[0] != 'id' else 'canonical_id',
+        })
+        group['source_kp_ids'] = list(dict.fromkeys(group['source_kp_ids'] + item.get('source_kp_ids', [item['kp_id']])))
+        group['source_mastery'].append({'kp_id': item['kp_id'], 'mastery_score': item['score']})
+        if item['score'] < group['mastery_score']:
+            group.update(kp_id=item['kp_id'], mastery_score=item['score'], confidence=item['confidence'])
+        if len({row['mastery_score'] for row in group['source_mastery']}) > 1:
+            group['reason'] = '同名来源的掌握度存在差异，展示最低值并优先巩固对应薄弱项。'
+    return list(groups.values())[:5]
+
+
 def build_learning_insights(
     db: Session,
     user_id: int,
@@ -591,7 +621,7 @@ def build_learning_insights(
     if days not in {7, 30, 90}:
         raise ValueError("days must be one of: 7, 30, 90")
     now = utc_now()
-    window_start = now - timedelta(days=days)
+    window_start = learning_statistics_service.practice_window_start(now, days)
     window_metrics = system_data_service.build_learning_window_metrics(
         db, user_id=user_id, days=days, now=now
     )
@@ -642,22 +672,14 @@ def build_learning_insights(
         MistakeRecord.created_at <= now,
     ).all()
     mistake_counts = Counter(str(row.error_type or "待调研错因") for row in mistakes)
-    attempts = db.query(LearningQuestionAttempt).filter(
-        LearningQuestionAttempt.user_id == user_id,
-        LearningQuestionAttempt.answered_at >= window_start,
-        LearningQuestionAttempt.answered_at <= now,
-    ).all()
-    scored_attempts = [
-        row
-        for row in learning_statistics_service._accepted_grading_rows(db, user_id)
-        if row["attempt_type"] in {"practice", "paper"}
-        and row["submitted_at"] is not None
-        and window_start <= row["submitted_at"] <= now
-    ]
+    attempts = [row for row in learning_statistics_service.unified_practice_rows(db, user_id)
+                if row['submitted_at'] is not None and window_start <= row['submitted_at'] <= now]
+    scored_attempts = [row for row in attempts if row['attempt_type'] != 'case'
+                       and row['score'] is not None and row['max_score'] is not None]
     scored_points = sum(float(row["score"]) for row in scored_attempts)
     available_points = sum(float(row["max_score"]) for row in scored_attempts)
     practice_score_rate = (
-        scored_points / available_points if available_points > 0 else 0.0
+        round(scored_points / available_points, 4) if available_points > 0 else None
     )
     average_mastery = sum(item["score"] for item in mastery) / len(mastery) if mastery else 0.0
     retention_values = [
@@ -708,21 +730,12 @@ def build_learning_insights(
         if canonical_due_count is not None
         else "learner_kp_review_states"
     )
-    weak_points = [
-        {
-            "kp_id": item["kp_id"],
-            "kp_name": item["kp_name"],
-            "mastery_score": item["score"],
-            "confidence": item["confidence"],
-            "reason": "当前掌握度较低，建议优先补强。",
-        }
-        for item in mastery_heatmap[:5]
-        if item["score"] < 0.7
-    ]
+    weak_points = _weak_point_display_groups(db, mastery_heatmap)
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": _iso(now),
-        "window": window_metrics["window"],
+        "window": {"days": days, "start_at": learning_statistics_service._iso(window_start),
+               "end_at": learning_statistics_service._iso(now), "timezone": "Asia/Shanghai"},
         "overview": {
             "stage_id": stage_id,
             "stage_name": stage_name,
@@ -750,8 +763,10 @@ def build_learning_insights(
                            "grading_result_records",
                            "learning_attempts",
                            "audit_result_records",
+                           "question_attempts",
+                           "paper_submissions",
                        ],
-                       formula="sum(passed_practice_and_paper_scores)/sum(corresponding_max_scores)",
+                       formula="sum(unified_scored_question_points)/sum(corresponding_maximum_points)",
                        evidence_count=len(scored_attempts), window_days=days),
             _dimension("consistency", "学习规律", consistency,
                        source_ids=["learning_activity_records"],
@@ -775,6 +790,8 @@ def build_learning_insights(
             "formula": "0.5*min(attempts/5,1)+0.3*min((login_days+focus_sessions)/4,1)+0.2*min(mastery_points/3,1)",
             "sample_count": sample_count,
             "attempt_count": len(attempts),
+            "question_count": sum(row['attempt_type'] != 'case' for row in attempts),
+            "completed_practice_count": sum(row['attempt_type'] != 'case' for row in attempts),
             "mastery_point_count": len(mastery),
             "login_days": login_days,
             "task_count": task_count,
@@ -785,6 +802,8 @@ def build_learning_insights(
                 "daily_task_items",
                 "learning_focus_sessions",
                 "learning_question_attempts",
+                "question_attempts",
+                "paper_submissions",
                 "knowledge_mastery_states",
                 "learner_kp_review_states",
                 "mistake_records",
@@ -793,6 +812,8 @@ def build_learning_insights(
             "intervention_gate": "coverage>=0.6 and attempts>=3 and mastery_points>=1",
         },
         "data_sources": [
+            {"source_id": "question_attempts", "table": "question_attempts", "fields": ["question_id", "score", "is_correct"], "time_field": "created_at", "window_days": days},
+            {"source_id": "paper_submissions", "table": "paper_submissions", "fields": ["paper_id", "request_id", "status"], "time_field": "created_at", "window_days": days},
             {"source_id": "learning_activity_records", "table": "learning_activity_records", "events": ["login", "daily_checkin", "dashboard_recommendations_view", "resource_click"], "time_field": "created_at", "window_days": days},
             {"source_id": "daily_task_instances", "table": "daily_task_instances", "fields": ["host_task_id", "host_task_version", "status", "created_at"], "time_field": "created_at", "window_days": days},
             {"source_id": "daily_task_items", "table": "daily_task_items", "fields": ["task_item_id", "host_task_id", "host_task_version", "status", "created_at", "completed_at"], "time_field": "created_at", "window_days": days},
@@ -841,6 +862,7 @@ def build_resource_match_report(
     plan_context = plan_context or {}
     weak = insights.get("weak_points") or []
     target_kps = [str(item.get("kp_id")) for item in weak if str(item.get("kp_id") or "").strip()]
+    target_kps.extend(str(kp_id) for item in weak for kp_id in item.get('source_kp_ids', []) if kp_id)
     task = plan_context.get("learning_task") if isinstance(plan_context, dict) else {}
     if isinstance(task, dict):
         target_kps.extend(str(item) for item in task.get("kp_ids", []) if str(item).strip())
@@ -972,9 +994,16 @@ def build_resource_match_report(
     available_minutes = int(task.get("estimated_minutes") or 30) if isinstance(task, dict) else 30
     matches = []
     target_set = set(target_kps)
+    target_names = {
+        str(row.kp_id): str(row.name or '').strip()
+        for row in db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(target_kps)).all()
+    } if target_kps else {}
     for candidate in candidates:
         candidate_kps = {str(item) for item in candidate["kp_ids"] if str(item).strip()}
-        coverage = len(candidate_kps & target_set) / len(target_set) if target_set else 0.0
+        matched_kps = sorted(candidate_kps & target_set)
+        # A focused resource must not lose relevance when unrelated weak points
+        # are added. Whole-set coverage is calculated separately below.
+        coverage = len(matched_kps) / len(candidate_kps) if candidate_kps else 0.0
         format_fit = (
             None if preference_source == "unmapped_resource_preference"
             else 1.0 if not preferred_types or candidate["resource_type"] in preferred_types else 0.45
@@ -1012,11 +1041,13 @@ def build_resource_match_report(
             reasons.append("难度与个人作答能力匹配")
         matches.append({
             **candidate,
+            "matched_kp_ids": matched_kps,
+            "matched_kp_names": list(dict.fromkeys(target_names[key] for key in matched_kps if target_names.get(key))),
             "score": round(total, 4),
             "components": {
                 "knowledge_fit": round(coverage, 4),
                 "quality": round(candidate["quality"], 4),
-                "format_fit": round(format_fit, 4),
+                "format_fit": round(format_fit, 4) if format_fit is not None else None,
                 "time_fit": round(time_fit, 4),
                 "difficulty_fit": (
                     round(difficulty_fit, 4)
@@ -1024,7 +1055,7 @@ def build_resource_match_report(
                 ),
             },
             "component_sources": {
-                "knowledge_fit": "resource.kp_ids intersect target.kp_ids",
+                "knowledge_fit": "matched_resource_kps / resource_kps",
                 "quality": candidate["quality_basis"],
                 "format_fit": preference_source,
                 "time_fit": candidate["estimated_minutes_basis"],
@@ -1090,6 +1121,7 @@ def build_resource_match_report(
             "version": METHODOLOGY_VERSION,
             "formula": "weighted mean of available components: knowledge .40, quality .15, format .15, time .10, difficulty .20",
             "missing_feature_policy": "exclude_missing_component_and_renormalize_weights",
+            "knowledge_fit_definition": "matched_resource_kps / resource_kps; aggregate target coverage is reported separately",
             "limitations": [
                 "当前权重是公开的工程基线，尚未通过真实学习增益校准。",
                 "没有目标知识点时不生成推荐。",

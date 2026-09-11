@@ -69,11 +69,48 @@ def _json_list(value: str | None) -> list:
     return decoded if isinstance(decoded, list) else []
 
 
+@router.get("/{task_item_id}/practice/questions")
+def list_daily_task_practice_questions(
+    task_item_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(DailyTaskItemRecord).filter_by(
+        task_item_id=task_item_id, user_id=current_user.id, item_kind="knowledge_practice",
+    ).one_or_none()
+    if item is None:
+        raise HTTPException(status_code=404, detail="daily task item was not found")
+    snapshots = db.query(DailyTaskQuestionSnapshotRecord).filter_by(
+        task_item_id=task_item_id, user_id=current_user.id,
+    ).order_by(DailyTaskQuestionSnapshotRecord.id.asc()).all()
+    questions = [{
+        "question_id": row.question_id,
+        "snapshot_id": row.id,
+        "question_version_id": row.question_version_id,
+        "question_type": row.question_type,
+        "stem": row.stem_snapshot,
+        "options": _json_list(row.options_snapshot_json),
+        "kp_ids": _json_list(row.kp_snapshot_json),
+        "source_scope": "daily_task",
+        "reviewed": row.audit_decision in TERMINAL_AUDIT_DECISIONS,
+        "submitted_answer": row.submitted_answer or "",
+    } for row in snapshots]
+    return {
+        "questions": questions,
+        "total": len(questions),
+        "progress": {
+            "reviewed": sum(row.audit_decision in TERMINAL_AUDIT_DECISIONS for row in snapshots),
+            "required": item.required_question_count,
+        },
+    }
+
+
 @router.get("/{task_item_id}/practice/next")
 def next_daily_task_practice_question(
     task_item_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
+    snapshot_id: int | None = None,
 ):
     item = db.query(DailyTaskItemRecord).filter_by(
         task_item_id=task_item_id,
@@ -102,6 +139,12 @@ def next_daily_task_practice_question(
         ),
         None,
     )
+    if snapshot_id is not None:
+        snapshot = next((row for row in snapshots if row.id == snapshot_id), None)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="daily task question was not found")
+        if snapshot.audit_decision in TERMINAL_AUDIT_DECISIONS:
+            raise HTTPException(status_code=409, detail="daily task question is already reviewed")
     progress = {
         "reviewed": reviewed,
         "required": item.required_question_count,

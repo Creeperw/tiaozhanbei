@@ -58,8 +58,13 @@ class LearningHistoryTests(unittest.TestCase):
         app.include_router(router)
         app.dependency_overrides[m.get_db] = lambda: self.db
         with TestClient(app) as client:
+            self.assertEqual(client.get('/learning-activity/continuity').status_code, 401)
             self.assertEqual(client.get('/learning-activity/history').status_code, 401)
             app.dependency_overrides[get_current_user] = lambda: self.db.get(m.UserModel, 1)
+            continuity = client.get('/learning-activity/continuity')
+            self.assertEqual(continuity.status_code, 200)
+            self.assertEqual(continuity.json()['attempt_count'], 3)
+            self.assertNotIn('PRIVATE', continuity.text)
             response = client.get('/learning-activity/history?section=attempts&limit=2')
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()['total'], 3)
