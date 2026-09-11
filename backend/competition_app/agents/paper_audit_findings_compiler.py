@@ -41,9 +41,7 @@ class PaperAuditFindingsCompilerAgent:
         skill = prompt_skill_registry.load(
             "paper_audit_findings_compiler", "compile_paper_audit_findings"
         )
-        raw = await self.chat_model.complete_json(
-            "paper_audit_findings_compiler",
-            build_model_context(
+        request = build_model_context(
                 context,
                 target_agent="paper_audit_findings_compiler",
                 prompt_skill=skill,
@@ -55,15 +53,21 @@ class PaperAuditFindingsCompilerAgent:
                     "内部编译器只可逐字提取并分类审核原稿中的问题；不得创作问题、"
                     "决定审核结果、生成返修步骤或系统字段。"
                 ),
-            ),
         )
-        result = self._parse(raw)
-        integrity_issues = self._source_issues(result, sources)
-        if integrity_issues:
-            result = PaperAuditNeedsRevision(
-                status="needs_revision",
-                issues=integrity_issues,
+        for attempt in range(2):
+            raw = await self.chat_model.complete_json(
+                "paper_audit_findings_compiler", request
             )
+            result = self._parse(raw)
+            integrity_issues = self._source_issues(result, sources)
+            if integrity_issues:
+                result = PaperAuditNeedsRevision(status="needs_revision", issues=integrity_issues)
+            if result.status == "compiled" or attempt == 1:
+                break
+            request["payload"]["compilation_feedback"] = {
+                "issues": [item.model_dump(mode="json") for item in result.issues],
+                "instruction": "仅根据原始审核材料修正协议和来源引用，不得猜造问题或决定发布。",
+            }
         return PaperAuditCompilationEnvelope(
             result=result,
             source_digest=self._digest(sources),
@@ -74,17 +78,13 @@ class PaperAuditFindingsCompilerAgent:
         try:
             return _RESULT_ADAPTER.validate_python(raw)
         except ValidationError:
-            pass
-        try:
-            return _RESULT_ADAPTER.validate_python(raw)
-        except ValidationError as exc:
             return PaperAuditNeedsRevision(
                 status="needs_revision",
                 issues=[
                     {
                         "code": "schema_invalid",
                         "field_path": "/",
-                        "detail": str(exc),
+                        "detail": "invalid_compiler_protocol",
                     }
                 ],
             )
@@ -97,6 +97,9 @@ class PaperAuditFindingsCompilerAgent:
     ) -> list[dict[str, Any]]:
         if not isinstance(result, CompiledPaperAuditFindings):
             return []
+        if sources["findings"] and not result.issues:
+            return [{"code": "schema_invalid", "field_path": "/issues",
+                     "detail": "source_finding_not_compiled"}]
         searchable = {
             "audit_report": str(sources["audit_report"]),
             "findings": json.dumps(sources["findings"], ensure_ascii=False),

@@ -26,6 +26,69 @@ class PassingAuditModel:
         }
 
 
+class ReportOnlyAuditModel:
+    def __init__(self, decision, report, *, blocking=True, native=None):
+        self.decision = decision
+        self.report = report
+        self.blocking = blocking
+        self.native = native
+        self.compiler_calls = []
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            self.compiler_calls.append(payload["payload"])
+            return {
+                "status": "compiled", "contract_version": "1.0",
+                "issues": [{
+                    "issue_type": "content_quality", "message": self.report,
+                    "blocking": self.blocking,
+                    "source_anchors": [{"source_field": "audit_report", "source_quote": self.report}],
+                }] if self.report else [],
+            }
+        return {
+            "decision": self.decision, "findings": [],
+            "audit_report": self.report, "structured_findings": self.native,
+        }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("decision", ["revise", "reject", "needs_human_review"])
+@pytest.mark.parametrize("native", [None, []])
+async def test_report_only_blocking_paper_audit_cannot_be_released(decision, native):
+    model = ReportOnlyAuditModel(decision, "题干泄露了正确答案，必须改写后重新审核。", native=native)
+    result = await AuditAgent(model).run(_audit_context(20))
+    assert result.payload.decision != "pass"
+    assert len(model.compiler_calls) == 1
+    assert model.compiler_calls[0]["audit_report"] == model.report
+    assert result.payload.structured_findings[0].message == model.report
+
+
+@pytest.mark.asyncio
+async def test_report_only_nonblocking_advice_can_be_released():
+    model = ReportOnlyAuditModel("revise", "不存在答案泄露，仅建议调整排版。", blocking=False)
+    result = await AuditAgent(model).run(_audit_context(20))
+    assert result.payload.decision == "pass"
+    assert len(model.compiler_calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("decision", ["revise", "reject", "needs_human_review"])
+async def test_empty_nonpass_paper_audit_requires_human_review(decision):
+    model = ReportOnlyAuditModel(decision, "")
+    result = await AuditAgent(model).run(_audit_context(20))
+    assert result.payload.decision == "needs_human_review"
+
+
+@pytest.mark.asyncio
+async def test_system_answer_issue_uses_exact_question_id_not_text_prefix():
+    context = _audit_context(20)
+    context["dependency_outputs"]["paper_assembly"].payload.answer_key["Q10"] = ""
+    result = await AuditAgent(PassingAuditModel()).run(context)
+    issue = result.payload.structured_findings[0]
+    assert issue.issue_type == "answer_or_explanation_invalid"
+    assert [item.location_key for item in issue.locations] == ["paper:answer:Q10"]
+
+
 class RevisingAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
         if role == "paper_audit_findings_compiler":
@@ -443,13 +506,14 @@ async def test_paper_compiler_transport_failure_is_retryable() -> None:
 
 
 @pytest.mark.asyncio
-async def test_paper_compiler_format_drift_uses_source_bound_local_repair() -> None:
-    """compiler 格式漂移时仍用原始 finding 安全触发局部返修。"""
+async def test_paper_compiler_format_drift_blocks_without_keyword_repair() -> None:
+    """协议修正失败不能靠关键词猜返修类型，也不能发布试卷。"""
     result = await AuditAgent(PaperCompilerFormatDriftModel()).run(
         _audit_context(2, required_count=2)
     )
 
-    assert result.payload.decision == "revise"
+    assert result.payload.decision == "needs_human_review"
+    assert result.payload.structured_findings == []
     assert any(
         "题干直接泄露答案" in finding
         for finding in result.payload.findings

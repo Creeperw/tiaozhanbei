@@ -31,7 +31,7 @@ class AcceptancePolicy(ContractModel):
     hard_requirements: list[str] = Field(default_factory=list)
     non_blocking_preferences: list[str] = Field(default_factory=list)
     blocking_issue_types: list[
-        Literal["missing_evidence", "factual_error", "safety_violation"]
+        Literal["missing_evidence", "factual_error", "safety_violation", "unresolved"]
     ] = Field(default_factory=list)
     non_blocking_issue_types: list[
         Literal["content_quality", "conflicting_evidence", "learner_mismatch"]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
@@ -478,76 +479,9 @@ class KnowledgeBaseAgent:
             for item in model_output.summary_items
             if item.evidence_id in evidence_by_id
         ]
-        # 网络搜索条目系统兜底：模型可能只提取教材切片而漏掉视频/参考/网页/
-        # 网络题库条目，导致专家无法引用网络来源。系统按证据集原文补全这些
-        # 条目的提取（content 取该条原始内容），保证网络搜索内容同样可被引用。
-        # question 类型（网络题库，如帮考网原题）同样需要兜底：它常直接携带
-        # 原题与标准答案，遗漏会让专家看不到考试口径下的正确结论。
-        covered_evidence_ids = {item.evidence_id for item in summary_items}
-        for evidence in pack.evidence_items:
-            if (
-                evidence.resource_type in {"video", "reference", "web", "question"}
-                and evidence.evidence_id not in covered_evidence_ids
-            ):
-                summary_items.append(
-                    RetrievalSummaryItem(
-                        evidence_id=evidence.evidence_id,
-                        source_id=evidence.source_id,
-                        authority_level=evidence.authority_level,
-                        resource_type=evidence.resource_type,
-                        source_url=evidence.source_url,
-                        source_label=evidence.source_label,
-                        content=" ".join(
-                            str(evidence.content_summary).split()
-                        )[:2_000],
-                    )
-                )
-        # 教材概念兜底：kp_concepts 中列出的每个概念必须在总结中有对应条目，
-        # 否则专家看不到该概念的教材证据（textbook 类型不在上面的网络兜底
-        # 集合内，模型漏提就真丢了）。系统按概念关键词在教材证据中补全命中
-        # 切片，保证题干核心对象与每个选项的辨析概念都有教材原文支撑。
-        kp_concepts = [
-            str(c).strip()
-            for c in (retrieval_plan.kp_concepts or [])
-            if str(c).strip()
-        ]
-
-        def _concept_hit(text: str, concept: str) -> bool:
-            text_lower = text.lower()
-            if concept.lower() in text_lower:
-                return True
-            # 概念可能是短语（如"观察性研究 队列研究"），任一核心词命中即算覆盖
-            tokens = [
-                t
-                for t in concept.replace("/", " ").replace("、", " ").split()
-                if len(t) >= 2
-            ]
-            return any(t.lower() in text_lower for t in tokens) if tokens else False
-
-        for concept in kp_concepts:
-            if any(_concept_hit(item.content, concept) for item in summary_items):
-                continue
-            for evidence in pack.evidence_items:
-                if (
-                    evidence.resource_type == "textbook"
-                    and evidence.evidence_id not in covered_evidence_ids
-                    and _concept_hit(str(evidence.content_summary), concept)
-                ):
-                    summary_items.append(
-                        RetrievalSummaryItem(
-                            evidence_id=evidence.evidence_id,
-                            source_id=evidence.source_id,
-                            authority_level=evidence.authority_level,
-                            resource_type=evidence.resource_type,
-                            source_url=evidence.source_url,
-                            source_label=evidence.source_label,
-                            content=" ".join(
-                                str(evidence.content_summary).split()
-                            )[:2_000],
-                        )
-                    )
-                    covered_evidence_ids.add(evidence.evidence_id)
-                    break
+        # Raw results remain in evidence_items. Only the agent can promote
+        # them to selected summaries; lexical overlap and source type are not
+        # evidence of relevance, coverage, or support for a claim.
         summary_text = "\n".join(
             f"[{item.evidence_id}] {item.content}" for item in summary_items
         )
@@ -570,16 +504,9 @@ class KnowledgeBaseAgent:
             "retrieval_summary": (
                 model_output.retrieval_summary.strip()
                 or summary_text
-                or self._fallback_retrieval_summary(semantic_facts)
             ),
             "summary_items": summary_items,
-            "summary_evidence_ids": (
-                [item.evidence_id for item in summary_items]
-                or [
-                    item.evidence_id
-                    for item in pack.evidence_items
-                ][:5]
-            ),
+            "summary_evidence_ids": [item.evidence_id for item in summary_items],
             "learning_focus_status": learning_focus_status,
             "learning_focus_items": learning_focus_items,
             "question_search_decision": decision,
@@ -610,6 +537,7 @@ class KnowledgeBaseAgent:
         repair_instruction: dict[str, Any],
         retrieval_round: int,
         finalize_with_available_evidence: bool = False,
+        protocol_repair: bool = False,
     ) -> KnowledgeModelOutput:
         """Assess evidence gaps or extract the final evidence exactly once.
 
@@ -653,6 +581,7 @@ class KnowledgeBaseAgent:
                         ),
                         "task_type": str(context.get("task_type", "personalized_review_card")),
                         "expected_uncertainty": [],
+                        "protocol_repair": protocol_repair,
                         "output_schema": KnowledgeModelOutput.model_json_schema(),
                     },
                     permission_note=(
@@ -663,10 +592,12 @@ class KnowledgeBaseAgent:
                         "学习规划只检查当前阶段安排真正需要的事实；不得要求先查齐所有画像背景知识。"
                         "已有路线可支撑学习顺序但不能作为具体知识讲解的原文依据。"
                         "已确认的 planning_request_scope 不得改写：route 不生成指定焦点；"
-                        "explicit_focus 只对给定对象逐项找证据，不得遗漏、追加或改名。"
+                        "explicit_focus 保留全部给定对象，不得遗漏、追加或改名；逐项判断规划是否需要新事实，"
+                        "只补必要缺口，单纯安排教材进度不强制检索正文。"
                         + (
                             "系统已要求使用现有证据强制收尾：不得再申请补充检索，必须设置 "
-                            "need_more_retrieval=false、supplemental_queries=[]、supplemental_external_queries=[]，只提取现有证据能够支持的内容；"
+                            "supplemental_queries=[]、supplemental_external_queries=[]。预算结束不等于证据充分；"
+                            "如果仍缺少关键依据，保持 need_more_retrieval=true 和空提取；否则只提取现有证据能够支持的内容；"
                             "未覆盖或冲突部分写入 uncertainty，不得用模型知识补齐。"
                             if finalize_with_available_evidence
                             else
@@ -679,12 +610,12 @@ class KnowledgeBaseAgent:
                             "数量、补齐资源类型或寻找重复表述继续检索。只有缺少会阻止下游可靠回答的具体事实"
                             "或冲突裁决依据时才可申请补充检索，并须明确具体事实缺口。"
                         )
-                        + "对最终 evidence 中的每一条相关内容逐条提取并规范化：每条提取对应一个 summary_items 条目，"
+                        + "只对你判断应采用的最终 evidence 内容逐条提取，允许不采用任何材料：每条提取对应一个 summary_items 条目，"
                         "evidence_id 必须取自该条 evidence 的 evidence_id（不得自造），content 是从该条原始切片中"
                         "提取的规范化原文（可轻微裁剪，不得用自己的话改写、扩写或自由概括原文；关键定义、"
                         "机制描述必须保留原文表述）。教材切片与网络搜索条目（视频、参考、网页、网络题库题目）"
-                        "一视同仁，都要逐条提取；网络题库题目常直接给出原题与标准答案，其提取内容必须保留"
-                        "题目、选项与标准答案原文；仅当某条与用户问题完全无关时才可跳过。不得发表对用户问题的"
+                        "一视同仁，由你按相关性、可靠性和任务必要性选择；网络题库题目常直接给出原题与标准答案，其提取内容必须保留"
+                        "题目、选项与标准答案原文；不得为凑齐来源数量或类型全部采纳。不得发表对用户问题的"
                         "看法（不评价提问、不判断答案对错、不下教学结论），解答与判断交给下游专家智能体；"
                         "来源信息由系统按 evidence_id 补全，不输出来源字段；正式题库候选（question_candidates）"
                         "不参与本次总结。"
@@ -694,30 +625,12 @@ class KnowledgeBaseAgent:
                 ),
             )
             if not isinstance(raw_quality, dict):
-                raw_quality = {}
+                raise ValueError("knowledge output requires a JSON object")
             forbidden_quality_fields = {"items", "evidence", "question_id", "kp_id"}.intersection(raw_quality)
             if forbidden_quality_fields:
                 raise ValueError(
                     "training output contract forbids objective fields: "
                     + ", ".join(sorted(forbidden_quality_fields))
-                )
-            # The live model often answers this review step in natural language
-            # names instead of the internal field names. Normalize at the
-            # boundary; downstream code still receives a small typed object.
-            if "quality_labels" not in raw_quality:
-                nested_pack = raw_quality.get("evidence_pack")
-                nested_pack = nested_pack if isinstance(nested_pack, dict) else {}
-                raw_quality["quality_labels"] = raw_quality.get("findings") or nested_pack.get("findings", [])
-            if "uncertainty" not in raw_quality:
-                nested_pack = raw_quality.get("evidence_pack")
-                nested_pack = nested_pack if isinstance(nested_pack, dict) else {}
-                raw_quality["uncertainty"] = nested_pack.get("uncertainty", [])
-            if "retrieval_summary" not in raw_quality:
-                raw_quality["retrieval_summary"] = (
-                    raw_quality.get("summary")
-                    or raw_quality.get("answer_basis")
-                    or raw_quality.get("content")
-                    or ""
                 )
             if "need_more_retrieval" not in raw_quality:
                 raw_quality["need_more_retrieval"] = False
@@ -727,95 +640,55 @@ class KnowledgeBaseAgent:
                 raw_quality["learning_focus_status"] = "undetermined"
             if "learning_focus_items" not in raw_quality:
                 raw_quality["learning_focus_items"] = []
-            # 逐条提取：优先取 summary_items，兼容常见别名；evidence_id 必须
-            # 属于本次输入证据集，自造的 id 直接丢弃，防止模型伪造来源。
+            # Validate identities before any selected material reaches downstream.
+            # Protocol mistakes go back to this Agent, never become partial success.
             known_evidence_ids = {
                 str(item.get("evidence_id", "")).strip()
                 for item in semantic_facts
                 if str(item.get("evidence_id", "")).strip()
             }
-            raw_summary_items = raw_quality.get("summary_items")
+            raw_summary_items = raw_quality.get("summary_items", [])
             if not isinstance(raw_summary_items, list):
-                for alias in ("extracted_contents", "extracted_items", "content_items", "evidence_extracts"):
-                    candidate = raw_quality.get(alias)
-                    if isinstance(candidate, list):
-                        raw_summary_items = candidate
-                        break
+                raise ValueError("summary_items requires a JSON array")
             normalized_summary_items: list[dict[str, str]] = []
-            for raw_item in raw_summary_items or []:
-                if not isinstance(raw_item, dict):
-                    continue
-                evidence_id = str(
-                    raw_item.get("evidence_id")
-                    or raw_item.get("id")
-                    or raw_item.get("source_evidence_id")
-                    or ""
-                ).strip()
-                content = str(
-                    raw_item.get("content")
-                    or raw_item.get("extracted_content")
-                    or raw_item.get("text")
-                    or ""
-                ).strip()
-                if not evidence_id or evidence_id not in known_evidence_ids:
-                    continue
-                if not content:
-                    continue
-                normalized_summary_items.append(
-                    {"evidence_id": evidence_id, "content": content[:2_000]}
-                )
+            for raw_item in raw_summary_items:
+                if not isinstance(raw_item, dict) or set(raw_item) != {"evidence_id", "content"}:
+                    raise ValueError("summary_items contains invalid fields")
+                evidence_id, content = raw_item["evidence_id"], raw_item["content"]
+                if not isinstance(evidence_id, str) or evidence_id not in known_evidence_ids:
+                    raise ValueError("summary_items references an unknown evidence_id")
+                if not isinstance(content, str) or not content.strip():
+                    raise ValueError("summary_items requires nonempty content")
+                normalized_summary_items.append(raw_item)
             raw_focus_items = raw_quality.get("learning_focus_items")
             normalized_focus_items: list[dict[str, str]] = []
-            if isinstance(raw_focus_items, list):
-                for raw_item in raw_focus_items:
-                    if not isinstance(raw_item, dict):
-                        continue
-                    name = str(raw_item.get("name") or "").strip()
-                    evidence_id = str(
-                        raw_item.get("evidence_id")
-                        or raw_item.get("source_evidence_id")
-                        or ""
-                    ).strip()
-                    if name and evidence_id:
-                        normalized_focus_items.append(
-                            {"name": name[:120], "evidence_id": evidence_id[:200]}
-                        )
-            # Some live responses repeat the retrieved evidence under an
-            # `evidence_pack`/`knowledge_fragments` field. Those are not model
-            # judgments and are already owned by the retrieval tool.
-            raw_quality = {
-                key: value
-                for key, value in raw_quality.items()
-                if key in {
-                    "retrieval_summary",
-                    "summary_items",
-                    "quality_labels",
-                    "uncertainty",
-                    "need_more_retrieval",
-                    "supplemental_queries",
-                    "learning_focus_status",
-                    "learning_focus_items",
-                }
-            }
+            if not isinstance(raw_focus_items, list):
+                raise ValueError("learning_focus_items requires a JSON array")
+            textbook_ids = {item.evidence_id for item in pack.evidence_items
+                            if item.resource_type == "textbook"}
+            focus_names: set[str] = set()
+            for raw_item in raw_focus_items:
+                if not isinstance(raw_item, dict) or set(raw_item) != {"name", "evidence_id"}:
+                    raise ValueError("learning_focus_items contains invalid fields")
+                name, evidence_id = raw_item["name"], raw_item["evidence_id"]
+                if not isinstance(name, str) or not name.strip() or name.strip() in focus_names:
+                    raise ValueError("learning_focus_items requires unique nonempty names")
+                if not isinstance(evidence_id, str) or evidence_id not in textbook_ids:
+                    raise ValueError("learning_focus_items requires an existing textbook evidence_id")
+                focus_names.add(name.strip())
+                normalized_focus_items.append(raw_item)
             raw_quality["summary_items"] = normalized_summary_items
             raw_quality["learning_focus_items"] = normalized_focus_items
-            if isinstance(raw_quality.get("quality_labels"), str):
-                raw_quality["quality_labels"] = [raw_quality["quality_labels"]]
-            if isinstance(raw_quality.get("uncertainty"), str):
-                raw_quality["uncertainty"] = (
-                    [raw_quality["uncertainty"]] if raw_quality["uncertainty"].strip() else []
-                )
-            if isinstance(raw_quality.get("need_more_retrieval"), str):
-                raw_quality["need_more_retrieval"] = (
-                    raw_quality["need_more_retrieval"].strip().lower()
-                    in {"true", "yes", "1", "是", "需要", "不足"}
-                )
+            if (
+                context.get("task_type") == "learning_plan"
+                and (context.get("planning_request_scope") or {}).get("mode") == "route"
+            ):
+                raw_quality["learning_focus_status"] = "not_requested"
+                raw_quality["learning_focus_items"] = []
             if not isinstance(raw_quality.get("need_more_retrieval"), bool):
-                raw_quality["need_more_retrieval"] = False
-            if isinstance(raw_quality.get("supplemental_queries"), str):
-                raw_quality["supplemental_queries"] = [raw_quality["supplemental_queries"]]
+                raise ValueError("need_more_retrieval requires a JSON boolean")
             if not isinstance(raw_quality.get("supplemental_queries"), list):
-                raw_quality["supplemental_queries"] = []
+                raise ValueError("supplemental_queries requires a JSON array")
             if finalize_with_available_evidence:
                 if raw_quality["need_more_retrieval"]:
                     raw_quality["uncertainty"] = list(
@@ -826,10 +699,9 @@ class KnowledgeBaseAgent:
                             ]
                         )
                     )
-                raw_quality["need_more_retrieval"] = False
                 raw_quality["supplemental_queries"] = []
                 raw_quality["supplemental_external_queries"] = []
-            elif raw_quality["need_more_retrieval"]:
+            if raw_quality["need_more_retrieval"]:
                 # 模型即使越界提前生成了总结，中间轮次也不得把它带入
                 # 下一次请求或流向下游。这里只保留缺口和补充查询。
                 raw_quality["retrieval_summary"] = ""
@@ -856,57 +728,23 @@ class KnowledgeBaseAgent:
                 )
             if isinstance(exc, ValueError) and "forbids objective fields" in str(exc):
                 raise
-            model_output = KnowledgeModelOutput(
-                retrieval_summary=self._fallback_retrieval_summary(semantic_facts),
-                summary_items=[
-                    {
-                        "evidence_id": str(item.get("evidence_id", "")).strip(),
-                        "content": " ".join(str(item.get("text", "")).split())[:2_000],
-                    }
-                    for item in semantic_facts
-                    if str(item.get("evidence_id", "")).strip()
-                    and str(item.get("text", "")).strip()
-                ],
-                quality_labels=["模型总结不可用，系统保留原始检索内容。"],
-                uncertainty=[
-                    "检索后总结模型暂不可用，已回退为原文逐条提取。"
-                    if isinstance(exc, ModelResponseError)
-                    else "检索后总结未通过宽松校验，已回退为原文逐条提取。"
-                ],
-                learning_focus_status="undetermined",
-                learning_focus_items=[],
-            )
-        if finalize_with_available_evidence and not model_output.summary_items:
-            # 强制收尾模型仍未提供可锚定提取时，使用系统持有的真实切片
-            # 确定性回退；不调用模型知识，也不生成输入外的 evidence_id。
-            model_output = KnowledgeModelOutput.model_validate(
-                {
-                    **model_output.model_dump(mode="json"),
-                    "need_more_retrieval": False,
-                    "supplemental_queries": [],
-                    "retrieval_summary": self._fallback_retrieval_summary(
-                        semantic_facts
+            if isinstance(exc, ModelResponseError) or protocol_repair:
+                raise
+            return await self._summarize_retrieved_content(
+                context=context, prompt_skill=prompt_skill, query=query, pack=pack,
+                user_request=user_request, semantic_facts=semantic_facts,
+                retrieval_plan=retrieval_plan,
+                repair_instruction={
+                    **repair_instruction,
+                    "repair_instruction": (
+                        "上一轮证据处理输出未通过协议校验。请按 output_schema 重新输出，"
+                        "need_more_retrieval 必须是 JSON 布尔值，列表字段必须为数组，"
+                        "仅引用输入中已有的 evidence_id；不得自动采纳全部材料或补造依据。"
                     ),
-                    "summary_items": [
-                        {
-                            "evidence_id": str(item.get("evidence_id", "")).strip(),
-                            "content": " ".join(
-                                str(item.get("text", "")).split()
-                            )[:2_000],
-                        }
-                        for item in semantic_facts
-                        if str(item.get("evidence_id", "")).strip()
-                        and str(item.get("text", "")).strip()
-                    ],
-                    "uncertainty": list(
-                        dict.fromkeys(
-                            [
-                                *model_output.uncertainty,
-                                "最终提取模型未返回可锚定条目，系统已按现有原始证据保守提取。",
-                            ]
-                        )
-                    ),
-                }
+                },
+                retrieval_round=retrieval_round,
+                finalize_with_available_evidence=finalize_with_available_evidence,
+                protocol_repair=True,
             )
         if context.get("terminal_trace"):
             context["terminal_trace"].validation("knowledge_base_agent", valid=True, detail="KnowledgeModelOutput")
@@ -917,36 +755,35 @@ class KnowledgeBaseAgent:
         model_output: KnowledgeModelOutput,
         evidence_by_id: dict[str, EvidenceItem],
     ) -> tuple[str, list[LearningFocusEvidence]]:
-        """Keep only complete focus claims grounded in formal textbook evidence.
-
-        The model performs semantic identification, while this boundary owns
-        evidence identity and verbatim support. Invalid model-added items are
-        removed individually; downstream planning still verifies exact focus
-        coverage against the trusted overlay before publishing a plan.
-        """
+        """Bind model-selected textbook identities without semantic filtering."""
 
         status = str(model_output.learning_focus_status)
         if status != "supported":
+            logging.getLogger(__name__).warning(
+                "planning_focus_unavailable: status=%s proposed_items=%s evidence_items=%s",
+                status, len(model_output.learning_focus_items), len(evidence_by_id),
+            )
             return status, []
         raw_items = list(model_output.learning_focus_items)
         validated: list[LearningFocusEvidence] = []
         seen_names: set[str] = set()
         for item in raw_items:
             evidence = evidence_by_id.get(item.evidence_id)
-            normalized_name = "".join(str(item.name).split())
-            normalized_evidence = (
-                "".join(str(evidence.content_summary).split())
-                if evidence is not None
-                else ""
-            )
+            normalized_name = str(item.name).strip()
             if (
                 evidence is None
                 or evidence.resource_type != "textbook"
                 or not normalized_name
-                or normalized_name not in normalized_evidence
                 or normalized_name in seen_names
             ):
-                continue
+                logging.getLogger(__name__).warning(
+                    "planning_focus_rejected: name=%r evidence_exists=%s textbook=%s duplicate=%s source_label=%r",
+                    item.name[:120], evidence is not None,
+                    bool(evidence and evidence.resource_type == "textbook"),
+                    normalized_name in seen_names,
+                    str(evidence.source_label or "")[:200] if evidence else "",
+                )
+                raise ValueError("planning focus contains an invalid source identity")
             seen_names.add(normalized_name)
             validated.append(
                 LearningFocusEvidence(
@@ -957,7 +794,7 @@ class KnowledgeBaseAgent:
                 )
             )
         if not validated:
-            return "unsupported", []
+            raise ValueError("supported planning focus requires evidence")
         return "supported", validated
 
     def _dedupe_supplement_queries(
@@ -977,8 +814,6 @@ class KnowledgeBaseAgent:
             query_text = str(raw or "").strip().strip(" \t\n。，,；;：:")
             if not query_text or len(query_text) > self.supplement_query_max_length:
                 continue
-            if not self._is_safe_supplement_query(query_text):
-                continue
             normalized = "".join(query_text.split())
             if normalized in seen or normalized in normalized_excluded:
                 continue
@@ -987,46 +822,6 @@ class KnowledgeBaseAgent:
             if len(result) >= self.supplement_max_queries:
                 break
         return result
-
-    @staticmethod
-    def _is_safe_supplement_query(query: str) -> bool:
-        """Reject instruction-like model output before it reaches a tool.
-
-        Supplemental queries are data-only factual search phrases.  The
-        checks below are a security boundary, not business routing: they do
-        not select a topic or tool and cannot add a query the model omitted.
-        """
-
-        text = " ".join(str(query or "").split())
-        lowered = text.lower()
-        if not text:
-            return False
-        if any(marker in lowered for marker in ("```", "http://", "https://")):
-            return False
-        if re.search(r"\b(?:search|get|call|invoke)_[a-z0-9_]+\b", lowered):
-            return False
-        if re.search(
-            r"(?:忽略|覆盖|修改|泄露|绕过).{0,16}(?:系统|规则|提示词|指令|预算|协议|角色)",
-            text,
-        ):
-            return False
-        if re.search(r"(?:调用|执行).{0,16}(?:工具|接口|函数)", text):
-            return False
-        if re.search(r"(?:增加|扩大|修改).{0,10}(?:预算|轮数|权限)", text):
-            return False
-        if any(
-            marker in lowered
-            for marker in (
-                "ignore previous",
-                "ignore system",
-                "system prompt",
-                "developer message",
-                "change role",
-                "change budget",
-            )
-        ):
-            return False
-        return True
 
     async def _supplement_retrieval(
         self,
@@ -1185,15 +980,6 @@ class KnowledgeBaseAgent:
             rerank_model=extra.rerank_model or current.rerank_model,
             rerank_degraded=current.rerank_degraded or extra.rerank_degraded,
         )
-
-    @staticmethod
-    def _fallback_retrieval_summary(evidence: list[dict[str, Any]]) -> str:
-        summaries = [
-            " ".join(str(item.get("text", "")).split())
-            for item in evidence
-            if str(item.get("text", "")).strip()
-        ]
-        return "\n".join(summaries[:3])[:8_000]
 
     async def _retrieve_questions_by_blueprint(
         self, context: dict[str, Any]

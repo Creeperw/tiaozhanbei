@@ -411,6 +411,10 @@ async def test_model_question_query_is_passed_through_unchanged(request_text: st
 async def test_learning_plan_task_also_invokes_both_content_tools() -> None:
     registry = FakeToolRegistry(model_result={"quality_labels": [], "uncertainty": []}, question_result=None)
     plan_context = {**context("四君子汤学习计划"), "task_type": "learning_plan", "tool_registry": registry}
+    plan_context["planning_request_scope"] = {
+        "mode": "route", "objects": [], "source_quote": "四君子汤学习计划",
+        "clarification_question": None,
+    }
     with pytest.raises(ValueError, match="question search result"):
         await KnowledgeBaseAgent(None, FixedModel(registry.model_result)).run(plan_context)
 

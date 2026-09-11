@@ -112,6 +112,12 @@ class LearningPlanServiceAdapter:
                     prerequisite_assessment=dict(
                         getattr(diagnosis, "audit_evidence", {}) or {}
                     ).get("prerequisite_assessment"),
+                    planning_request_scope=dict(
+                        getattr(diagnosis, "audit_evidence", {}) or {}
+                    ).get("planning_request_scope"),
+                    planning_focus_assessment=dict(
+                        getattr(diagnosis, "audit_evidence", {}) or {}
+                    ).get("planning_focus_assessment"),
                 )
                 failures = [
                     name
@@ -220,6 +226,12 @@ class LearningPlanServiceAdapter:
                 prerequisite_assessment=dict(
                     getattr(diagnosis, "audit_evidence", {}) or {}
                 ).get("prerequisite_assessment"),
+                planning_request_scope=dict(
+                    getattr(diagnosis, "audit_evidence", {}) or {}
+                ).get("planning_request_scope"),
+                planning_focus_assessment=dict(
+                    getattr(diagnosis, "audit_evidence", {}) or {}
+                ).get("planning_focus_assessment"),
             )
             if audit.subject_digest != expected_digest:
                 raise RuntimeError("plan audit approval does not match current proposal")

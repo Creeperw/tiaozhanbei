@@ -112,3 +112,30 @@ async def test_compiler_rejects_silently_dropped_findings() -> None:
     assert result.result.status == "needs_revision"
     assert result.result.issues[0].code == "schema_invalid"
     assert result.result.issues[0].detail == "source_finding_not_compiled"
+
+
+class RepairingModel(CompilingModel):
+    def __init__(self, *, recover=True):
+        self.calls = 0
+        self.recover = recover
+
+    async def complete_json(self, role, payload, on_delta=None):
+        self.calls += 1
+        if self.calls == 1:
+            return {}
+        assert payload["payload"]["compilation_feedback"]["issues"][0]["code"] == "schema_invalid"
+        if not self.recover:
+            return {}
+        return await super().complete_json(role, payload, on_delta)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("recover", [True, False])
+async def test_compiler_repairs_once_without_prose_fallback(recover):
+    model = RepairingModel(recover=recover)
+    result = await AuditFindingsCompilerAgent(model).compile(
+        _context(), subject_type="exam_paper", audit_report="试卷需要修订。",
+        findings=["题目Q1的解析与答案不一致。"], location_catalog=_locations(),
+    )
+    assert model.calls == 2
+    assert result.result.status == ("compiled" if recover else "needs_revision")

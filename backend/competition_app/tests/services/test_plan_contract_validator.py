@@ -86,7 +86,7 @@ def test_short_term_allows_exact_system_authorized_cross_stage_focus() -> None:
     assert result.issues == []
 
 
-def test_short_term_rejects_overlay_plan_that_drops_authorized_focus() -> None:
+def test_structural_validator_leaves_prose_coverage_to_audit() -> None:
     contract = short_term_contract(7).model_copy(
         update={
             "short_term_plan_content": (
@@ -116,8 +116,8 @@ def test_short_term_rejects_overlay_plan_that_drops_authorized_focus() -> None:
         },
     )
 
-    assert result.valid is False
-    assert any("参苓白术散" in issue and "理中丸" in issue for issue in result.issues)
+    assert result.valid is True  # not publication approval; Audit must check full scope
+    assert result.issues == []
 
 
 def test_long_term_duration_must_equal_stage_sum() -> None:
@@ -154,7 +154,7 @@ def test_long_term_duration_must_equal_stage_sum() -> None:
     assert "长期规划总期限必须等于各阶段期限之和。" in result.issues
 
 
-def test_long_term_content_must_name_each_structured_book() -> None:
+def test_long_term_prose_book_coverage_is_left_to_semantic_audit() -> None:
     contract = CompiledLongTermContract(
         scope="long_term",
         long_term_plan_content="第一阶段完成中药基础学习。",
@@ -173,8 +173,8 @@ def test_long_term_content_must_name_each_structured_book() -> None:
 
     result = PlanContractValidator().validate(contract)
 
-    assert result.valid is False
-    assert any("正文缺少具体书名：《中药学》" in issue for issue in result.issues)
+    assert result.valid is True
+    assert result.issues == []
 
 
 def test_long_term_route_validation_ignores_title_mark_typography() -> None:

@@ -101,3 +101,83 @@ async def test_unavailable_capture_never_changes_failure(capture_config, monkeyp
     result, _ = await compile_case(doc, raw, route)
     assert result.result.status == "needs_revision"
     assert not list(capture_config.parent.glob("failure-*.json"))
+
+
+async def short_failure_case():
+    from competition_app.agents.plan_contract_compiler import PlanContractCompilerAgent
+    from competition_app.tests.agents.test_plan_contract_compiler import DocumentCompilerModel
+
+    document = (
+        "当前阶段stage-1，未来14天使用《方剂学》。"
+        "先完成教材核对；再完成闭卷比较。"
+        "预期产出：一张类方比较表。完成标准：能够闭卷比较代表方剂。"
+    )
+    captured = {}
+
+    class Model:
+        async def complete_json(self, role, context):
+            raw = await DocumentCompilerModel().complete_json(role, context)
+            contract = raw["contract"]
+            anchors = contract["field_anchors"].pop("/progression_nodes")
+            for index, anchor in enumerate(anchors):
+                contract["field_anchors"][f"/progression_nodes/{index}"] = [anchor]
+            contract["progression_nodes"][1] = "随后进行闭卷比较"
+            raw["reasoning"] = "PRIVATE_REASONING"
+            captured["raw"] = raw
+            captured["before"] = deepcopy(raw)
+            return raw
+
+    result = await PlanContractCompilerAgent(Model()).compile(
+        {"trace_id": "TRACE_TEST", "request_id": "REQUEST_TEST", "learner_id": "USER_TEST"},
+        plan_scope="short_term", diagnosis_output={"plan_document": document},
+        trusted_route={}, parent_plan_constraints={},
+    )
+    assert captured["raw"] == captured["before"]
+    assert result.result.status == "needs_revision"
+    assert [(issue.code, issue.field_path) for issue in result.result.issues] == [
+        ("source_value_not_verbatim", "/progression_nodes/1"),
+        ("source_anchor_missing", "/progression_nodes")
+    ]
+    return document, result
+
+
+@pytest.mark.asyncio
+async def test_short_failure_preserves_raw_values_and_quotes(capture_config):
+    document, _ = await short_failure_case()
+    saved_text = (capture_config.parent / "failure-1.json").read_text()
+    saved = json.loads(saved_text)
+    assert saved["document"] == document
+    assert saved["plan_scope"] == "short_term"
+    assert saved["raw_status"] == "compiled"
+    assert saved["contract"]["progression_nodes"] == ["先完成教材核对", "随后进行闭卷比较"]
+    assert saved["contract"]["field_anchors"]["/progression_nodes/1"][0]["source_quote"] == "再完成闭卷比较"
+    assert "/progression_nodes" not in saved["contract"]["field_anchors"]
+    assert saved["contract"]["duration_days"] == 14
+    assert saved["contract"]["expected_output"] == "一张类方比较表"
+    assert saved["contract"]["completion_criteria"] == "能够闭卷比较代表方剂"
+    assert not saved["sanitization_changed_evidence"]
+    assert "PRIVATE_REASONING" not in saved_text
+
+
+@pytest.mark.asyncio
+async def test_scope_filter_prevents_other_plan_claim(capture_config):
+    config = json.loads(capture_config.read_text())
+    capture_config.write_text(json.dumps({**config, "plan_scope": "short_term"}))
+    doc, raw, route = fixture()
+    raw["contract"]["stages"][0]["acceptance"] = ["缺失内容"]
+    await compile_case(doc, raw, route)
+    assert not (capture_config.parent / "claimed-run").exists()
+    await short_failure_case()
+    assert len(list(capture_config.parent.glob("failure-*.json"))) == 1
+
+
+@pytest.mark.asyncio
+async def test_short_evidence_sink_failure_preserves_result(capture_config, monkeypatch):
+    _, first = await short_failure_case()
+
+    def unavailable(*args, **kwargs):
+        raise OSError("sink unavailable")
+
+    monkeypatch.setattr(evidence, "capture_failure", unavailable)
+    _, second = await short_failure_case()
+    assert first == second

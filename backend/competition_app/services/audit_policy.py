@@ -9,6 +9,7 @@ RESOURCE_BLOCKING_ISSUE_TYPES = (
     "missing_evidence",
     "factual_error",
     "safety_violation",
+    "unresolved",
 )
 
 RESOURCE_NON_BLOCKING_ISSUE_TYPES = (
@@ -186,7 +187,7 @@ def build_resource_acceptance_policy(
     task_type = str(context.get("task_type") or "personalized_review_card")
     return AcceptancePolicy(
         policy_id=f"resource:{task_type}:v1",
-        policy_version="1.1",
+        policy_version="1.2",
         task_type=task_type,
         subject_type="resource",
         hard_requirements=[
@@ -223,7 +224,8 @@ def build_resource_acceptance_policy(
                 "仅用于整体核心依据不可用、伪造来源或无法确定安全返修范围的不可发布内容。"
             ),
             "needs_human_review": (
-                "存在 safety_violation 或核心事实无法由可靠证据裁定时转人工。"
+                "存在 safety_violation、审核机制未完成的 unresolved，"
+                "或核心事实无法由可靠证据裁定时转人工；审核失败不等于内容通过。"
             ),
         },
         allowed_resource_origins=[

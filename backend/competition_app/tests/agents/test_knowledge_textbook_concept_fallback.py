@@ -1,10 +1,4 @@
-"""textbook 概念兜底：模型漏提教材切片时，系统按 kp_concepts 自动补全。
-
-对应 knowledge_base.py 中"教材概念兜底"逻辑：kp_concepts 中列出的每个
-概念必须在总结中有对应条目；若某概念未被任何已覆盖条目命中，系统在
-textbook 类型的证据中按概念关键词补全命中切片，保证专家能看到该概念的
-教材原文（B：证据不丢失）。
-"""
+"""原始教材结果不丢失，但程序不得按概念关键词替模型选择证据。"""
 
 import pytest
 
@@ -89,7 +83,7 @@ def context() -> dict[str, object]:
 
 
 @pytest.mark.asyncio
-async def test_textbook_concept_fallback_restores_missed_evidence() -> None:
+async def test_textbook_concept_match_does_not_override_model_selection() -> None:
     output = await KnowledgeBaseAgent(
         TextbookPackTool(), MissingTextbookItemModel()
     ).run(context())
@@ -98,24 +92,21 @@ async def test_textbook_concept_fallback_restores_missed_evidence() -> None:
 
     # 模型提取的条目保留
     assert "E_CHUNK_预防医学_clean:01000" in summary_ids
-    # 模型漏提的观察性研究切片被概念兜底自动补全
-    assert "E_CHUNK_预防医学_clean:00956" in summary_ids
-    # 兜底条目的 content 是教材原文，不是模型改写
-    restored = next(
-        item for item in output.payload.summary_items
+    assert "E_CHUNK_预防医学_clean:00956" not in summary_ids
+    preserved = next(
+        item for item in output.payload.evidence_items
         if item.evidence_id == "E_CHUNK_预防医学_clean:00956"
     )
-    assert "不给研究对象施加任何干预措施" in restored.content
+    assert "不给研究对象施加任何干预措施" in preserved.content_summary
 
 
 @pytest.mark.asyncio
-async def test_concept_coverage_adds_risk_note_free_fallback_without_duplication() -> None:
+async def test_selected_evidence_ids_do_not_include_unselected_concept_hits() -> None:
     output = await KnowledgeBaseAgent(
         TextbookPackTool(), MissingTextbookItemModel()
     ).run(context())
 
-    # 兜底只补一次，不产生重复条目
     ids = [item.evidence_id for item in output.payload.summary_items]
-    assert ids.count("E_CHUNK_预防医学_clean:00956") == 1
+    assert ids == ["E_CHUNK_预防医学_clean:01000"]
     # summary_evidence_ids 与 summary_items 一致
     assert set(output.payload.summary_evidence_ids) == set(ids)

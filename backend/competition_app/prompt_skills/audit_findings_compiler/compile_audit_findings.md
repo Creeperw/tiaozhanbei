@@ -18,6 +18,10 @@ task_type: compile_audit_findings
 5. 不生成 owner、step ID、返修链、审核决定、发布状态或数据库字段。
 6. 无法可靠逐字提取时输出 `status=needs_revision`。
 7. 只输出JSON。
+8. `findings` 为空时仍应阅读完整 `audit_report`。由你理解否定、转折和建议的语义，
+   “未发现事实错误”不是事实错误问题；不得仅凭词语出现分类。
+9. 收到 `compilation_feedback` 时，在原始材料和允许位置不变的前提下修正协议。
+   不得为满足格式而臆造问题；报告确无问题且 findings 为空时可输出空 issues。
 
 ## 问题类型边界
 

@@ -57,25 +57,8 @@ class PlanContractValidator:
                 issues.append(f"长期规划第{index + 1}阶段缺少具体书名。")
             if not stage.schedule_summary.strip():
                 issues.append(f"长期规划第{index + 1}阶段缺少详细安排。")
-            missing_in_content = [
-                book
-                for book in stage.books
-                if book not in contract.long_term_plan_content
-            ]
-            if missing_in_content:
-                issues.append(
-                    f"长期规划第{index + 1}阶段正文缺少具体书名："
-                    + "、".join(missing_in_content)
-                    + "。"
-                )
-            # Book completeness is enforced by ``stage.books`` (non-empty),
-            # the verbatim content check above, and the trusted-route book
-            # comparison below.  ``schedule_summary`` is a compressed summary
-            # of the stage schedule; requiring every book title to appear
-            # verbatim inside it over-constrains legitimate summarisation
-            # (e.g. an 8-book stage) without protecting any front-end render.
-            # Front-end book nodes are projected from ``stage.book``, not from
-            # this summary text.
+            # Contract membership is structural; Audit judges whether the
+            # complete prose actually schedules these books, including negation.
             if trusted_stages:
                 trusted = trusted_stages[index]
                 trusted_name = str(trusted.get("name") or "").strip()
@@ -132,17 +115,6 @@ class PlanContractValidator:
             issues.append("短期计划至少需要两个推进或验收节点。")
         if not contract.selected_books:
             issues.append("短期计划必须明确当前使用的具体书名。")
-        missing_books = [
-            book
-            for book in contract.selected_books
-            if book not in contract.short_term_plan_content
-        ]
-        if missing_books:
-            issues.append(
-                "短期计划正文必须明确当前使用的具体书名："
-                + "、".join(missing_books)
-                + "。"
-            )
         parent_stage_id = str(parent.get("current_stage_id") or "")
         cross_stage_authorized = PlanContractValidator._cross_stage_overlay_matches(
             contract,
@@ -156,15 +128,8 @@ class PlanContractValidator:
             and not cross_stage_authorized
         ):
             issues.append("短期计划选择的阶段与当前长期阶段不一致。")
-        if overlay is not None:
-            if not cross_stage_authorized:
-                issues.append("短期计划与系统授权的临时跨阶段专题不一致。")
-            else:
-                issues.extend(
-                    PlanContractValidator._temporary_focus_content_issues(
-                        contract, overlay
-                    )
-                )
+        if overlay is not None and not cross_stage_authorized:
+            issues.append("短期计划与系统授权的临时跨阶段专题不一致。")
         return issues
 
     @classmethod
@@ -205,39 +170,3 @@ class PlanContractValidator:
             )
         )
 
-    @staticmethod
-    def _temporary_focus_content_issues(
-        contract: CompiledShortTermContract,
-        overlay: dict[str, Any],
-    ) -> list[str]:
-        issues: list[str] = []
-        names = [str(item).strip() for item in overlay.get("focus_names") or []]
-        surfaces = {
-            "正文": contract.short_term_plan_content,
-            "推进节点": "\n".join(contract.progression_nodes),
-            "预期产出": contract.expected_output,
-            "完成标准": contract.completion_criteria,
-        }
-        for label, text in surfaces.items():
-            missing = [name for name in names if name not in text]
-            if missing:
-                issues.append(
-                    f"短期计划{label}缺少系统授权专题："
-                    + "、".join(missing)
-                    + "。"
-                )
-        body = contract.short_term_plan_content
-        if not (
-            any(marker in body for marker in ("不改变长期阶段", "不推进长期阶段"))
-            and any(
-                marker in body
-                for marker in ("不代表完成", "不作为阶段完成", "不视为阶段完成")
-            )
-        ):
-            issues.append("临时专题正文必须明确不改变长期阶段且不代表完成专题阶段。")
-        if not any(
-            marker in contract.completion_criteria
-            for marker in ("不据此申报阶段完成", "不作为阶段完成", "不视为阶段完成")
-        ):
-            issues.append("临时专题完成标准不得被用作长期阶段晋级证据。")
-        return issues

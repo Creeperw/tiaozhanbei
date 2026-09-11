@@ -1160,9 +1160,6 @@ class PlannerAgent:
                     else len(selected),
                     "audit_agent",
                 )
-            request_scope = raw.get("planning_request_scope") or {}
-            if request_scope.get("mode") == "explicit_focus":
-                requires_knowledge_support = True
             if plan_action != "reuse" and requires_knowledge_support:
                 selected.insert(0, "knowledge_base_agent")
         elif task_type not in {"learner_data_query", "casual_conversation"}:

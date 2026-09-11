@@ -209,6 +209,7 @@ class PlanContractCompilerAgent:
             "output_schema": self._model_output_schema(
                 include_managed_text=False,
                 document_source="plan_document" in diagnosis_output,
+                plan_scope=plan_scope,
             ),
         }
         try:
@@ -225,33 +226,7 @@ class PlanContractCompilerAgent:
                     ),
                 ),
             )
-        except ModelResponseError as exc:
-            # The provider returned no content at all (for example the
-            # thinking model emitted only reasoning).  A complete prose
-            # document must still be compilable deterministically; treat
-            # this exactly like a ``needs_revision`` model result and run
-            # the same plan_document fallback instead of failing the whole
-            # planning run.
-            if (
-                isinstance(diagnosis_output.get("plan_document"), str)
-                and diagnosis_output["plan_document"].strip()
-            ):
-                doc_result = self._compile_from_plan_document(
-                    diagnosis_output["plan_document"],
-                    plan_scope,
-                    parent_plan_constraints,
-                )
-                if doc_result is not None:
-                    doc_issues = self._source_issues(
-                        doc_result,
-                        diagnosis_output,
-                        plan_scope,
-                    )
-                    if not doc_issues:
-                        return PlanCompilationEnvelope(
-                            result=doc_result,
-                            source_digest=source_digest,
-                        )
+        except ModelResponseError:
             raise
         normalized_raw = self._normalize_model_output(raw, diagnosis_output)
         # The compiler model may return extracted field values but omit the
@@ -271,123 +246,15 @@ class PlanContractCompilerAgent:
                 plan_scope,
             )
         )
-        result = self._strip_prerequisite_books(result, diagnosis_output, trusted_route)
         issues = self._source_issues(result, diagnosis_output, plan_scope)
         result_issues = (
             result.issues
             if isinstance(result, PlanContractNeedsRevision)
             else issues
         )
-        # 模型对"不可变路线冲突"的判定经常误报（目标句带附加说明、已学完教材
-        # 仍计入 books 等场景）。后端做确定性复核：trusted_route 的阶段名、
-        # 教材、目标主干若逐字出现在文档中，则冲突不成立，剔除误报 issue；
-        # 全部为误报时同文档立即重编译一次，避免把合格文档拖进修订轮。
-        if isinstance(result, PlanContractNeedsRevision) and result_issues:
-            filtered = self._filter_false_route_conflicts(
-                result_issues,
-                diagnosis_output,
-                trusted_route,
-            )
-            if len(filtered) != len(result_issues):
-                result_issues = filtered
-                if filtered:
-                    result = PlanContractNeedsRevision(
-                        status="needs_revision",
-                        issues=filtered,
-                    )
-                else:
-                    self.logger.info(
-                        "compiler model issues all false-conflicts, recompiling once: digest=%s",
-                        source_digest,
-                    )
-                    try:
-                        raw = await self.chat_model.complete_json(
-                            "plan_contract_compiler",
-                            build_model_context(
-                                context,
-                                target_agent="plan_contract_compiler",
-                                prompt_skill=skill,
-                                payload=payload,
-                                permission_note=(
-                                    "内部编译器只可提取当前层规划并引用原文；不得创作、补写、"
-                                    "改写计划，不得生成系统ID、路线事实或持久化字段。"
-                                ),
-                            ),
-                        )
-                        normalized_raw = self._normalize_model_output(
-                            raw,
-                            diagnosis_output,
-                        )
-                        normalized_raw = self._backfill_anchors(
-                            normalized_raw,
-                            diagnosis_output,
-                            plan_scope,
-                        )
-                        result = self._parse(
-                            self._inject_system_fields(
-                                normalized_raw,
-                                diagnosis_output,
-                                plan_scope,
-                            )
-                        )
-                        result = self._strip_prerequisite_books(
-                            result,
-                            diagnosis_output,
-                            trusted_route,
-                        )
-                        issues = self._source_issues(
-                            result,
-                            diagnosis_output,
-                            plan_scope,
-                        )
-                        result_issues = (
-                            result.issues
-                            if isinstance(result, PlanContractNeedsRevision)
-                            else issues
-                        )
-                        if (
-                            isinstance(result, PlanContractNeedsRevision)
-                            and result_issues
-                        ):
-                            re_filtered = self._filter_false_route_conflicts(
-                                result_issues,
-                                diagnosis_output,
-                                trusted_route,
-                            )
-                            if re_filtered:
-                                result_issues = re_filtered
-                                result = PlanContractNeedsRevision(
-                                    status="needs_revision",
-                                    issues=re_filtered,
-                                )
-                    except ModelResponseError:
-                        # 重编译时模型无响应：保留原 issues 交由诊断层处理。
-                        self.logger.warning(
-                            "compiler recompile raised ModelResponseError, keeping original issues"
-                        )
-        # The compiler model can give up on a natural-language document even
-        # when every value is present.  Fall back to a deterministic parse of
-        # the labeled plan_document; strict source validation still applies to
-        # whatever the parser produces.
-        if (
-            result_issues
-            and isinstance(diagnosis_output.get("plan_document"), str)
-            and diagnosis_output["plan_document"].strip()
-        ):
-            doc_result = self._compile_from_plan_document(
-                diagnosis_output["plan_document"],
-                plan_scope,
-                parent_plan_constraints,
-            )
-            if doc_result is not None:
-                doc_issues = self._source_issues(
-                    doc_result,
-                    diagnosis_output,
-                    plan_scope,
-                )
-                if not doc_issues:
-                    result = doc_result
-                    issues = []
+        # Semantic extraction failures return to the existing bounded
+        # Compiler/Diagnosis repair loop. Never synthesize a prose contract
+        # or dismiss a conflict because a book/goal string occurs in the text.
         if (
             "plan_document" not in diagnosis_output
             and isinstance(result, PlanContractNeedsRevision)
@@ -487,17 +354,29 @@ class PlanContractCompilerAgent:
                 )[:6000],
                 len(json.dumps(raw, ensure_ascii=False, default=str)),
             )
-        return PlanCompilationEnvelope(
+        failure_origin = None
+        repair_owner = None
+        if plan_scope == "short_term" and "plan_document" in diagnosis_output and result.status != "compiled":
+            failure_origin = "model" if isinstance(raw, dict) and raw.get("status") == "needs_revision" else "backend"
+            extraction_codes = {"missing_source", "source_anchor_missing", "source_anchor_invalid", "source_value_not_verbatim", "schema_invalid", "forbidden_system_field"}
+            repair_owner = "compiler" if failure_origin == "backend" or any(issue.code in extraction_codes for issue in result.issues) else "author"
+        envelope = PlanCompilationEnvelope(
             result=result,
             source_digest=source_digest,
+            failure_origin=failure_origin,
+            repair_owner=repair_owner,
         )
+        if plan_scope == "short_term" and result.status != "compiled":
+            try:
+                from competition_app.llm.compiler_failure_evidence import capture_failure
+
+                capture_failure(context, diagnosis_output, trusted_route, raw, envelope, plan_scope=plan_scope)
+            except Exception:
+                pass  # Observation must never alter the compiler outcome.
+        return envelope
 
     @staticmethod
     def _parse(raw: Any) -> PlanContractCompilerResult:
-        try:
-            return _RESULT_ADAPTER.validate_python(raw)
-        except ValidationError:
-            pass
         try:
             return _RESULT_ADAPTER.validate_python(raw)
         except ValidationError as exc:
@@ -508,7 +387,10 @@ class PlanContractCompilerAgent:
                         "code": "schema_invalid",
                         "category": "invalid",
                         "field_path": "/",
-                        "source_refs": [str(exc)],
+                        "source_refs": [
+                            "/".join(str(part) for part in error["loc"]) + ":" + error["type"]
+                            for error in exc.errors(include_input=False, include_context=False, include_url=False)[:20]
+                        ],
                     }
                 ],
             )
@@ -704,115 +586,6 @@ class PlanContractCompilerAgent:
             else:
                 normalized.pop(key, None)
         return normalized
-
-    def _strip_prerequisite_books(
-        self,
-        result: PlanContractCompilerResult,
-        diagnosis_output: dict[str, Any],
-        trusted_route: dict[str, Any] | None = None,
-    ) -> PlanContractCompilerResult:
-        """后端确定性守卫：文档明确标注"（前置训练）"的教材（如
-        "《中医诊断学》（前置训练）"）不属于该阶段主教材，不得进入合同
-        books；其训练安排保留在安排摘要中。审计侧要求 books 与可信路线
-        逐字一致，前置训练教材混入 books 会导致确定性校验持续失败。
-        """
-        if not isinstance(result, CompiledPlanContractResult):
-            return result
-        contract = result.contract
-        if contract.scope != "long_term":
-            return result
-        doc = diagnosis_output.get("plan_document")
-        if not isinstance(doc, str) or not doc.strip():
-            return result
-        prereq_books: set[str] = set()
-        for match in re.finditer(
-            r"《([^》]+)》[^。；;！？!?\n]{0,10}（前置训练）",
-            doc,
-        ):
-            name = match.group(1)
-            prereq_books.add(name)
-            prereq_books.add(f"《{name}》")
-        if not prereq_books:
-            return result
-        stripped: list[str] = []
-        for stage in contract.stages:
-            trusted_stages = (trusted_route or {}).get("stages") or (trusted_route or {}).get("phases") or []
-            trusted_books = set(trusted_stages[stage.stage - 1].get("books") or []) if 0 < stage.stage <= len(trusted_stages) else set()
-            kept = [book for book in stage.books if book not in prereq_books or book in trusted_books]
-            if kept and len(kept) != len(stage.books):
-                removed = sorted(set(stage.books) & prereq_books)
-                stripped.append(f"stage-{stage.stage}: {removed}")
-                stage.books = kept
-        if stripped:
-            self.logger.info(
-                "stripped prerequisite-training books from contract: %s",
-                "; ".join(stripped),
-            )
-        return result
-
-    @classmethod
-    def _filter_false_route_conflicts(
-        cls,
-        result_issues: list[Any],
-        diagnosis_output: dict[str, Any],
-        trusted_route: dict[str, Any],
-    ) -> list[Any]:
-        """确定性复核模型报的 ``immutable_route_conflict``。
-
-        模型经常把"目标句带附加说明"（如"建立中医基础概念…，同时完成前置课程
-        训练"）和"已学完教材不再从头安排"判为改写可信路线，尽管提示词已明确
-        这些不构成冲突。后端用逐字包含关系复核：trusted_route 的阶段名、
-        教材、目标主干若逐字出现在 plan_document 中，则冲突不成立，剔除该
-        issue。真实改写（文档中找不到对应原文）仍保留并走修订轮。
-        """
-        doc = diagnosis_output.get("plan_document")
-        if not isinstance(doc, str) or not doc.strip():
-            return list(result_issues)
-        stages = (
-            trusted_route.get("stages")
-            if isinstance(trusted_route, dict)
-            else None
-        )
-        if not isinstance(stages, list) or not stages:
-            return list(result_issues)
-
-        def _false_conflict(issue: Any) -> bool:
-            data = (
-                issue.model_dump(mode="json")
-                if hasattr(issue, "model_dump")
-                else dict(issue)
-            )
-            if data.get("code") != "immutable_route_conflict":
-                return False
-            path = str(data.get("field_path") or "")
-            match = re.search(r"/stages/(\d+)", path)
-            if match:
-                index = int(match.group(1))
-                if index >= len(stages):
-                    return False
-                stage = stages[index]
-                target = path.rsplit("/", 1)[-1]
-                if target == "goal":
-                    goal = str(stage.get("goal") or "").strip()
-                    return bool(goal) and goal in doc
-                if target == "books":
-                    books = stage.get("books") or []
-                    return bool(books) and all(
-                        str(book) in doc for book in books
-                    )
-                if target in ("stage_name", "name"):
-                    name = str(stage.get("name") or "").strip()
-                    return bool(name) and name in doc
-                return False
-            if path.endswith("/stages") or path == "/stages":
-                names = [
-                    str(stage.get("name") or "").strip() for stage in stages
-                ]
-                names = [n for n in names if n]
-                return bool(names) and all(n in doc for n in names)
-            return False
-
-        return [issue for issue in result_issues if not _false_conflict(issue)]
 
     @classmethod
     def _can_recover_from_direct_sources(cls, issues: list[Any]) -> bool:
@@ -1185,6 +958,7 @@ class PlanContractCompilerAgent:
         *,
         include_managed_text: bool = False,
         document_source: bool = False,
+        plan_scope: str | None = None,
     ) -> dict[str, Any]:
         """Build the compiler schema for document or legacy sources."""
 
@@ -1242,520 +1016,21 @@ class PlanContractCompilerAgent:
                         prop["minLength"] = 1
                     if field == "selected_books":
                         prop["minItems"] = 1
-        return schema
-
-    @staticmethod
-    def _parse_plan_document_sections(
-        plan_document: str,
-    ) -> dict[str, list[str]]:
-        """Split a plan document into canonical semantic sections.
-
-        Older drafts used English compiler tags while production Diagnosis
-        writes natural-language Chinese headings.  Both are accepted here so
-        a complete business document does not become unpublished solely
-        because the extraction model returned an invalid schema.
-        """
-
-        import re
-
-        aliases = {
-            "当前主目标": "current_goal",
-            "长期目标保温": "maintenance",
-            "具体任务块": "task_blocks",
-            "推进节点": "progression_nodes",
-            "周期节点": "progression_nodes",
-            "复习任务": "review_tasks",
-            "反馈指标": "feedback_metrics",
-            "预期产出": "expected_output",
-            "可观察产出": "expected_output",
-            "完成标准": "completion_criteria",
-            "验收标准": "completion_criteria",
-            "当前教材": "selected_books",
-            "选用教材": "selected_books",
-            "具体教材": "selected_books",
-            "所属长期阶段": "selected_stage_id",
-            "当前长期阶段": "selected_stage_id",
-            "当前阶段": "selected_stage_id",
-            "周期天数": "duration_days",
-            "计划周期": "duration_days",
-            "短期周期": "duration_days",
-            "今日任务": "daily_task_content",
-            "当日任务正文": "daily_task_content",
-            "学习章节": "learning_chapter",
-            "今日章节": "learning_chapter",
-            "教材章节": "learning_chapter",
-            "重点知识点": "focus_knowledge_points",
-            "聚焦知识点": "focus_knowledge_points",
-            "今日知识点": "focus_knowledge_points",
-            "预计用时": "estimated_minutes",
-            "预计时长": "estimated_minutes",
-            "预计分钟数": "estimated_minutes",
-        }
-        english_tag_re = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*[：:]")
-        heading_re = re.compile(r"^#{1,6}\s*(.+?)\s*$")
-        bracket_heading_re = re.compile(r"^【([^】]+)】\s*(.*)$")
-        label_re = re.compile(r"^([^：:]{1,24})\s*[：:]\s*(.*)$")
-        sections: dict[str, list[str]] = {}
-        current: str | None = None
-        current_lines: list[str] = []
-
-        def canonical_label(value: str) -> str | None:
-            compact = re.sub(r"[\s·（(].*$", "", value.strip())
-            if compact in aliases:
-                return aliases[compact]
-            for label, canonical in aliases.items():
-                if label in value:
-                    return canonical
-            return None
-
-        def start_section(name: str, rest: str = "") -> None:
-            nonlocal current, current_lines
-            if current is not None:
-                sections.setdefault(current, []).extend(current_lines)
-            current = name
-            current_lines = [rest.strip()] if rest.strip() else []
-
-        for raw_line in plan_document.split("\n"):
-            line = raw_line.strip()
-            match = english_tag_re.match(line)
-            if match:
-                start_section(match.group(1), line[match.end():])
-                continue
-            heading = heading_re.match(line)
-            if heading:
-                canonical = canonical_label(heading.group(1))
-                if canonical:
-                    start_section(canonical)
-                    continue
-            bracket = bracket_heading_re.match(line)
-            if bracket:
-                canonical = canonical_label(bracket.group(1))
-                if canonical:
-                    start_section(canonical, bracket.group(2))
-                    continue
-            labeled = label_re.match(line)
-            if labeled:
-                canonical = canonical_label(labeled.group(1))
-                if canonical:
-                    start_section(canonical, labeled.group(2))
-                    continue
-            if current is not None and line:
-                current_lines.append(line)
-        if current is not None:
-            sections.setdefault(current, []).extend(current_lines)
-        return sections
-
-    @classmethod
-    def _compile_from_plan_document(
-        cls,
-        plan_document: str,
-        plan_scope: str,
-        parent_plan_constraints: dict[str, Any],
-    ) -> CompiledPlanContractResult | None:
-        """Deterministically compile a labeled plan_document.
-
-        Fallback used when the compiler model returns ``needs_revision`` or
-        anchors that cannot be verified.  Only values written verbatim in the
-        document are used; anything missing keeps the revision path alive.
-        """
-
-        sections = cls._parse_plan_document_sections(plan_document)
-        if plan_scope == "short_term":
-            return cls._compile_short_term_from_plan_document(
-                plan_document,
-                sections,
-                parent_plan_constraints,
-            )
-        if plan_scope == "long_term":
-            # A long-term stage has six independent semantic fields.  The old
-            # fallback derived several of them from one free-form line and
-            # even supplied ``duration_days=1``.  That turns a compiler into a
-            # plan author and can publish a contract that the Diagnosis never
-            # wrote.  Long-term documents therefore require the model
-            # compiler (and its field-level source anchors); an incomplete
-            # model result must go through Diagnosis revision instead.
-            return None
-        if plan_scope == "daily_task":
-            return cls._compile_daily_task_from_plan_document(
-                plan_document,
-                sections,
-            )
-        return None
-
-    @classmethod
-    def _strip_list_prefix(cls, lines: list[str]) -> list[str]:
-        values: list[str] = []
-        for line in lines:
-            text = line.strip()
-            for prefix in ("- ", "• ", "· ", "1. ", "2. ", "3. "):
-                if text.startswith(prefix):
-                    text = text[len(prefix):].strip()
-                    break
-            if text:
-                values.append(text)
-        return values
-
-    @classmethod
-    def _extract_books(
-        cls,
-        lines: list[str],
-        *,
-        allow_bare: bool = False,
-    ) -> list[str]:
-        """Extract clean book names from list items or inline ``《A》、《B》``.
-
-        The Diagnosis document writes books either as ``- 《中医学基础》`` list
-        items or as an inline ``selected_books：《中医学基础》、《方剂学》``
-        line.  Both forms must yield separate book entries.
-
-        Bare names (without book-mark quotes) are only accepted when
-        ``allow_bare`` is set (the dedicated book-selection section).  Free-form
-        prose lines such as task blocks must never become book names.
-        """
-
-        import re
-
-        books: list[str] = []
-        for line in lines:
-            text = line.strip()
-            for prefix in ("- ", "• ", "· "):
-                if text.startswith(prefix):
-                    text = text[len(prefix):].strip()
-                    break
-            # Collect every 《...》 occurrence on the line.
-            found = re.findall(r"《([^》]+)》", text)
-            if found:
-                for name in found:
-                    book = f"《{name}》".strip()
-                    if book and book not in books:
-                        books.append(book)
-                continue
-            if not allow_bare:
-                continue
-            # Bare names separated by commas / slashes (no book-mark quotes).
-            if text and any(sep in text for sep in ("、", "，", ",", "/", "；", ";")):
-                for part in re.split(r"[、，,;；/]", text):
-                    part = part.strip()
-                    if part and part not in books:
-                        books.append(part)
-                continue
-            if text and text not in books:
-                books.append(text)
-        return books
-
-    @classmethod
-    def _section_value(cls, sections: dict[str, list[str]], label: str) -> str:
-        lines = sections.get(label) or []
-        return "\n".join(lines).strip()
-
-    @classmethod
-    def _section_int(cls, sections: dict[str, list[str]], label: str) -> int | None:
-        value = cls._section_value(sections, label)
-        import re
-
-        match = re.search(r"\d+", value)
-        if not match:
-            return None
-        try:
-            return int(match.group(0))
-        except ValueError:
-            return None
-
-    @classmethod
-    def _compile_short_term_from_plan_document(
-        cls,
-        plan_document: str,
-        sections: dict[str, list[str]],
-        parent_plan_constraints: dict[str, Any],
-    ) -> CompiledPlanContractResult | None:
-        duration = cls._section_int(sections, "duration_days")
-        if duration is None:
-            duration = cls._extract_short_term_duration(plan_document)
-        if duration is None or duration <= 0:
-            return None
-        limit = parent_plan_constraints.get("current_stage_duration_days")
-        if limit is not None and duration > limit:
-            return None
-        nodes = cls._strip_list_prefix(sections.get("progression_nodes") or [])
-        if len(nodes) < 2:
-            nodes = cls._extract_progression_nodes(
-                sections.get("task_blocks") or []
-            )
-        if len(nodes) < 2:
-            return None
-        expected_output = cls._section_value(sections, "expected_output")
-        completion_criteria = cls._section_value(sections, "completion_criteria")
-        if not expected_output or not completion_criteria:
-            return None
-        books = cls._extract_books(
-            sections.get("selected_books") or [],
-            allow_bare=True,
-        )
-        if not books:
-            books = cls._extract_books(
-                (sections.get("current_goal") or [])
-                + (sections.get("task_blocks") or [])
-            )
-        if not books or len(books) > 2:
-            return None
-        stage_id = cls._section_value(sections, "selected_stage_id") or None
-        if stage_id and stage_id.lower() in {"null", "none", "无"}:
-            stage_id = None
-        content = plan_document.strip()
-        if not content:
-            return None
-        field_anchors = {
-            "/short_term_plan_content": [
-                {"source_field": "plan_document", "source_quote": content}
-            ],
-            "/duration_days": [
-                {
-                    "source_field": "plan_document",
-                    "source_quote": cls._duration_source_quote(plan_document)
-                    or str(duration),
-                }
-            ],
-            "/progression_nodes": [
-                {"source_field": "plan_document", "source_quote": node}
-                for node in nodes
-            ],
-            "/expected_output": [
-                {
-                    "source_field": "plan_document",
-                    "source_quote": expected_output,
-                }
-            ],
-            "/completion_criteria": [
-                {
-                    "source_field": "plan_document",
-                    "source_quote": completion_criteria,
-                }
-            ],
-            "/selected_books": [
-                {"source_field": "plan_document", "source_quote": book}
-                for book in books
-            ],
-        }
-        if stage_id:
-            field_anchors["/selected_stage_id"] = [
-                {"source_field": "plan_document", "source_quote": stage_id}
-            ]
-        contract = CompiledShortTermContract(
-            scope="short_term",
-            short_term_plan_content=content,
-            duration_days=duration,
-            progression_nodes=nodes,
-            expected_output=expected_output,
-            completion_criteria=completion_criteria,
-            selected_stage_id=stage_id,
-            selected_books=books,
-            field_anchors=field_anchors,
-        )
-        return CompiledPlanContractResult(status="compiled", contract=contract)
-
-    @staticmethod
-    @staticmethod
-    def _duration_source_quote(plan_document: str) -> str | None:
-        """Return the verbatim duration phrase actually written in the document.
-
-        A derived duration (for example ``两周`` → 14) cannot be anchored by
-        the numeric value because the number is not verbatim in the prose.
-        Anchor the original phrase instead so strict source validation still
-        passes only when the duration genuinely appears in the document.
-        """
-
-        import re
-
-        day_match = re.search(r"\d{1,3}\s*天", plan_document)
-        if day_match:
-            return day_match.group(0)
-        week_match = re.search(
-            r"(?:[一两二三四五六七八九十]{1,3})\s*(?:个)?\s*(?:完整)?周|"
-            r"(?:\d{1,2})\s*(?:个)?\s*(?:完整)?周",
-            plan_document,
-        )
-        if week_match:
-            return week_match.group(0)
-        return None
-
-    @staticmethod
-    def _extract_short_term_duration(plan_document: str) -> int | None:
-        patterns = (
-            r"(?:本|当前|整个)?(?:短期)?(?:计划|周期)[^。；;\n]{0,16}?(\d{1,3})\s*天",
-            r"未来\s*(\d{1,3})\s*天",
-            r"(?:共|为期)\s*(\d{1,3})\s*天",
-            r"(\d{1,3})\s*天(?:内|周期|计划)",
-        )
-        for pattern in patterns:
-            match = re.search(pattern, plan_document)
-            if match:
-                return int(match.group(1))
-        week_match = re.search(
-            r"(?:本|未来|为期|共)?\s*(\d{1,2})\s*(?:个)?(?:完整)?周",
-            plan_document,
-        )
-        if week_match:
-            return int(week_match.group(1)) * 7
-        week_cn_match = re.search(
-            r"([一两二三四五六七八九十]{1,3})\s*(?:个)?\s*(?:完整)?周",
-            plan_document,
-        )
-        if week_cn_match:
-            token = week_cn_match.group(1)
-            cn_digits = {
-                "一": 1, "两": 2, "二": 2, "三": 3, "四": 4,
-                "五": 5, "六": 6, "七": 7, "八": 8, "九": 9,
+        if document_source and plan_scope == "short_term":
+            definition = schema["$defs"]["CompiledShortTermContract"]
+            definition["required"].append("field_anchors")
+            paths = sorted((cls._required_anchor_paths("short_term") - {"/short_term_plan_content"}) | {"/selected_stage_id", "/selection_mode"})
+            entry = {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/PlanSourceAnchor"}}
+            definition["properties"]["field_anchors"] = {
+                "type": "object", "required": paths,
+                "properties": {path: deepcopy(entry) for path in paths},
+                "additionalProperties": False,
+                "description": "以下总字段路径必须逐一提供非空引用；progression_nodes 每个节点须有对应连续原文，不得仅用逐项路径代替总路径。",
             }
-            if token in cn_digits:
-                return cn_digits[token] * 7
-            if token == "十":
-                return 10 * 7
-            if token.startswith("十"):
-                tail = cn_digits.get(token[1:], 0)
-                return (10 + tail) * 7
-            if token.endswith("十"):
-                head = cn_digits.get(token[0], 0)
-                return head * 10 * 7
-        if "一周" in plan_document or "本周" in plan_document:
-            return 7
-        return None
-
-    @classmethod
-    def _extract_progression_nodes(cls, lines: list[str]) -> list[str]:
-        nodes: list[str] = []
-        for value in cls._strip_list_prefix(lines):
-            for part in re.split(r"[；;]", value):
-                text = part.strip()
-                if not text:
-                    continue
-                if re.match(
-                    r"^(?:第[一二三四五六七八九十\d]+(?:个)?(?:节点|阶段|步)|"
-                    r"节点[一二三四五六七八九十\d]+|先|随后|然后|最后)",
-                    text,
-                ):
-                    nodes.append(text)
-        return nodes[:12]
-
-    @classmethod
-    def _compile_long_term_from_plan_document(
-        cls,
-        plan_document: str,
-        sections: dict[str, list[str]],
-    ) -> CompiledPlanContractResult | None:
-        content = plan_document.strip()
-        if not content:
-            return None
-        stages_lines = sections.get("long_term_plan_stages") or sections.get("stages") or []
-        compiled_stages: list[CompiledLongTermStage] = []
-        for line in cls._strip_list_prefix(stages_lines):
-            import re
-
-            match = re.search(r"《([^》]+)》", line)
-            book = match.group(1) if match else None
-            stage_no = re.search(r"(?:阶段|stage)[\s#]*(\d+)", line, re.IGNORECASE)
-            if not book or not stage_no:
-                continue
-            compiled_stages.append(
-                CompiledLongTermStage(
-                    stage=int(stage_no.group(1)),
-                    stage_name=line[:40],
-                    books=[f"《{book}》"],
-                    goal=line[:120],
-                    duration_days=1,
-                    schedule_summary=line[:200],
-                )
+            definition["properties"]["progression_nodes"]["description"] = (
+                "每项直接复制正文中的完整连续片段，保留原有标点和换行；不得自行添加节点名、概括或拼接。"
             )
-        if not compiled_stages:
-            return None
-        total = cls._section_int(sections, "total_duration_days")
-        if total is None or total <= 0:
-            return None
-        contract = CompiledLongTermContract(
-            scope="long_term",
-            long_term_plan_content=content,
-            total_duration_days=total,
-            stages=compiled_stages,
-            field_anchors={
-                "/long_term_plan_content": [
-                    {"source_field": "plan_document", "source_quote": content}
-                ],
-                "/total_duration_days": [
-                    {"source_field": "plan_document", "source_quote": str(total)}
-                ],
-                "/stages": [
-                    {"source_field": "plan_document", "source_quote": line}
-                    for line in cls._strip_list_prefix(stages_lines)
-                ],
-            },
-        )
-        return CompiledPlanContractResult(status="compiled", contract=contract)
-
-    @classmethod
-    def _compile_daily_task_from_plan_document(
-        cls,
-        plan_document: str,
-        sections: dict[str, list[str]],
-    ) -> CompiledPlanContractResult | None:
-        content = plan_document.strip()
-        chapter = cls._section_value(sections, "learning_chapter")
-        points = [
-            part.strip()
-            for value in cls._strip_list_prefix(
-                sections.get("focus_knowledge_points") or []
-            )
-            for part in re.split(r"[；;、，,]", value)
-            if part.strip()
-        ]
-        minutes = cls._section_int(sections, "estimated_minutes")
-        expected_output = cls._section_value(sections, "expected_output")
-        completion_criteria = cls._section_value(sections, "completion_criteria")
-        if (
-            not content
-            or not chapter
-            or not points
-            or minutes is None
-            or minutes <= 0
-            or not expected_output
-            or not completion_criteria
-        ):
-            return None
-        contract = CompiledDailyTaskContract(
-            scope="daily_task",
-            daily_task_content=content,
-            learning_chapter=chapter,
-            focus_knowledge_points=points,
-            estimated_minutes=minutes,
-            expected_output=expected_output,
-            completion_criteria=completion_criteria,
-            field_anchors={
-                "/daily_task_content": [
-                    {"source_field": "plan_document", "source_quote": content}
-                ],
-                "/learning_chapter": [
-                    {"source_field": "plan_document", "source_quote": chapter}
-                ],
-                "/focus_knowledge_points": [
-                    {"source_field": "plan_document", "source_quote": point}
-                    for point in points
-                ],
-                "/estimated_minutes": [
-                    {"source_field": "plan_document", "source_quote": str(minutes)}
-                ],
-                "/expected_output": [
-                    {
-                        "source_field": "plan_document",
-                        "source_quote": expected_output,
-                    }
-                ],
-                "/completion_criteria": [
-                    {
-                        "source_field": "plan_document",
-                        "source_quote": completion_criteria,
-                    }
-                ],
-            },
-        )
-        return CompiledPlanContractResult(status="compiled", contract=contract)
+        return schema
 
     async def _compile_route_bound_document(
         self, context: dict[str, Any], diagnosis_output: dict[str, Any],
@@ -2031,6 +1306,8 @@ class PlanContractCompilerAgent:
             return node
 
         def _backfill(path: str) -> None:
+            if path == "/selection_mode":
+                return  # Semantic enums require the Compiler's own source anchor.
             value = _resolve_path(path)
             if value is None:
                 return
@@ -2038,23 +1315,16 @@ class PlanContractCompilerAgent:
             if not candidates:
                 return
             if _anchors_verbatim(path):
-                if path not in {"/selected_stage_id", "/selected_books", "/selection_reason", "/selection_mode"}:
+                if path not in {"/selected_stage_id", "/selected_books", "/selection_reason"}:
                     return
                 quotes = [entry["source_quote"] for entry in rebuilt_anchors[path]]
-                expected = [
-                    {"new_learning": "新学", "review": "复习", "diagnostic": "诊断"}.get(item, item)
-                    if path == "/selection_mode" else item
-                    for item in candidates
-                ]
-                if all(any(str(item) in quote for quote in quotes) for item in expected):
+                if all(any(str(item) in quote for quote in quotes) for item in candidates):
                     return
             recovered: list[dict[str, str]] = []
             for item in candidates:
                 if item is None:
                     continue
                 quote = cls._source_text(item)
-                if path == "/selection_mode":
-                    quote = {"new_learning": "新学", "review": "复习", "diagnostic": "诊断"}.get(quote, quote)
                 if not quote:
                     recovered = []
                     break
@@ -2212,15 +1482,31 @@ class PlanContractCompilerAgent:
                         }
                     )
         required_paths = cls._required_anchor_paths(contract.scope)
+        if contract.scope == "short_term" and "plan_document" in diagnosis_output:
+            document = diagnosis_output["plan_document"]
+            for index, node in enumerate(contract.progression_nodes):
+                path = f"/progression_nodes/{index}"
+                if not isinstance(document, str) or node not in document:
+                    issues.append({"code": "source_value_not_verbatim", "category": "invalid", "field_path": path, "source_refs": ["plan_document"]})
+                    continue
+                anchors = contract.field_anchors.get(path, []) + contract.field_anchors.get("/progression_nodes", [])
+                if not any(
+                    anchor.source_field == "plan_document"
+                    and anchor.source_quote in document
+                    and node in anchor.source_quote
+                    for anchor in anchors
+                ):
+                    issues.append({"code": "source_anchor_invalid" if anchors else "source_anchor_missing", "category": "invalid", "field_path": path, "source_refs": ["plan_document"]})
         for name in ("selected_stage_id", "selected_books", "selection_reason", "selection_mode"):
             value = getattr(contract, name, None)
             if value is None or value == []:
                 continue
+            if name == "selection_mode":
+                continue  # The enum and verbatim anchor were validated above.
             values = value if isinstance(value, list) else [value]
             quotes = [anchor.source_quote for anchor in contract.field_anchors.get(f"/{name}", [])]
             for item in values:
-                expected = {"new_learning": "新学", "review": "复习", "diagnostic": "诊断"}.get(item, item) if name == "selection_mode" else item
-                if not any(str(expected) in quote for quote in quotes):
+                if not any(str(item) in quote for quote in quotes):
                     issues.append({"code": "source_value_not_verbatim", "category": "invalid", "field_path": f"/{name}"})
         if "plan_document" in diagnosis_output and contract.scope == "long_term":
             required_paths = required_paths | {"/selected_stage_id", "/selected_books", "/selection_reason", "/selection_mode"}

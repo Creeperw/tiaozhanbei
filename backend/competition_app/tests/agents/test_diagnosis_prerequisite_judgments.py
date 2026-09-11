@@ -17,13 +17,14 @@ async def test_same_diagnosis_call_owns_prerequisite_judgment(with_judgment):
             if role != "diagnosis_agent":
                 return await super().complete_json(role, payload, on_delta)
             data = payload["payload"]
-            assert data["prerequisite_sources"]["user_request"] == "中医诊断学不是已经掌握，未知前置先诊断。"
+            assert "prerequisite_sources" not in data
+            source_no = next(item["source_no"] for item in data["prerequisite_source_catalog"] if item["content"] == "中医诊断学不是已经掌握，未知前置先诊断。")
             assert "prerequisite_judgments" in data["output_schema"]["properties"]
             assert data["route_conditions"]
             response = {"plan_document": fixed_route_document(data["default_route"]["textbook_route"])}
             if with_judgment:
                 response["prerequisite_judgments"] = [{
-                    "course": "中医诊断学", "status": "unknown", "source_ref": "user_request",
+                    "course": "中医诊断学", "status": "unknown", "source_no": source_no,
                     "source_quote": "不是已经掌握", "rationale": "否定掌握陈述不构成能力通过证据，先诊断。",
                 }]
             return response
@@ -51,8 +52,12 @@ async def test_same_diagnosis_call_owns_prerequisite_judgment(with_judgment):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("repair_valid", [True, False])
-async def test_invalid_prerequisite_quote_has_one_bounded_author_repair(repair_valid):
+async def test_invalid_prerequisite_quote_has_one_bounded_author_repair(repair_valid, caplog):
     from competition_app.llm.openai_compatible import ModelResponseError
+    import json
+    import logging
+
+    caplog.set_level(logging.INFO, logger="competition_app.diagnosis_agent")
 
     class Model(StubChatModel):
         def __init__(self):
@@ -70,7 +75,7 @@ async def test_invalid_prerequisite_quote_has_one_bounded_author_repair(repair_v
             return {
                 "plan_document": fixed_route_document(data["default_route"]["textbook_route"]),
                 "prerequisite_judgments": [{
-                    "course": "中医诊断学", "status": "unknown", "source_ref": "user_request",
+                    "course": "中医诊断学", "status": "unknown", "source_no": next(item["source_no"] for item in data["prerequisite_source_catalog"] if item["content"] == "未知前置先诊断"),
                     "source_quote": "未知前置先诊断" if repairing and repair_valid else "虚构的原文",
                     "rationale": "未取得前置通过证据。",
                 }],
@@ -90,9 +95,18 @@ async def test_invalid_prerequisite_quote_has_one_bounded_author_repair(repair_v
         assert "plan_contract_compiler" not in model.roles
     assert model.roles.count("diagnosis_agent") == 2
 
+    observations = [
+        json.loads(record.getMessage().split(": ", 1)[1])
+        for record in caplog.records
+        if record.getMessage().startswith("prerequisite_reference_observation: ")
+    ]
+    assert [item["phase"] for item in observations] == ["draft", "source_revision"]
+    assert observations[0]["references"][0]["quote_matches"] is False
+    assert observations[1]["references"][0]["quote_matches"] is repair_valid
+
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("invalid_field", [None, "course", "source_ref", "source_quote", "status"])
+@pytest.mark.parametrize("invalid_field", [None, "course", "source_no", "source_quote", "status"])
 async def test_short_parent_route_judgments_survive_provider_boundary(invalid_field):
     import json
     from copy import deepcopy
@@ -115,9 +129,12 @@ async def test_short_parent_route_judgments_survive_provider_boundary(invalid_fi
             assert data["prerequisite_requirements"][0]["course"] == "中医诊断学"
             client = OpenAICompatibleChatModel(base_url="https://example.test/v1", api_key="test", model="test")
             messages = client._build_messages(role, payload, strict_json=False, business_json=True)
-            assert json.dumps(data["prerequisite_sources"], ensure_ascii=False, indent=2) in messages[1]["content"]
+            assert "prerequisite_sources" not in data
+            assert all(set(item) == {"source_no", "content"} for item in data["prerequisite_source_catalog"])
+            assert "source_no" in messages[0]["content"]
+            source_no = next(item["source_no"] for item in data["prerequisite_source_catalog"] if "未知前置先诊断" in item["content"])
             judgment = {
-                "course": "中医诊断学", "status": "unknown", "source_ref": "user_request",
+                "course": "中医诊断学", "status": "unknown", "source_no": source_no,
                 "source_quote": "未知前置先诊断", "rationale": "没有能力通过证据。",
             }
             if invalid_field and self.calls == 1:

@@ -56,7 +56,10 @@ class GenericQueryModel:
 
 
 class SummaryItemsModel:
-    """模型对每条证据逐条提取，并尝试注入一条伪造 id 验证系统过滤。"""
+    """Invalid source IDs must be corrected by the same model, not filtered."""
+
+    def __init__(self):
+        self.summary_calls = 0
 
     async def complete_json(self, role, payload, on_delta=None):
         if payload["payload"].get("phase") == "plan_retrieval":
@@ -65,7 +68,9 @@ class SummaryItemsModel:
                 "question_query": "理中丸 相关题目",
                 "retrieval_reason": "检索教材依据和候选练习。",
             }
-        return {
+        self.summary_calls += 1
+        repaired = payload["payload"]["protocol_repair"]
+        result = {
             "retrieval_summary": "",
             "summary_items": [
                 {"evidence_id": "E_1", "content": "理中丸由人参、干姜、白术、炙甘草组成。"},
@@ -81,6 +86,10 @@ class SummaryItemsModel:
             "quality_labels": ["教材依据相关"],
             "uncertainty": [],
         }
+        if repaired:
+            result["summary_items"] = result["summary_items"][:1]
+            result["learning_focus_items"] = result["learning_focus_items"][:2]
+        return result
 
 
 class RetrievalPlanTransportFailureModel:
@@ -161,9 +170,11 @@ async def test_knowledge_agent_keeps_evidence_when_optional_question_search_time
 
 @pytest.mark.asyncio
 async def test_knowledge_agent_extracts_each_evidence_with_system_filled_source() -> None:
-    output = await KnowledgeBaseAgent(FakeRetrievalTool(), SummaryItemsModel()).run(context())
+    model = SummaryItemsModel()
+    output = await KnowledgeBaseAgent(FakeRetrievalTool(), model).run(context())
 
-    # 伪造 id 被过滤，只保留证据集内真实存在的 E_1
+    assert model.summary_calls == 2
+    # 由模型修正非法引用，系统不会静默删掉其选用材料。
     assert [item.evidence_id for item in output.payload.summary_items] == ["E_1"]
     item = output.payload.summary_items[0]
     assert item.content == "理中丸由人参、干姜、白术、炙甘草组成。"
@@ -175,9 +186,9 @@ async def test_knowledge_agent_extracts_each_evidence_with_system_filled_source(
     assert output.payload.summary_evidence_ids == ["E_1"]
     # 兼容文本字段仍可拼接展示
     assert "理中丸由人参" in output.payload.retrieval_summary
-    # 学习焦点必须同时满足：evidence_id 存在，且名称逐字出现在对应证据中。
+    # 系统复核教材 ID，语义支持由模型判断，不按正文关键词删除对象。
     assert output.payload.learning_focus_status == "supported"
-    assert [item.name for item in output.payload.learning_focus_items] == ["理中丸"]
+    assert [item.name for item in output.payload.learning_focus_items] == ["理中丸", "四君子汤"]
     assert output.payload.learning_focus_items[0].evidence_id == "E_1"
 
 
@@ -193,20 +204,18 @@ async def test_knowledge_agent_does_not_search_when_retrieval_planner_transport_
 
 
 @pytest.mark.asyncio
-async def test_knowledge_agent_keeps_real_evidence_when_summary_transport_fails() -> None:
-    output = await KnowledgeBaseAgent(
-        FakeRetrievalTool(), SummaryTransportFailureModel()
-    ).run(context())
-
-    assert output.payload.summary_evidence_ids == ["E_1"]
-    assert output.payload.summary_items[0].evidence_id == "E_1"
-    assert "理中丸由人参" in output.payload.summary_items[0].content
-    assert any("模型暂不可用" in note for note in output.payload.risk_notes)
+async def test_knowledge_agent_does_not_fabricate_selection_when_summary_transport_fails() -> None:
+    with pytest.raises(ModelResponseError):
+        await KnowledgeBaseAgent(
+            FakeRetrievalTool(), SummaryTransportFailureModel()
+        ).run(context())
 
 
 @pytest.mark.asyncio
-async def test_knowledge_agent_falls_back_to_raw_extraction_when_model_output_invalid() -> None:
+async def test_knowledge_agent_stops_after_one_protocol_repair_without_raw_fallback() -> None:
     class InvalidModel:
+        summary_calls = 0
+
         async def complete_json(self, role, payload, on_delta=None):
             if payload["payload"].get("phase") == "plan_retrieval":
                 return {
@@ -214,6 +223,8 @@ async def test_knowledge_agent_falls_back_to_raw_extraction_when_model_output_in
                     "question_query": "理中丸 相关题目",
                     "retrieval_reason": "检索教材依据和候选练习。",
                 }
+            self.summary_calls += 1
+            assert payload["payload"]["protocol_repair"] is (self.summary_calls == 2)
             return {
                 "retrieval_summary": "",
                 "summary_items": "not-a-list",
@@ -221,12 +232,43 @@ async def test_knowledge_agent_falls_back_to_raw_extraction_when_model_output_in
                 "uncertainty": [],
             }
 
-    output = await KnowledgeBaseAgent(FakeRetrievalTool(), InvalidModel()).run(context())
+    model = InvalidModel()
+    with pytest.raises(ValueError):
+        await KnowledgeBaseAgent(FakeRetrievalTool(), model).run(context())
+    assert model.summary_calls == 2
 
-    # 模型输出不合规时回退为原文逐条提取，evidence_id 依然真实
-    assert len(output.payload.summary_items) >= 1
-    assert output.payload.summary_items[0].evidence_id == "E_1"
-    assert "理中丸由人参" in output.payload.summary_items[0].content
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid", [
+    {"summary_items": [{"evidence_id": "UNKNOWN", "content": "内容"}]},
+    {"summary_items": "not-a-list"},
+    {"summary_items": [{"id": "E_1", "text": "内容"}]},
+    {"summary_items": [{"evidence_id": "E_1", "content": " "}]},
+    {"learning_focus_status": "supported", "learning_focus_items": [
+        {"name": "理中丸", "evidence_id": "UNKNOWN"}]},
+    {"learning_focus_status": "supported", "learning_focus_items": [
+        {"name": "理中丸", "evidence_id": "E_1"},
+        {"name": "理中丸", "evidence_id": "E_1"}]},
+    {"learning_focus_items": "not-a-list"},
+])
+async def test_invalid_selection_is_repaired_once_then_stops(invalid):
+    class InvalidSelectionModel:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete_json(self, role, payload, on_delta=None):
+            if payload["payload"].get("phase") == "plan_retrieval":
+                return {"kp_query": "理中丸", "question_query": None,
+                        "retrieval_reason": "核查教材依据。"}
+            self.calls += 1
+            assert payload["payload"]["protocol_repair"] is (self.calls == 2)
+            return {"summary_items": [], "learning_focus_items": [],
+                    "need_more_retrieval": False, **invalid}
+
+    model = InvalidSelectionModel()
+    with pytest.raises(ValueError):
+        await KnowledgeBaseAgent(FakeRetrievalTool(), model).run(context())
+    assert model.calls == 2
 
 
 class WebEvidenceRetrievalTool:
@@ -293,8 +335,8 @@ class TextbookOnlySummaryModel:
 
 
 @pytest.mark.asyncio
-async def test_knowledge_agent_extracts_web_evidence_when_model_skips_it() -> None:
-    """模型漏掉网络搜索条目时，系统自动按原文兜底补全。"""
+async def test_knowledge_agent_does_not_adopt_web_evidence_without_model_selection() -> None:
+    """保留原始网络材料，不把未采用材料冒充为模型选择结果。"""
     output = await KnowledgeBaseAgent(
         WebEvidenceRetrievalTool(), TextbookOnlySummaryModel()
     ).run(context())
@@ -302,17 +344,14 @@ async def test_knowledge_agent_extracts_web_evidence_when_model_skips_it() -> No
     by_id = {item.evidence_id: item for item in output.payload.summary_items}
     # 教材条目保留模型提取内容
     assert by_id["E_TEXTBOOK"].content == "理中丸由人参、干姜、白术、炙甘草组成。"
-    # 网络搜索条目（视频/参考）被系统兜底提取，来源字段确定性补全
-    assert by_id["E_VIDEO"].content == "【视频】理中丸方义讲解：温中祛寒、补气健脾。"
-    assert by_id["E_VIDEO"].resource_type == "video"
-    assert by_id["E_VIDEO"].source_url == "https://example.com/video/1"
-    assert by_id["E_VIDEO"].source_label == "理中丸方义讲解视频"
-    assert by_id["E_REFERENCE"].resource_type == "reference"
-    assert by_id["E_REFERENCE"].source_url == "https://example.com/ref/2"
-    # 引用 id 列表包含教材与网络条目
-    assert set(output.payload.summary_evidence_ids) == {
+    assert set(by_id) == {"E_TEXTBOOK"}
+    raw = {item.evidence_id: item for item in output.payload.evidence_items}
+    assert raw["E_VIDEO"].source_url == "https://example.com/video/1"
+    assert raw["E_REFERENCE"].source_url == "https://example.com/ref/2"
+    assert set(raw) == {
         "E_TEXTBOOK", "E_VIDEO", "E_REFERENCE"
     }
+    assert output.payload.summary_evidence_ids == ["E_TEXTBOOK"]
 
 
 @pytest.mark.asyncio
@@ -358,6 +397,13 @@ class InvalidAuditModel:
 
 class AdvisoryRevisionAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        if role == "audit_findings_compiler":
+            message = payload["payload"]["findings"][0]
+            return {"status": "compiled", "issues": [{
+                "issue_type": "content_quality", "message": message,
+                "blocking": False, "location_keys": ["resource:whole"],
+                "source_anchors": [{"source_field": "findings", "source_quote": message}],
+            }]}
         return {
             "decision": "revise",
             "findings": ["学习范围略宽，可在后续版本继续精简。"],

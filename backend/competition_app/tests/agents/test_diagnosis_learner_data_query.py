@@ -28,6 +28,37 @@ class FailingAnswerModel:
         raise RuntimeError("offline answer unavailable")
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["progress_summary", "next_learning", "plan_progress", "review_status"])
+async def test_bound_state_query_uses_only_new_readonly_tool(kind):
+    from competition_app.exam_scope import bind_exam_workspace_context, reset_exam_workspace
+    from competition_app.contracts.exam_scope import ExamWorkspaceContext
+    registry = ToolRegistry()
+    calls = []
+    def read_state():
+        calls.append(1)
+        return {"tool": "get_current_learning_state", "availability": "available",
+                "snapshot_id": "SNAP", "summary": "六节演示完成不代表掌握；待复习十项不等于今日安排。",
+                "books": [{"next_candidates": [{"section_id": "SEC_NEXT"}], "sections": []}]}
+    registry.register("get_current_learning_state", read_state, allowed_agents={"diagnosis_agent"})
+    token = bind_exam_workspace_context(ExamWorkspaceContext(learner_id="CURRENT_USER", exam_track_id="EXAM"))
+    try:
+        result = await DiagnosisAgent(FailingAnswerModel()).run({
+            "case_id": "C", "trace_id": "T", "request_id": "R", "execution_id": "E",
+            "step_id": "diagnosis",
+            "learner_id": "CURRENT_USER", "user_request": "只查询当前学习状态，不修改计划",
+            "task_type": "learner_data_query", "learner_data_query_kind": kind,
+            "tool_registry": registry,
+        })
+    finally:
+        reset_exam_workspace(token)
+    assert calls == [1]
+    assert result.payload.learning_plan_proposal is None
+    assert result.payload.learner_data["source"] == "get_current_learning_state"
+    assert result.payload.learner_data["snapshot"]["snapshot_id"] == "SNAP"
+    assert "六节演示" in result.payload.summary
+
+
 class ExplodingSmartPaperAnswerModel:
     async def complete_text(self, role, payload, on_delta=None):
         raise AssertionError("smart-paper Diagnosis must summarize bound tool evidence")

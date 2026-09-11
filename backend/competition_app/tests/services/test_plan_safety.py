@@ -148,7 +148,7 @@ def test_service_checks_exact_approval_before_any_write(fault, monkeypatch, tmp_
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("fault", [None, "missing", "changed", "other_user", "wrong_subject", "prerequisite_changed"])
+@pytest.mark.parametrize("fault", [None, "missing", "changed", "other_user", "wrong_subject", "prerequisite_changed", "scope_changed", "focus_changed", "focus_removed"])
 async def test_adapter_requires_matching_safety_review_before_publishing(fault):
     from competition_app.agents.learning_plan_service import LearningPlanServiceAdapter
     from competition_app.contracts.learning_plan import LongTermPlanStage
@@ -169,17 +169,29 @@ async def test_adapter_requires_matching_safety_review_before_publishing(fault):
     elif fault == "changed":
         value.long_term_plan_content += "修改后的正文"
     assessment = {"route_id": "tcm", "judgments": [{"course": "中医诊断学", "status": "unknown"}]}
+    scope = {"mode": "explicit_focus", "objects": ["中医学基础"]}
+    focus = {"status": "sufficient", "focus_names": ["中医学基础"]}
+    evidence = {"prerequisite_assessment": assessment,
+                "planning_request_scope": scope, "planning_focus_assessment": focus}
     audit = AuditResult(
         audit_result_id="AUDIT", decision="pass", plan_scope="long_term",
         subject_type="resource" if fault == "wrong_subject" else "long_term_plan",
         subject_digest=plan_audit_subject_digest(
             plan_scope="long_term", proposal=value, compiled_plan_contract=None,
             prerequisite_assessment=assessment,
+            planning_request_scope=scope,
+            planning_focus_assessment=focus,
         ), medical_safety_approval=token,
     )
     audit = AuditResult.model_validate_json(audit.model_dump_json())
     if fault == "prerequisite_changed":
         assessment["judgments"][0]["status"] = "satisfied"
+    elif fault == "scope_changed":
+        scope["objects"] = ["方剂学"]
+    elif fault == "focus_changed":
+        focus["status"] = "unresolved"
+    elif fault == "focus_removed":
+        evidence.pop("planning_focus_assessment")
     context = {
         "case_id": "CASE", "trace_id": "TRACE", "request_id": "REQUEST",
         "execution_id": "EXECUTION", "step_id": "learning_plan", "task_type": "learning_plan",
@@ -188,7 +200,7 @@ async def test_adapter_requires_matching_safety_review_before_publishing(fault):
             "diagnosis": SimpleNamespace(payload=SimpleNamespace(
                 plan_scope="long_term", learning_plan_proposal=value,
                 compiled_plan_contract=None,
-                audit_evidence={"prerequisite_assessment": assessment},
+                audit_evidence=evidence,
             )), "audit": SimpleNamespace(payload=audit),
         },
     }

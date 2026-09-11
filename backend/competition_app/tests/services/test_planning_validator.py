@@ -215,7 +215,7 @@ def test_validator_accepts_stage_schedule_time_windows() -> None:
     assert result.valid, result.issues
 
 
-def test_validator_rejects_deferred_prerequisite_training_in_long_plan() -> None:
+def test_validator_does_not_classify_prerequisite_prose_by_deferral_keywords() -> None:
     value = output(
         long_term_plan_content=(
             output().long_term_plan_content
@@ -233,8 +233,8 @@ def test_validator_rejects_deferred_prerequisite_training_in_long_plan() -> None
         unmet_prerequisite_courses={"中医诊断学"},
     )
 
-    assert not result.valid
-    assert any("前置训练" in issue and "中医诊断学" in issue for issue in result.issues)
+    assert result.valid  # Only structural validity; Audit checks training semantics.
+    assert result.issues == []
 
 
 def test_validator_accepts_scheduled_prerequisite_training_in_long_plan() -> None:
@@ -259,7 +259,7 @@ def test_validator_accepts_scheduled_prerequisite_training_in_long_plan() -> Non
     assert result.valid, result.issues
 
 
-def test_validator_rejects_precise_claims_when_evidence_quality_is_unknown() -> None:
+def test_validator_leaves_prose_claim_grounding_to_semantic_audit() -> None:
     value = output().model_copy(
         update={
             "short_term_plan_content": (
@@ -278,8 +278,7 @@ def test_validator_rejects_precise_claims_when_evidence_quality_is_unknown() -> 
         evidence_freshness="unknown",
     )
 
-    assert not result.valid
-    assert any("不得断言精确掌握度" in issue for issue in result.issues)
+    assert result.valid, result.issues
 
 
 def test_validator_accepts_cautious_focus_when_evidence_is_insufficient() -> None:
@@ -328,7 +327,6 @@ def test_validator_rejects_placeholder_stage_without_trusted_route_phases() -> N
 
     assert not result.valid
     assert any("禁止发布占位教材" in issue for issue in result.issues)
-    assert any("不得使用占位教材" in issue for issue in result.issues)
 
 
 def test_validator_does_not_require_route_books_to_repeat_in_natural_language_content() -> None:
@@ -692,7 +690,7 @@ def test_validator_accepts_force_prerequisite_daily_task_with_prerequisite_chapt
     assert result.valid, result.issues
 
 
-def test_validator_rejects_force_prerequisite_daily_task_with_stage2_chapter() -> None:
+def test_validator_leaves_daily_chapter_meaning_to_compiler() -> None:
     value = output(
         learning_chapter="《方剂学》补益剂章",
         focus_knowledge_points=["四君子汤组成", "四君子汤功用"],
@@ -711,13 +709,13 @@ def test_validator_rejects_force_prerequisite_daily_task_with_stage2_chapter() -
         active_scope="daily_task",
         force_prerequisite_daily_task=True,
         required_prerequisite_courses={"中医诊断学"},
+        long_term_action="reuse",
+        short_term_action="reuse",
     )
 
-    assert not result.valid
-    assert any(
-        issue.startswith("daily_task_prerequisite_required")
-        for issue in result.issues
-    )
+    # Structural validity is not semantic approval; the earlier Compiler owns
+    # prerequisite scope validation using system-authorized parent constraints.
+    assert result.valid, result.issues
 
 
 def test_daily_task_schema_rejects_missing_expected_output_before_validator() -> None:

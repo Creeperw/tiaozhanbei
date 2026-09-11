@@ -131,6 +131,8 @@ class PlanCompilationEnvelope(ContractModel):
     source_digest: str = Field(min_length=64, max_length=64)
     route_source_digest: str | None = Field(default=None, min_length=64, max_length=64)
     revision_count: int = Field(default=0, ge=0, le=1)
+    failure_origin: Literal["model", "backend"] | None = None
+    repair_owner: Literal["compiler", "author"] | None = None
 
     @model_validator(mode="after")
     def compiled_contract_has_current_scope(self) -> "PlanCompilationEnvelope":

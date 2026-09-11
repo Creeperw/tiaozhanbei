@@ -117,17 +117,19 @@ async def test_external_only_supplement_uses_selected_source():
     t.search_web_resources.return_value = [SimpleNamespace(
         source_id="official", title="官方说明", summary="真实来源摘要", url="https://example.org",
         score=0.9, resource_type="web")]
-    model = Mock(complete_json=AsyncMock(return_value=plan()))
+    model = Mock(complete_json=AsyncMock(side_effect=[
+        plan(),
+        {"need_more_retrieval": True, "supplemental_external_queries": [
+            {"source": "web", "query": "官方考试公告"}]},
+        {"need_more_retrieval": False, "summary_items": []},
+    ]))
     agent = KnowledgeBaseAgent(t, model)
-    with patch.object(agent, "_summarize_retrieved_content", new=AsyncMock(side_effect=[
-        KnowledgeModelOutput(need_more_retrieval=True, supplemental_external_queries=[
-            {"source": "web", "query": "官方考试公告"}]),
-        KnowledgeModelOutput(),
-    ])):
-        result = await agent.run(context())
+    result = await agent.run(context())
     t.search_web_resources.assert_awaited_once_with("官方考试公告", limit=3)
     assert len(t.mock_calls) == 1
     assert len(result.payload.evidence_items) == 1
+    assert result.payload.summary_items == []
+    assert model.complete_json.await_count == 3
 
 
 @pytest.mark.asyncio

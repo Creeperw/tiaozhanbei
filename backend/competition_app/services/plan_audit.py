@@ -12,6 +12,8 @@ def plan_audit_subject_digest(
     compiled_plan_contract: Any,
     parent_plan_constraints: dict[str, Any] | None = None,
     prerequisite_assessment: dict[str, Any] | None = None,
+    planning_request_scope: dict[str, Any] | None = None,
+    planning_focus_assessment: dict[str, Any] | None = None,
 ) -> str:
     """Bind an audit approval to the exact semantic proposal and parent context."""
 
@@ -31,6 +33,10 @@ def plan_audit_subject_digest(
     }
     if prerequisite_assessment is not None:
         payload["prerequisite_assessment"] = prerequisite_assessment
+    if planning_request_scope is not None:
+        payload["planning_request_scope"] = planning_request_scope
+    if planning_focus_assessment is not None:
+        payload["planning_focus_assessment"] = planning_focus_assessment
     return hashlib.sha256(
         json.dumps(
             payload,

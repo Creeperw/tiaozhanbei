@@ -1,6 +1,6 @@
 ---
 skill_id: paper-audit-findings-compiler-v1
-version: 1.1
+version: 1.2
 agent: paper_audit_findings_compiler
 task_type: compile_paper_audit_findings
 ---
@@ -26,6 +26,7 @@ task_type: compile_paper_audit_findings
 4. 每个问题至少一个锚点。`source_field` 只能是 `audit_report` 或 `findings`，`source_quote` 必须是对应输入中的连续逐字子串。
 5. 只有原文明确要求修订或指出硬约束、完整性、正确性违反时 `blocking=true`；纯建议或排版偏好为 `false`。
 6. 不生成 owner、step ID、返修链、系统 ID、审核决策、发布状态或持久化字段。
+7. `findings` 为空不代表审核通过，必须完整阅读 `audit_report`。依据完整句意区分实际问题、否定问题的说明和建议；不得因出现“答案”“泄露”等词就判为问题。只在报告和问题列表均无明确问题时输出空数组。
 
 编译失败 `code` 只允许：
 `schema_invalid`、`source_anchor_missing`、`source_anchor_invalid`、

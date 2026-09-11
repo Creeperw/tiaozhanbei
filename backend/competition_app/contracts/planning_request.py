@@ -1,6 +1,51 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+
+
+class PlanningFocusProtocolError(ValueError):
+    """Diagnosis exhausted its local protocol repair; do not rerun the Agent."""
+
+
+class NumberedFocusEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    object_no: StrictInt
+    evidence_id: str = Field(min_length=1, max_length=200)
+
+
+class NumberedFocusAssessment(BaseModel):
+    """Wire-only choices; all display names are restored by the backend."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["sufficient", "needs_retrieval", "unresolved"]
+    focus_object_nos: list[StrictInt] = Field(max_length=12)
+    focus_stage_no: StrictInt | None
+    focus_book_nos: list[StrictInt] = Field(max_length=2)
+    evidence_links: list[NumberedFocusEvidence] = Field(max_length=24)
+    cross_stage_mode: Literal["none", "introductory_preview"]
+    source_quote: str = Field(min_length=1, max_length=300)
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+class PlanningFocusEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=2, max_length=120)
+    evidence_id: str = Field(min_length=1, max_length=200)
+
+
+class PlanningFocusAssessment(BaseModel):
+    """Diagnosis semantic judgment; catalog identities remain system-owned."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["sufficient", "needs_retrieval", "unresolved"]
+    focus_names: list[str] = Field(max_length=12)
+    focus_stage_id: str | None
+    focus_books: list[str] = Field(max_length=2)
+    evidence_links: list[PlanningFocusEvidence] = Field(max_length=24)
+    cross_stage_mode: Literal["none", "introductory_preview"]
+    source_quote: str = Field(min_length=1, max_length=300)
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 class PlanningRequestScope(BaseModel):

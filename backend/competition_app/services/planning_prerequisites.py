@@ -38,6 +38,40 @@ def judgment_sources(context: dict[str, Any]) -> dict[str, str]:
     return sources
 
 
+def numbered_judgment_sources(
+    sources: dict[str, str],
+) -> tuple[list[dict[str, Any]], dict[int, str]]:
+    """Expose request-local numbers and text; keep source identities server-side."""
+    bindings = {number: key for number, key in enumerate(sources, start=1)}
+    return [
+        {"source_no": number, "content": sources[key]}
+        for number, key in bindings.items()
+    ], bindings
+
+
+def bind_numbered_judgments(raw: Any, bindings: dict[int, str]) -> Any:
+    """Bind only exact integer choices, never infer a source from prose."""
+    if not isinstance(raw, dict):
+        return raw
+    judgments = raw.get("prerequisite_judgments")
+    if judgments is None:
+        return raw
+    if not isinstance(judgments, list) or len(judgments) > 20:
+        raise ValueError("prerequisite judgments must be a bounded list")
+    result = deepcopy(raw)
+    for index, item in enumerate(result["prerequisite_judgments"]):
+        if not isinstance(item, dict):
+            raise ValueError(f"prerequisite_judgments[{index}] must be an object")
+        if "source_ref" in item:
+            raise ValueError(f"prerequisite_judgments[{index}].source_ref is server-owned; select source_no")
+        number = item.get("source_no")
+        if type(number) is not int or number not in bindings:
+            raise ValueError(f"prerequisite_judgments[{index}].source_no is not an authorized integer choice")
+        item.pop("source_no")
+        item["source_ref"] = bindings[number]
+    return result
+
+
 def interpret_judgments(raw: Any, route: Any, sources: dict[str, str]) -> dict[str, Any]:
     required = all_prerequisite_courses(route)
     canonical = {normalize_course_name(name): name for name in required}

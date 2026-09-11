@@ -16,6 +16,7 @@ from competition_app.agents.paper_audit_findings_compiler import (
 from competition_app.agents.audit_findings_compiler import AuditFindingsCompilerAgent
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.agent_context import build_model_context
+from competition_app.services.planning_metrics import planning_model_context
 from competition_app.contracts.resource import AuditResult
 from competition_app.llm.base import ChatModel
 from competition_app.llm.openai_compatible import ModelResponseError
@@ -27,10 +28,6 @@ from competition_app.services.plan_contract_validator import PlanContractValidat
 from competition_app.services.plan_audit import plan_audit_subject_digest
 from competition_app.contracts.local_repair import RepairIssue
 from competition_app.contracts.audit_compilation import AuditLocation
-from competition_app.contracts.paper_audit_compilation import (
-    CompiledPaperAuditIssue,
-    PaperAuditSourceAnchor,
-)
 from competition_app.runtime.audit_issue_resolver import (
     AuditIssueResolver,
     ResponsibilityContext,
@@ -225,18 +222,9 @@ class AuditAgent:
         }
         knowledge_explanation = str(context.get("task_type")) == "knowledge_explanation"
         paper_generation = str(context.get("task_type")) == "paper_generation"
-        external_information_request = bool(
-            context.get("external_information_request")
-            or any(
-                marker in str(context.get("user_request") or "").lower()
-                for marker in (
-                    "天气", "气温", "降雨", "下雨", "空气质量", "台风",
-                    "距离下次", "考试时间", "考试日期", "什么时候考试",
-                    "报名时间", "截止日期", "日程", "赛程", "最新消息",
-                    "当前时间", "今天几号", "现在几点",
-                )
-            )
-        )
+        # Planner owns request semantics. Only its explicit protocol boolean
+        # changes the applicable teaching-structure requirements.
+        external_information_request = context.get("external_information_request") is True
         # Run system-owned hard gates before asking the semantic auditor.  A
         # deterministic failure already has an exact repair owner; spending a
         # model call first can only add conflicting prose and latency.
@@ -407,19 +395,8 @@ class AuditAgent:
         resource_locations = self._resource_location_catalog(expert)
         if protocol_valid:
             issue_source_findings = list(model_output.findings)
-            if (
-                model_output.decision != "pass"
-                and not issue_source_findings
-                and str(model_output.audit_report or "").strip()
-            ):
-                # A non-pass without findings used to become an unrepairable
-                # terminal reject even when the detailed natural-language
-                # report named the exact problem.  Reuse that report verbatim
-                # as a source document for the source-bounded Compiler; do not
-                # invent an issue or infer one from the user/resource text.
-                issue_source_findings = self._report_issue_sources(
-                    model_output.audit_report
-                )
+            # A report-only non-pass is compiled from the complete original
+            # report. Do not select clauses or turn prose into synthetic findings.
             compiled_model_issues = await self._compile_model_issues(
                 context,
                 subject_type="resource",
@@ -428,6 +405,7 @@ class AuditAgent:
                 location_catalog=resource_locations,
                 issue_id_prefix="RESOURCE_MODEL_ISSUE",
                 responsibility_context=responsibility_context,
+                include_report=model_output.decision != "pass",
             )
         else:
             compiled_model_issues = [
@@ -480,7 +458,7 @@ class AuditAgent:
             if issue.issue_type in RED_LINE_ISSUE_TYPES
         ]
         unsafe_or_unresolved = any(
-            issue.issue_type == "safety_violation"
+            issue.issue_type in {"safety_violation", "unresolved"}
             for issue in red_line_issues
         )
         missing_evidence_red_line = any(
@@ -532,8 +510,8 @@ class AuditAgent:
         #    或仅存在非红线问题）→ 无痕放行 pass。
         #    非红线问题（内容质量、口径冲突、学习者匹配等）不构成知识性
         #    错误，按产品约定直接发布，问题本身保留在 findings 中供落库
-        #    统计，不向用户展示任何审核提示。审核机制故障（unresolved：
-        #    协议解析失败、编译器无法定位）同样直接发布并记录。
+        #    统计。审核机制故障 unresolved 不属于可发布的表达建议，
+        #    必须在前面的人工复核分支停止发布。
         decision = (
             "revise"
             if missing or deterministic_findings
@@ -554,27 +532,12 @@ class AuditAgent:
                 "revise"
                 if (missing_evidence_red_line or factual_error_red_line)
                 and not unsafe_or_unresolved
+                else "needs_human_review"
+                if unsafe_or_unresolved
                 else "reject"
             )
-        # 外部事实查询（天气/考试日期等）已有网络证据包兜底；模型对教学
-        # 结构的修订建议不适用于事实查询，直接放行并保留为审计备注。
-        if (
-            protocol_valid
-            and
-            external_information_request
-            and not missing
-            and not deterministic_findings
-            and model_decision in {"revise", "needs_human_review"}
-        ):
-            decision = "pass"
-            model_output = model_output.model_copy(
-                update={
-                    "findings": [
-                        *model_output.findings,
-                        "外部事实已具备网络证据；审核建议作为非阻断提示保留。",
-                    ]
-                }
-            )
+        # External queries have different teaching requirements, not different
+        # factual/safety permissions. Never override the red-line decision.
         if (
             model_decision == "revise"
             and not missing
@@ -612,11 +575,6 @@ class AuditAgent:
             ),
         ]
         audit_report = model_output.audit_report
-        if decision == "pass" and any(
-            marker in audit_report
-            for marker in ("必须修订", "不能发布", "不可发布", "阻断性问题")
-        ):
-            audit_report = "系统确定性门禁与统一验收策略均已通过；模型原阻断措辞已降为非阻断建议。"
         # 无痕放行（decision == "pass"）时，非红线问题仍以结构化形式保留，
         # 供失败案例库统计 issue_type 分布；红线问题（needs_human_review /
         # reject）保留原始阻断状态，供人工复核与落库。结构化问题不会被任何
@@ -776,52 +734,6 @@ class AuditAgent:
         return bindings
 
     @staticmethod
-    def _report_issue_sources(audit_report: str) -> list[str]:
-        """Extract only actionable clauses from a report-only non-pass.
-
-        Audit normally supplies a concise ``findings`` list.  Some providers
-        instead put all findings in the natural-language report.  Passing the
-        entire report to the Compiler is unsafe for decision quality: a
-        sentence such as ``未发现事实错误`` still contains the token
-        ``事实错误`` and can be miscompiled as a red-line issue.  Split only
-        on punctuation (without paraphrasing), retain verbatim actionable
-        clauses, and leave classification to the Compiler.  This source
-        selection reads Audit-owned prose only; user/resource text cannot
-        supply repair commands here.
-        """
-
-        report = str(audit_report or "").strip()
-        if not report:
-            return []
-        clauses = [
-            item.strip()
-            for item in re.split(r"(?<=[。！？；])|\n+", report)
-            if item.strip()
-        ]
-        actionable_markers = (
-            "明确相反", "直接相反", "事实错误", "判定错误", "答案错误",
-            "概念错误", "缺少", "缺失", "无依据", "证据不足", "冲突",
-            "矛盾", "安全越界", "违反", "必须", "需要", "需", "应",
-            "不得", "修订", "修正", "删除", "补充", "替换", "调整",
-        )
-        negated_prefixes = (
-            "未发现", "没有发现", "未检出", "没有检出", "不存在",
-            "无事实错误", "不属于事实错误", "不构成事实错误",
-        )
-        selected: list[str] = []
-        for clause in clauses:
-            normalized = clause.lstrip("-0123456789.、（）() ：:")
-            if any(normalized.startswith(prefix) for prefix in negated_prefixes):
-                continue
-            if any(marker in clause for marker in actionable_markers):
-                selected.append(clause)
-        # Keep the original report as the final source only when punctuation
-        # did not expose any actionable clause.  This preserves compatibility
-        # with short report-only providers while the empty-revision guard
-        # still prevents an issue-less repair loop.
-        return selected or [report]
-
-    @staticmethod
     def _unknown_reference_evidence_ids(
         expert: Any, evidence_ids: set[str]
     ) -> set[str]:
@@ -864,8 +776,22 @@ class AuditAgent:
         location_catalog: list[AuditLocation],
         issue_id_prefix: str,
         responsibility_context: ResponsibilityContext | None = None,
+        include_report: bool = False,
     ) -> list[RepairIssue]:
-        if not findings:
+        def unresolved() -> list[RepairIssue]:
+            return [RepairIssue(
+                issue_id=f"{issue_id_prefix}_COMPILATION",
+                issue_type="unresolved",
+                message="审核问题编译未形成可靠协议或来源定位，不能自动发布。",
+                severity="medium",
+                origin="audit_model",
+                blocking=True,
+                locations=location_catalog[:1],
+                policy_id="audit:invalid_compilation",
+            )]
+        if not findings and not audit_report.strip():
+            return unresolved() if include_report else []
+        if not findings and not include_report:
             return []
         try:
             compilation = await self.audit_findings_compiler.compile(
@@ -878,42 +804,9 @@ class AuditAgent:
         except ModelResponseError as error:
             if self._is_operational_model_failure(error):
                 raise
-            # The source-bounded deterministic compiler is the trusted
-            # degradation path for a transient Compiler transport failure. It
-            # copies Audit findings verbatim and selects only a system-owned
-            # location, so an otherwise repairable review never crashes the
-            # workflow and no model-authored owner/ID can be introduced.
-            deterministic = self.audit_findings_compiler._deterministic_fallback(
-                findings,
-                subject_type=subject_type,
-                location_catalog=location_catalog,
-            )
-            return self.audit_issue_resolver.resolve(
-                deterministic.issues,
-                location_catalog=location_catalog,
-                issue_id_prefix=issue_id_prefix,
-                responsibility_context=responsibility_context,
-            )
+            return unresolved()
         if compilation.result.status != "compiled":
-            # The model Compiler may fail source-anchor/location integrity
-            # even though Audit supplied a verbatim actionable finding.  Use
-            # the existing source-bounded deterministic compiler here: it
-            # copies the finding unchanged, chooses only the system-owned
-            # whole-subject location, and never reads owner instructions from
-            # user/resource text.  This preserves the integrity failure at the
-            # Compiler boundary while preventing a repairable factual error
-            # from turning into an empty human-review plan.
-            deterministic = self.audit_findings_compiler._deterministic_fallback(
-                findings,
-                subject_type=subject_type,
-                location_catalog=location_catalog,
-            )
-            return self.audit_issue_resolver.resolve(
-                deterministic.issues,
-                location_catalog=location_catalog,
-                issue_id_prefix=issue_id_prefix,
-                responsibility_context=responsibility_context,
-            )
+            return unresolved()
         return self.audit_issue_resolver.resolve(
             compilation.result.issues,
             location_catalog=location_catalog,
@@ -1023,6 +916,14 @@ class AuditAgent:
     async def _audit_learning_plan(self, context: dict[str, Any], prompt_skill):
         diagnosis = context["dependency_outputs"]["diagnosis"].payload
         plan_scope = str(getattr(diagnosis, "plan_scope", ""))
+        metric_evidence = (
+            (getattr(diagnosis, "audit_evidence", {}) or {}).get("learning_evidence") or {}
+        ).get("metric_evidence")
+        if metric_evidence and plan_scope in {"long_term", "short_term"}:
+            context = planning_model_context({
+                **context, "task_type": "learning_plan", "plan_scope": plan_scope,
+                "planning_metric_evidence": metric_evidence,
+            })
         if plan_scope == "daily_task":
             result = AuditResult(
                 audit_result_id=f"AUDIT_{uuid4().hex}",
@@ -1082,6 +983,12 @@ class AuditAgent:
             prerequisite_assessment=dict(
                 getattr(diagnosis, "audit_evidence", {}) or {}
             ).get("prerequisite_assessment"),
+            planning_request_scope=dict(
+                getattr(diagnosis, "audit_evidence", {}) or {}
+            ).get("planning_request_scope"),
+            planning_focus_assessment=dict(
+                getattr(diagnosis, "audit_evidence", {}) or {}
+            ).get("planning_focus_assessment"),
         )
         protocol_valid = True
         try:
@@ -1141,18 +1048,6 @@ class AuditAgent:
                     "为避免未审核规划被误发布，已安全转入人工复核。"
                 ),
             )
-        if (
-            context.get("audit_feedback") is None
-            and model_output.decision in {"reject", "needs_human_review"}
-            and not model_output.findings
-        ):
-            model_output = model_output.model_copy(
-                update={
-                    "findings": [
-                        "当前规划未达到发布要求，请依据可信路线、父计划约束和用户条件重新生成。"
-                    ]
-                }
-            )
         plan_locations = self._plan_location_catalog(plan_scope, proposal, contract)
         if protocol_valid:
             compiled_model_issues = await self._compile_model_issues(
@@ -1164,6 +1059,7 @@ class AuditAgent:
                 findings=model_output.findings,
                 location_catalog=plan_locations,
                 issue_id_prefix="PLAN_MODEL_ISSUE",
+                include_report=model_output.decision != "pass",
                 responsibility_context=ResponsibilityContext(
                     subject_type=(
                         "long_term_plan"
@@ -1184,13 +1080,6 @@ class AuditAgent:
                     locations=plan_locations[:1],
                     policy_id="audit:invalid_protocol",
                 )
-            ]
-        if model_output.decision == "pass":
-            compiled_model_issues = [
-                issue.model_copy(update={"blocking": True})
-                if issue.issue_type in {"safety_violation", "unresolved"}
-                else issue.model_copy(update={"blocking": False})
-                for issue in compiled_model_issues
             ]
         deterministic_issues = self._plan_deterministic_issues(
             deterministic_findings,
@@ -1275,7 +1164,7 @@ class AuditAgent:
             compiled_model_issues
             if not protocol_valid
             else [*deterministic_issues, *model_blocking_issues]
-            if decision == "revise"
+            if decision != "pass"
             else []
         )
         result = AuditResult(
@@ -1486,13 +1375,34 @@ class AuditAgent:
         candidate_ids = {item.question_id for unit in pool.units for item in unit.items}
         selected_ids = [item.question.question_id for item in paper.items]
         deterministic_findings: list[str] = []
+        deterministic_issues: list[RepairIssue] = []
+        location_catalog = self._paper_location_catalog(blueprint, paper)
+        locations_by_key = {item.location_key: item for item in location_catalog}
+
+        def record_system_issue(
+            message: str,
+            *,
+            issue_type: str = "paper_item_invalid",
+            location_keys: list[str] | None = None,
+        ) -> None:
+            deterministic_findings.append(message)
+            bound = [locations_by_key[key] for key in (location_keys or []) if key in locations_by_key]
+            deterministic_issues.append(RepairIssue(
+                issue_id=f"PAPER_SYSTEM_ISSUE_{len(deterministic_issues) + 1}",
+                issue_type=issue_type, message=message,
+                owner_step_id="paper_assembly", affected_step_ids=["paper_assembly"],
+                severity="high", origin="deterministic", blocking=True,
+                locations=bound or [locations_by_key["paper:whole"]],
+                policy_id=f"paper:{issue_type}",
+            ))
+
         required_total = (
             blueprint.required_total_question_count
             if blueprint.question_count_is_hard_constraint
             else None
         )
         if required_total is not None and len(paper.items) != required_total:
-            deterministic_findings.append(
+            record_system_issue(
                 f"用户明确要求{required_total}题，当前试卷仅有{len(paper.items)}题。"
             )
         required_by_type = {
@@ -1516,11 +1426,11 @@ class AuditAgent:
                     f"{question_type}{count}题"
                     for question_type, count in actual_by_type.items()
                 ) or "无题目"
-                deterministic_findings.append(
+                record_system_issue(
                     f"题型分布不符合用户硬约束：要求{expected}，实际{actual}。"
                 )
         if len(selected_ids) != len(set(selected_ids)):
-            deterministic_findings.append("试卷存在重复题目。")
+            record_system_issue("试卷存在重复题目。")
         selected_by_unit: dict[str, list[ExamPaperItem]] = {}
         for item in paper.items:
             selected_by_unit.setdefault(item.unit_id, []).append(item)
@@ -1534,15 +1444,16 @@ class AuditAgent:
                     )
                 ]
                 if invalid:
-                    deterministic_findings.append(
-                        f"蓝图单元{unit.unit_id}存在题型不匹配题目：{', '.join(invalid)}。"
+                    record_system_issue(
+                        f"蓝图单元{unit.unit_id}存在题型不匹配题目：{', '.join(invalid)}。",
+                        location_keys=[f"paper:question:{key}" for key in invalid],
                     )
         normalized_stems = [
             "".join(character for character in item.question.stem if character.isalnum())
             for item in paper.items
         ]
         if len(normalized_stems) != len(set(normalized_stems)):
-            deterministic_findings.append("试卷存在题干重复的题目。")
+            record_system_issue("试卷存在题干重复的题目。")
         if not set(selected_ids).issubset(candidate_ids):
             outside = [
                 item for item in paper.items
@@ -1550,7 +1461,10 @@ class AuditAgent:
                 and item.question.origin != "generated"
             ]
             if outside:
-                deterministic_findings.append("试卷包含候选池之外的正式题库题目。")
+                record_system_issue(
+                    "试卷包含候选池之外的正式题库题目。",
+                    location_keys=[f"paper:question:{item.question.question_id}" for item in outside],
+                )
         incomplete_generated = [
             item.question.question_id
             for item in paper.items
@@ -1564,9 +1478,11 @@ class AuditAgent:
             )
         ]
         if incomplete_generated:
-            deterministic_findings.append(
+            record_system_issue(
                 "原创题缺少题型所需选项或答案: "
-                + ", ".join(incomplete_generated)
+                + ", ".join(incomplete_generated),
+                issue_type="answer_or_explanation_invalid",
+                location_keys=[f"paper:question:{key}" for key in incomplete_generated],
             )
         missing_answers = [
             question_id
@@ -1574,11 +1490,13 @@ class AuditAgent:
             if not str(paper.answer_key.get(question_id) or "").strip()
         ]
         if missing_answers:
-            deterministic_findings.append(
-                "入卷题目缺少标准答案: " + ", ".join(missing_answers)
+            record_system_issue(
+                "入卷题目缺少标准答案: " + ", ".join(missing_answers),
+                issue_type="answer_or_explanation_invalid",
+                location_keys=[f"paper:answer:{key}" for key in missing_answers],
             )
         if set(paper.answer_key) != set(selected_ids):
-            deterministic_findings.append("答案键与入卷题目不一致。")
+            record_system_issue("答案键与入卷题目不一致。", issue_type="answer_or_explanation_invalid")
         # 难度真实性确定性审核：仅真实标注参与匹配；生成题无真实难度标注。
         hard_difficulty_units = [
             unit
@@ -1594,9 +1512,10 @@ class AuditAgent:
                 and item.question.difficulty is not None
             ]
             if fabricated:
-                deterministic_findings.append(
+                record_system_issue(
                     "生成补充题不得携带难度标注（系统无真实难度证据）: "
-                    + ", ".join(fabricated)
+                    + ", ".join(fabricated),
+                    location_keys=[f"paper:question:{key}" for key in fabricated],
                 )
             unlabeled_generated = [
                 item.question.question_id
@@ -1607,7 +1526,7 @@ class AuditAgent:
             if unlabeled_generated and (
                 summary is None or summary.generated_count != len(unlabeled_generated)
             ):
-                deterministic_findings.append(
+                record_system_issue(
                     "试卷难度来源统计与生成题数量不一致，用户无法获知补充题来源。"
                 )
             for unit in hard_difficulty_units:
@@ -1619,9 +1538,10 @@ class AuditAgent:
                     and item.question.difficulty not in (None, unit.target_difficulty)
                 ]
                 if wrong_difficulty:
-                    deterministic_findings.append(
+                    record_system_issue(
                         f"蓝图单元{unit.unit_id}要求难度{unit.target_difficulty}，"
-                        f"入卷正式题存在其他难度：{', '.join(wrong_difficulty)}。"
+                        f"入卷正式题存在其他难度：{', '.join(wrong_difficulty)}。",
+                        location_keys=[f"paper:question:{key}" for key in wrong_difficulty],
                     )
         compiled_model_issues: list[Any] = []
         native_model_issues = self._native_paper_repair_issues(
@@ -1630,7 +1550,10 @@ class AuditAgent:
         )
         findings_compiler_valid = True
         findings_compiler_transport_failed = False
-        if model_output.findings and model_output.structured_findings is None:
+        if (
+            not model_output.structured_findings
+            and (model_output.findings or model_output.decision != "pass")
+        ):
             try:
                 findings_compilation = await self.paper_findings_compiler.compile(
                     context,
@@ -1648,22 +1571,10 @@ class AuditAgent:
                 )
                 if findings_compiler_valid:
                     compiled_model_issues = findings_compilation.result.issues
-                else:
-                    # The semantic audit itself is available and each finding
-                    # is already a verbatim source string.  If only the
-                    # locating compiler drifts, retain fail-closed behaviour
-                    # by turning those exact strings into conservative,
-                    # whole-paper repair issues.  No statement is invented or
-                    # published; the paper assembly step is rerun and audited
-                    # again.  Transport failures remain human-review only.
-                    compiled_model_issues = self._fallback_paper_audit_issues(
-                        model_output.findings
-                    )
-                    findings_compiler_valid = True
         # 系统侧重新裁决阻断性，不能把模型给出的 issue_type 当作发布权限。
         # 红线与三类可定点修复的试卷语义问题始终阻断；content_quality 等
-        # 兼容类型只在审核器明确标为 blocking 时阻断。与系统软约束政策
-        # 冲突的意见会先被降级，但不能借题干中的命令式文本改变这组规则。
+        # 兼容类型只在审核器明确标为 blocking 时阻断。
+        # 不根据报告或题干中的自然语言关键词改写阻断性。
         compiled_model_issues = [
             issue.model_copy(
                 update={
@@ -1780,61 +1691,16 @@ class AuditAgent:
             ),
             findings=paper_findings,
             structured_findings=(
-                self._paper_repair_issues(
-                    deterministic_findings=deterministic_findings,
+                deterministic_issues + self._paper_repair_issues(
                     compiled_model_issues=compiled_model_issues,
-                    location_catalog=self._paper_location_catalog(blueprint, paper),
+                    location_catalog=location_catalog,
                 ) + native_model_issues
-                if decision == "revise"
+                if decision != "pass"
                 else []
             ),
             verified_claim_ids=[],
         )
         return envelope(context, "audit_agent", "audit_result", result)
-
-    @staticmethod
-    def _fallback_paper_audit_issues(
-        findings: list[str],
-    ) -> list[CompiledPaperAuditIssue]:
-        """Create source-bound coarse repair issues without model inference."""
-
-        output: list[CompiledPaperAuditIssue] = []
-        for raw in findings:
-            message = str(raw or "").strip()
-            if not message:
-                continue
-            if any(marker in message for marker in ("证据", "引用", "来源", "教材原文")):
-                issue_type = "missing_evidence"
-            elif any(
-                marker in message
-                for marker in (
-                    "蓝图",
-                    "题量",
-                    "题型",
-                    "难度",
-                    "范围",
-                    "候选池",
-                )
-            ):
-                issue_type = "paper_blueprint_mismatch"
-            elif any(marker in message for marker in ("冲突", "矛盾", "不一致")):
-                issue_type = "conflicting_evidence"
-            else:
-                issue_type = "content_quality"
-            output.append(
-                CompiledPaperAuditIssue(
-                    issue_type=issue_type,
-                    message=message,
-                    blocking=True,
-                    source_anchors=[
-                        PaperAuditSourceAnchor(
-                            source_field="findings",
-                            source_quote=message,
-                        )
-                    ],
-                )
-            )
-        return output
 
     async def _audit_unit(
         self,
@@ -2048,108 +1914,11 @@ class AuditAgent:
             # An unlocatable semantic problem is not evidence that the paper is
             # safe. The local repair controller will route it to human review.
             return True
-        if cls._paper_issue_contradicts_system_policy(
-            issue,
-            blueprint=blueprint,
-            paper=paper,
-        ):
-            return False
         return bool(getattr(issue, "blocking", False))
-
-    @staticmethod
-    def _paper_issue_contradicts_system_policy(
-        issue: Any,
-        *,
-        blueprint: Any,
-        paper: Any,
-    ) -> bool:
-        """Downgrade only model requirements that contradict system policy.
-
-        This compatibility guard may relax an advisory finding, but it may not
-        override red lines or actionable semantic issue types. Requiring the
-        issue type as well as bounded wording prevents arbitrary question text
-        from turning a real item-level fault into a soft policy exception.
-        """
-
-        issue_type = str(getattr(issue, "issue_type", "") or "")
-        if issue_type in RED_LINE_ISSUE_TYPES | PAPER_ACTIONABLE_ISSUE_TYPES | {
-            "unresolved"
-        }:
-            return False
-        text = "".join(str(getattr(issue, "message", "") or "").split())
-        if (
-            issue_type == "content_quality"
-            and not blueprint.question_count_is_hard_constraint
-            and any(
-                marker in text
-                for marker in (
-                    "补齐题量",
-                    "补足题量",
-                    "建议题量",
-                    "题数不足",
-                    "题量不足",
-                )
-            )
-        ):
-            return True
-        summary = getattr(paper, "difficulty_source_summary", None)
-        if (
-            summary is not None
-            and issue_type == "content_quality"
-            and any(
-                marker in text
-                for marker in ("难度不匹配", "难度不足", "难度不符合", "难度要求未满足")
-            )
-            and (
-                summary.unlabeled_official_count > 0
-                or summary.generated_count > 0
-                or summary.unmet_count > 0
-            )
-        ):
-            # 系统已按“指定难度正式题→未标注正式题→网络参考→生成补充题”
-            # 降级补足并向用户透明说明来源；模型对难度的笼统抱怨不阻断该合规降级。
-            return True
-        generated = [
-            item.question
-            for item in paper.items
-            if item.question.origin == "generated"
-        ]
-        generated_complete = bool(generated) and all(
-            question.reference_answer.strip()
-            and (question.analysis or "").strip()
-            and (
-                "选择" not in question.question_type
-                or len(question.options) >= 2
-            )
-            for question in generated
-        )
-        rejects_generated_origin = any(
-            marker in text
-            for marker in (
-                "不在正式候选池", "候选池之外", "必须来自正式候选",
-                "模型生成题不允许", "model_knowledge不允许",
-            )
-        )
-        identifies_real_item_error = any(
-            marker in text
-            for marker in ("偏离主题", "题型错误", "答案错误", "解析错误", "重复题")
-        )
-        return bool(
-            issue_type == "content_quality"
-            and
-            generated_complete
-            and rejects_generated_origin
-            and not identifies_real_item_error
-        )
 
     @staticmethod
     def _decision_consistent_report(decision: str, report: str) -> str:
         report = str(report or "").strip()
-        if decision == "pass" and any(
-            marker in report
-            for marker in ("必须修订", "不能发布", "不可发布", "阻断性问题")
-        ):
-            return "系统确定性门禁与任务验收策略均已通过；模型原阻断措辞已作为非阻断建议处理。"
         return report or "审核已依据系统确定性门禁与任务验收策略完成。"
 
     @staticmethod
@@ -2271,7 +2040,6 @@ class AuditAgent:
     @staticmethod
     def _paper_repair_issues(
         *,
-        deterministic_findings: list[str],
         compiled_model_issues: list[Any],
         location_catalog: list[AuditLocation],
     ) -> list[RepairIssue]:
@@ -2279,51 +2047,6 @@ class AuditAgent:
         seen: set[tuple[str, str]] = set()
         locations = {item.location_key: item for item in location_catalog}
 
-        def matching_locations(message: str) -> list[AuditLocation]:
-            preferred_types = (
-                {"explanation"}
-                if "解析" in message
-                else {"answer_key"}
-                if any(marker in message for marker in ("标准答案", "答案键"))
-                else {"question"}
-                if any(marker in message for marker in ("题目", "题干", "题型", "重复题"))
-                else set()
-            )
-            matched = [
-                item
-                for key, item in locations.items()
-                if key != "paper:whole"
-                and (not preferred_types or item.location_type in preferred_types)
-                and (
-                    item.display_label in message
-                    or key.rsplit(":", 1)[-1] in message
-                )
-            ]
-            return matched[:8] or [locations["paper:whole"]]
-
-        for message in deterministic_findings:
-            issue_type = (
-                "answer_or_explanation_invalid"
-                if any(marker in message for marker in ("答案", "解析", "答案键"))
-                else "paper_item_invalid"
-            )
-            key = (issue_type, message)
-            if key in seen:
-                continue
-            seen.add(key)
-            issues.append(
-                RepairIssue(
-                    issue_id=f"PAPER_SYSTEM_ISSUE_{len(issues) + 1}",
-                    issue_type=issue_type,
-                    message=message,
-                    owner_step_id="paper_assembly",
-                    affected_step_ids=["paper_assembly"],
-                    severity="high",
-                    origin="deterministic",
-                    locations=matching_locations(message),
-                    policy_id=f"paper:{issue_type}",
-                )
-            )
         for compiled in compiled_model_issues:
             if not compiled.blocking:
                 continue
@@ -2346,7 +2069,10 @@ class AuditAgent:
                     affected_step_ids=([owner] if owner else []),
                     severity="medium",
                     origin="audit_model",
-                    locations=matching_locations(compiled.message),
+                    # The legacy compiler has no structured location output.
+                    # Only native findings may select a precise location;
+                    # never infer one from open-text question/answer words.
+                    locations=[locations["paper:whole"]],
                     source_anchors=[
                         item.model_dump(mode="json")
                         if hasattr(item, "model_dump")

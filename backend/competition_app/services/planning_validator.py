@@ -121,49 +121,17 @@ class PlanningValidator:
                     f"短期{output.short_term_duration_days}天，"
                     f"父阶段{parent_stage_duration_days}天。"
                 )
-            if (
-                str(evidence_status).casefold() != "sufficient"
-                or str(evidence_freshness).casefold() in {"unknown", "stale", "expired"}
-            ):
-                unsupported_patterns = (
-                    r"掌握度(?:为|是|达到)?\s*\d+(?:\.\d+)?%?",
-                    r"\d+\s*个(?:核心)?薄弱知识点",
-                    r"(?:多次|反复|高频)[^。；\n]{0,16}(?:答错|错误|错题)",
-                    r"(?:零|0)正确|正确率(?:为|是|达到)?\s*0(?:\.0+)?%?",
-                )
-                if any(
-                    re.search(pattern, output.short_term_plan_content)
-                    for pattern in unsupported_patterns
-                ):
-                    issues.append(
-                        "学习行为证据不足或新鲜度未知，短期计划不得断言精确掌握度、"
-                        "错误频次或薄弱知识点总数；请改为待验证的学习重点。"
-                    )
+            # Audit compares complete claims (including negation and examples)
+            # with learning evidence; prose regexes cannot establish assertions.
         if validate_daily:
             if not output.learning_chapter.strip():
                 issues.append("当日任务必须提供结构化 learning_chapter。")
             if not 1 <= len(output.focus_knowledge_points) <= 5:
                 issues.append("当日任务必须提供1—5个结构化重点知识点名称。")
             if force_prerequisite_daily_task:
-                # 前置课程每日任务专用分支：今日任务必须以 required
-                # prerequisite courses 为主，不得生成 stage-2 主教材任务。
-                required = {
-                    self._normalized_book_name(str(course))
-                    for course in (required_prerequisite_courses or set())
-                    if str(course).strip()
-                }
-                normalized_chapter = self._normalized_book_name(
-                    output.learning_chapter
-                )
-                if required and not any(
-                    course in normalized_chapter for course in required
-                ):
-                    issues.append(
-                        "daily_task_prerequisite_required："
-                        "今日任务 learning_chapter 必须包含前置课程"
-                        + "、".join(sorted(required))
-                        + "，不得以 stage-2 主教材作为今日主任务。"
-                    )
+                # The existing Compiler checks full prose against system-owned
+                # allowed/authorized prerequisite courses. A title mention is
+                # neither proof of training nor permission to execute a course.
                 if not str(output.expected_output or "").strip():
                     issues.append(
                         "daily_task_prerequisite_required："
@@ -189,15 +157,8 @@ class PlanningValidator:
                 issues.append(
                     "长期规划缺少系统可信路线阶段，禁止发布占位教材阶段。"
                 )
-            placeholder_tokens = (
-                "待确认", "未确认", "unknown", "tbd", "不可发布", "路线解析失败"
-            )
             if not structured_stages or any(
                 not list(self._field(stage, "book") or [])
-                or any(
-                    any(token in str(book).lower() for token in placeholder_tokens)
-                    for book in (self._field(stage, "book") or [])
-                )
                 for stage in structured_stages
             ):
                 issues.append(
@@ -274,11 +235,6 @@ class PlanningValidator:
                     str(book)
                     for book in (self._field(selected_stage, "books") or [])
                 ]
-                prerequisite_books = [
-                    f"《{self._field(rule, 'course')}》"
-                    for rule in (self._field(textbook_route, "prerequisites") or [])
-                    if self._field(rule, "course")
-                ]
                 # 前置课程教材允许作为当前阶段的短期计划教材：
                 # 长期规划可能把前置训练（如进入 stage-2 前的《中医诊断学》）
                 # 安排在当前阶段的前若干天内，此时所选教材不属于该阶段正式书目。
@@ -308,11 +264,6 @@ class PlanningValidator:
                         + "、".join(str(book) for book in outside_stage)
                         + "。"
                     )
-                selected_order = int(self._field(selected_stage, "order") or 0)
-                stages_by_id_for_order = {
-                    str(self._field(stage, "stage_id")): stage
-                    for stage in textbook_stages
-                }
                 confirmed = {
                     self._normalized_book_name(course)
                     for course in (confirmed_prerequisite_courses or set())
@@ -321,12 +272,6 @@ class PlanningValidator:
                     self._normalized_book_name(course)
                     for course in (unmet_prerequisite_courses or set())
                 }
-                # A prerequisite book exempts only itself; dependent books in
-                # the same selection must still satisfy their own prerequisites.
-                selected_book_names = {
-                    self._normalized_book_name(str(book))
-                    for book in (output.selected_books or [])
-                }
                 missing_prerequisites = (
                     [] if temporary_preview_authorized else
                     missing_execution_prerequisites(
@@ -334,22 +279,6 @@ class PlanningValidator:
                         list(output.selected_books), confirmed - unmet,
                     )
                 )
-                declared_unmet_prerequisites = []
-                for rule in self._field(textbook_route, "prerequisites") or []:
-                    before_stage = stages_by_id_for_order.get(
-                        str(self._field(rule, "before_stage_id") or "")
-                    )
-                    before_order = int(self._field(before_stage, "order") or 0)
-                    course = str(self._field(rule, "course") or "")
-                    normalized_course = self._normalized_book_name(course)
-                    applies_to = self._field(rule, "applies_to_books") or []
-                    if applies_to and not selected_book_names.intersection(
-                        self._normalized_book_name(str(book)) for book in applies_to
-                    ):
-                        continue
-                    if before_order and selected_order >= before_order:
-                        if normalized_course in unmet:
-                            declared_unmet_prerequisites.append(course)
                 if missing_prerequisites:
                     diagnostics.append({"code": "prerequisite_unconfirmed", "field_path": "/selected_books"})
                     issues.append(
@@ -357,61 +286,8 @@ class PlanningValidator:
                         + "、".join(missing_prerequisites)
                         + "。"
                     )
-                if actions["long"] == "update":
-                    omitted_unmet = [
-                        course
-                        for course in declared_unmet_prerequisites
-                        if course not in output.long_term_plan_content
-                    ]
-                    if omitted_unmet:
-                        issues.append(
-                            "用户已确认未完成的强前置课程必须纳入长期规划："
-                            + "、".join(omitted_unmet)
-                            + "。"
-                        )
-                    # 长期路径完整性门禁：当长期规划覆盖到需要前置课程的阶段时，
-                    # 正文必须为未确认完成的前置课程落具体训练安排。
-                    # 纯“另行确认/后续计划”式推迟或完全缺失是确定性缺陷，
-                    # 不能只靠（非确定性的）审核模型兜底。
-                    before_order_by_stage = {
-                        str(self._field(stage, "stage_id")): int(
-                            self._field(stage, "order") or 0
-                        )
-                        for stage in textbook_stages
-                    }
-                    planned_stage_count = len(structured_stages)
-                    for rule in (
-                        self._field(textbook_route, "prerequisites") or []
-                    ):
-                        course = str(self._field(rule, "course") or "").strip()
-                        if not course:
-                            continue
-                        if self._normalized_book_name(course) in confirmed:
-                            continue
-                        # Unknown book-scoped prerequisites gate dependent
-                        # execution, not the entire future route overview.
-                        if (
-                            self._field(rule, "applies_to_books")
-                            and self._normalized_book_name(course) not in unmet
-                        ):
-                            continue
-                        before_order = before_order_by_stage.get(
-                            str(self._field(rule, "before_stage_id") or "")
-                        ) or 0
-                        if not before_order or before_order > planned_stage_count:
-                            # 路径尚未到达需要该前置的阶段，暂不强制安排。
-                            continue
-                        if not self._prerequisite_scheduled_in_body(
-                            output.long_term_plan_content, course
-                        ):
-                            diagnostics.append({"code": "prerequisite_training_missing", "field_path": "/long_term_plan_content"})
-                            issues.append(
-                                "长期规划已覆盖到需要前置课程“"
-                                + course
-                                + "”的阶段，但正文未给出该前置训练的具体安排"
-                                "（训练范围、安排阶段或时长、教材或练习、验收标准），"
-                                "不得以“另行确认/后续计划”推迟，也不得只声明前置条件。"
-                            )
+                # Audit independently judges whether the prose schedules
+                # unmet prerequisites. The execution gate above remains hard.
 
         if (
             available_minutes is not None
@@ -472,44 +348,7 @@ class PlanningValidator:
             )
         ):
             issues.append("短期计划教材与系统专题授权不一致。")
-        surfaces = {
-            "正文": output.short_term_plan_content,
-            "推进节点": "\n".join(output.short_term_progression_nodes),
-            "预期产出": output.expected_output,
-        }
-        for label, text in surfaces.items():
-            missing = [name for name in names if name not in text]
-            if missing:
-                issues.append(
-                    f"短期计划{label}缺少系统授权专题："
-                    + "、".join(missing)
-                    + "。"
-                )
-        criteria_missing = [
-            name for name in names if name not in output.completion_criteria
-        ]
-        if criteria_missing and not (
-            len(names) == 3 and "三方" in output.completion_criteria
-        ):
-            issues.append(
-                "短期计划完成标准缺少系统授权专题："
-                + "、".join(criteria_missing)
-                + "。"
-            )
-        body = output.short_term_plan_content
-        if not (
-            any(marker in body for marker in ("不改变长期阶段", "不推进长期阶段"))
-            and any(
-                marker in body
-                for marker in ("不代表完成", "不作为阶段完成", "不视为阶段完成")
-            )
-        ):
-            issues.append("临时专题正文必须明确不改变长期阶段且不代表完成专题阶段。")
-        if not any(
-            marker in output.completion_criteria
-            for marker in ("不据此申报阶段完成", "不作为阶段完成", "不视为阶段完成")
-        ):
-            issues.append("临时专题完成标准不得被用作长期阶段晋级证据。")
+        # Audit checks prose coverage and negation against this same overlay.
         return issues
 
     @classmethod
@@ -662,27 +501,3 @@ class PlanningValidator:
     def _normalized_book_name(value: str) -> str:
         return normalize_course_name(value)
 
-    @staticmethod
-    def _prerequisite_scheduled_in_body(body: str, course: str) -> bool:
-        """True 当正文对前置课程给出了具体训练安排：
-        存在一个提及该课程的句子，不含推迟措辞且含训练安排元素。
-        完全未提及、或仅在“另行确认/后续计划”等推迟语境中出现则返回 False。
-        """
-        if not course or course not in body:
-            return False
-        deferral_markers = (
-            "另行确认", "后续计划", "后续安排", "后续再", "以后再",
-            "待确认", "待安排", "暂不安排", "后续补充", "待补充",
-        )
-        arrangement_markers = (
-            "训练", "学习", "天", "周", "教材", "练习", "测评",
-            "验收", "达标", "完成标准", "掌握", "巩固", "安排",
-        )
-        for sentence in re.split(r"[。；;\n]", body):
-            if course not in sentence:
-                continue
-            if any(marker in sentence for marker in deferral_markers):
-                continue
-            if any(marker in sentence for marker in arrangement_markers):
-                return True
-        return False

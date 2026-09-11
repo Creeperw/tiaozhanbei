@@ -182,7 +182,7 @@ class PolicyCapturingAuditModel:
 class DirectContradictionFallbackModel:
     async def complete_json(self, role, payload, on_delta=None):
         if role == "audit_findings_compiler":
-            # Force the source-bounded deterministic compiler fallback.
+            # A broken compiler must not trigger programmatic prose classification.
             return {}
         return {
             "decision": "revise",
@@ -226,7 +226,12 @@ class SourceScopeConflictFallbackModel:
 class RejectRepairableFactualErrorModel:
     async def complete_json(self, role, payload, on_delta=None):
         if role == "audit_findings_compiler":
-            return {}
+            message = payload["payload"]["findings"][0]
+            return {"status": "compiled", "issues": [{
+                "issue_type": "factual_error", "message": message,
+                "blocking": True, "location_keys": ["resource:whole"],
+                "source_anchors": [{"source_field": "findings", "source_quote": message}],
+            }]}
         return {
             "decision": "reject",
             "findings": [
@@ -239,7 +244,13 @@ class RejectRepairableFactualErrorModel:
 class RejectWithReportOnlyModel:
     async def complete_json(self, role, payload, on_delta=None):
         if role == "audit_findings_compiler":
-            return {}
+            message = payload["payload"]["audit_report"]
+            assert payload["payload"]["findings"] == []
+            return {"status": "compiled", "issues": [{
+                "issue_type": "factual_error", "message": message,
+                "blocking": True, "location_keys": ["resource:whole"],
+                "source_anchors": [{"source_field": "audit_report", "source_quote": message}],
+            }]}
         return {
             "decision": "reject",
             "findings": [],
@@ -283,7 +294,14 @@ class RejectWithInventedCompilerLocationModel:
 class ReportNegatesFactualErrorModel:
     async def complete_json(self, role, payload, on_delta=None):
         if role == "audit_findings_compiler":
-            return {}
+            report = payload["payload"]["audit_report"]
+            assert report == "未发现与权威教材相反的事实错误；正文结尾缺少先思考再作答的邀请语，需补充。"
+            message = "正文结尾缺少先思考再作答的邀请语，需补充。"
+            return {"status": "compiled", "issues": [{
+                "issue_type": "content_quality", "message": message,
+                "blocking": False, "location_keys": ["resource:whole"],
+                "source_anchors": [{"source_field": "audit_report", "source_quote": message}],
+            }]}
         return {
             "decision": "revise",
             "findings": [],
@@ -634,15 +652,15 @@ async def test_compiler_cannot_clear_blocking_flag_for_red_line_repair() -> None
 
 
 @pytest.mark.asyncio
-async def test_direct_authoritative_contradiction_cannot_be_downgraded_to_generic_conflict() -> None:
+async def test_invalid_compiler_cannot_guess_factual_error_from_prose() -> None:
     result = await AuditAgent(DirectContradictionFallbackModel()).run(
         _resource_context()
     )
 
-    assert result.payload.decision == "revise"
+    assert result.payload.decision == "needs_human_review"
     assert {
         issue.issue_type for issue in result.payload.structured_findings
-    } == {"factual_error"}
+    } == {"unresolved"}
     assert all(issue.blocking for issue in result.payload.structured_findings)
 
 
@@ -655,16 +673,16 @@ async def test_audit_compiler_transport_failure_is_retryable() -> None:
 
 
 @pytest.mark.asyncio
-async def test_source_scope_disagreement_remains_non_blocking_conflicting_evidence() -> None:
+async def test_invalid_compiler_cannot_guess_nonblocking_conflict_from_prose() -> None:
     result = await AuditAgent(SourceScopeConflictFallbackModel()).run(
         _resource_context()
     )
 
-    assert result.payload.decision == "pass"
+    assert result.payload.decision == "needs_human_review"
     assert {
         issue.issue_type for issue in result.payload.structured_findings
-    } == {"conflicting_evidence"}
-    assert all(not issue.blocking for issue in result.payload.structured_findings)
+    } == {"unresolved"}
+    assert all(issue.blocking for issue in result.payload.structured_findings)
 
 
 @pytest.mark.asyncio
@@ -696,17 +714,48 @@ async def test_non_pass_report_is_compiled_when_model_omits_findings() -> None:
 
 
 @pytest.mark.asyncio
-async def test_compiler_integrity_failure_uses_safe_whole_resource_fallback() -> None:
+@pytest.mark.parametrize("external", [False, True])
+@pytest.mark.parametrize("user_request", [
+    "只讲解四君子汤",
+    "不要查询考试日期，只讲解四君子汤",
+    "查询考试日期",
+])
+async def test_external_query_never_overrides_factual_error(user_request, external) -> None:
+    context = _resource_context()
+    context.update(user_request=user_request, external_information_request=external)
+    result = await AuditAgent(NonBlockingFactualErrorCompilerModel()).run(context)
+    assert result.payload.decision == "revise"
+    assert any(
+        issue.issue_type == "factual_error" and issue.blocking
+        for issue in result.payload.structured_findings
+    )
+
+
+@pytest.mark.asyncio
+async def test_negated_external_query_does_not_skip_time_gate() -> None:
+    context = _resource_context()
+    context.update(
+        user_request="不要查询考试日期，只讲解四君子汤",
+        external_information_request=False,
+        available_minutes=1,
+    )
+    result = await AuditAgent(EmptyRevisionAuditModel()).run(context)
+    assert result.payload.decision == "revise"
+    assert "资源预计时长超过用户本次可用时间。" in result.payload.findings
+
+
+@pytest.mark.asyncio
+async def test_compiler_integrity_failure_blocks_without_semantic_fallback() -> None:
     result = await AuditAgent(RejectWithInventedCompilerLocationModel()).run(
         _resource_context()
     )
 
-    assert result.payload.decision == "revise"
+    assert result.payload.decision == "needs_human_review"
     assert {
         issue.issue_type for issue in result.payload.structured_findings
-    } == {"factual_error"}
+    } == {"unresolved"}
     issue = result.payload.structured_findings[0]
-    assert issue.owner_step_id == "expert"
+    assert issue.owner_step_id is None
     assert [item.location_key for item in issue.locations] == ["resource:whole"]
 
 
@@ -803,6 +852,92 @@ async def test_plan_factual_and_evidence_issues_are_owned_by_diagnosis() -> None
         and issue.affected_step_ids == ["diagnosis"]
         for issue in result.payload.structured_findings
     )
+
+
+@pytest.mark.asyncio
+async def test_plan_pass_does_not_override_compiled_blocking_factual_error():
+    class ConflictingPassModel(PlanFactualRouteMismatchModel):
+        async def complete_json(self, role, payload, on_delta=None):
+            result = await super().complete_json(role, payload, on_delta)
+            if role == "audit_agent":
+                result["decision"] = "pass"
+            return result
+
+    result = await AuditAgent(ConflictingPassModel()).run(_short_plan_context())
+    assert result.payload.decision == "revise"
+    assert any(issue.issue_type == "factual_error" and issue.blocking
+               for issue in result.payload.structured_findings)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("decision", ["revise", "reject", "needs_human_review"])
+@pytest.mark.parametrize("issue_type,blocking,report", [
+    ("plan_quality", True, "正文遗漏用户指定的第二个学习对象，需要补全。"),
+    ("plan_quality", True, "前置课程只被提及，未安排实际训练，不满足规划要求。"),
+    ("content_quality", False, "未发现事实错误；可进一步润色安排的措辞。"),
+    ("factual_error", True, "证据不足却断言当前掌握度为0%，需要删除该无依据断言。"),
+    ("content_quality", False, "正文说明不能认定掌握率为0%，80%只是未来验收目标，无事实错误。"),
+])
+async def test_plan_report_only_findings_are_compiled_without_replacement(
+    decision, issue_type, blocking, report
+):
+    calls = []
+
+    class ReportModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            calls.append(role)
+            if role == "audit_findings_compiler":
+                source = payload["payload"]
+                assert source["audit_report"] == report
+                assert source["findings"] == []
+                return {"status": "compiled", "issues": [{
+                    "issue_type": issue_type, "message": report,
+                    "blocking": blocking,
+                    "location_keys": [source["location_catalog"][0]["location_key"]],
+                    "source_anchors": [{"source_field": "audit_report", "source_quote": report}],
+                }]}
+            return {"decision": decision, "medical_safety": "safe",
+                    "findings": [], "audit_report": report}
+
+    result = await AuditAgent(ReportModel()).run(_short_plan_context())
+    assert calls == ["audit_agent", "audit_findings_compiler"]
+    assert result.payload.audit_report == report
+    assert result.payload.decision == ("revise" if blocking else "pass")
+    if blocking:
+        assert result.payload.structured_findings[0].message == report
+        assert result.payload.structured_findings[0].owner_step_id == "diagnosis"
+
+
+@pytest.mark.asyncio
+async def test_plan_report_only_compiler_failure_cannot_publish():
+    calls = []
+
+    class BrokenReportCompiler:
+        async def complete_json(self, role, payload, on_delta=None):
+            calls.append(role)
+            if role == "audit_findings_compiler":
+                return {"status": "invalid"}
+            return {"decision": "revise", "medical_safety": "safe", "findings": [],
+                    "audit_report": "正文缺失用户明确要求的范围，不能发布。"}
+
+    result = await AuditAgent(BrokenReportCompiler()).run(_short_plan_context())
+    assert calls == ["audit_agent", "audit_findings_compiler", "audit_findings_compiler"]
+    assert result.payload.decision == "needs_human_review"
+    assert any(item.issue_type == "unresolved" and item.blocking
+               for item in result.payload.structured_findings)
+
+
+@pytest.mark.asyncio
+async def test_empty_nonpassing_plan_audit_does_not_become_approval():
+    class EmptyPlanModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            assert role == "audit_agent"
+            return {"decision": "revise", "medical_safety": "safe",
+                    "findings": [], "audit_report": ""}
+
+    result = await AuditAgent(EmptyPlanModel()).run(_short_plan_context())
+    assert result.payload.decision == "needs_human_review"
+    assert result.payload.medical_safety_approval is None
 
 
 @pytest.mark.asyncio

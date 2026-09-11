@@ -26,7 +26,7 @@ def test_route_does_not_become_explicit_focus_from_retrieval(status):
 
 @pytest.mark.parametrize("status", ["undetermined", "unsupported", "not_requested"])
 def test_explicit_request_without_evidence_is_not_user_ambiguity(status):
-    with pytest.raises(ValueError, match="证据提取尚未完成"):
+    with pytest.raises(ValidationError):
         DiagnosisAgent._resolve_temporary_focus_overlay(
             SimpleNamespace(learning_focus_status=status, learning_focus_items=[]), {},
             {"planning_request_scope": scope("explicit_focus", ["四君子汤"])}, {},
@@ -39,7 +39,14 @@ def test_retrieval_cannot_drop_or_add_requested_objects(names):
         DiagnosisAgent._resolve_temporary_focus_overlay(
             SimpleNamespace(learning_focus_status="supported", learning_focus_items=[
                 {"name": name} for name in names
-            ]), {}, {"planning_request_scope": scope("explicit_focus", ["四君子汤", "理中丸"])}, {},
+            ]), {}, {
+                "planning_request_scope": scope("explicit_focus", ["四君子汤", "理中丸"]),
+                "planning_focus_assessment": dict(
+                    status="sufficient", focus_names=names, focus_stage_id="S1",
+                    focus_books=["方剂学"], evidence_links=[], cross_stage_mode="none",
+                    source_quote="按学情安排下周", reason="按本次范围判断",
+                ),
+            }, {},
         )
 
 
@@ -123,4 +130,4 @@ async def test_secondary_layer_resolution_preserves_request_scope_guards(mode, m
                                     step_id="planner", learner_id="L", user_request="学习四君子汤", messages=[]))
     assert result.payload.plan_action == "create_or_update"
     assert "diagnosis_agent" in result.payload.selected_agents
-    assert ("knowledge_base_agent" in result.payload.selected_agents) == (mode == "explicit_focus")
+    assert "knowledge_base_agent" not in result.payload.selected_agents

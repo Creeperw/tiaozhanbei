@@ -472,7 +472,37 @@ class TemporaryFormulaFocusDiagnosisModel:
     async def complete_json(self, role, payload, on_delta=None):
         self.payloads.append(payload)
         if role == "plan_contract_compiler":
-            return await StubChatModel().complete_json(role, payload, on_delta)
+            document = payload["payload"]["diagnosis_output"]["plan_document"]
+            values = {
+                "short_term_plan_content": document, "duration_days": 7,
+                "progression_nodes": ["完成四君子汤、参苓白术散和理中丸教材核对。", "提交四君子汤、参苓白术散和理中丸闭卷比较表。"],
+                "expected_output": "一份四君子汤、参苓白术散和理中丸闭卷比较表。",
+                "completion_criteria": "能够闭卷比较四君子汤、参苓白术散和理中丸，不据此申报阶段完成。",
+                "selected_stage_id": "stage-2", "selected_books": ["《方剂学》"],
+            }
+            anchors = {
+                f"/{key}": [{"source_field": "plan_document", "source_quote": str(item)}
+                            for item in (value if isinstance(value, list) else [value])]
+                for key, value in values.items()
+            }
+            return {"status": "compiled", "contract_version": "1.0",
+                    "contract": {"scope": "short_term", **values, "field_anchors": anchors}}
+        if payload["payload"].get("phase") == "assess_planning_focus":
+            catalog = payload["payload"]["focus_identity_catalog"]
+            stage_no = next(item["stage_no"] for item in catalog["stages"] if item["stage_id"] == "stage-2")
+            book_no = next(item["book_no"] for item in catalog["books"] if item["stage_no"] == stage_no and item["name"] == "《方剂学》")
+            return {
+                "status": "sufficient", "focus_object_nos": [1, 2, 3],
+                "focus_stage_no": stage_no, "focus_book_nos": [book_no],
+                "evidence_links": [
+                    {"object_no": 1, "evidence_id": "E_SJZT"},
+                    {"object_no": 2, "evidence_id": "E_SLBS"},
+                    {"object_no": 3, "evidence_id": "E_LZW"},
+                ],
+                "cross_stage_mode": "introductory_preview",
+                "source_quote": payload["payload"]["user_request"],
+                "reason": "本次明确要求临时入门预习三方，不推进父阶段。",
+            }
         overlay = payload["payload"].get("temporary_focus_overlay")
         if not overlay:
             raise AssertionError("short-term focus overlay must reach Diagnosis")
@@ -607,7 +637,7 @@ async def build_knowledge(context: dict):
 
 
 def set_requested_focus(context, names):
-    request = "本周专门学习" + "、".join(names)
+    request = "本周仅入门预习，不推进长期阶段，专题为" + "、".join(names)
     context.update(user_request=request, planning_request_scope={
         "mode": "explicit_focus", "objects": names, "source_quote": request,
         "clarification_question": None,
@@ -1523,12 +1553,18 @@ async def test_diagnosis_builds_evidence_authorized_formula_preview_without_adva
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("focus_status", ["unsupported", "undetermined"])
-async def test_diagnosis_clarifies_incomplete_requested_focus_before_model_call(
+async def test_diagnosis_stops_when_model_confirms_insufficient_planning_facts(
     focus_status: str,
 ) -> None:
     class ModelMustNotRun:
         async def complete_json(self, role, payload, on_delta=None):
-            raise AssertionError("Diagnosis model must not run without a supported focus")
+            assert payload["payload"].get("phase") == "assess_planning_focus"
+            return {
+                "status": "needs_retrieval", "focus_object_nos": [1, 2, 3],
+                "focus_stage_no": None, "focus_book_nos": [], "evidence_links": [],
+                "cross_stage_mode": "none", "source_quote": payload["payload"]["user_request"],
+                "reason": "具体专题所需教材依据不足，不能生成。",
+            }
 
     knowledge = EvidencePack(
         evidence_pack_id="EP_INCOMPLETE_FOCUS",
@@ -1561,7 +1597,7 @@ async def test_diagnosis_clarifies_incomplete_requested_focus_before_model_call(
     )
 
     set_requested_focus(diagnosis_context, ["四君子汤", "参苓白术散", "理中丸"])
-    with pytest.raises(ValueError, match="证据提取尚未完成"):
+    with pytest.raises(ValueError, match="尚未确认.*充分"):
         await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)
 
 
@@ -1627,7 +1663,13 @@ async def test_diagnosis_rejects_tampered_focus_evidence_before_model_call() -> 
 async def test_diagnosis_clarifies_when_focus_book_maps_to_multiple_route_stages() -> None:
     class ModelMustNotRun:
         async def complete_json(self, role, payload, on_delta=None):
-            raise AssertionError("Diagnosis model must not run for an ambiguous book map")
+            assert payload["payload"].get("phase") == "assess_planning_focus"
+            return {
+                "status": "unresolved", "focus_object_nos": [1],
+                "focus_stage_no": None, "focus_book_nos": [], "evidence_links": [],
+                "cross_stage_mode": "none", "source_quote": payload["payload"]["user_request"],
+                "reason": "同一本教材出现在多个阶段，尚不能可靠确定本次阶段。",
+            }
 
     route = textbook_route_output().payload
     textbook_resolution = route.textbook_route.model_copy(
@@ -1701,7 +1743,7 @@ async def test_diagnosis_clarifies_when_focus_book_maps_to_multiple_route_stages
     )
 
     set_requested_focus(diagnosis_context, ["四君子汤"])
-    with pytest.raises(ValueError, match="唯一映射"):
+    with pytest.raises(ValueError, match="尚未确认.*充分"):
         await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)
 
 

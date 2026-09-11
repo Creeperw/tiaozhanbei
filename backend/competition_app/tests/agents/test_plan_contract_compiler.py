@@ -15,6 +15,34 @@ def compiler_context() -> dict[str, str]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("document", [
+    "今日不学习中医诊断学，先执行方剂学补益剂训练。",
+    "中医诊断学以后再补；今日先学习方剂学。",
+])
+async def test_daily_prerequisite_semantic_rejection_is_preserved(document):
+    class ScopeCompiler:
+        async def complete_json(self, role, payload, on_delta=None):
+            data = payload["payload"]
+            assert data["diagnosis_output"]["plan_document"] == document
+            assert data["parent_plan_constraints"]["allowed_prerequisite_courses"] == ["中医诊断学"]
+            assert data["trusted_route"]["authorized_daily_prerequisite_courses"] == ["中医诊断学"]
+            return {"status": "needs_revision", "issues": [{
+                "code": "prerequisite_unconfirmed", "category": "conflict",
+                "field_path": "/learning_chapter",
+            }]}
+
+    result = await PlanContractCompilerAgent(ScopeCompiler()).compile(
+        compiler_context(), plan_scope="daily_task",
+        diagnosis_output={"plan_document": document},
+        trusted_route={"authorized_daily_prerequisite_courses": ["中医诊断学"]},
+        parent_plan_constraints={"daily_task_override": "prerequisite_training",
+                                 "allowed_prerequisite_courses": ["中医诊断学"]},
+    )
+    assert result.result.status == "needs_revision"
+    assert result.result.issues[0].code == "prerequisite_unconfirmed"
+
+
+@pytest.mark.asyncio
 async def test_stub_compiler_reports_missing_short_term_fields() -> None:
     envelope = await PlanContractCompilerAgent(StubChatModel()).compile(
         compiler_context(),
@@ -337,7 +365,7 @@ class EmptyCompilerModel:
 
 
 @pytest.mark.asyncio
-async def test_short_term_prose_fallback_compiles_chinese_business_document() -> None:
+async def test_invalid_compiler_does_not_synthesize_contract_from_business_prose() -> None:
     document = """【当前主目标】
 未来14天属于“中西医共同基础”阶段，使用《中医学基础》和《生理学》完成基础概念对照学习。
 
@@ -363,17 +391,11 @@ async def test_short_term_prose_fallback_compiles_chinese_business_document() ->
         parent_plan_constraints={"current_stage_duration_days": 70},
     )
 
-    assert envelope.result.status == "compiled"
-    contract = envelope.result.contract
-    assert contract.duration_days == 14
-    assert len(contract.progression_nodes) == 2
-    assert contract.selected_books == ["《中医学基础》", "《生理学》"]
-    assert contract.expected_output.startswith("一份中西医基础概念对照表")
-    assert contract.completion_criteria.startswith("两个节点均完成")
+    assert envelope.result.status == "needs_revision"
 
 
 @pytest.mark.asyncio
-async def test_short_term_prose_fallback_compiles_when_model_returns_empty() -> None:
+async def test_empty_compiler_never_extracts_short_term_prose_by_regex() -> None:
     document = """【当前主目标】
 未来14天属于“中西医共同基础”阶段，使用《中医学基础》和《生理学》完成基础概念对照学习。
 
@@ -389,21 +411,12 @@ async def test_short_term_prose_fallback_compiles_when_model_returns_empty() -> 
 
 【反馈指标】
 记录完成率、正确率、遗漏项、错因和实际耗时。"""
-    envelope = await PlanContractCompilerAgent(
-        EmptyCompilerModel()
-    ).compile(
-        compiler_context(),
-        plan_scope="short_term",
-        diagnosis_output={"plan_document": document},
-        trusted_route={},
-        parent_plan_constraints={"current_stage_duration_days": 70},
-    )
-
-    assert envelope.result.status == "compiled"
-    contract = envelope.result.contract
-    assert contract.duration_days == 14
-    assert len(contract.progression_nodes) == 2
-    assert contract.selected_books == ["《中医学基础》", "《生理学》"]
+    with pytest.raises(ModelResponseError):
+        await PlanContractCompilerAgent(EmptyCompilerModel()).compile(
+            compiler_context(), plan_scope="short_term",
+            diagnosis_output={"plan_document": document}, trusted_route={},
+            parent_plan_constraints={"current_stage_duration_days": 70},
+        )
 
 
 class LongTermCompilerModel:
@@ -413,6 +426,9 @@ class LongTermCompilerModel:
     async def complete_json(self, role, payload, on_delta=None):
         assert role == "plan_contract_compiler"
         anchors = {
+            "/selection_mode": [
+                {"source_field": "plan_document", "source_quote": "复习"}
+            ],
             "/total_duration_days": [
                 {"source_field": "plan_document", "source_quote": "共30天"}
             ]
@@ -562,20 +578,13 @@ DAILY_TASK_DOCUMENT = """【今日任务】
 
 
 @pytest.mark.asyncio
-async def test_empty_compiler_with_daily_task_document_compiles() -> None:
-    envelope = await PlanContractCompilerAgent(EmptyCompilerModel()).compile(
-        compiler_context(),
-        plan_scope="daily_task",
-        diagnosis_output={"plan_document": DAILY_TASK_DOCUMENT},
-        trusted_route={},
-        parent_plan_constraints={},
-    )
-
-    assert envelope.result.status == "compiled"
-    contract = envelope.result.contract
-    assert contract.learning_chapter == "《中医学基础》第一章 绪论"
-    assert contract.estimated_minutes == 56
-    assert len(contract.focus_knowledge_points) == 2
+async def test_empty_compiler_with_daily_task_document_stops() -> None:
+    with pytest.raises(ModelResponseError):
+        await PlanContractCompilerAgent(EmptyCompilerModel()).compile(
+            compiler_context(), plan_scope="daily_task",
+            diagnosis_output={"plan_document": DAILY_TASK_DOCUMENT},
+            trusted_route={}, parent_plan_constraints={},
+        )
 
 
 @pytest.mark.asyncio
@@ -711,7 +720,7 @@ async def test_fallback_rejects_missing_completion_criteria() -> None:
 
 
 @pytest.mark.asyncio
-async def test_chinese_week_duration_compiles_to_days() -> None:
+async def test_chinese_week_duration_is_not_guessed_when_compiler_rejects() -> None:
     document = SHORT_TERM_EDGE_DOCUMENT.format(
         day_count="两周", book="《中医学基础》", subject="绪论"
     )
@@ -723,5 +732,4 @@ async def test_chinese_week_duration_compiles_to_days() -> None:
         parent_plan_constraints={"current_stage_duration_days": 30},
     )
 
-    assert envelope.result.status == "compiled"
-    assert envelope.result.contract.duration_days == 14
+    assert envelope.result.status == "needs_revision"

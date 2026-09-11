@@ -70,6 +70,7 @@ class MultiScaleLearningState(ContractModel):
     macro: dict[str, Any]
     meso: dict[str, Any]
     micro: dict[str, Any]
+    historical_learning: dict[str, Any] = Field(default_factory=dict)
     data_quality: dict[str, Any]
     hard_constraints: list[HardConstraintResult]
     source_refs: list[dict[str, Any]]

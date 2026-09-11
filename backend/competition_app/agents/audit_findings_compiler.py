@@ -41,9 +41,7 @@ class AuditFindingsCompilerAgent:
         skill = prompt_skill_registry.load(
             "audit_findings_compiler", "compile_audit_findings"
         )
-        raw = await self.chat_model.complete_json(
-            "audit_findings_compiler",
-            build_model_context(
+        request = build_model_context(
                 context,
                 target_agent="audit_findings_compiler",
                 prompt_skill=skill,
@@ -59,103 +57,35 @@ class AuditFindingsCompilerAgent:
                     "源约束Compiler只可逐字提取审核原稿中的问题并选择系统提供的位置；"
                     "不得重新审核、补写问题、指定智能体、生成返修链或决定发布。"
                 ),
-            ),
         )
-        try:
-            result = _RESULT_ADAPTER.validate_python(raw)
-        except ValidationError:
-            # A source-bounded deterministic fallback keeps ordinary business
-            # findings repairable when a provider ignores the compiler role.
-            # It copies every finding verbatim and uses only the system-owned
-            # whole-subject location; it never invents content or step IDs.
-            result = self._deterministic_fallback(
-                findings,
-                subject_type=subject_type,
-                location_catalog=location_catalog,
+        for attempt in range(2):
+            raw = await self.chat_model.complete_json("audit_findings_compiler", request)
+            try:
+                result = _RESULT_ADAPTER.validate_python(raw)
+            except ValidationError:
+                result = AuditFindingsNeedRevision(
+                    status="needs_revision",
+                    issues=[{"code": "schema_invalid", "field_path": "/"}],
+                )
+            integrity = self._integrity_issues(
+                result,
+                sources=sources,
+                allowed_location_keys={item.location_key for item in location_catalog},
             )
-        integrity = self._integrity_issues(
-            result,
-            sources=sources,
-            allowed_location_keys={item.location_key for item in location_catalog},
-        )
-        if integrity:
-            result = AuditFindingsNeedRevision(
-                status="needs_revision",
-                issues=integrity,
-            )
+            if integrity:
+                result = AuditFindingsNeedRevision(status="needs_revision", issues=integrity)
+            if result.status == "compiled" or attempt == 1:
+                break
+            request["payload"]["compilation_feedback"] = {
+                "issues": [item.model_dump(mode="json") for item in result.issues],
+                "instruction": (
+                    "仅修正本次源约束编译的协议、引用或位置错误。重新阅读原审核材料，"
+                    "由你判断问题类型及否定语义；不得补写问题或决定发布。"
+                ),
+            }
         return AuditFindingsCompilationEnvelope(
             result=result,
             source_digest=self._digest(sources),
-        )
-
-    @staticmethod
-    def _deterministic_fallback(
-        findings: list[str],
-        *,
-        subject_type: str,
-        location_catalog: list[AuditLocation],
-    ) -> CompiledAuditFindings:
-        whole = next(
-            (
-                item.location_key
-                for item in location_catalog
-                if item.location_type == "whole_subject"
-            ),
-            location_catalog[0].location_key,
-        )
-
-        def issue_type(message: str) -> str:
-            if "证据" in message and any(
-                word in message for word in ("缺少", "缺失", "不足", "无依据")
-            ):
-                return "missing_evidence"
-            if any(word in message for word in ("诊疗", "处方", "剂量", "安全越界")):
-                return "safety_violation"
-            # 知识性正误：审核/专家辨识出的"判断错误"必须可返修，
-            # 不能像表达偏好那样无痕放行。
-            if any(
-                word in message
-                for word in (
-                    "事实错误", "判定错误", "判断错误", "答案错误", "概念错误",
-                    "判错", "选错", "写错", "错误结论", "知识点错误",
-                    "说法错误", "不准确", "以偏概全", "因果颠倒",
-                    "明确相反", "直接相反", "明确否定", "直接否定",
-                )
-            ):
-                return "factual_error"
-            # A generic source disagreement is not automatically a factual
-            # error.  This branch intentionally follows the explicit-error
-            # branch so prose such as "与教材明确相反，属于事实错误" cannot
-            # be downgraded merely because it also contains "证据冲突".
-            if "证据" in message and any(word in message for word in ("冲突", "矛盾")):
-                return "conflicting_evidence"
-            if subject_type in {"long_term_plan", "short_term_plan"}:
-                return "plan_quality"
-            if subject_type == "exam_paper":
-                return "paper_item_invalid"
-            return "content_quality"
-
-        return CompiledAuditFindings(
-            status="compiled",
-            issues=[
-                {
-                    "issue_type": issue_type(message),
-                    "message": message,
-                    "blocking": not any(
-                        word in message
-                        for word in (
-                            "建议", "可选", "还可以", "可在", "可继续",
-                            "略", "后续", "进一步优化", "润色", "非阻断",
-                        )
-                    ),
-                    "location_keys": [whole],
-                    "source_anchors": [
-                        {"source_field": "findings", "source_quote": message}
-                    ],
-                }
-                for message in findings
-                if str(message).strip()
-            ],
         )
 
     @staticmethod
@@ -171,9 +101,8 @@ class AuditFindingsCompilerAgent:
             # The compiler is a source-preserving boundary, not a second
             # auditor.  Silently dropping every supplied finding would turn a
             # model-detected factual error into an empty repair plan.  Mark
-            # that as an integrity failure so the caller can use the bounded
-            # deterministic fallback (verbatim finding + system-owned whole
-            # subject location) rather than inventing content or escalating.
+            # that as an integrity failure for the same compiler to correct;
+            # program code must not infer issue semantics as a fallback.
             return [
                 {
                     "code": "schema_invalid",

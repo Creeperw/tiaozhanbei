@@ -22,6 +22,7 @@ def fixture():
             {"stage_id": "stage-2", "duration_days": 20, "schedule_summary": "比较方证并产出对比表，通过案例辨析验收。", "acceptance": []},
         ],
         "field_anchors": {
+            "/selection_mode": [{"source_field": "plan_document", "source_quote": "当前stage-1，《基础》，诊断。"}],
             "/stages/0/stage_id": [{"source_field": "plan_document", "source_quote": "stage-1 《基础》 建立基础与阅读能力\n阶段1共10天，阅读基础并产出卡片，通过闭卷说明验收。"}],
             "/stages/1/stage_id": [{"source_field": "plan_document", "source_quote": "stage-2 《方剂学》\n阶段2共20天，比较方证并产出对比表，通过案例辨析验收。"}],
             "/stages/0/duration_days": [{"source_field": "plan_document", "source_quote": "阶段1共10天"}],
