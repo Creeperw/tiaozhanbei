@@ -516,6 +516,10 @@ class KnowledgeTextImportRequest(MarkdownImportRequest):
 
 class ConversationCreateRequest(BaseModel):
     title: str = Field(default="新对话", min_length=1, max_length=120)
+    # 系统自有枚举，由拥有该会话的入口声明。产品内置向导（学习路径规划）在创建
+    # 时就把会话标为 system，否则在首个工作流落库之前它会短暂地以用户会话身份
+    # 出现在 AI 助手历史里。
+    source: Literal["user", "system"] = "user"
 
 
 class DifficultyTagRequest(BaseModel):
@@ -2886,15 +2890,13 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     async def list_conversations(request: Request) -> list[dict]:
         user = current_user(request)
         repository = container.review_card_use_case.conversation_repository
-        sessions = repository.list_sessions(user.user_id)
-        internal_due_review_prefix = "请为以下已到期知识点生成一张可立即学习的复习卡："
-        return [
-            session
-            for session in sessions
-            if not str(session.get("title") or "").startswith(
-                internal_due_review_prefix
-            )
-        ]
+        # ``list_sessions`` already hides every ``source='system'`` session, which
+        # now covers both the server-dispatched review cards and the frontend-driven
+        # learning-path wizard.  A second filter matching the internal prompt's
+        # opening words used to stand in for that classification; it is gone because
+        # deciding "is this a machine-generated session?" from the title text is
+        # both unreliable and the wrong place to make the decision.
+        return repository.list_sessions(user.user_id)
 
     @app.post("/api/v1/conversations", status_code=201)
     async def create_conversation(
@@ -2903,7 +2905,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         user = current_user(request)
         session_id = f"CONV_{uuid4().hex}"
         repository = container.review_card_use_case.conversation_repository
-        repository.create_session(session_id, user.user_id, payload.title.strip())
+        repository.create_session(session_id, user.user_id, payload.title.strip(), source=payload.source)
         return {"id": session_id, "title": payload.title.strip()}
 
     @app.get("/api/v1/conversations/{session_id}/messages")

@@ -1,7 +1,39 @@
 import json
 from pathlib import Path
 
-from competition_app.runtime.snapshot import SnapshotExporter
+from competition_app.runtime.snapshot import INTERNAL_HANDLE, SnapshotExporter
+
+
+def test_internal_handle_definition_covers_the_shapes_that_reach_the_browser() -> None:
+    """内部标识符定义必须覆盖生产环境实际透出的句柄形态。
+
+    这份定义是 prose 与 JSON 两条浏览器边界共用的唯一来源；漏掉一种形态就会
+    让过程面板重新出现机器句柄。取值全部来自生产渲染出的过程面板。
+    """
+
+    for handle in (
+        "USER_5303c3e61f954a6297b97202cd3b11b6",
+        "EP_0ce994058df141159a0c2dee6d04a48e",
+        "EP_SCOPE_EXE_1",
+        "DRAFT_bc1548f2ff1a44e09320a8ada3e5af8a",
+        "AUDIT_037ad5770b254aa5a4ac674573dace9d",
+        "C_d255a09b56cc4f8e8e3863cd776cfbe8",
+        "KP_9f2c8d1e",
+        "THREAD_abc123",
+        "EVID_SECRET_1",
+        "E_CHUNK_中医学基础_clean:00011",
+        "E_VECTOR_3",
+        "E_EXA_KNOWLEDGE_1",
+    ):
+        assert INTERNAL_HANDLE.fullmatch(handle), handle
+
+    for ordinary in (
+        "整体观念与辨证论治",
+        "E_1",
+        "知识讲解",
+        "仅用于中医药教学训练，不构成诊疗建议。",
+    ):
+        assert not INTERNAL_HANDLE.fullmatch(ordinary), ordinary
 
 
 def test_snapshot_redacts_sensitive_values_inside_regular_fields(tmp_path: Path) -> None:

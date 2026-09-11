@@ -8,6 +8,42 @@ from typing import Any
 from pydantic import BaseModel
 
 
+# 内部标识符（编译器/服务端自己生成的句柄）：对学习者没有意义，任何面向浏览器
+# 的投影都必须去掉。这里放唯一一份定义，prose 与 JSON 两条边界共用——否则会
+# 出现「自然语言已隐藏、结构化产出仍原样透出」的漏洞。
+INTERNAL_HANDLE_PREFIXES = (
+    "EVID",
+    "ART",
+    "EXEC",
+    "TRACE",
+    "REQ",
+    "CASE",
+    "KP",
+    "RULE",
+    "THREAD",
+    "UNIT",
+    "MODEL_CALL",
+    "DRAFT",
+    "EP",
+    "AUDIT",
+    "USER",
+    "GENERATED",
+)
+
+# 三种形态：
+#  1) 任意前缀 + uuid4().hex —— 不依赖前缀名单，新增的 ``SOMETHING_<uuid>``
+#     句柄会被自动覆盖（USER_/EP_/DRAFT_/AUDIT_/C_ 等都属于这一形态）；
+#  2) 名单内的前缀 + ASCII 后缀（KP_…/THREAD_…/EP_SCOPE_…/RULE_…）；
+#  3) 证据句柄，后缀含中文，例如 E_CHUNK_中医学基础_clean:00011。
+INTERNAL_HANDLE_PATTERN = (
+    r"[A-Z][A-Z0-9]*_[0-9a-f]{32,}"
+    rf"|(?:{'|'.join(INTERNAL_HANDLE_PREFIXES)})_[A-Za-z0-9_.:\-]+"
+    r"|E_(?:CHUNK|VECTOR|EXA|WEB|CONCEPT)_[A-Za-z0-9_.:\-\u4e00-\u9fff]+"
+)
+
+INTERNAL_HANDLE = re.compile(INTERNAL_HANDLE_PATTERN)
+
+
 SENSITIVE_KEY = re.compile(
     r"(?:^|[_-])(?:"
     r"api[_-]?key|password|passwd|authorization|dsn|"

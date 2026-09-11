@@ -412,6 +412,67 @@ async def test_system_operation_creates_lightweight_hidden_session() -> None:
 
 
 @pytest.mark.asyncio
+async def test_built_in_wizard_surface_hides_the_session_but_keeps_the_reply() -> None:
+    """产品内置向导（conversation_surface=system_task）不出现在 AI 助手历史里。
+
+    与 system_operation 的区别：system_operation 表示「这一轮没有会话内的消费
+    方」，所以不落库 assistant 回复；而学习路径规划是同一会话的多阶段向导，后
+    续阶段要靠已落库的上下文摘要接续，所以回复必须完整保留。
+    """
+    repository = InMemoryReviewRepository()
+    service = ReviewService(repository)
+    use_case = _use_case(_decision("reduce_capacity"), service)
+    request = _request("L1", "少安排一点复习")
+    request.conversation_surface = "system_task"
+    result = await use_case.execute(request)
+
+    assert result.status == "success"
+    conversation = use_case.conversation_repository
+    assert conversation.sessions["THREAD_REVIEW_ADJUST"]["source"] == "system"
+    assert conversation.list_sessions("L1") == []
+    messages = conversation.get_messages("THREAD_REVIEW_ADJUST", "L1")
+    assert [item.get("role") for item in messages] == ["user", "assistant"]
+
+
+@pytest.mark.asyncio
+async def test_system_sessions_do_not_take_the_internal_prompt_as_their_title() -> None:
+    """系统会话的标题不得来自内部指令原文。
+
+    规划向导的首条消息是服务端拼的内部指令（【当前考试】…【执行要求】…）。
+    把它截断成 40 字当标题，会让会话在排障日志和任何按来源展示的地方留下一条
+    机器指令；调用方已经给了可读标题，服务端不该覆盖它。
+    """
+    repository = InMemoryReviewRepository()
+    service = ReviewService(repository)
+    use_case = _use_case(_decision("reduce_capacity"), service)
+    internal_prompt = (
+        "【当前考试】中医执业医师资格考试（考试标识：EXAM_2025_TCM_PHYS）\n"
+        "【当前任务】生成长期学习计划\n"
+        "【执行要求】只输出计划本身。"
+    )
+    request = _request("L1", internal_prompt)
+    request.conversation_surface = "system_task"
+    await use_case.execute(request)
+
+    conversation = use_case.conversation_repository
+    title = conversation.sessions["THREAD_REVIEW_ADJUST"]["title"]
+    assert title == "新对话"
+    assert "【当前考试】" not in title
+
+
+@pytest.mark.asyncio
+async def test_user_sessions_still_take_their_first_message_as_the_title() -> None:
+    """用户会话仍以首条消息命名——收紧系统会话不能顺带弄丢这个行为。"""
+    repository = InMemoryReviewRepository()
+    service = ReviewService(repository)
+    use_case = _use_case(_decision("reduce_capacity"), service)
+    await use_case.execute(_request("L1", "复习任务太多了，少安排一点"))
+
+    conversation = use_case.conversation_repository
+    assert conversation.sessions["THREAD_REVIEW_ADJUST"]["title"] == "复习任务太多了，少安排一点"
+
+
+@pytest.mark.asyncio
 async def test_user_operation_keeps_full_conversation_visible() -> None:
     """用户发起的任务（无 system_operation）保持完整会话：可见、含 assistant 回复。"""
     repository = InMemoryReviewRepository()

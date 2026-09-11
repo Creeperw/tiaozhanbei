@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ASSISTANT_WORKFLOW_COMPLETED_EVENT } from './assistantWorkflowEvents';
 import {
   compactAssistantContent,
   getAssistantPendingRun,
@@ -10,6 +11,48 @@ import {
 describe('chatSessionClient', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => vi.unstubAllGlobals());
+
+  it('preserves the original run and session when the response disconnects', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network error')));
+    let failure;
+    try { await streamAssistantMessageOutcome('session-disconnect', '制定规划'); } catch (error) { failure = error; }
+    expect(failure).toMatchObject({ sessionId: 'session-disconnect', runId: expect.stringMatching(/^THREAD_/) });
+    expect(JSON.parse(localStorage.getItem('assistantPendingWorkflowRuns'))['session-disconnect']).toBe(failure.runId);
+  });
+
+  it.each(['completed', 'interrupted', 'failed'])('notifies the page only for completed background runs: %s', async (status) => {
+    localStorage.setItem('assistantPendingWorkflowRuns', JSON.stringify({ session: 'THREAD_TEST' }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ status }), { status: 200 })));
+    const listener = vi.fn();
+    window.addEventListener(ASSISTANT_WORKFLOW_COMPLETED_EVENT, listener);
+    try {
+      await getAssistantPendingRun('session');
+      expect(listener).toHaveBeenCalledTimes(status === 'completed' ? 1 : 0);
+    } finally {
+      window.removeEventListener(ASSISTANT_WORKFLOW_COMPLETED_EVENT, listener);
+    }
+  });
+
+  it('notifies the page after a completed stream, not for intermediate progress', async () => {
+    const events = [
+      { event: 'run_started' },
+      { event: 'step_completed' },
+      { event: 'run_completed', result: { status: 'success' }, assistant_message: '任务已保存' },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''),
+      { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+    )));
+    const listener = vi.fn();
+    window.addEventListener(ASSISTANT_WORKFLOW_COMPLETED_EVENT, listener);
+    try {
+      await streamAssistantMessage('session', '更新今日任务');
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener.mock.calls[0][0].detail.sessionId).toBe('session');
+    } finally {
+      window.removeEventListener(ASSISTANT_WORKFLOW_COMPLETED_EVENT, listener);
+    }
+  });
 
   it('removes workflow protocol markers and hidden thinking from compact answers', () => {
     const raw = '<think>内部推理</think><<STATUS:searching:检索中>><<EV:{"type":"node_started","text":"教材 <<REFS:[{\\"title\\":\\"证据\\"}]>> 与普通 >> 文本"}>>四君子汤主治脾胃气虚证。';

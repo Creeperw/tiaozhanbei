@@ -7,7 +7,10 @@ import time
 from contextvars import ContextVar, Token
 from typing import Any, Callable
 
-from competition_app.runtime.snapshot import _sanitize
+from competition_app.runtime.snapshot import (
+    INTERNAL_HANDLE_PATTERN,
+    _sanitize,
+)
 
 
 EventSink = Callable[[dict[str, Any]], None]
@@ -45,9 +48,13 @@ _PUBLIC_RUNTIME_DROP_FIELDS = frozenset(
 
 _INTERNAL_PUBLIC_TEXT_PATTERN = re.compile(
     r"(?:<<(?:STATUS|EV|REFS|VIDEOS|PLAN|EXEC):[\s\S]*?(?:}>>|]>>))"
-    r"|(?:\b(?:EVID|ART|EXEC|TRACE|REQ|CASE|KP|RULE|THREAD|UNIT|MODEL_CALL|PAPER_DRAFT|GENERATED)_[A-Za-z0-9_.:-]+\b)"
+    rf"|(?:\b(?:{INTERNAL_HANDLE_PATTERN})\b)"
     r"|(?:\bpossible_new__[A-Za-z0-9_.:-]+\b)"
 )
+
+# 整个值就是一个内部标识（或只含编译器锚点）时用这个占位符，而不是留空字符串：
+# 空值会被读成「数据缺失」，而事实是「已隐藏」，两者对用户的意思完全不同。
+HIDDEN_INTERNAL_HANDLE = "[内部标识]"
 
 # Reasoning is intentionally still shown in the UI, but provider reasoning is
 # not a trusted presentation channel.  In addition to JSON echoes, some
@@ -93,10 +100,15 @@ def _strip_top_level_json(text: str) -> str:
     cursor = 0
     length = len(text)
     while cursor < length:
-        # 跳过空白
+        # 跳过空白只用于判断下一个字符是不是 JSON 起始符；被跳过的空白必须
+        # 随正文一起保留。provider 按 token 下发 reasoning，英文词边界完全由
+        # token 的前导空格承载，一旦在这里丢弃就会拼成 ``Theuserasks``。
+        segment_start = cursor
         while cursor < length and text[cursor] in " \t\r\n":
             cursor += 1
         if cursor >= length:
+            # 尾部只剩空白：原样保留，由调用方决定是否裁剪文档边缘。
+            stripped.append(text[segment_start:])
             break
         ch = text[cursor]
         if ch not in "{[":
@@ -106,7 +118,7 @@ def _strip_top_level_json(text: str) -> str:
                 idx = text.find(marker, cursor)
                 if idx != -1 and idx < next_brace:
                     next_brace = idx
-            stripped.append(text[cursor:next_brace])
+            stripped.append(text[segment_start:next_brace])
             cursor = next_brace
             continue
         # 尝试解析从 cursor 开始的 JSON 值
@@ -139,12 +151,23 @@ def _strip_prompt_echo(text: str) -> str:
     return "".join(kept)
 
 
-def _bounded_public_text(value: Any, *, limit: int = 700) -> str:
+def _bounded_public_text(
+    value: Any,
+    *,
+    limit: int = 700,
+    strip_edges: bool = True,
+) -> str:
     """Return a learner-safe, bounded natural-language fragment.
 
     Agent envelopes contain compiler contracts and internal identifiers.  The
     collaboration UI must therefore use an allow-list projection instead of
     serialising arbitrary model output or trying to hide fields afterwards.
+
+    ``strip_edges`` controls document-level edge trimming.  It must stay
+    ``True`` for whole documents (committed prose, stage payloads) and be set
+    to ``False`` for streaming fragments: the browser concatenates deltas
+    verbatim, so trimming a delta's leading whitespace glues tokens together
+    (``Theuserasks``).
     """
 
     if isinstance(value, (dict, list, tuple, set)):
@@ -161,9 +184,16 @@ def _bounded_public_text(value: Any, *, limit: int = 700) -> str:
     text = _strip_top_level_json(text)
     text = _strip_prompt_echo(text)
     text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    if strip_edges:
+        text = text.strip()
     if len(text) > limit:
-        text = text[:limit].rstrip("，,；;。 ") + "……"
+        if strip_edges:
+            text = text[:limit].rstrip("，,；;。 ") + "……"
+        else:
+            # A streaming fragment is concatenated verbatim by the browser, so
+            # truncation must not inject a document-level ellipsis into it.
+            text = text[:limit]
     return text
 
 
@@ -191,9 +221,36 @@ def _agent_payload(output: Any) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _public_json_string(value: str) -> str:
+    """把结构化产出里的单个字符串投影成面向学习者的文本。
+
+    ``_sanitize`` 只负责凭证脱敏，不管内部标识符；阶段产出是 Agent 契约的
+    完整 dump，因此 ``learner_id``/``evidence_pack_id``/``resource_draft_id``/
+    ``audit_result_id`` 这类句柄会原样透出到过程面板。这里复用自然语言那条
+    边界上的同一份定义，保证两条路径口径一致。
+    """
+
+    text = _INTERNAL_PUBLIC_TEXT_PATTERN.sub("", value)
+    if text.strip() == value.strip():
+        return text
+    return text if text.strip() else HIDDEN_INTERNAL_HANDLE
+
+
+def _public_json_value(value: Any) -> Any:
+    """递归地把结构化产出投影到浏览器安全形态。"""
+
+    if isinstance(value, dict):
+        return {key: _public_json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_public_json_value(item) for item in value]
+    if isinstance(value, str):
+        return _public_json_string(value)
+    return value
+
+
 def _public_json_block(value: dict[str, Any]) -> str:
     return "```json\n" + json.dumps(
-        _sanitize(value),
+        _public_json_value(_sanitize(value)),
         ensure_ascii=False,
         indent=2,
         default=str,
@@ -285,8 +342,13 @@ def public_runtime_event(event: dict[str, Any]) -> dict[str, Any]:
         # page refresh after completion still restores the thought block.
         projected["event"] = event_type.replace("reasoning_", "agent_reasoning_", 1)
         if event_type == "reasoning_delta":
+            # Persisted deltas are replayed by concatenating them verbatim, so
+            # this fragment must keep its edge whitespace.  The provider emits
+            # one token per delta and English word boundaries ride on the
+            # leading space; trimming here renders ``The user asks`` as
+            # ``Theuserasks``.
             projected["delta"] = _bounded_public_text(
-                sanitized.get("delta"), limit=2_000
+                sanitized.get("delta"), limit=2_000, strip_edges=False
             )
         return projected
     if event_type == "graph_compiled":

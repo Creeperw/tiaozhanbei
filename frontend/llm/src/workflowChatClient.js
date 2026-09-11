@@ -362,6 +362,7 @@ export async function streamWorkflowTurn({
   availableMinutes = null,
   currentPage = null,
   examConstraints = null,
+  conversationSurface = null,
   signal,
   onEvent,
   onEvents,
@@ -381,6 +382,7 @@ export async function streamWorkflowTurn({
         ...(Number.isFinite(availableMinutes) ? { available_minutes: availableMinutes } : {}),
         ...(currentPage ? { current_page: currentPage } : {}),
         ...(examConstraints ? { exam_constraints: examConstraints } : {}),
+        ...(conversationSurface ? { conversation_surface: conversationSurface } : {}),
         messages: messages
           .map(({ id, role, content }) => ({
             message_id: id || undefined,

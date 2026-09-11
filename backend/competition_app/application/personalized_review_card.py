@@ -50,6 +50,8 @@ from competition_app.runtime.event_stream import (
 )
 from competition_app.runtime.debug_trace import (
     DebugTraceManager,
+    bind_debug_trace,
+    reset_debug_trace,
     record_debug_trace,
     update_debug_trace_metadata,
 )
@@ -190,6 +192,13 @@ class ReviewCardRequest(BaseModel):
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_scope_hint: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     system_operation: Literal["due_review_dispatch", "plan_review_replan"] | None = None
+    # System-owned enum sent by the entry point that drives the run.  It answers
+    # a different question from ``system_operation``: that one says "the server
+    # started this task on its own", this one says "this session is not part of
+    # the user's chat history".  A wizard that shows its own progress dialog
+    # instead of a chat transcript declares itself here, so the session can be
+    # classified without ever inspecting open user text.
+    conversation_surface: Literal["assistant_chat", "system_task"] | None = None
     current_page: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -344,6 +353,29 @@ class PersonalizedReviewCardUseCase:
         self._continuations: dict[str, _WorkflowContinuation] = {}
         self._deferred_memory_conflict_notice: dict[str, Any] | None = None
 
+    def _open_debug_run(self, thread_id: str, **metadata: Any):
+        # Even disabled runs bind None so an outer request cannot leak its sink.
+        writer = None
+        try:
+            if self.debug_trace_manager is not None:
+                writer = self.debug_trace_manager.open(thread_id, metadata={
+                    "thread_id": thread_id, **metadata,
+                })
+        except Exception:
+            pass  # Diagnostics must never block a workflow.
+        return bind_debug_trace(writer), writer
+
+    @staticmethod
+    def _close_debug_run(token, writer) -> None:
+        try:
+            if writer is not None:
+                writer.record("run_trace_closed")
+                writer.close()
+        except Exception:
+            pass
+        finally:
+            reset_debug_trace(token)
+
     async def execute(
         self,
         request: ReviewCardRequest,
@@ -353,16 +385,23 @@ class PersonalizedReviewCardUseCase:
         failure_step_token = _FAILURE_STEP_CONTEXT.set(None)
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
         conversation_id = request.conversation_id or thread_id
-        # 系统自动任务（如到期复习卡调度）只保留轻量会话：会话标记为
-        # system（不出现在用户侧边栏），且不落库 assistant 回复，仅保留
-        # 请求消息用于排查。用户发起的任务保持 user 会话完整语义。
-        conversation_source = "system" if request.system_operation else "user"
+        # 会话来源决定该会话是否出现在用户侧边栏，它由两个系统自有枚举决定，
+        # 用户自由文本一律不参与判定：
+        # * ``system_operation``：服务端自发任务（到期复习卡调度、计划复审）；
+        # * ``conversation_surface == "system_task"``：由前端程序化驱动、以产品
+        #   内置向导呈现的流程（学习路径规划）。它自带进度对话框，不是用户的
+        #   聊天记录，因此同样不应出现在 AI 助手历史里。
+        conversation_source = self._conversation_source(request)
         operation_id = request.operation_id or thread_id
         operation_digest = hashlib.sha256(
             f"{request.learner_id}:{operation_id}".encode("utf-8")
         ).hexdigest()[:32]
         execution_id = f"EXE_{operation_digest}"
         case_id = f"CASE_{operation_digest}"
+        debug_token, debug_writer = self._open_debug_run(
+            thread_id, execution_id=execution_id, case_id=case_id,
+            learner_id=request.learner_id,
+        )
         update_debug_trace_metadata(
             execution_id=execution_id,
             case_id=case_id,
@@ -430,6 +469,7 @@ class PersonalizedReviewCardUseCase:
             # later, unrelated audit failure in a reused worker context.
             _FAILURE_STEP_CONTEXT.reset(failure_step_token)
             reset_provider_session(provider_session_token)
+            self._close_debug_run(debug_token, debug_writer)
 
     async def _execute_review_task_adjustment(
         self,
@@ -633,7 +673,7 @@ class PersonalizedReviewCardUseCase:
             learner_id,
             persisted_messages,
             result,
-            persist=conversation_source == "user",
+            persist=self._persist_assistant_message(request),
         )
         return result
 
@@ -761,7 +801,10 @@ class PersonalizedReviewCardUseCase:
             persisted_for_save,
             source=conversation_source,
         )
-        if not existing_messages:
+        if not existing_messages and conversation_source == "user":
+            # 只有用户会话才用首条消息做标题。系统会话的首条消息是内部指令
+            # （例如学习路径规划的【当前考试】…），拿它当标题会在侧边栏与排障
+            # 日志里留下一条被截断的机器指令，而调用方已经给了可读标题。
             _FAILURE_STEP_CONTEXT.set("persistence")
             self.conversation_repository.rename_session(
                 conversation_id,
@@ -1391,7 +1434,7 @@ class PersonalizedReviewCardUseCase:
                 request.learner_id,
                 persisted_messages,
                 result,
-                persist=conversation_source == "user",
+                persist=self._persist_assistant_message(request),
             )
             return result
         if planner_output.payload.task_type == "review_task_adjustment":
@@ -1554,7 +1597,7 @@ class PersonalizedReviewCardUseCase:
                 request.learner_id,
                 persisted_messages,
                 result,
-                persist=conversation_source == "user",
+                persist=self._persist_assistant_message(request),
             )
             return result
         _FAILURE_STEP_CONTEXT.set("paper_blueprint" if smart_paper_v2 else "planner")
@@ -1691,7 +1734,7 @@ class PersonalizedReviewCardUseCase:
                 request.learner_id,
                 persisted_messages,
                 interrupted,
-                persist=conversation_source == "user",
+                persist=self._persist_assistant_message(request),
             )
             return interrupted
         if execution.status == "waiting_human_review":
@@ -1719,7 +1762,7 @@ class PersonalizedReviewCardUseCase:
                 request.learner_id,
                 persisted_messages,
                 result,
-                persist=conversation_source == "user",
+                persist=self._persist_assistant_message(request),
             )
             return result
         if execution.status != "success":
@@ -1754,7 +1797,7 @@ class PersonalizedReviewCardUseCase:
             request.learner_id,
             persisted_messages,
             result,
-            persist=conversation_source == "user",
+            persist=self._persist_assistant_message(request),
         )
         return result
 
@@ -1764,6 +1807,7 @@ class PersonalizedReviewCardUseCase:
         request: WorkflowResumeRequest,
     ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         failure_step_token = _FAILURE_STEP_CONTEXT.set(None)
+        debug_token, debug_writer = self._open_debug_run(thread_id, resumed=True)
         record_debug_trace("run_resumed", request=request)
         record_debug_trace("run_started", resumed=True, user_request=request.answer)
         provider_session_token = bind_provider_session(thread_id)
@@ -1794,6 +1838,7 @@ class PersonalizedReviewCardUseCase:
         finally:
             _FAILURE_STEP_CONTEXT.reset(failure_step_token)
             reset_provider_session(provider_session_token)
+            self._close_debug_run(debug_token, debug_writer)
 
     async def _resume_started_run(
         self,
@@ -1912,27 +1957,32 @@ class PersonalizedReviewCardUseCase:
             self.raise_if_run_cancelled(thread_id)
             await self.orchestrator.abandon_thread(thread_id)
             self._continuations.pop(thread_id, None)
-            return await self._execute_started_run(
-                request=ReviewCardRequest(
-                    learner_id=continuation.request.learner_id,
-                    user_request=request.answer,
-                    user_profile=continuation.request.user_profile,
-                    available_minutes=continuation.request.available_minutes,
-                    thread_id=thread_id,
-                    conversation_id=conversation_id,
-                    current_page=request.current_page,
-                    plan_scope_hint=(
-                        request.plan_scope
-                        or (
-                            continuation.context.get("requested_plan_scope")
-                            if interrupt_payload.get("interrupt_type") == "planning_focus_resolution"
-                            else None
-                        )
-                    ),
-                ),
+            # 重建请求时必须带上原有的会话归属字段，否则系统会话会在这一步
+            # 被当成用户会话写回，重新出现在侧边栏。
+            replanned_request = ReviewCardRequest(
+                learner_id=continuation.request.learner_id,
+                user_request=request.answer,
+                user_profile=continuation.request.user_profile,
+                available_minutes=continuation.request.available_minutes,
                 thread_id=thread_id,
                 conversation_id=conversation_id,
-                conversation_source="user",
+                current_page=request.current_page,
+                system_operation=continuation.request.system_operation,
+                conversation_surface=continuation.request.conversation_surface,
+                plan_scope_hint=(
+                    request.plan_scope
+                    or (
+                        continuation.context.get("requested_plan_scope")
+                        if interrupt_payload.get("interrupt_type") == "planning_focus_resolution"
+                        else None
+                    )
+                ),
+            )
+            return await self._execute_started_run(
+                request=replanned_request,
+                thread_id=thread_id,
+                conversation_id=conversation_id,
+                conversation_source=self._conversation_source(replanned_request),
                 execution_id=continuation.execution_id,
                 case_id=continuation.case_id,
             )
@@ -2120,20 +2170,24 @@ class PersonalizedReviewCardUseCase:
                     await self.orchestrator.abandon_thread(thread_id)
                 except Exception:
                     pass
-                return await self._execute_started_run(
-                    request=ReviewCardRequest(
-                        learner_id=continuation.request.learner_id,
-                        user_request=request.answer,
-                        available_minutes=continuation.request.available_minutes,
-                        thread_id=thread_id,
-                        conversation_id=continuation.request.conversation_id
-                        or thread_id,
-                        current_page=request.current_page,
-                    ),
+                # 新任务分支同样要继承会话归属，避免系统会话被写回用户会话。
+                detached_request = ReviewCardRequest(
+                    learner_id=continuation.request.learner_id,
+                    user_request=request.answer,
+                    available_minutes=continuation.request.available_minutes,
                     thread_id=thread_id,
                     conversation_id=continuation.request.conversation_id
                     or thread_id,
-                    conversation_source="user",
+                    current_page=request.current_page,
+                    system_operation=continuation.request.system_operation,
+                    conversation_surface=continuation.request.conversation_surface,
+                )
+                return await self._execute_started_run(
+                    request=detached_request,
+                    thread_id=thread_id,
+                    conversation_id=continuation.request.conversation_id
+                    or thread_id,
+                    conversation_source=self._conversation_source(detached_request),
                     execution_id=continuation.execution_id,
                     case_id=continuation.case_id,
                 )
@@ -2762,6 +2816,29 @@ class PersonalizedReviewCardUseCase:
         if fallback_scope in {"long_term", "short_term", "daily_task"}:
             return fallback_scope, None, False
         return None, None, False
+
+    @staticmethod
+    def _conversation_source(request: ReviewCardRequest) -> str:
+        """该请求对应的会话是否属于用户的聊天历史。
+
+        只看系统自有枚举，绝不检查用户文本——用首条消息的内容或关键词去猜
+        「这是不是机器生成的请求」既不可靠，也会把用户真实输入误判成系统会话。
+        """
+        if request.system_operation or request.conversation_surface == "system_task":
+            return "system"
+        return "user"
+
+    @staticmethod
+    def _persist_assistant_message(request: ReviewCardRequest) -> bool:
+        """服务端自发任务只保留轻量会话，不落库 assistant 回复。
+
+        ``system_operation`` 意味着整轮结果没有会话内的消费方，只留请求消息
+        供排查，避免在用户对话历史之外制造无人读取的副本。
+
+        产品内置向导（学习路径规划）虽然同样不出现在侧边栏，但同一会话的后
+        继阶段要靠已落库的上下文摘要接续，所以仍完整落库，不能跟着一起跳过。
+        """
+        return request.system_operation is None
 
     def _save_assistant_message(
         self,

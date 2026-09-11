@@ -47,7 +47,13 @@ def test_conversation_crud_is_owned_by_authenticated_user(tmp_path: Path) -> Non
     assert alice.delete(f"/api/v1/conversations/{conversation_id}").status_code == 200
 
 
-def test_conversation_list_hides_internal_due_review_dispatches(tmp_path: Path) -> None:
+def test_conversation_list_hides_system_sessions(tmp_path: Path) -> None:
+    """系统会话不出现在侧边栏，且判定只看系统自有枚举。
+
+    这里刻意让标题就是内部提示词原文：如果过滤还依赖标题文本，这条断言会失败。
+    用提示词开头几个字去猜「这是不是机器生成的会话」既不可靠，也会把用户真实
+    输入误判成系统会话。
+    """
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     client = TestClient(create_app(container))
     user = register(client, "conversation-internal-review")
@@ -56,12 +62,35 @@ def test_conversation_list_hides_internal_due_review_dispatches(tmp_path: Path) 
         "THREAD_DUE_REVIEW_INTERNAL_1",
         user["user_id"],
         "请为以下已到期知识点生成一张可立即学习的复习卡：四君子汤",
+        source="system",
     )
     visible = client.post("/api/v1/conversations", json={"title": "方剂问答"}).json()
 
     sessions = client.get("/api/v1/conversations").json()
 
     assert [session["id"] for session in sessions] == [visible["id"]]
+
+
+def test_built_in_wizard_session_is_created_hidden(tmp_path: Path) -> None:
+    """学习路径规划向导在创建时就声明自己是系统会话。
+
+    否则在首个工作流落库之前，它会以用户会话身份短暂出现在 AI 助手历史里；
+    用户中途关掉页面、工作流从未落库时，这条会话就会永久留在侧边栏。
+    """
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    client = TestClient(create_app(container))
+    register(client, "conversation-wizard")
+
+    wizard = client.post(
+        "/api/v1/conversations",
+        json={"title": "中医执业医师资格考试个性化学习路径", "source": "system"},
+    ).json()
+    visible = client.post("/api/v1/conversations", json={"title": "方剂问答"}).json()
+
+    sessions = client.get("/api/v1/conversations").json()
+
+    assert [session["id"] for session in sessions] == [visible["id"]]
+    assert wizard["id"] not in [session["id"] for session in sessions]
 
 
 def test_workflow_messages_are_persisted_under_conversation_not_run(tmp_path: Path) -> None:

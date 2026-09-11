@@ -1,5 +1,6 @@
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { removeTraceEventsFromContent } from './chatProtocol';
+import { notifyAssistantWorkflowCompleted } from './assistantWorkflowEvents';
 import {
   createWorkflowRunId,
   getWorkflowRun,
@@ -84,10 +85,10 @@ export function listAssistantSessions() {
   return jsonRequest('/conversations');
 }
 
-export function createAssistantSession(title = '新对话') {
+export function createAssistantSession(title = '新对话', { source = 'user' } = {}) {
   return jsonRequest('/conversations', {
     method: 'POST',
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, source }),
   });
 }
 
@@ -102,6 +103,7 @@ export async function getAssistantPendingRun(sessionId) {
   // server-owned run record is queryable.  Treat the initial 404 as a startup
   // race instead of immediately discarding the checkpoint needed for resume.
   const run = await getWorkflowRunWithStartupGrace(runId);
+  notifyAssistantWorkflowCompleted(sessionId, runId, run?.status);
   if (!run || ['completed', 'failed', 'waiting_human_review', 'cancelled'].includes(run.status)) {
     rememberPendingRun(sessionId, null);
   }
@@ -113,6 +115,7 @@ export async function streamAssistantMessageOutcome(sessionId, content, {
   onProgress,
   signal,
   currentPage = null,
+  conversationSurface = null,
 } = {}) {
   const storedRunId = readPendingRuns()[sessionId] || null;
   let pending = null;
@@ -134,11 +137,16 @@ export async function streamAssistantMessageOutcome(sessionId, content, {
   rememberPendingRun(sessionId, runId);
   const progress = [];
   let lastProgress = '';
-  const outcome = await streamWorkflowTurn({
+  let outcome;
+  try {
+    outcome = await streamWorkflowTurn({
     conversationId: sessionId,
     runId,
     answer: content,
     currentPage,
+    // 系统自有枚举：产品内置向导（学习路径规划）自带进度对话框，不是用户的
+    // 聊天记录，后端据此把它排除在 AI 助手历史之外。用户自由文本不参与判定。
+    conversationSurface,
     signal,
     resume: Boolean(pending),
     onEvent: (event, traceEvent) => {
@@ -152,12 +160,20 @@ export async function streamAssistantMessageOutcome(sessionId, content, {
       progress.push(text);
       onUpdate?.(text);
     },
-  });
+    });
+  } catch (reason) {
+    // A disconnected response is not evidence that the server stopped.
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    error.sessionId = sessionId;
+    error.runId = runId;
+    throw error;
+  }
   // A background status poll may have observed the short startup 404 and
   // cleared the local entry while this stream was still active.  Reassert the
   // authoritative interrupted run id at the terminal boundary so the user's
   // next answer resumes the same checkpoint rather than creating a new run.
   rememberPendingRun(sessionId, outcome.status === 'interrupted' ? runId : null);
+  notifyAssistantWorkflowCompleted(sessionId, runId, outcome.status);
   const visible = compactAssistantContent(outcome.message);
   onUpdate?.(visible);
   return { ...outcome, visible, runId };

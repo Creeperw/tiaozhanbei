@@ -1,6 +1,7 @@
 from competition_app.runtime.event_stream import (
     RecordingEventSink,
     bind_event_sink,
+    build_public_agent_output,
     emit_runtime_event,
     project_public_business_text,
     public_runtime_event,
@@ -163,6 +164,13 @@ def test_public_system_output_exposes_complete_validated_stage_payload() -> None
 
 
 def test_public_knowledge_output_keeps_complete_validated_contract() -> None:
+    """阶段产出保留完整契约结构，但其中的内部句柄与编译器锚点必须隐藏。
+
+    ``EVID_`` 句柄在这里只是填充值：契约字段（``evidence_items``、
+    ``retrieval_summary``）与自然语言摘要要完整可见，句柄值和 ``<<REFS:…>>``
+    锚点不是学习者内容，不得进入浏览器。
+    """
+
     event = public_runtime_event(
         {
             "event": "system_output",
@@ -177,9 +185,14 @@ def test_public_knowledge_output_keeps_complete_validated_contract() -> None:
         }
     )
 
-    assert '"evidence_id": "EVID_SECRET_1"' in event["public_output"]
+    # 契约结构完整：字段名与自然语言摘要都在
+    assert '"evidence_id"' in event["public_output"]
     assert '"retrieval_summary"' in event["public_output"]
-    assert "<<REFS" in event["public_output"]
+    assert "依据" in event["public_output"]
+    assert "整理。" in event["public_output"]
+    # 句柄与编译器锚点不进入浏览器
+    assert "EVID_SECRET_1" not in event["public_output"]
+    assert "<<REFS" not in event["public_output"]
 
 
 def test_public_knowledge_output_includes_complete_retrieval_summary() -> None:
@@ -492,3 +505,130 @@ def test_public_reasoning_does_not_release_incomplete_prompt_json_prefix() -> No
     )
 
     assert delta["delta"] == ""
+
+
+def _project_reasoning_deltas(chunks: list[str]) -> str:
+    """Replay provider reasoning chunks through the persisted-event projection."""
+
+    return "".join(
+        public_runtime_event(
+            {
+                "event": "reasoning_delta",
+                "agent": "expert_agent",
+                "call_id": "MODEL_CALL_8",
+                "step_id": "expert",
+                "delta": chunk,
+            }
+        )["delta"]
+        for chunk in chunks
+    )
+
+
+def test_public_reasoning_delta_keeps_leading_space_that_separates_words() -> None:
+    # The provider streams one token per delta and carries the English word
+    # boundary on the leading space.  Persisted deltas are replayed by plain
+    # concatenation, so trimming the fragment would render "The user asks"
+    # as "Theuserasks".
+    chunks = ["The", " user", " asks", ":", ' "', "中医学", "理论", "体系"]
+
+    assert _project_reasoning_deltas(chunks) == 'The user asks: "中医学理论体系'
+
+
+def test_public_reasoning_delta_keeps_whitespace_only_fragment() -> None:
+    assert _project_reasoning_deltas(["1", " ", "+", " ", "1"]) == "1 + 1"
+    assert _project_reasoning_deltas(["a", "\n\n", "b"]) == "a\n\nb"
+
+
+def test_public_reasoning_delta_still_removes_internal_ids_without_gluing_text() -> None:
+    projected = _project_reasoning_deltas(
+        ["检查", " 证据", "包", " EVID_SECRET_1", " 后", " 继续"]
+    )
+
+    assert "EVID_SECRET_1" not in projected
+    assert "证据包" in projected
+    assert "继续" in projected
+    # The ID is gone and the surrounding words must not fuse together.
+    assert "包后" not in projected
+    assert "后继续" not in projected
+
+
+def test_business_text_projection_still_trims_document_edges() -> None:
+    public = project_public_business_text("\n\n  正文开头。\n\n\n正文结尾。  \n\n")
+
+    assert public == "正文开头。\n\n正文结尾。"
+
+
+def test_public_stage_output_hides_internal_handles_inside_the_json_contract() -> None:
+    """阶段产出是 Agent 契约的完整 dump，其中的内部句柄不得进入过程面板。
+
+    这里的取值来自生产环境实际渲染出来的过程面板（``EP_``/``DRAFT_``/
+    ``AUDIT_``/``USER_``/``C_``/``E_CHUNK_`` 加 ``<<REFS:…>>`` 锚点）。凭证
+    脱敏不会处理这些句柄，所以必须由面向浏览器的投影统一去掉。
+    """
+
+    payload = {
+        "evidence_pack_id": "EP_0ce994058df141159a0c2dee6d04a48e",
+        "query": "整体观念",
+        "resolved_kp_ids": ["KP_9f2c8d1e", "KP_4a7b6c3d"],
+        "learner_context": {"learner_id": "USER_5303c3e61f954a6297b97202cd3b11b6"},
+        "resource_draft_id": "DRAFT_bc1548f2ff1a44e09320a8ada3e5af8a",
+        "content": {
+            "知识讲解": (
+                "整体观念是中医学理论体系的两大基本特点之一。\n"
+                '<<REFS:[{"type": "rag", '
+                '"evidence_id": "E_CHUNK_中医学基础_clean:00011"}]>>'
+            )
+        },
+        "claims": [
+            {
+                "claim_id": "C_d255a09b56cc4f8e8e3863cd776cfbe8",
+                "text": "中医的基本特点是整体观念和辨证论治。",
+                "evidence_ids": ["E_CHUNK_中医学基础_clean:00011"],
+            }
+        ],
+        "audit_result_id": "AUDIT_037ad5770b254aa5a4ac674573dace9d",
+        "decision": "pass",
+        "status": "pending_review",
+    }
+
+    public = build_public_agent_output("knowledge_explanation", {"payload": payload})
+
+    for leaked in (
+        "EP_0ce994058df141159a0c2dee6d04a48e",
+        "DRAFT_bc1548f2ff1a44e09320a8ada3e5af8a",
+        "AUDIT_037ad5770b254aa5a4ac674573dace9d",
+        "USER_5303c3e61f954a6297b97202cd3b11b6",
+        "C_d255a09b56cc4f8e8e3863cd776cfbe8",
+        "KP_9f2c8d1e",
+        "E_CHUNK_中医学基础_clean:00011",
+        "<<REFS:",
+    ):
+        assert leaked not in public
+    # 被隐藏的字段保留可读占位，而不是留空字符串——空值会被读成「数据缺失」。
+    assert '"learner_id": "[内部标识]"' in public
+    assert '"[内部标识]"' in public
+    # 业务内容必须完整保留，否则这次修复就变成了「顺手把阶段产出清空」。
+    assert '"query": "整体观念"' in public
+    assert '"decision": "pass"' in public
+    assert "整体观念是中医学理论体系的两大基本特点之一。" in public
+    assert "中医的基本特点是整体观念和辨证论治。" in public
+
+
+def test_public_stage_output_keeps_ordinary_business_text_untouched() -> None:
+    """没有内部句柄时不得改动任何内容——避免把正常业务文本误当标识符。"""
+
+    payload = {
+        "title": "先弄清：为什么要先学“整体观念”",
+        "estimated_minutes": 15,
+        "safety_notes": ["仅用于中医药教学训练，不构成诊疗建议。"],
+        "kp_name": "整体观念与辨证论治",
+    }
+
+    public = build_public_agent_output("expert_agent", {"payload": payload})
+
+    assert "先弄清：为什么要先学“整体观念”" in public
+    assert "整体观念与辨证论治" in public
+    assert "仅用于中医药教学训练，不构成诊疗建议。" in public
+    assert "内部标识" not in public
+    assert '"estimated_minutes": 15' in public
+

@@ -637,6 +637,9 @@ class InMemoryConversationRepository:
                 or session.get("exam_track_id", LEGACY_EXAM_SCOPE) != scope
             ):
                 raise ValueError("conversation session belongs to another learner")
+            # 与 SQL 仓库一致：会话归属只允许 user → system 单向升级。
+            if source == "system" and session.get("source") != "system":
+                session["source"] = "system"
             for index, message in enumerate(sanitize_conversation_messages(messages)):
                 message_id = _message_id(session_id, index, message)
                 session["messages"][message_id] = _copy_json(message)
@@ -832,6 +835,18 @@ class SqlConversationRepository:
                     )
                 else:
                     raise ValueError("conversation session belongs to another learner")
+            # 会话归属只允许 user → system 单向升级。前端会先用
+            # POST /conversations 建一个 user 会话，再由工作流把它判定为系统
+            # 会话（学习路径规划向导）；如果允许反向降级，任何一条后续写入都
+            # 可能把内部流程重新暴露到用户侧边栏。
+            if owner is not None and source == "system" and owner.get("source") != "system":
+                connection.execute(
+                    text(
+                        "UPDATE conversation_sessions SET source='system' "
+                        "WHERE session_id=:session_id AND learner_id=:learner_id"
+                    ),
+                    {"session_id": session_id, "learner_id": learner_id},
+                )
             next_sequence = int(connection.execute(
                 text(
                     "SELECT COUNT(*) FROM conversation_messages "
@@ -963,7 +978,7 @@ class SqlConversationRepository:
         if scope == LEGACY_EXAM_SCOPE:
             owner = connection.execute(
                 text(
-                    "SELECT learner_id FROM conversation_sessions "
+                    "SELECT learner_id, source FROM conversation_sessions "
                     "WHERE session_id=:session_id"
                 ),
                 {"session_id": session_id},
@@ -971,7 +986,7 @@ class SqlConversationRepository:
             return ({**owner, "exam_track_id": None} if owner is not None else None)
         return connection.execute(
             text(
-                "SELECT learner_id, exam_track_id FROM conversation_sessions "
+                "SELECT learner_id, exam_track_id, source FROM conversation_sessions "
                 "WHERE session_id=:session_id"
             ),
             {"session_id": session_id},

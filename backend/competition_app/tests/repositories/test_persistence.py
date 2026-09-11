@@ -483,9 +483,17 @@ def test_conversation_repositories_hide_system_sessions_by_default() -> None:
     }
     assert sql.get_messages("THREAD_SYS", "L1")[0]["content"] == "请生成复习卡：湿性黏滞"
 
-    # 首写者优先：同一会话先以 user 创建，后续 system 写入不得改变来源
-    sql.create_session("CONV_USER", "L1", "用户对话", source="system")
-    assert [item["id"] for item in sql.list_sessions("L1")] == ["CONV_USER"]
+    # 来源只能收紧、不能放松：已存在的 user 会话被系统工作流接管后转为 system。
+    # 前端在工作流落库之前就要先建会话，那一刻还不知道这一轮属于用户对话还是
+    # 内置向导；若来源在创建时定死，向导会话会永久留在 AI 助手历史里。
+    sql.save_messages("CONV_USER", "L1", [{"role": "user", "content": "后台接管"}], source="system")
+    assert [item["id"] for item in sql.list_sessions("L1")] == []
+    # 反向不成立：system 会话不得被后续 user 写入重新暴露出来
+    sql.save_messages("THREAD_SYS", "L1", [{"role": "user", "content": "x"}], source="user")
+    assert "THREAD_SYS" not in [item["id"] for item in sql.list_sessions("L1")]
+    # 幂等的 create_session 不会改已存在会话的来源，也不会把它重新暴露
+    sql.create_session("CONV_USER", "L1", "用户对话", source="user")
+    assert "CONV_USER" not in [item["id"] for item in sql.list_sessions("L1")]
     # 同一会话先以 system 创建（save_messages 首次建行），后续 user 写入不得覆盖
     sql.save_messages("THREAD_SYS2", "L1", [{"role": "user", "content": "x"}], source="system")
     sql.save_messages("THREAD_SYS2", "L1", [{"role": "user", "content": "y"}], source="user")
@@ -499,6 +507,8 @@ def test_conversation_repositories_hide_system_sessions_by_default() -> None:
         "CONV_MEM",
         "THREAD_MEM_SYS",
     }
+    in_memory.save_messages("CONV_MEM", "L1", [{"role": "user", "content": "后台接管"}], source="system")
+    assert [item["id"] for item in in_memory.list_sessions("L1")] == []
 
 
 def test_conversation_repositories_sanitize_persisted_history_at_both_boundaries() -> None:
