@@ -1051,6 +1051,23 @@ export async function loadVariationSources({ fetcher }) {
   }
 }
 
+export async function loadPracticeQuestionList({ fetcher, kpId, taskItemId = '', mode = 'all', scope = 'public', difficulty = null }) {
+  const params = new URLSearchParams({ kp_id: kpId || '', mode, scope });
+  if (difficulty !== null) params.set('difficulty', String(difficulty));
+  const path = taskItemId
+    ? `/daily-task-items/${encodeURIComponent(taskItemId)}/practice/questions`
+    : `/v1/workshop/practice/questions?${params}`;
+  try {
+    const { data } = await fetcher({
+      paths: [path], fallback: null,
+      validator: (value) => Array.isArray(value?.questions) && value.total === value.questions.length,
+    });
+    return { practice: data, error: '' };
+  } catch (error) {
+    return { practice: { questions: [] }, error: error.message || '题目列表加载失败' };
+  }
+}
+
 export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId = '', topic = '', scope = 'public', difficulty = null, excludeQuestionId = '' }) {
   const params = new URLSearchParams({ mode, scope });
   if (hasNonEmptyText(kpId)) params.set('kp_id', kpId.trim());
@@ -1147,11 +1164,31 @@ export async function confirmDailyTaskIframeVideo({ fetcher, taskItemId }) {
   }
 }
 
-export async function submitPracticeAnswer({ fetcher, question, answer, taskItemId = '' }) {
+export async function submitPracticeAnswer({ fetcher, question, answer, taskItemId = '', practiceOrigin = 'question_training' }) {
   if (!question || typeof question !== 'object' || !hasNonEmptyText(answer)) {
     return { result: null, error: '请先完成作答', source: null };
   }
   try {
+    let requestId = question.request_id;
+    if (question.listed) {
+      const params = new URLSearchParams({
+        question_id: question.question_id,
+        scope: question.source_scope === 'user' ? 'user' : 'public',
+        mode: 'all',
+      });
+      if (question.kp_ids?.[0]) params.set('kp_id', question.kp_ids[0]);
+      const path = taskItemId
+        ? `/daily-task-items/${encodeURIComponent(taskItemId)}/practice/next?snapshot_id=${question.snapshot_id}`
+        : `/v1/workshop/practice/next?${params}`;
+      const issued = await fetcher({
+        paths: [path], fallback: null,
+        validator: (value) => value?.available === true
+          && value.question?.question_id === question.question_id
+          && Boolean(value.question.request_id)
+          && (!taskItemId || value.question.question_version_id === question.question_version_id),
+      });
+      requestId = issued.data.question.request_id;
+    }
     const { data, source } = await fetcher({
       paths: ['/v1/workshop/practice/grade', '/training/practice/grade'],
       fallback: null,
@@ -1165,7 +1202,8 @@ export async function submitPracticeAnswer({ fetcher, question, answer, taskItem
           knowledge_points: question.kp_ids,
           knowledge_point_names: question.kp_names || [],
           difficulty: question.difficulty,
-          request_id: question.request_id,
+          request_id: requestId,
+          practice_origin: practiceOrigin,
           ...(hasNonEmptyText(taskItemId) ? { daily_task_item_id: taskItemId.trim() } : {}),
         }),
       },

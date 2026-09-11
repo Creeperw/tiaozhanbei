@@ -11,7 +11,7 @@ from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings, SettingsError
 from competition_app.evaluation.d1_ab100_v2_runner import D1AB100V2Runner
 from competition_app.evaluation.accountability_faults import FaultInjectingAgentProxy
-from competition_app.evaluation.d1_v2_batch import D1V2BatchService
+from competition_app.evaluation.d1_v2_batch import D1V2BatchService, DEFAULT_EXECUTION_PROTOCOL_VERSION
 from competition_app.evaluation.d1_v2_registry import D1V2DatasetRegistryService
 
 
@@ -96,7 +96,7 @@ async def _persist_completed_v2_formal_run(
         execute_pair=execute_pair,
         runtime_mode="live",
         state_root=state_root,
-        execution_protocol_version="production-prose-system-binding-v2",
+        execution_protocol_version=DEFAULT_EXECUTION_PROTOCOL_VERSION,
     )
     single = service.start(
         requested_by=runner_id,

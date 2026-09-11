@@ -10,6 +10,7 @@
 - [后端接口清单](backend-api-inventory.md)
 - [学情监测口径](learning-monitoring-methodology.md)
 - [教材学习工坊](textbook-learning-workshop.md)
+- [SPA 页面路径与业务路由命名空间归属修复](spa-route-ownership-fix-20260911.md)
 - [协作约定](../CONTRIBUTING.md)
 
 本目录只保存维护说明。历史计划、参赛材料与评测交付报告不属于运行发布物。

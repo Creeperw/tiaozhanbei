@@ -86,6 +86,9 @@ class PracticeRuntime:
         self.app = FastAPI()
         self.issued = []
 
+    def load_user_question_difficulty_tags(self, learner_id: str) -> dict:
+        return {}
+
     async def startup(self) -> None:
         return None
 
@@ -181,6 +184,53 @@ class StrictTargetPracticeRuntime(PracticeRuntime):
     ) -> dict:
         self.cached_requests.append((learner_id, kp_id, mode))
         return {"available": False, "kp_id": kp_id, "question": None}
+
+
+def test_practice_list_is_complete_safe_and_claims_only_the_selected_question(tmp_path: Path) -> None:
+    # Explicit offline container: no live handoff, database or model requests.
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False,
+    )
+    runtime = PracticeRuntime()
+    store = FormalQuestionStore()
+    first = store.questions_by_kp["KP_SJZT"][0]
+    store.questions_by_kp["KP_SJZT"] = [
+        {**first, "question_id": f"FORMAL_Q_{i:03}"} for i in range(105, 0, -1)
+    ]
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=store)
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post("/api/v1/auth/register", json={
+            "username": "question-list", "password": "correct-horse-2026",
+        })
+        params = {"kp_id": "KP_SJZT", "scope": "public", "mode": "objective"}
+        response = client.get("/api/v1/workshop/practice/questions", params=params)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total"] == 105
+        assert body == client.get("/api/v1/workshop/practice/questions", params=params).json()
+        assert runtime.issued == []
+        assert body["questions"][0]["question_id"] == "FORMAL_Q_001"
+        assert body["questions"][-1]["question_id"] == "FORMAL_Q_105"
+        for question in body["questions"]:
+            assert question["kp_names"] == ["四君子汤"]
+            assert question["question_type"] == "single_choice"
+            assert not {"answer", "raw_answer", "standard_answer", "analysis", "request_id"} & question.keys()
+        selected = client.get("/api/v1/workshop/practice/next", params={
+            **params, "question_id": "FORMAL_Q_105",
+        })
+        assert selected.status_code == 200
+        assert selected.json()["question"]["question_id"] == "FORMAL_Q_105"
+        assert len(runtime.issued) == 1
+        assert runtime.issued[0][1]["standard_answer"] == "A"
+        rejected = client.get("/api/v1/workshop/practice/next", params={
+            **params, "question_id": "UNRELATED",
+        })
+        assert rejected.status_code == 404
+        assert len(runtime.issued) == 1
+        assert client.get("/api/v1/workshop/practice/questions", params={
+            **params, "kp_id": "MISSING",
+        }).json()["total"] == 0
 
 
 def test_practice_next_uses_complete_formal_bank_without_exposing_answer(tmp_path: Path) -> None:

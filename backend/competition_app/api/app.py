@@ -23,6 +23,7 @@ from competition_app.services.upload_tasks import (
     UploadTaskStore, finish_upload_work, textbook_fingerprint, textbook_task_response,
 )
 from competition_app.application.personalized_review_card import (
+    ExamWorkspaceChangedError,
     ReviewCardRequest,
     WorkflowResumeRequest,
 )
@@ -130,6 +131,25 @@ from competition_app.api.treekg_routes import mount_treekg, router as treekg_rou
 
 SESSION_COOKIE = "competition_session"
 _LEARNING_TARGET_CHANGED_HEADER = "X-Competition-Learning-Target-Changed"
+
+# ── 根路径命名空间归属（单一事实来源）──────────────────────────
+# 根路径归 SPA 页面所有；业务 API 一律走 `/api` 前缀。此元组是上述约定的
+# 唯一事实来源，同时被两处消费：
+#   1. 认证中间件：未登录访问页面路径也放行，由前端引导登录；
+#   2. SPA catch-all 路由：页面前缀优先返回 index.html。
+# 曾经两处各自维护一份清单且判定方向相反，导致业务应用里与页面同名的路由
+# （如 /personalization/profile）劫持页面 URL：点击进入正常，刷新后浏览器
+# 渲染出裸 JSON。
+SPA_PAGE_PREFIXES = (
+    "/practice",
+    "/learning-path",
+    "/assistant",
+    "/knowledge",
+    "/personalization",
+    "/settings",
+    "/resources",
+    "/dashboard",
+)
 
 # Persist collaboration events needed by the GitHub-main assistant UI, while
 # keeping high-volume model payloads exclusively in the live SSE stream.
@@ -1036,16 +1056,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             return Response(status_code=404)
         # Mounted business routes share the main cookie identity. Their internal
         # dependency maps request.state.current_user to a domain-local user row.
-        spa_page_paths = (
-            "/practice",
-            "/learning-path",
-            "/assistant",
-            "/knowledge",
-            "/personalization",
-            "/settings",
-            "/resources",
-            "/dashboard",
-        )
         d1_v5_sandbox_path = path.startswith(
             "/api/v1/internal-eval/d1-v5/evolution/"
         )
@@ -1090,7 +1100,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             # header credential and never creates a production auth session.
             or valid_d1_v5_sandbox_token
             # SPA 页面路径：未登录也返回 index.html，由前端引导登录
-            or path.startswith(spa_page_paths)
+            or path.startswith(SPA_PAGE_PREFIXES)
         )
         if auth_required and current_user is None and not public_path:
             return JSONResponse(
@@ -1704,6 +1714,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "persistence_failed": "结果保存失败，请稍后重试。",
             "model_empty_response": "模型暂时没有返回内容，请再试一次。",
             "model_transport_error": "模型连接暂时不稳定，请稍后重试。",
+            "exam_workspace_changed": (
+                "考试目标已切换，旧任务不能继续；"
+                "请在当前考试下重新发起该请求。"
+            ),
         }
         return messages.get(
             str(error_code or ""),
@@ -3263,6 +3277,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             **summary["trends"],
         }
 
+    @app.get("/api/v1/practice/history")
+    async def practice_history(request: Request, days: int = Query(default=30),
+                               offset: int = Query(default=0, ge=0),
+                               limit: int = Query(default=100, ge=1, le=100)) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="练习历史服务未启用")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        return await asyncio.to_thread(backend_handoff.load_practice_history, user.user_id,
+                          days=days, offset=offset, limit=limit)
+
     @app.get("/api/v1/learning-statistics/overview")
     async def learning_statistics_overview(
         request: Request,
@@ -3444,14 +3472,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 int(current.get("questions_completed") or 0),
                 unit="items",
                 formula=(
-                    "accepted non-paper attempt items + max(accepted paper items, "
-                    "items in latest completed paper submissions)"
+                    "count(unified completed question items, deduplicated across canonical, legacy and paper sources)"
                 ),
                 sources=[
                     "learning_attempt_items",
                     "grading_result_records",
                     "audit_result_records",
                     "paper_submissions",
+                    "question_attempts",
                 ],
             ),
             "questions_completed_lifetime": metric(
@@ -3459,39 +3487,39 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 unit="items",
                 scope="lifetime",
                 formula=(
-                    "accepted non-paper attempt items + max(accepted paper items, "
-                    "items in latest completed paper submissions)"
+                    "count(unified completed question items, deduplicated across canonical, legacy and paper sources)"
                 ),
                 sources=[
                     "learning_attempt_items",
                     "grading_result_records",
                     "audit_result_records",
                     "paper_submissions",
+                    "question_attempts",
                 ],
             ),
             "unique_questions_completed": metric(
                 int(current.get("unique_questions_completed") or 0),
                 unit="questions",
-                formula="count(distinct base question_id resolved from accepted versions)",
-                sources=["question_version_records"],
+                formula="count(distinct question_id from unified completed question items)",
+                sources=["question_version_records", "question_attempts", "paper_submissions"],
             ),
             "correct_answers": metric(
                 int(current.get("correct_answers") or 0),
                 unit="items",
-                formula="count(accepted audited items where is_correct = true)",
-                sources=["grading_result_records", "audit_result_records"],
+                formula="count(unified question items where is_correct = true)",
+                sources=["grading_result_records", "audit_result_records", "question_attempts", "paper_submissions"],
             ),
             "incorrect_answers": metric(
                 int(current.get("incorrect_answers") or 0),
                 unit="items",
-                formula="count(accepted audited items where is_correct = false)",
-                sources=["grading_result_records", "audit_result_records"],
+                formula="count(unified question items where is_correct = false)",
+                sources=["grading_result_records", "audit_result_records", "question_attempts", "paper_submissions"],
             ),
             "score_rate": metric(
                 current.get("score_rate"),
                 unit="ratio",
-                formula="sum(accepted score) / sum(accepted max_score)",
-                sources=["grading_result_records", "audit_result_records"],
+                formula="sum(unified scored question points) / sum(corresponding maximum points)",
+                sources=["grading_result_records", "audit_result_records", "question_attempts", "paper_submissions"],
                 available=current.get("score_rate") is not None,
                 unavailable_reason=(
                     None
@@ -3502,8 +3530,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "today_score_rate": metric(
                 today.get("score_rate"),
                 unit="ratio",
-                formula="sum(accepted score today) / sum(accepted max_score today)",
-                sources=["grading_result_records", "audit_result_records"],
+                formula="sum(unified scored question points today) / sum(corresponding maximum points today)",
+                sources=["grading_result_records", "audit_result_records", "question_attempts", "paper_submissions"],
                 scope="today",
                 available=today.get("score_rate") is not None,
                 unavailable_reason=(
@@ -3515,7 +3543,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "paper_attempts_completed": metric(
                 int(current.get("paper_attempts_completed") or 0),
                 unit="papers",
-                formula="count(distinct latest completed paper submissions)",
+                formula="count(distinct completed paper submission requests)",
                 sources=["paper_submissions"],
             ),
             "active_mistakes": metric(
@@ -4704,6 +4732,62 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             return None
         return candidates[0]
 
+    def formal_kp_question_list(kp_id: str, mode: str) -> list[dict]:
+        backend = container.knowledge_backend
+        if backend is None:
+            return []
+        store = backend.map
+        store.ensure_hierarchy()
+        store.ensure_questions()
+        candidates = {}
+        for row in store.questions_by_kp.get(kp_id, ()):
+            if not _practice_mode_matches(row.get("question_type") or row.get("题型"), mode):
+                continue
+            payload = _formal_question_payload(row, {
+                str(value): str((store.kps.get(str(value)) or {}).get("kp_lv3")
+                    or (store.kps.get(str(value)) or {}).get("other_name") or value)
+                for value in row.get("kp_ids") or []
+            })
+            if payload.get("question_id") and payload.get("standard_answer") and kp_id in payload.get("kp_ids", []):
+                candidates[payload["question_id"]] = payload
+        return [candidates[key] for key in sorted(candidates)]
+
+    @app.get("/api/v1/workshop/practice/questions")
+    async def list_workshop_practice_questions(
+        request: Request,
+        kp_id: str = Query(min_length=1, max_length=120),
+        scope: str = Query(default="public", pattern="^(public|user|all)$"),
+        mode: str = Query(default="all", pattern="^(all|objective|case)$"),
+        difficulty: int | None = Query(default=None, ge=1, le=5),
+    ) -> dict:
+        user = current_user(request)
+        runtime = require_workshop_runtime()
+        candidates = []
+        if scope != "user" and container.knowledge_backend is not None:
+            candidates = await asyncio.to_thread(formal_kp_question_list, kp_id, mode)
+        if scope != "public" or container.knowledge_backend is None:
+            cached = await asyncio.to_thread(
+                runtime.list_practice_questions, user.user_id, kp_id=kp_id,
+                scope="user" if container.knowledge_backend is not None else scope,
+                mode=mode, difficulty=difficulty,
+            )
+            candidates.extend(cached["questions"])
+        tags = await asyncio.to_thread(runtime.load_user_question_difficulty_tags, user.user_id)
+        questions = []
+        for candidate in candidates:
+            item = {key: candidate.get(key) for key in (
+                "question_id", "question_type", "stem", "options", "kp_ids", "kp_names",
+                "difficulty", "difficulty_source",
+            )}
+            item["source_scope"] = candidate.get("source_scope") or "public"
+            if item["difficulty"] is None and item["question_id"] in tags:
+                item["difficulty"] = tags[item["question_id"]]
+                item["difficulty_source"] = "user_tagged"
+            _sanitize_practice_question_labels({"question": item})
+            if difficulty is None or item["difficulty"] == difficulty:
+                questions.append(item)
+        return {"questions": questions, "total": len(questions)}
+
     @app.get("/api/v1/workshop/practice/next")
     async def next_workshop_practice_question(
         request: Request,
@@ -4715,9 +4799,25 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         difficulty_min: int | None = Query(default=None, ge=1, le=5),
         difficulty_max: int | None = Query(default=None, ge=1, le=5),
         exclude_question_id: str | None = Query(default=None, min_length=1, max_length=120),
+        question_id: str | None = Query(default=None, min_length=1, max_length=120),
     ) -> dict:
         user = current_user(request)
         runtime = require_workshop_runtime()
+        if question_id:
+            if not kp_id:
+                raise HTTPException(status_code=422, detail="kp_id is required for a listed question")
+            if scope == "public" and container.knowledge_backend is not None:
+                candidates = await asyncio.to_thread(formal_kp_question_list, kp_id, mode)
+                candidate = next((item for item in candidates if item["question_id"] == question_id), None)
+                if candidate is None:
+                    raise HTTPException(status_code=404, detail="question is not linked to this knowledge point")
+                issued = await asyncio.to_thread(runtime.issue_formal_practice, user.user_id, candidate)
+            else:
+                issued = await asyncio.to_thread(
+                    runtime.issue_listed_practice, user.user_id,
+                    kp_id=kp_id, scope=scope, mode=mode, question_id=question_id,
+                )
+            return _sanitize_practice_question_labels(issued)
         if (
             difficulty is not None
             and (difficulty_min is not None or difficulty_max is not None)
@@ -7618,6 +7718,9 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             if persisted_code:
                 error_code = persisted_code
                 retryable = bool(run_state.get("retryable", False))
+            elif isinstance(exc, ExamWorkspaceChangedError):
+                error_code = exc.error_code
+                retryable = exc.retryable
             elif (
                 "connecterror" in normalized
                 or "connectionerror" in normalized
@@ -7946,6 +8049,16 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
+    from competition_app.evaluation.planning_mode_probe import register_planning_mode_probe
+    probe_wrapper = getattr(
+        container.review_card_use_case.orchestrator.agent_registry.get("planner_agent"),
+        "chat_model", None,
+    )
+    register_planning_mode_probe(
+        app, model=getattr(probe_wrapper, "inner", probe_wrapper),
+        runtime_root=container.runtime_root, mode=container.mode, current_user=current_user,
+    )
+
     if backend_handoff is not None:
         # The production build calls the transitional business API through
         # `/api/*`. Vite removes that prefix in development, so the same mapping
@@ -7986,6 +8099,15 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_frontend_fallback(full_path: str, request: Request):
+        # 根路径命名空间归 SPA 页面所有：页面前缀必须先于业务路由判定。否则
+        # 业务应用里与页面同名的路由（如 /personalization/profile）会劫持
+        # 页面 URL —— 从站内点击进入正常（前端不重新请求 HTML），但刷新或
+        # 打开收藏链接时服务器返回 JSON，整个界面无法加载。业务 API 一律走
+        # /api 前缀，由上方 /api mount 处理，不经过此处。
+        if f"/{full_path}".startswith(SPA_PAGE_PREFIXES):
+            if frontend_index is not None and frontend_index.is_file():
+                return FileResponse(frontend_index)
+            raise HTTPException(status_code=404, detail="Not Found")
         if full_path.startswith(_SPA_NON_PAGE_PREFIXES):
             raise HTTPException(status_code=404, detail="Not Found")
         if backend_handoff is not None:

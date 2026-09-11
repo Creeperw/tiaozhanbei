@@ -321,13 +321,12 @@ def test_short_replan_preclaim_transitions_and_ignores_notification_failure(
     def update(_learner_id, _review_id, *, status, execution=None, execution_id=None):
         assert execution_id == execution_id_holder[0]
         transitions.append(status)
-        if status in {"succeeded", "failed"}:
-            terminal.set()
         return {"execution_status": status, "execution": execution or {}}
 
     def notify(_learner_id, *, review_id, status, summary=""):
         notifications.append(status)
         if status == "succeeded":
+            terminal.set()
             raise RuntimeError("notification store unavailable")
         return {"notification_id": "NOTIF_1", "review_id": review_id}
 

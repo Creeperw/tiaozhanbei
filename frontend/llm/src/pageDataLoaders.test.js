@@ -21,6 +21,7 @@ import {
   loadPaper,
   loadPapers,
   loadPracticeQuestion,
+  loadPracticeQuestionList,
   loadMistakes,
   loadReviewDashboard,
   loadVariationSources,
@@ -43,6 +44,43 @@ import {
   recordResourceRecommendationEvent,
   submitTrainingWorkspaceTask,
 } from './pageDataLoaders.js';
+
+test('fixed practice list validates completeness and never requests next while loading', async () => {
+  const calls = [];
+  const questions = Array.from({ length: 105 }, (_, i) => ({ question_id: `Q${i}` }));
+  const loaded = await loadPracticeQuestionList({ kpId: 'KP', fetcher: async ({ paths, validator }) => {
+    calls.push(paths[0]);
+    assert.ok(paths[0].startsWith('/v1/workshop/practice/questions?'));
+    assert.equal(validator({ questions, total: 106 }), false);
+    assert.equal(validator({ questions, total: 105 }), true);
+    return { data: { questions, total: 105 } };
+  } });
+  assert.equal(loaded.practice.questions.length, 105);
+  assert.equal(calls.length, 1);
+  const failed = await loadPracticeQuestionList({ kpId: 'KP', fetcher: async () => { throw new Error('offline'); } });
+  assert.equal(failed.error, 'offline');
+  assert.deepEqual(failed.practice.questions, []);
+});
+
+test('listed daily question refuses mismatched version before grading', async () => {
+  let calls = 0;
+  const result = await submitPracticeAnswer({
+    taskItemId: 'TASK', answer: 'A',
+    question: { listed: true, question_id: 'Q3', snapshot_id: 3, question_version_id: 'V3' },
+    fetcher: async ({ paths, validator }) => {
+      calls += 1;
+      assert.equal(paths[0], '/daily-task-items/TASK/practice/next?snapshot_id=3');
+      const payload = { available: true, question: { question_id: 'Q3', request_id: 'claim', question_version_id: 'V2' } };
+      assert.equal(validator(payload), false);
+      payload.question.question_version_id = 'V3';
+      assert.equal(validator(payload), true);
+      throw new Error('version mismatch');
+    },
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.error, 'version mismatch');
+  assert.equal(result.result, null);
+});
 
 test('accepts absent difficulty metadata without inventing a default', () => {
   assert.equal(isPracticeQuestionPayloadValid({
@@ -861,12 +899,13 @@ test('practice loaders use stable objective and mistake history contracts', asyn
   };
 
   const loaded = await loadPracticeQuestion({ fetcher, mode: 'objective', scope: 'all' });
-  const graded = await submitPracticeAnswer({ fetcher, question, answer: 'A' });
+  const graded = await submitPracticeAnswer({ fetcher, question, answer: 'A', practiceOrigin: 'special_training' });
   const mistakes = await loadMistakes({ fetcher });
 
   assert.equal(loaded.practice.question.question_id, 'Q_1');
   assert.equal(graded.result.grading.is_correct, true);
   assert.equal(mistakes.mistakes.total, 1);
+  assert.equal(JSON.parse(requests[1].options.body).practice_origin, 'special_training');
   assert.match(requests[0].paths[0], /^\/v1\/workshop\/practice\/next\?/);
   assert.deepEqual(requests[1].paths, ['/v1/workshop/practice/grade', '/training/practice/grade']);
   assert.match(requests[2].paths[0], /^\/v1\/workshop\/practice\/mistakes\?/);
