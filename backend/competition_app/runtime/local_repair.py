@@ -10,6 +10,7 @@ from competition_app.contracts.local_repair import LocalRepairPlan, RepairAction
 
 
 IssueType = Literal[
+    "factual_error",
     "missing_evidence",
     "conflicting_evidence",
     "learner_mismatch",
@@ -298,32 +299,15 @@ class LocalRepairController:
             if not message or message in seen:
                 continue
             seen.add(message)
-            issue_type, owner_step_id = self._classify_message(message)
             classified.append(
                 RepairIssue(
                     issue_id=f"legacy-{len(classified) + 1}",
-                    issue_type=issue_type,
+                    issue_type="unresolved",
                     message=message,
-                    owner_step_id=owner_step_id,
+                    owner_step_id=None,
                 )
             )
         return classified
-
-    @staticmethod
-    def _classify_message(message: str) -> tuple[IssueType, str | None]:
-        if any(keyword in message for keyword in ("蓝图", "偏离蓝图", "成卷")):
-            return "paper_blueprint_mismatch", "paper_assembly"
-        if any(keyword in message for keyword in ("冲突", "矛盾")) and "证据" in message:
-            return "conflicting_evidence", "expert"
-        if "证据" in message and any(keyword in message for keyword in ("缺少", "缺失", "没有", "不足")):
-            return "missing_evidence", "expert"
-        if any(keyword in message for keyword in ("掌握状态", "学情", "学习者", "用户掌握")):
-            return "learner_mismatch", "expert"
-        if any(keyword in message for keyword in ("前置", "先修", "路由", "路线", "路径")):
-            return "route_or_prerequisite_error", "expert"
-        if any(keyword in message for keyword in ("表达不清", "题目内容", "题干", "内容质量")):
-            return "content_quality", "paper_assembly"
-        return "unresolved", None
 
     def _chain_for(
         self,

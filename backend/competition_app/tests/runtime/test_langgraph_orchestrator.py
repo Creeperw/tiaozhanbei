@@ -163,6 +163,9 @@ class EvidenceAuditSequenceAgent(AuditSequenceAgent):
                 audit_result_id=f"AUDIT_{self.calls}",
                 decision=decision,
                 findings=["证据缺失"] if decision == "revise" else [],
+                structured_findings=[RepairIssue(issue_id="I1", issue_type="missing_evidence",
+                                                message="证据缺失", owner_step_id="expert")]
+                if decision == "revise" else [],
             )
         )
 
@@ -215,6 +218,9 @@ class EnvelopeEvidenceAuditSequenceAgent(AuditSequenceAgent):
                 audit_result_id=f"AUDIT_{self.calls}",
                 decision=decision,
                 findings=["证据缺失"] if decision == "revise" else [],
+                structured_findings=[RepairIssue(issue_id="I1", issue_type="missing_evidence",
+                                                message="证据缺失", owner_step_id="expert")]
+                if decision == "revise" else [],
             ),
         )
 

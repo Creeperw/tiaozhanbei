@@ -58,7 +58,7 @@ async def test_metadata_distinguishes_endings_without_changing_response(stream, 
     assert result["plan_document"] == document
     details = recorder.items[0].response_diagnostics
     assert details["skill_in_system"] is True
-    assert details["skill_version"] == "1.14.0"
+    assert details["skill_version"] == "1.17.0"
     attempt = details["attempts"][0]
     assert all(attempt["required_headings_present"].values())
     assert attempt["finish_reason"] == reason if reason else "finish_reason" not in attempt

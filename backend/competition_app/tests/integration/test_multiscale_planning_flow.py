@@ -41,6 +41,7 @@ class CapturingStubModel(StubChatModel):
                 "当前执行阶段stage-1，选用《中医学基础》，用途新学，依据：建立基础框架。",
             ])
             result = {"plan_document": "\n".join(parts)}
+            anchors["/selection_mode"] = [{"source_field": "plan_document", "source_quote": "用途新学"}]
             self.bound_contract = {"scope": "long_term", "stages": stages, "field_anchors": anchors,
                                    "selected_stage_id": "stage-1", "selected_books": ["《中医学基础》"],
                                    "selection_reason": "建立基础框架。", "selection_mode": "new_learning"}
@@ -49,6 +50,9 @@ class CapturingStubModel(StubChatModel):
         if role == "plan_contract_compiler" and result.get("status") == "compiled" and result["contract"].get("scope") == "long_term":
             result["contract"].update(selected_stage_id="stage-1", selected_books=["《中医学基础》"],
                                       selection_reason="建立基础框架", selection_mode="new_learning")
+            result["contract"].setdefault("field_anchors", {})["/selection_mode"] = [
+                {"source_field": "plan_document", "source_quote": "用途新学"}
+            ]
         if role == "diagnosis_agent" and self.selected_candidate_id:
             result = {
                 **result,

@@ -482,10 +482,9 @@ async def test_get_kp_with_content_decomposes_concepts_into_parallel_retrieval()
         concepts=["异质性", "观察性研究", "说法是否正确"],
     )
 
-    # 每个有效概念都触发一路独立检索（教材 + web 定义各一路）
-    assert delivery.concept_queries == ["异质性", "观察性研究"]
-    # 概念 web 定义路：2 个概念各 1 次（主查询的 web_knowledge 不算概念路）
-    assert len(exa.concept_web_queries) == 2
+    # 保留调用者选择的查询，不按自然语言词表删去“说法是否正确”。
+    assert delivery.concept_queries == ["异质性", "观察性研究", "说法是否正确"]
+    assert len(exa.concept_web_queries) == 3
     assert any("异质性" in q for q in exa.concept_web_queries)
     assert any("观察性研究" in q for q in exa.concept_web_queries)
     # 概念路教材证据与主查询证据合并，且证据 id 前缀不冲突

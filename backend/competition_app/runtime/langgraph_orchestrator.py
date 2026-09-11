@@ -1187,15 +1187,10 @@ class LangGraphOrchestrator(Orchestrator):
     ) -> dict[str, Any]:
         """Refresh upstream decisions that depend on newly supplied user intent."""
         refreshed = dict(outputs)
-        # A confirmed memory-conflict answer may switch the learner's target
-        # (e.g. from TCM physician to integrated TCM-Western medicine).  The
-        # previously resolved route is then stale: Diagnosis would compile the
-        # new plan against the old route and fail with immutable_route_conflict
-        # / stage-duration mismatches.  Re-resolve the route so the new plan is
-        # compiled against the newly selected route.  The resolver reads the
-        # original user_request (which still names the new target) plus the
-        # memory_conflict_answer, so it picks the new route instead of the
-        # inherited one.
+        refreshed_ids: set[str] = set()
+        # An answer invalidates cached intent; the route Agent decides whether
+        # it confirms a change or retains the original goal. Refresh once even
+        # when the same dependency also supplies a clarification below.
         if self._memory_conflict_affects_route(clarification, root_context):
             for dependency_id, dependency_step in steps_by_id.items():
                 if dependency_step.agent in self._RESUME_SENSITIVE_AGENTS:
@@ -1205,10 +1200,12 @@ class LangGraphOrchestrator(Orchestrator):
                         refreshed,
                         trace,
                     )
+                    refreshed_ids.add(dependency_id)
         for dependency_id in step.depends_on:
             dependency_step = steps_by_id.get(dependency_id)
             if (
                 dependency_step is None
+                or dependency_id in refreshed_ids
                 or dependency_step.agent not in self._RESUME_SENSITIVE_AGENTS
                 or not (
                     self._clarification_comes_from_dependency(
@@ -1232,22 +1229,18 @@ class LangGraphOrchestrator(Orchestrator):
         clarification: dict[str, Any],
         root_context: dict[str, Any],
     ) -> bool:
-        """A confirmed memory-conflict answer may change the learner's target.
+        """Any answered conflict invalidates the cached semantic decision.
 
-        Memory conflicts are raised when the learner's current statement
-        contradicts a persisted goal (for example switching from the TCM
-        physician exam to the integrated TCM-Western medicine exam).  When the
-        learner confirms the change, the previously resolved route is stale and
-        must be re-resolved.  A negative answer (cancel / keep the old target)
-        leaves the route untouched.
+        Re-evaluation does not mean accepting a goal change. The existing
+        route Agent judges confirmation, cancellation and negation using the
+        complete answer; this boundary only checks interrupt metadata.
         """
         if clarification.get("interrupt_type") != "memory_conflict":
             return False
         answer = str(root_context.get("memory_conflict_answer") or "").strip()
         if not answer:
             return False
-        negative_markers = ("取消", "不", "算了", "不用", "维持", "保持", "别")
-        return not any(marker in answer for marker in negative_markers)
+        return True
 
     @staticmethod
     def _clarification_comes_from_dependency(

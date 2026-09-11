@@ -2203,6 +2203,7 @@ class BackendHandoffRuntime:
                         "activity_id": row.id,
                         "activity_type": row.activity_type,
                         "resource_type": row.resource_type,
+                        "practice_origin": activity_payload.get("practice_origin"),
                         "resource_id": row.resource_id,
                         "completion_status": row.completion_status,
                         "score": float(row.score) if row.score is not None else None,
@@ -2369,6 +2370,22 @@ class BackendHandoffRuntime:
             ),
         }
 
+    def load_practice_history(self, external_user_id: str, *, days: int = 30,
+                              offset: int = 0, limit: int = 100) -> dict[str, Any]:
+        if days not in {7, 30, 90}:
+            raise ValueError("days must be one of: 7, 30, 90")
+        database = importlib.import_module("APP.backend.database")
+        statistics = importlib.import_module("APP.backend.learning_statistics_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = statistics.build_practice_history(db, user.id, days=days)
+            result['recent_activities'] = result['recent_activities'][offset:offset + limit]
+            result['next_offset'] = offset + limit if offset + limit < result['total'] else None
+            return result
+        finally:
+            db.close()
+
     def load_learning_statistics(
         self,
         external_user_id: str,
@@ -2392,6 +2409,23 @@ class BackendHandoffRuntime:
             )
         finally:
             db.close()
+
+    def list_practice_questions(self, external_user_id: str, **criteria) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        routes = importlib.import_module("APP.backend.routers.training_routes")
+        with database.SessionLocal() as db:
+            user = self._workshop_user(db, external_user_id)
+            return routes.list_practice_questions(current_user=user, db=db, **criteria)
+
+    def issue_listed_practice(self, external_user_id: str, **criteria) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        routes = importlib.import_module("APP.backend.routers.training_routes")
+        with database.SessionLocal() as db:
+            user = self._workshop_user(db, external_user_id)
+            return routes.next_practice_question(
+                current_user=user, db=db, difficulty=None, difficulty_min=None,
+                difficulty_max=None, exclude_question_id=None, **criteria,
+            )
 
     def issue_personal_practice(
         self,

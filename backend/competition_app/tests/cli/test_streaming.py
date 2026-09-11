@@ -15,7 +15,7 @@ def test_cli_stream_option_prints_agent_model_output(tmp_path: Path) -> None:
             "--snapshot-root", str(tmp_path),
             "--stream",
         ],
-        env={"COMPETITION_APP_MODE": "stub"},
+        env={"COMPETITION_APP_MODE": "stub", "DATABASE_URL": f"sqlite:///{tmp_path / 'agent.sqlite'}"},
     )
 
     assert result.exit_code == 0
@@ -36,7 +36,7 @@ def test_cli_summary_trace_hides_model_deltas(tmp_path: Path) -> None:
             "--stream",
             "--trace-level", "summary",
         ],
-        env={"COMPETITION_APP_MODE": "stub"},
+        env={"COMPETITION_APP_MODE": "stub", "DATABASE_URL": f"sqlite:///{tmp_path / 'agent.sqlite'}"},
     )
 
     assert result.exit_code == 0
@@ -57,7 +57,7 @@ def test_cli_stream_option_supports_paper_generation_without_review_task(
             "--snapshot-root", str(tmp_path),
             "--stream",
         ],
-        env={"COMPETITION_APP_MODE": "stub"},
+        env={"COMPETITION_APP_MODE": "stub", "DATABASE_URL": f"sqlite:///{tmp_path / 'agent.sqlite'}"},
     )
 
     assert result.exit_code == 0

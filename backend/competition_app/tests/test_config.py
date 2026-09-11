@@ -121,10 +121,14 @@ def test_settings_parses_ordered_unique_llm_api_key_pool() -> None:
     assert all(key not in repr(settings) for key in settings.llm_api_keys)
 
 
-def test_settings_defaults_to_competition_vector_store_root() -> None:
+def test_settings_defaults_to_versioned_vector_store_root(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("competition_app.config.REPOSITORY_ROOT", tmp_path)
+    monkeypatch.setattr("competition_app.config.BACKEND_ROOT", tmp_path / "backend")
     settings = Settings.from_env({"COMPETITION_APP_MODE": "stub"})
 
-    assert settings.question_vector_store_root.name == "vdb_store"
+    assert settings.question_vector_store_root == (
+        tmp_path / "assets" / "vectors" / "public" / "2026-07-18"
+    )
 
 
 def test_settings_accepts_question_vector_store_root_override() -> None:

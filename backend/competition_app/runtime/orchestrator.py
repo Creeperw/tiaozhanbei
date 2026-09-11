@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.plan_compilation import PlanCompilationError
+from competition_app.contracts.planning_request import PlanningFocusProtocolError
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.agent_communication import CognitiveGapAnalyzer
 from competition_app.runtime.local_repair import LocalRepairController
@@ -710,7 +711,7 @@ class Orchestrator:
                 # Model adapters already own transport retry, structured-output
                 # repair and provider failover.  Re-running the whole Agent here
                 # multiplies those attempts and repeats completed tool work.
-                if isinstance(exc, (ModelResponseError, PlanCompilationError)):
+                if isinstance(exc, (ModelResponseError, PlanCompilationError, PlanningFocusProtocolError)):
                     trace.record(step.step_id, step.agent, "failed", attempt, type(exc).__name__)
                     raise
                 if attempt <= step.max_retries:

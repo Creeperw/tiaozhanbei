@@ -5,6 +5,8 @@ import json
 import re
 from typing import Any
 
+from competition_app.llm.validation_diagnostics import safe_validation_issues
+
 PLAN_HEADINGS = ("最终目标", "能力路径与阶段", "阶段里程碑", "资源预算", "重规划条件", "保温底线")
 FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "function_call", "content_filter"})
 PROVIDER_ERROR_CODES = frozenset({
@@ -103,7 +105,28 @@ def safe_response_diagnostics(value: Any) -> dict:
     attempts = value.get("attempts")
     if isinstance(attempts, list):
         safe["attempts"] = [
-            safe_response_diagnostics({k: v for k, v in item.items() if k != "attempts"})
+            safe_response_diagnostics({k: v for k, v in item.items() if k not in {"attempts", "structured_attempts"}})
             for item in attempts[:20] if isinstance(item, dict)
         ]
+    structured = value.get("structured_attempts")
+    if isinstance(structured, list):
+        safe["structured_attempts"] = []
+        for item in structured[:2]:
+            if not isinstance(item, dict):
+                continue
+            if type(item.get("attempt")) is not int or item["attempt"] not in (1, 2):
+                continue
+            if item.get("status") not in (
+                "succeeded", "invalid_json", "validation_failed", "transport_failed",
+            ):
+                continue
+            record = {"attempt": item["attempt"], "status": item["status"]}
+            if item.get("failure_reason") in (
+                "invalid_json", "ambiguous_json", "business_schema_invalid",
+            ):
+                record["failure_reason"] = item["failure_reason"]
+            issues = safe_validation_issues(item.get("validation_issues"))
+            if issues:
+                record["validation_issues"] = issues
+            safe["structured_attempts"].append(record)
     return safe

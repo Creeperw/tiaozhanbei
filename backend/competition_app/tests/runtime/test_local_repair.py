@@ -63,33 +63,37 @@ def paper_outputs() -> dict[str, AgentEnvelope[dict[str, str]]]:
 
 
 @pytest.mark.parametrize(
-    ("finding", "expected_steps"),
+    ("finding", "issue_type", "expected_steps"),
     [
-        ("题目内容表达不清", ["paper_assembly", "audit"]),
+        ("题目内容表达不清", "content_quality", ["paper_assembly", "audit"]),
         (
             "蓝图要求25道填空题，成卷只有10道",
+            "paper_blueprint_mismatch",
             ["paper_blueprint", "question_pool", "paper_assembly", "audit"],
         ),
     ],
 )
 def test_repair_controller_selects_smallest_whitelisted_chain(
-    finding: str, expected_steps: list[str]
+    finding: str, issue_type: str, expected_steps: list[str]
 ) -> None:
     repair = LocalRepairController().plan_repair(
         plan=paper_or_resource_plan(),
         audit_step_id="audit",
         audit_findings=[finding],
+        structured_findings=[RepairIssue(issue_id="I1", issue_type=issue_type,
+                         message=finding, owner_step_id="paper_assembly")],
         outputs=paper_outputs(),
     )
 
     assert [item.step_id for item in repair.actions] == expected_steps
 
 
-def test_unresolved_finding_does_not_guess_repair_owner() -> None:
+@pytest.mark.parametrize("finding", ["无法确定来源的异常", "不是证据缺失，不要重查", "没有蓝图冲突", "题干不存在表达不清"])
+def test_unresolved_finding_does_not_guess_repair_owner(finding) -> None:
     repair = LocalRepairController().plan_repair(
         plan=resource_plan(),
         audit_step_id="audit",
-        audit_findings=["无法确定来源的异常"],
+        audit_findings=[finding],
         outputs=existing_outputs(),
     )
 
@@ -103,6 +107,10 @@ def test_mixed_findings_merge_without_duplicate_reruns() -> None:
         plan=paper_or_resource_plan(),
         audit_step_id="audit",
         audit_findings=["题目内容表达不清", "题目偏离蓝图", "题目内容表达不清"],
+        structured_findings=[
+            RepairIssue(issue_id="I1", issue_type="content_quality", message="题目内容表达不清", owner_step_id="paper_assembly"),
+            RepairIssue(issue_id="I2", issue_type="paper_blueprint_mismatch", message="题目偏离蓝图", owner_step_id="paper_assembly"),
+        ],
         outputs=paper_outputs(),
     )
 
@@ -270,6 +278,7 @@ def test_repair_actions_reuse_completed_upstream_dependency() -> None:
         plan=plan,
         audit_step_id="audit",
         audit_findings=["资源未结合用户掌握状态"],
+        structured_findings=[RepairIssue(issue_id="I1", issue_type="learner_mismatch", message="资源未结合用户掌握状态", owner_step_id="expert")],
         outputs=existing_outputs(),
     )
 
@@ -296,6 +305,10 @@ def test_mixed_repair_closes_over_source_dag_without_duplicate_actions() -> None
         plan=plan,
         audit_step_id="audit",
         audit_findings=["事实缺少教材证据", "题目内容表达不清"],
+        structured_findings=[
+            RepairIssue(issue_id="I1", issue_type="missing_evidence", message="事实缺少教材证据", owner_step_id="expert"),
+            RepairIssue(issue_id="I2", issue_type="content_quality", message="题目内容表达不清", owner_step_id="paper_assembly"),
+        ],
         outputs=existing_outputs(),
     )
 

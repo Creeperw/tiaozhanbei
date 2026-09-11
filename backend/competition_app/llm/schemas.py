@@ -1181,15 +1181,15 @@ class KnowledgeLearningFocusItemOutput(StrictModelOutput):
         min_length=2,
         max_length=120,
         description=(
-            "用户明确要求纳入本次学习结果的一个具体知识对象名称；必须逐字出现在"
-            "对应教材 evidence 的原始 text 中，不得概括、拆分、扩写或补造名称。"
+            "用户明确要求纳入本次学习结果的对象名称；语义支持由 Knowledge 判断，"
+            "名称应与已确认范围一致，不得概括、拆分、扩写或补造对象。"
         ),
     )
     evidence_id: str = Field(
         min_length=1,
         max_length=200,
         description=(
-            "直接出现该名称的教材 evidence_id；必须来自本轮输入 evidence。"
+            "由模型判断支持该对象的教材 evidence_id；必须来自本轮输入 evidence。"
         ),
     )
 
@@ -1206,7 +1206,7 @@ class KnowledgeModelOutput(StrictModelOutput):
     summary_items: list[KnowledgeSummaryItemOutput] = Field(
         default_factory=list,
         description=(
-            "对每一条检索到的内容逐条提取并规范化：每条一个对象，evidence_id 指明取自哪条证据，"
+            "只对你判断应采用的检索内容逐条提取：每条一个对象，evidence_id 指明取自哪条证据，"
             "content 是提取的原文内容；来源信息由系统按 evidence_id 从证据集确定性补全，模型不输出来源字段。"
             "全部条目合并后即为本阶段交付物，供下游专家按 evidence_id 引用；"
             "need_more_retrieval=true 时必须为空数组，不得生成中间提取。"
@@ -1219,8 +1219,8 @@ class KnowledgeModelOutput(StrictModelOutput):
         description=(
             "用户未点名具体学习对象时为 not_requested；用户点名的全部对象都能逐项绑定"
             "教材证据时为 supported；至少一项缺少教材证据时为 unsupported；无法可靠"
-            "判断时为 undetermined。不得把流程词、教材名、能力维度或模型自行推荐内容"
-            "当作用户点名的学习对象。"
+            "判断时为 undetermined。该字段只描述教材证据支持，不判定规划资料充分性，"
+            "也不改变 Planner 已确认的学习范围；指定教材可以只做进度安排而无需检索正文。"
         ),
     )
     learning_focus_items: list[KnowledgeLearningFocusItemOutput] = Field(

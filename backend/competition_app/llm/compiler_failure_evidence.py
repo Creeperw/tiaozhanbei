@@ -25,13 +25,15 @@ def _write_exclusive(path: Path, content: bytes) -> None:
         stream.write(content)
 
 
-def capture_failure(context: dict[str, Any], source: dict[str, Any], route: dict[str, Any], raw: Any, envelope: Any) -> None:
+def capture_failure(context: dict[str, Any], source: dict[str, Any], route: dict[str, Any], raw: Any, envelope: Any, *, plan_scope: str = "long_term") -> None:
     """Best effort only. No prompt, provider reasoning, or business mutation."""
     try:
         if envelope.result.status == "compiled" or not CONFIG_PATH.is_file():
             return
         config = json.loads(CONFIG_PATH.read_text())
         if config.get("enabled") is not True or context.get("learner_id") != config.get("learner_id") or not config.get("learner_id"):
+            return
+        if config.get("plan_scope") is not None and config["plan_scope"] != plan_scope:
             return
         expires = datetime.fromisoformat(config["expires_at"])
         if expires.tzinfo is None or datetime.now(timezone.utc) >= expires:
@@ -54,6 +56,10 @@ def capture_failure(context: dict[str, Any], source: dict[str, Any], route: dict
             for key in ("scope", "total_duration_days", "selected_stage_id", "selected_books", "selection_mode", "selection_reason"):
                 if key in contract:
                     formal[key] = contract[key]
+            if plan_scope == "short_term":
+                for key in ("duration_days", "progression_nodes", "expected_output", "completion_criteria"):
+                    if key in contract:
+                        formal[key] = contract[key]
             formal["stages"] = [
                 {key: item[key] for key in ("stage_id", "duration_days", "schedule_summary", "acceptance") if key in item}
                 for item in contract.get("stages", []) if isinstance(item, dict)
@@ -66,7 +72,7 @@ def capture_failure(context: dict[str, Any], source: dict[str, Any], route: dict
             }
         document = source.get("plan_document")
         evidence = {
-            "version": 1, "run_digest": claim.decode(),
+            "version": 1, "run_digest": claim.decode(), "plan_scope": plan_scope,
             "source_digest": envelope.source_digest,
             "route_source_digest": envelope.route_source_digest,
             "document": document, "contract": formal,

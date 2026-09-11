@@ -111,6 +111,11 @@ class RevisingAuditAgent:
                     audit_result_id=f"AUDIT_{self.count}",
                     decision=decision,
                     findings=["证据缺失"] if decision == "revise" else [],
+                    structured_findings=[RepairIssue(
+                        issue_id=f"MISSING_{self.count}", issue_type="missing_evidence",
+                        message="证据缺失", origin="audit_model",
+                        owner_step_id="knowledge", affected_step_ids=["knowledge"],
+                    )] if decision == "revise" else [],
                 )
             },
         )()

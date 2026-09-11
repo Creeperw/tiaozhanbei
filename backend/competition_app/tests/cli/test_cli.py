@@ -14,7 +14,7 @@ def test_cli_runs_review_card_in_stub_mode(tmp_path: Path) -> None:
             "--user-request", "生成四君子汤复习卡",
             "--snapshot-root", str(tmp_path),
         ],
-        env={"COMPETITION_APP_MODE": "stub"},
+        env={"COMPETITION_APP_MODE": "stub", "DATABASE_URL": f"sqlite:///{tmp_path / 'agent.sqlite'}"},
     )
 
     assert result.exit_code == 0

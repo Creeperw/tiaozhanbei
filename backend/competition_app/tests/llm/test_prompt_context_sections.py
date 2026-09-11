@@ -34,7 +34,7 @@ def test_planning_source_map_is_lossless_at_provider_message_boundary() -> None:
     assert sources == {**judgment_sources(context), "status": "unknown", "empty": ""}
     # Ordinary context remains natural language; only exact-reference data is exempt.
     assert "用户这次想解决的问题：" in material
-    assert "source_ref" in messages[0]["content"]
+    assert "source_no" in messages[0]["content"]
 
 
 def test_model_prompt_separates_dialogue_external_information_and_profile() -> None:

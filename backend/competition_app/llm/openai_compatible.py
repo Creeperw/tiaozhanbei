@@ -1391,7 +1391,30 @@ class OpenAICompatibleChatModel(ChatModel):
         failure: BaseException | None = None,
         failure_reason: str | None = None,
         previous_failure: str | None = None,
+        diagnostic_schema: dict[str, Any] | None = None,
     ) -> None:
+        # Observation only: never feed these records into retry instructions
+        # or change the original result/exception. Keep first failures even
+        # when a later attempt succeeds; no response values are retained.
+        if role.lower() == "audit_findings_compiler":
+            try:
+                diagnostics = self._transport_value("response_diagnostics")
+                if isinstance(diagnostics, dict):
+                    records = diagnostics.setdefault("structured_attempts", [])
+                    if len(records) < 2:
+                        observation = {"attempt": attempt, "status": status}
+                        if failure_reason in {
+                            "invalid_json", "ambiguous_json", "business_schema_invalid",
+                        }:
+                            observation["failure_reason"] = failure_reason
+                        if status == "validation_failed" and failure is not None:
+                            observation["validation_issues"] = validation_issues(
+                                failure, diagnostic_schema
+                            )
+                        records.append(observation)
+            except Exception:
+                # Diagnostic failures must not replace business failures.
+                pass
         fields: dict[str, Any] = {
             "role": role,
             "attempt": attempt,
@@ -1969,6 +1992,7 @@ class OpenAICompatibleChatModel(ChatModel):
                         failure=exc,
                         failure_reason="business_schema_invalid",
                         previous_failure=previous_failure,
+                        diagnostic_schema=original_output_schema,
                     )
                     continue
                 if on_delta is not None:

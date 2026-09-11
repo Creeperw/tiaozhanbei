@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from competition_app.services.planning_metrics import build_planning_metric_evidence
+
 from competition_app.agents.audit import AuditAgent
 from competition_app.agents.diagnosis import DiagnosisAgent
 from competition_app.agents.default_route_resolver import DefaultRouteResolverAgent
@@ -1102,6 +1104,10 @@ class ApplicationContainer:
             return {
                 "schema_version": "1.0",
                 "source": "authorized_learning_planning_tools",
+                "planning_metric_evidence": (
+                    build_planning_metric_evidence(behavior)
+                    if scope in {"long_term", "short_term"} else None
+                ),
                 "learning_profile": behavior.get("learning_profile") or {},
                 "system_data": behavior.get("system_data") or {},
                 "user_knowledge_states": behavior.get("user_knowledge_state") or [],
