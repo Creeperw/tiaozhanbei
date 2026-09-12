@@ -2828,9 +2828,18 @@ class BackendHandoffRuntime:
             core.difficulty_source = difficulty_source_value
             core.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
 
-            version = db.query(database.QuestionVersionRecord).filter_by(
-                question_version_id=question_id,
-            ).one_or_none()
+            # 同一道题可能已经由知识图谱投影写过版本记录，那种记录的
+            # ``question_version_id`` 带命名空间后缀（``<题目ID>:atlas:<摘要>``）。
+            # 必须按题目去找已有记录并复用，否则会以裸 ID 再插一条 ``version=1``
+            # 的记录，撞上 ``(question_id, version)`` 唯一约束，整个发题请求失败。
+            # 取最大版本与批改侧 ``resolve_controlled_practice_submission`` 一致，
+            # 保证发题与批改落在同一条版本记录上。
+            version = (
+                db.query(database.QuestionVersionRecord)
+                .filter_by(question_id=question_id)
+                .order_by(database.QuestionVersionRecord.version.desc())
+                .first()
+            )
             if version is None:
                 version = database.QuestionVersionRecord(
                     question_version_id=question_id,
@@ -2838,6 +2847,11 @@ class BackendHandoffRuntime:
                     version=1,
                 )
                 db.add(version)
+                # 只在新记录上认领来源标记：已有记录属于写入它的那套导入流程，
+                # 改写 ``source_kind`` 会让该题从每日任务题目池（按
+                # ``formal-content:`` 前缀筛选）里消失。
+                version.source_kind = "formal_question_bank"
+            version_id = version.question_version_id
             version.question_type = question_type
             version.stem = stem
             version.answer = answer
@@ -2845,20 +2859,19 @@ class BackendHandoffRuntime:
                 version.analysis = analysis
             version.standard_difficulty = difficulty_value
             version.difficulty_source = difficulty_source_value
-            version.source_kind = "formal_question_bank"
             version.status = "active"
             db.flush()
             existing_links = {
                 row.kp_id: row
                 for row in db.query(database.QuestionKPLinkRecord).filter_by(
-                    question_version_id=question_id,
+                    question_version_id=version_id,
                 ).all()
             }
             for index, kp_id in enumerate(kp_ids):
                 link = existing_links.get(kp_id)
                 if link is None:
                     db.add(database.QuestionKPLinkRecord(
-                        question_version_id=question_id,
+                        question_version_id=version_id,
                         kp_id=kp_id,
                         is_primary=index == 0,
                         status="active",
