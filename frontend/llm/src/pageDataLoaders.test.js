@@ -1164,6 +1164,20 @@ test('fetchJsonWithAuthFallback retains HTTP status and backend detail for faile
   });
 });
 
+test('fetchJsonWithAuthFallback keeps the HTTP status when the error body is not JSON', { concurrency: false }, async () => {
+  // 服务端内部错误返回纯文本 "Internal Server Error"，readJsonResponse 会退回
+  // 调用方给的 fallback。练习提交等调用方传的是 null，这里必须只暴露 HTTP
+  // 状态，而不是让 TypeError 盖掉真正的失败原因。
+  await withBrowserStubs(new Map([
+    ['/api/training/workspace/tasks', () => makeJsonResponse(500, 'Internal Server Error')],
+  ]), async () => {
+    await assert.rejects(
+      fetchJsonWithAuthFallback({ paths: ['/training/workspace/tasks'], fallback: null }),
+      { message: '500: Request failed for /training/workspace/tasks' },
+    );
+  });
+});
+
 test('submitTrainingWorkspaceTask sends the POST contract through fetchJsonWithAuthFallback', { concurrency: false }, async () => {
   const task = { task_type: 'handout_generation', title: '脾胃学说讲义', query: '脾胃学说' };
   let receivedUrl;

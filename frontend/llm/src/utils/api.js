@@ -68,7 +68,11 @@ export const fetchJsonWithAuthFallback = async ({
         lastError = new Error(`Invalid payload for ${path}`);
         continue;
       }
-      const detail = typeof data.detail === 'string' && data.detail.trim()
+      // 非 JSON 的错误响应（例如 FastAPI 内部错误返回的纯文本
+      // "Internal Server Error"）会让 readJsonResponse 返回调用方给的
+      // fallback，很多调用方传的是 null。这里必须容忍 data 为 null，
+      // 否则会抛出 TypeError 并把真正的 HTTP 状态信息盖掉。
+      const detail = typeof data?.detail === 'string' && data.detail.trim()
         ? data.detail.trim()
         : `Request failed for ${path}`;
       lastError = new Error(`${res.status}: ${detail}`);
