@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, text
@@ -18,7 +19,12 @@ from competition_app.contracts.default_route import (
     ResolvedPlanningRoute,
 )
 from competition_app.repositories.learning_plan import SqlLearningPlanRepository
-from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
+from competition_app.services.daily_task_execution import (
+    DailyTaskExecutionCoordinator,
+    daily_task_progress_request,
+    executable_publish_payload,
+    split_executable_items,
+)
 
 
 NOW = datetime(2026, 7, 20, 12, 0, tzinfo=timezone.utc)
@@ -199,6 +205,81 @@ def test_dispatch_pending_retries_failed_outbox_event_and_marks_delivered() -> N
     assert row[3] is not None
 
 
+def test_dispatch_pending_parks_event_after_max_attempts_and_logs(caplog) -> None:
+    """发布持续失败必须有上限且有日志，不能静默无限重试。
+
+    回归护栏：此前失败只写 last_error 并重置 pending，既无上限也无日志，
+    线上 attempt_count 累到 7 仍无人可见，学习者整张今日任务无法完成。
+    """
+
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    learner_id = "LEARNER_1"
+    repository.save_current(learner_id, build_plan(learner_id))
+
+    fake_runtime = FakeBackendHandoffRuntime()
+    fake_runtime.failures = 10_000
+    coordinator = DailyTaskExecutionCoordinator(
+        engine=engine,
+        plan_repository=repository,
+        backend_handoff_runtime=fake_runtime,
+    )
+
+    max_attempts = DailyTaskExecutionCoordinator._MAX_PUBLISH_ATTEMPTS
+    with caplog.at_level(logging.WARNING):
+        for _ in range(max_attempts):
+            assert coordinator.dispatch_pending(learner_id, limit=20) == 0
+
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                "SELECT status, attempt_count FROM learning_task_sync_outbox WHERE learner_id=:learner_id"
+            ),
+            {"learner_id": learner_id},
+        ).one()
+    assert row[0] == DailyTaskExecutionCoordinator._PARKED_STATUS
+    assert row[1] == max_attempts
+
+    # 停靠后不再重试，且每次失败都留痕（最后一次必须升级为 ERROR）
+    assert coordinator.dispatch_pending(learner_id, limit=20) == 0
+    assert len(fake_runtime.calls) == max_attempts
+    assert any(
+        "daily task publication failed" in record.getMessage()
+        for record in caplog.records
+    )
+    assert any(record.levelno >= logging.ERROR for record in caplog.records)
+
+
+def test_ensure_current_snapshot_degrades_instead_of_raising(caplog) -> None:
+    """快照自愈失败必须降级返回并留日志，不能抛出。
+
+    该自愈与其余刷新步骤共用在 /learning-plans/current 的同一个 try 里，
+    抛出会把学习者今日任务进度整体清空；
+    /learning-tasks/current/refresh 无异常处理，会直接 500。
+    """
+
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    learner_id = "LEARNER_1"
+    repository.save_current(learner_id, build_plan(learner_id))
+
+    fake_runtime = FakeBackendHandoffRuntime()
+    fake_runtime.failures = 10_000
+    coordinator = DailyTaskExecutionCoordinator(
+        engine=engine,
+        plan_repository=repository,
+        backend_handoff_runtime=fake_runtime,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        assert coordinator.ensure_current_snapshot(learner_id) is False
+
+    assert any(
+        "daily task snapshot repair failed" in record.getMessage()
+        for record in caplog.records
+    )
+
+
 def test_reconcile_parent_status_marks_completed_only_when_all_items_report_complete() -> None:
     engine = build_engine()
     repository = SqlLearningPlanRepository(engine)
@@ -365,3 +446,139 @@ def test_outbox_error_is_redacted_before_persistence() -> None:
     assert "top-secret" not in error
     assert "hunter2" not in error
     assert error == "token=[REDACTED] password=[REDACTED]"
+
+
+def _legacy_recall_item(ordinal: int, *, task_item_id: str = "DTI_LEGACY") -> DailyTaskItemSpec:
+    return DailyTaskItemSpec(
+        task_item_id=task_item_id,
+        ordinal=ordinal,
+        item_type="recall",
+        title="回顾：君臣佐使",
+        estimated_minutes=1.0,
+    )
+
+
+def build_plan_with_legacy_item(learner_id: str) -> LearningPlanResult:
+    plan = build_plan(learner_id)
+    task = plan.learning_task
+    items = list(task.items) + [_legacy_recall_item(len(task.items) + 1)]
+    return plan.model_copy(
+        update={
+            "learning_task": task.model_copy(
+                update={
+                    "items": items,
+                    "estimated_minutes": sum(item.estimated_minutes for item in items),
+                }
+            )
+        }
+    )
+
+
+def test_split_executable_items_separates_labels_without_a_completion_path() -> None:
+    kept, dropped = split_executable_items(
+        [
+            {"task_item_id": "A", "item_type": "knowledge_practice"},
+            {"task_item_id": "B", "item_type": "recall"},
+            {"task_item_id": "C", "item_type": "reading"},
+            {"task_item_id": "D", "item_type": "video_section"},
+        ]
+    )
+
+    assert [item["task_item_id"] for item in kept] == ["A", "D"]
+    assert [item["task_item_id"] for item in dropped] == ["B", "C"]
+
+
+def test_executable_publish_payload_drops_items_without_a_completion_path(caplog) -> None:
+    payload = {
+        "task_id": "TASK_1",
+        "version": 3,
+        "items": [
+            {"task_item_id": "DTI_1", "item_type": "knowledge_practice"},
+            {"task_item_id": "DTI_LEGACY", "item_type": "recall"},
+        ],
+    }
+
+    with caplog.at_level(logging.WARNING):
+        filtered = executable_publish_payload(payload, learner_id="L1", source="test")
+
+    assert [item["task_item_id"] for item in filtered["items"]] == ["DTI_1"]
+    assert filtered["version"] == 3
+    assert payload["items"][1]["task_item_id"] == "DTI_LEGACY"
+    assert any(
+        "dropped items without a completion path" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_executable_publish_payload_passes_through_when_all_items_are_executable() -> None:
+    payload = {
+        "items": [{"task_item_id": "DTI_1", "item_type": "knowledge_practice"}]
+    }
+
+    assert executable_publish_payload(payload, learner_id="L1", source="test") is payload
+    assert executable_publish_payload("not-a-dict", learner_id="L1", source="t") == "not-a-dict"
+    assert executable_publish_payload(
+        {"items": []}, learner_id="L1", source="t"
+    ) == {"items": []}
+
+
+def test_daily_task_progress_request_omits_items_without_a_completion_path(caplog) -> None:
+    task = build_plan_with_legacy_item("LEARNER_PROGRESS").learning_task
+
+    with caplog.at_level(logging.WARNING):
+        payload = daily_task_progress_request(task)
+
+    assert [item["task_item_id"] for item in payload["items"]] == ["DTI_1"]
+    assert payload["host_task_id"] == task.task_id
+    assert any(
+        "ignored items without a completion path" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_dispatch_pending_filters_legacy_items_out_of_a_stored_payload() -> None:
+    """修复前写入 outbox 的载荷也必须被过滤，否则重试依旧整版失败。"""
+
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    learner_id = "LEARNER_LEGACY_OUTBOX"
+    repository.save_current(learner_id, build_plan_with_legacy_item(learner_id))
+
+    runtime = FakeBackendHandoffRuntime()
+    runtime.failures = 0
+    coordinator = DailyTaskExecutionCoordinator(engine, repository, runtime)
+
+    assert coordinator.dispatch_pending(learner_id, limit=20) == 1
+
+    published = runtime.calls[-1][1]
+    assert [item["task_item_id"] for item in published["items"]] == ["DTI_1"]
+
+
+def test_ensure_current_snapshot_converges_stored_task_onto_executable_items(caplog) -> None:
+    """已落库的历史任务也必须自愈：前端按计划层渲染，不收敛就还是死链。"""
+
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    learner_id = "LEARNER_CONVERGE"
+    repository.save_current(learner_id, build_plan_with_legacy_item(learner_id))
+
+    runtime = FakeBackendHandoffRuntime()
+    runtime.failures = 0
+    coordinator = DailyTaskExecutionCoordinator(engine, repository, runtime)
+
+    with caplog.at_level(logging.WARNING):
+        assert coordinator.ensure_current_snapshot(learner_id) is True
+
+    stored = repository.get_current(learner_id).learning_task
+    assert [item.task_item_id for item in stored.items] == ["DTI_1"]
+    assert [item.ordinal for item in stored.items] == [1]
+    assert stored.version == 2
+    assert stored.estimated_minutes == 10
+    assert "回顾：君臣佐使" in stored.task_content
+    assert any(
+        "converging stored daily task onto executable items" in record.getMessage()
+        for record in caplog.records
+    )
+
+    published = runtime.calls[-1][1]
+    assert [item["task_item_id"] for item in published["items"]] == ["DTI_1"]

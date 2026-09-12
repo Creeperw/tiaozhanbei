@@ -49,7 +49,9 @@ function runtimeEventToTracePayload(event) {
   if (name === 'audit_revision_started') return {
     type: 'repair_event',
     kind: 'reaudit_started',
-    text: '审核发现可局部修正的问题，正在安排返修',
+    // Emitted as soon as audit asks for a revision, before the repair plan is
+    // built, so it must not promise that a repair will run.
+    text: '审核发现需要修正的问题，正在确定修正范围',
     auditStepId: event.audit_step_id || event.trigger_step_id || 'audit',
     status: event.status || 'running',
   };
@@ -175,10 +177,17 @@ function runtimeEventToTracePayload(event) {
     };
   }
   if (name === 'repair_planned') {
+    // repair_planned carries the plan status. When no repair chain can be
+    // built the status is already needs_human_review and rerun_step_ids is
+    // empty, so promising a partial repair here was a false statement: the
+    // learner was told a repair was prepared and then told it had failed.
+    const blocked = event.status === 'needs_human_review';
     return {
       type: 'repair_event',
       kind: 'planned',
-      text: '审核已定位问题，准备仅返修受影响的环节',
+      text: blocked
+        ? '审核判定的问题无法在当前执行路径上自动修正，已转人工复核'
+        : '审核已定位问题，准备仅返修受影响的环节',
       auditStepId: event.trigger_step_id || '',
       targetStepIds: event.rerun_step_ids || [],
       preservedStepIds: event.preserved_step_ids || [],
@@ -206,14 +215,20 @@ function runtimeEventToTracePayload(event) {
     };
   }
   if (name === 'repair_completed' || name === 'repair_stopped') {
+    const completed = name === 'repair_completed';
+    // A stop with status needs_human_review means no repair step ever ran,
+    // so "返修后仍未通过" would describe a step that did not happen.
+    const neverRan = !completed && event.status === 'needs_human_review';
     return {
       type: 'repair_event',
-      kind: name === 'repair_completed' ? 'completed' : 'stopped',
-      text: name === 'repair_completed'
+      kind: completed ? 'completed' : 'stopped',
+      text: completed
         ? '复审通过，返修内容可以发布'
-        : '返修后仍未通过，内容未自动发布',
+        : neverRan
+          ? '该问题不能自动修正，内容未自动发布，已转人工复核'
+          : '返修后仍未通过，内容未自动发布',
       auditStepId: event.trigger_step_id || '',
-      status: event.status || (name === 'repair_completed' ? 'pass' : 'failed'),
+      status: event.status || (completed ? 'pass' : 'failed'),
     };
   }
   if (name === 'web_search_status') {

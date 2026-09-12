@@ -63,13 +63,24 @@ class LocalRepairController:
         "safety_violation": "",
         "unresolved": "",
     }
+    # Diagnosis authors and revises a learning plan, and
+    # AuditIssueResolver.resolve_responsibility assigns every plan-local finding
+    # to it whatever label the prose Compiler attached.  This whitelist must
+    # admit Diagnosis for those labels as well: a plan-local factual_error or
+    # content_quality finding arrives with owner_step_id="diagnosis", and
+    # rejecting it here silently fell through to the Expert/PaperAssembly
+    # default, whose steps do not exist in a planning DAG, so an actionable
+    # revise was escalated to human review without any repair running.
+    # Diagnosis deliberately stays out of _DEFAULT_TARGETS: only a
+    # system-attributed owner selects it, so resource and paper workflows keep
+    # their existing defaults.
     _ALLOWED_TARGETS: dict[IssueType, frozenset[str]] = {
-        "missing_evidence": frozenset({"knowledge", "expert", "paper_assembly"}),
-        "conflicting_evidence": frozenset({"knowledge", "expert", "paper_assembly"}),
-        "factual_error": frozenset({"expert", "paper_assembly"}),
-        "learner_mismatch": frozenset({"learning_plan", "schedule", "expert", "paper_assembly"}),
-        "route_or_prerequisite_error": frozenset({"learning_plan", "schedule", "expert", "paper_assembly"}),
-        "content_quality": frozenset({"expert", "paper_assembly"}),
+        "missing_evidence": frozenset({"knowledge", "expert", "paper_assembly", "diagnosis"}),
+        "conflicting_evidence": frozenset({"knowledge", "expert", "paper_assembly", "diagnosis"}),
+        "factual_error": frozenset({"expert", "paper_assembly", "diagnosis"}),
+        "learner_mismatch": frozenset({"learning_plan", "schedule", "expert", "paper_assembly", "diagnosis"}),
+        "route_or_prerequisite_error": frozenset({"learning_plan", "schedule", "expert", "paper_assembly", "diagnosis"}),
+        "content_quality": frozenset({"expert", "paper_assembly", "diagnosis"}),
         "paper_blueprint_mismatch": frozenset({"paper_assembly"}),
         "plan_quality": frozenset({"diagnosis"}),
         "plan_contract_invalid": frozenset({"diagnosis"}),
@@ -322,6 +333,19 @@ class LocalRepairController:
         target = self._affected_target(issue)
         if target is None:
             return None
+        if target == "diagnosis":
+            # The finding is owned by Diagnosis, so it is local to the plan
+            # prose.  A planning DAG has no EvidencePack, Expert or
+            # PaperAssembly branch to rerun, so the chain must stay inside the
+            # planning steps; a route mismatch additionally needs the frozen
+            # route decision re-read before the plan is rewritten.
+            prefix = (
+                ("route_resolution",)
+                if issue_type == "route_or_prerequisite_error"
+                and "route_resolution" in step_ids
+                else ()
+            )
+            return (*prefix, "diagnosis", audit_step_id)
         if issue_type in {"missing_evidence", "conflicting_evidence", "factual_error"}:
             if target == "knowledge":
                 if "expert" not in step_ids:

@@ -20,9 +20,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Callable
-from uuid import uuid4
 
 from competition_app.contracts.learning_plan import DailyTaskItemSpec
+from competition_app.services.daily_task_addon import build_review_addon_items
 
 # 减负比例：按连续低完成天数/执行率分级。
 _REDUCE_RATIO_HEAVY = 0.5   # 连续 3+ 天低完成或执行率 < 0.25
@@ -225,23 +225,35 @@ def _apply_add_review_window(
         review.get("summary") or "",
         " ".join(review.get("evidence") or []),
     )
-    title = f"到期复习：{focus}"
-    new_item = DailyTaskItemSpec(
-        task_item_id=f"ITM_REVIEW_{uuid4().hex[:12]}",
-        ordinal=len(task.items) + 1,
-        item_type="recall",
-        title=title,
-        estimated_minutes=REVIEW_WINDOW_ADDED_MINUTES,
+    addon_items, unresolved = build_review_addon_items(
+        resolver=getattr(learning_plan_service, "knowledge_point_resolver", None),
+        focus_text=focus,
+        learning_chapter=str(getattr(task, "learning_chapter", "") or ""),
+        total_minutes=REVIEW_WINDOW_ADDED_MINUTES,
+        item_id_prefix="ITM_REVIEW_",
+        title_prefix="到期复习：",
         resource_ref={
             "review_id": str(review_id or ""),
             "source": _ITEM_SOURCE,
             "summary": str(review.get("summary") or "")[:200],
         },
-        completion_policy={},
+        start_ordinal=len(task.items) + 1,
     )
-    items = list(task.items) + [new_item]
+    if not addon_items:
+        # 与干预加练项同理：不加没有完成路径的占位项，如实告知用户。
+        return {
+            "applied": False,
+            "reason": (
+                "该复盘建议涉及的知识点当前没有可用的练习题，暂未安排进今日任务。"
+                + (f"（未解析出：{'、'.join(unresolved)}）" if unresolved else "")
+            ),
+            "summary": "",
+        }
+
+    items = list(task.items) + addon_items
+    titles = [item.title for item in addon_items]
     task_content, expected_output, completion_criteria = _rebuild_task_text(task, items)
-    note = f"【今日加练】已按你的确认安排：{title}。"
+    note = f"【今日加练】已按你的确认安排：{'、'.join(titles)}。"
     task_content = f"{task_content}\n\n{note}"
     timestamp = datetime.now(timezone.utc)
     updated = task.model_copy(
@@ -263,7 +275,11 @@ def _apply_add_review_window(
     )
     if not saved:
         return {"applied": False, "reason": "任务刚被刷新，请重试。", "summary": ""}
-    return {"applied": True, "reason": "", "summary": f"已把到期复习「{title}」安排进今日任务。"}
+    return {
+        "applied": True,
+        "reason": "",
+        "summary": f"已把到期复习「{'、'.join(titles)}」安排进今日任务。",
+    }
 
 
 def _apply_replan(

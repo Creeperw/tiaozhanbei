@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 from datetime import datetime, timedelta, timezone
 import re
@@ -15,6 +16,7 @@ from competition_app.contracts.learning_plan import (
     LongTermPlan,
     StageEvidenceRecord,
     ShortTermPlan,
+    is_executable_item,
     is_externally_owned_item,
 )
 from competition_app.repositories.learning_plan import (
@@ -84,6 +86,8 @@ DAILY_QUIZ_TARGET_COUNT = 12
 # 单题预计耗时（分钟）：知识点配套练习与每日测验统一按 1.5 分钟/题计。
 PER_QUESTION_ESTIMATED_MINUTES = 1.5
 
+logger = logging.getLogger(__name__)
+
 KnowledgePointResolver = Callable[..., str | None]
 VideoResourceResolver = Callable[[dict[str, Any]], dict[str, Any] | None]
 
@@ -140,9 +144,12 @@ def materialize_daily_task_items(
         )
         if item_type == "knowledge_practice":
             if not kp_id:
-                item_type = "recall"
-            else:
-                covered_kp_ids.add(kp_id)
+                # 模型把该块标成知识点练习，但知识点解析不出正式 ID，执行层
+                # 没有题组可发。计划正文仍保留这个标签，但不生成一个假的
+                # recall 原子项：recall 没有任何完成入口，会让整个版本被
+                # 执行层拒收，用户看到今日任务全部点不开。
+                continue
+            covered_kp_ids.add(kp_id)
         if item_type == "video_section":
             resource_ref = (
                 video_resource_resolver(supplied_resource_ref)
@@ -150,10 +157,10 @@ def materialize_daily_task_items(
                 else None
             )
             if not isinstance(resource_ref, dict) or not resource_ref:
-                item_type = "reading"
-                resource_ref = {}
-            else:
-                resource_ref = dict(resource_ref)
+                # 没有可信视频资源时不再降级成 reading：reading 同样没有
+                # 完成路径，只会成为一个点不开的原子项。
+                continue
+            resource_ref = dict(resource_ref)
         else:
             resource_ref = supplied_resource_ref
         semantics.append(
@@ -179,10 +186,13 @@ def materialize_daily_task_items(
             knowledge_point_resolver,
             learning_chapter=learning_chapter,
         )
-        if kp_id is None and knowledge_point_resolver is not None:
+        if kp_id is None:
             # A live daily task contains only resources with a verifiable
             # completion path. The model label remains in the prose plan, but
-            # it must not become a fake executable recall item.
+            # it must not become a fake executable recall item.  This holds
+            # with or without a resolver configured: recall has no completion
+            # endpoint on the execution side, so emitting it would take the
+            # whole task version down with it.
             continue
         if kp_id is not None and kp_id not in resolved_focus_kp_ids:
             resolved_focus_kp_ids.append(kp_id)
@@ -192,11 +202,11 @@ def materialize_daily_task_items(
             covered_kp_ids.add(kp_id)
         semantics.append(
             {
-                "item_type": "knowledge_practice" if kp_id else "recall",
+                "item_type": "knowledge_practice",
                 "title": f"完成知识点 {knowledge_point_name} 练习",
                 "knowledge_point_name": knowledge_point_name,
                 "kp_id": kp_id,
-                "required_question_count": 3 if kp_id else None,
+                "required_question_count": 3,
                 "resource_ref": {},
             }
         )
@@ -237,15 +247,14 @@ def materialize_daily_task_items(
                 break
 
     if not semantics:
-        semantics.append(
-            {
-                "item_type": "recall",
-                "title": task_content,
-                "knowledge_point_name": None,
-                "kp_id": None,
-                "required_question_count": None,
-                "resource_ref": {},
-            }
+        # 这里曾经补一个 1 分钟 recall 原子项来「避免空任务」。执行层没有
+        # recall 的完成入口，补出来的项既点不开，又会让整版发布被拒收，
+        # 用户看到的是「今日任务全部点不开」。现在允许当天没有任何可执行
+        # 原子项：计划正文仍然描述学习安排，前端显示空任务态。
+        logger.warning(
+            "daily task has no executable atom: chapter=%s focus_points=%s",
+            learning_chapter,
+            len(focus_knowledge_points or []),
         )
     # 复习知识点：到期复习的知识点不单独生成练习原子（避免任务膨胀），
     # 只扩充每日测验的题源池，保证“今日学习 + 复习巩固”都在测验中覆盖。
@@ -377,24 +386,10 @@ def materialize_daily_task_items(
             index_map[old_index]: minutes
             for old_index, minutes in fixed_semantic_minutes.items()
         }
-    # 兜底：没有任何可执行原子时，至少保留一个 1 分钟回忆原子，避免空任务。
-    if not fixed_semantic_minutes and not any(
-        semantic.get("quiz") for semantic in semantics
-    ):
-        semantics = [
-            {
-                "item_type": "recall",
-                "title": task_content,
-                "knowledge_point_name": None,
-                "kp_id": None,
-                "required_question_count": None,
-                "resource_ref": {},
-            }
-        ]
-        fixed_semantic_minutes = {0: 1.0}
-        video_minutes = {}
-        practice_counts = {}
-
+    # 没有任何可执行原子时不再伪造一个 1 分钟回忆原子。执行层没有 recall 的
+    # 完成入口，伪造出来的项会让整版发布被拒收，用户看到的是「今日任务全部
+    # 点不开」，比诚实地显示「今天还没有学习任务」更糟。计划正文仍然保留
+    # 模型给出的学习安排描述，用户可以让智能助教据此重新安排任务。
     # 视频使用真实分钟数合计，不做虚拟压缩。
     video_total = sum(video_minutes.values())
     fixed_total = sum(fixed_semantic_minutes.values())
@@ -453,11 +448,15 @@ def materialize_daily_task_items(
             )
             completion_policy = {"policy": policy, "coverage_threshold": 0.9}
         else:
-            completion_policy = {"policy": "explicit_evidence"}
+            # 防御性兜底：只有 knowledge_practice / video_section 具备完成
+            # 路径，其它类型一律不生成原子项，避免拖垮整版发布。
+            continue
         items.append(
             DailyTaskItemSpec(
                 task_item_id=f"DTI_{uuid4().hex}",
-                ordinal=index + 1,
+                # 序号按实际生成的项连续编号：跳过的语义项不能让 ordinal
+                # 出现断档，契约要求序号从 1 连续。
+                ordinal=len(items) + 1,
                 item_type=item_type,
                 title=semantic["title"],
                 estimated_minutes=item_minutes[index],
@@ -500,6 +499,23 @@ def _resolve_knowledge_point(
     if not kp_id:
         raise ValueError("knowledge point resolver returned an empty formal ID")
     return kp_id
+
+
+def resolve_executable_knowledge_point(
+    knowledge_point_name: str,
+    resolver: KnowledgePointResolver | None,
+    *,
+    learning_chapter: str = "",
+) -> str | None:
+    """把名称解析为具备可执行题组的正式知识点 ID。
+
+    计划生成以外的落地流程（干预加练、复盘加练）也要生成可执行原子项，
+    共用同一份解析语义，避免各写一套。
+    """
+
+    return _resolve_knowledge_point(
+        knowledge_point_name, resolver, learning_chapter=learning_chapter
+    )
 
 
 def _all_text(value: Any) -> list[str]:
@@ -811,8 +827,7 @@ class LearningPlanService:
             item for item in task.items if not is_externally_owned_item(item)
         ]
         has_executable_items = bool(repairable_items) and all(
-            item.item_type in {"video_section", "knowledge_practice"}
-            for item in repairable_items
+            is_executable_item(item) for item in repairable_items
         )
         if has_executable_items:
             items = list(task.items)
@@ -841,8 +856,7 @@ class LearningPlanService:
                 # 预算过小无法容纳原子项时退回完整预算，修复本身不能失败。
                 materialized = materialize_items(task.estimated_minutes)
             if not materialized or any(
-                item.item_type not in {"video_section", "knowledge_practice"}
-                for item in materialized
+                not is_executable_item(item) for item in materialized
             ):
                 return task
             items = [

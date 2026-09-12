@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import math
 import re
 import unicodedata
@@ -30,6 +31,11 @@ NON_TERMINAL_AUDIT_DECISIONS = {"pending", "needs_human_review", "human_review"}
 FORMAL_QUESTION_SOURCE_PREFIX = "formal-content:"
 KNOWLEDGE_ATLAS_SOURCE = "formal-content:knowledge-atlas-2026-07-18"
 SYSTEM_AUDITED_SOURCE_KINDS = {"agent_audited_paper"}
+# 执行层真正能提供完成路径的原子项类型。计划层的
+# ``competition_app.contracts.learning_plan.EXECUTABLE_ITEM_TYPES`` 必须与
+# 此集合一致；两边一旦漂移，用户就会看到点不开的每日任务项。
+SUPPORTED_ITEM_KINDS = frozenset({"knowledge_practice", "video", "video_section"})
+logger = logging.getLogger(__name__)
 _QUESTION_TYPES = {
     "单项选择题": "single_choice",
     "单选题": "single_choice",
@@ -879,20 +885,11 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
     host_task_version = _typed_int(payload.get("host_task_version") or payload.get("version") or 1, field_name="host_task_version")
 
     items_payload = _items_payload(payload.get("items") or payload.get("knowledge_practice") or payload)
-    supported_item_kinds = {"knowledge_practice", "video", "video_section"}
-    unsupported_item_kinds = sorted({
-        str(item_spec.get("item_kind") or item_spec.get("item_type") or "knowledge_practice")
-        for item_spec in items_payload
-        if str(item_spec.get("item_kind") or item_spec.get("item_type") or "knowledge_practice")
-        not in supported_item_kinds
-    })
-    if unsupported_item_kinds:
-        raise DailyTaskProgressError(
-            "daily task publication contains items without a verifiable completion path: "
-            + ", ".join(unsupported_item_kinds),
-            409,
-        )
-
+    supported_item_kinds = set(SUPPORTED_ITEM_KINDS)
+    # 单个原子项没有可验证的完成路径时只丢弃该项，不再让整个版本失败。
+    # 整版原子校验曾把「一项不可完成」放大成「今天所有任务项都点不开」：
+    # 同版本里完全可执行的练习/视频项随坏项一起被拒收，前端仍按计划层
+    # 渲染出这些项，点击即 404。跳过项会写 WARNING 便于定位生产者。
     _ensure_instance(db, user_id, host_task_id, host_task_version)
 
     existing_items = {
@@ -901,14 +898,19 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
     }
 
     persisted_items = []
+    skipped_items: list[str] = []
     for ordinal, item_spec in enumerate(items_payload, start=1):
         item_key = str(item_spec.get("task_item_id") or _mk_task_item_id(host_task_id, host_task_version, ordinal, user_id))
         item_kind = str(item_spec.get("item_kind") or item_spec.get("item_type") or "knowledge_practice")
         if item_kind == "video_section":
             item_kind = "video"
+        if item_kind not in supported_item_kinds:
+            skipped_items.append(f"{item_key}({item_kind}):unsupported_item_kind")
+            continue
         kp_id = str(item_spec.get("kp_id") or item_spec.get("knowledge_point_id") or "")
         if not kp_id and item_kind == "knowledge_practice":
-            raise DailyTaskProgressError("each knowledge practice item must include kp_id", 400)
+            skipped_items.append(f"{item_key}({item_kind}):missing_kp_id")
+            continue
         if not kp_id:
             kp_id = f"__task_item__:{item_key}"
         required_question_count = _typed_int(item_spec.get("required_question_count") or item_spec.get("required_count") or 0, field_name="required_question_count")
@@ -943,6 +945,7 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
             db.add(item)
             db.flush()
         elif item.host_task_id != host_task_id:
+            db.rollback()
             raise DailyTaskProgressError(
                 f"task item {item_key} is already bound to another task", 409
             )
@@ -1004,10 +1007,15 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
                 required_question_count,
             )
             if len(selected_rows) < required_question_count:
-                raise DailyTaskProgressError(
-                    f"insufficient frozen question candidates for kp {kp_id}: need {required_question_count}, have {len(selected_rows)}",
-                    409,
+                # 冻结题量不足同样只丢弃该项：整版失败会让同版本其它完全
+                # 可执行的项一起消失，用户看到的是「今天所有任务都点不开」。
+                skipped_items.append(
+                    f"{item_key}({item_kind}):insufficient_candidates"
+                    f"(need={required_question_count},have={len(selected_rows)})"
                 )
+                db.delete(item)
+                db.flush()
+                continue
         snapshot_rows: list[DailyTaskQuestionSnapshotRecord] = []
         for row in selected_rows:
             options = _question_options(db, row.question_id)
@@ -1045,6 +1053,26 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
             snapshot_rows.append(snapshot)
         _refresh_item_completion(db, item)
         persisted_items.append(_public_item_snapshot(item, snapshot_rows))
+
+    if skipped_items:
+        logger.warning(
+            "daily task publication skipped items that cannot be completed: "
+            "user=%s host_task=%s version=%s skipped=%s persisted=%s",
+            user_id,
+            host_task_id,
+            host_task_version,
+            ", ".join(skipped_items),
+            len(persisted_items),
+        )
+    if not persisted_items and items_payload:
+        # 抛错前回滚：否则父实例会以 pending 状态留在调用方会话里，
+        # 后续任何一次 commit 都会落下一个没有任何任务项的空实例。
+        db.rollback()
+        raise DailyTaskProgressError(
+            "daily task publication contains no item with a verifiable completion path: "
+            + ", ".join(skipped_items),
+            409,
+        )
 
     db.commit()
     return {

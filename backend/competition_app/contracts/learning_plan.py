@@ -34,6 +34,30 @@ def is_externally_owned_item(item: Any) -> bool:
     return str(resource_ref.get("source") or "") in EXTERNAL_ITEM_SOURCES
 
 
+# 执行层真正提供完成路径的原子项类型：knowledge_practice 走冻结题组，
+# video_section 走视频证据。``reading`` / ``recall`` 只是模型在计划正文里的
+# 标签，执行层没有任何完成入口，因此不得成为线上每日任务的原子项。
+# 该集合必须与 platform_backend 的
+# ``daily_task_progress_service.supported_item_kinds`` 保持一致。
+EXECUTABLE_ITEM_TYPES: frozenset[str] = frozenset(
+    {"knowledge_practice", "video_section"}
+)
+
+
+def item_type_of(item: Any) -> str:
+    """读取原子项类型，同时接受契约对象与未校验的 dict。"""
+
+    if isinstance(item, dict):
+        return str(item.get("item_type") or "")
+    return str(getattr(item, "item_type", "") or "")
+
+
+def is_executable_item(item: Any) -> bool:
+    """该原子项是否具备可验证的完成路径。"""
+
+    return item_type_of(item) in EXECUTABLE_ITEM_TYPES
+
+
 PlanScope: TypeAlias = Literal["long_term", "short_term", "daily_task"]
 
 

@@ -464,6 +464,147 @@ def test_located_knowledge_origin_reruns_knowledge_then_downstream_expert() -> N
     ]
 
 
+def planning_plan() -> ExecutionPlan:
+    """Mirror the live short-term replanning DAG: memory → route → diagnosis → audit."""
+
+    return _plan(
+        ExecutionStep(step_id="memory", agent="memory_agent"),
+        ExecutionStep(
+            step_id="route_resolution",
+            agent="route_resolution_agent",
+            depends_on=["memory"],
+        ),
+        ExecutionStep(
+            step_id="diagnosis",
+            agent="diagnosis_agent",
+            depends_on=["route_resolution"],
+        ),
+        ExecutionStep(
+            step_id="audit",
+            agent="audit_agent",
+            depends_on=["diagnosis"],
+        ),
+    )
+
+
+def planning_outputs() -> dict[str, AgentEnvelope[dict[str, str]]]:
+    return {
+        step_id: AgentEnvelope(
+            artifact_id=f"ART_{step_id}", artifact_type="test", case_id="CASE_1",
+            trace_id="TRACE_1", request_id="REQ_1", execution_id="EXE_1",
+            step_id=step_id, producer="test", task_type="short_term_planning",
+            learner_id="LEARNER_1", payload={},
+        )
+        for step_id in ("memory", "route_resolution", "diagnosis")
+    }
+
+
+def _plan_owned_issue(issue_type: str) -> RepairIssue:
+    """Build the shape AuditIssueResolver emits for a plan-local finding."""
+
+    return RepairIssue(
+        issue_id=f"PLAN-{issue_type}",
+        issue_type=issue_type,
+        message="短期计划正文与考纲路线不一致",
+        origin_step_id="diagnosis",
+        owner_step_id="diagnosis",
+        affected_step_ids=["diagnosis"],
+        severity="medium",
+        blocking=True,
+        origin="audit_model",
+        locations=[
+            AuditLocation(
+                location_key="plan:natural_language",
+                display_label="自然语言规划正文",
+                subject_type="short_term_plan",
+                location_type="section",
+            )
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    "issue_type",
+    [
+        "factual_error",
+        "missing_evidence",
+        "conflicting_evidence",
+        "learner_mismatch",
+        "content_quality",
+    ],
+)
+def test_plan_owned_issue_is_repaired_by_diagnosis(issue_type: str) -> None:
+    """规划类问题必须回到 Diagnosis 返修。
+
+    回归护栏：这些标签不在 _ALLOWED_TARGETS 的 Diagnosis 里时，归属会被
+    静默改判到 Expert/PaperAssembly，而规划 DAG 没有这些步骤，于是可返修的
+    revise 被升级成人工复核，且没有任何返修步骤真正执行。
+    """
+
+    repair = LocalRepairController().plan_repair(
+        plan=planning_plan(),
+        audit_step_id="audit",
+        audit_findings=[],
+        outputs=planning_outputs(),
+        structured_findings=[_plan_owned_issue(issue_type)],
+    )
+
+    assert repair.status == "planned", repair.issues
+    assert [action.step_id for action in repair.actions] == ["diagnosis", "audit"]
+    assert repair.actions[0].operation == "rerun_step"
+    assert repair.actions[-1].operation == "reaudit"
+
+
+def test_plan_route_mismatch_reruns_route_resolution_before_diagnosis() -> None:
+    """路线类问题先重读已冻结的路线判定，再重写计划正文。"""
+
+    repair = LocalRepairController().plan_repair(
+        plan=planning_plan(),
+        audit_step_id="audit",
+        audit_findings=[],
+        outputs=planning_outputs(),
+        structured_findings=[_plan_owned_issue("route_or_prerequisite_error")],
+    )
+
+    assert repair.status == "planned", repair.issues
+    assert [action.step_id for action in repair.actions] == [
+        "route_resolution",
+        "diagnosis",
+        "audit",
+    ]
+
+
+def test_plan_owned_issue_keeps_repair_chain_inside_planning_steps() -> None:
+    """返修链不得引入规划 DAG 之外的知识库/专家/组卷步骤。"""
+
+    repair = LocalRepairController().plan_repair(
+        plan=planning_plan(),
+        audit_step_id="audit",
+        audit_findings=[],
+        outputs=planning_outputs(),
+        structured_findings=[_plan_owned_issue("factual_error")],
+    )
+
+    assert repair.status == "planned", repair.issues
+    assert {
+        action.step_id for action in repair.actions
+    } <= {"memory", "route_resolution", "diagnosis", "audit"}
+
+
+def test_resource_findings_keep_their_default_targets() -> None:
+    """规划归属是附加项，资源/组卷流程的默认目标保持不变。"""
+
+    controller = LocalRepairController()
+    for issue_type, default in (
+        ("factual_error", "expert"),
+        ("missing_evidence", "expert"),
+        ("content_quality", "paper_assembly"),
+        ("learner_mismatch", "expert"),
+        ("route_or_prerequisite_error", "expert"),
+    ):
+        assert controller._DEFAULT_TARGETS[issue_type] == default
+
+
 def test_all_audit_issue_types_are_registered_across_repair_layer() -> None:
     """AuditIssueType 全集必须在返修层所有分发点注册，防止漏注册 KeyError。
 

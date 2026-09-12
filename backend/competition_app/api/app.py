@@ -4,6 +4,7 @@ from pathlib import Path
 import asyncio
 import hmac
 import json
+import logging
 import re
 import threading
 import time
@@ -128,6 +129,8 @@ from competition_app.application.workflow_presentation import (
 from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
 from competition_app.api.treekg_routes import mount_treekg, router as treekg_router
 
+
+logger = logging.getLogger(__name__)
 
 SESSION_COOKIE = "competition_session"
 _LEARNING_TARGET_CHANGED_HEADER = "X-Competition-Learning-Target-Changed"
@@ -3770,6 +3773,16 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     coordinator.load_current_progress, user.user_id
                 )
             except Exception:
+                # The plan itself is still renderable without execution-side
+                # progress, but a blanked-out progress block looks like "no
+                # tasks today" and hid a publication outage.  Keep the
+                # degradation and make it observable.
+                logger.warning(
+                    "daily task progress refresh failed for learner=%s; "
+                    "returning the plan without execution-side progress",
+                    user.user_id,
+                    exc_info=True,
+                )
                 task_progress = {}
         plans = container.learning_plan_service.get_current(user.user_id)
         return build_plan_progress(plans, daily_task_progress=task_progress)

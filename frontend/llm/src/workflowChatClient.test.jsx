@@ -360,6 +360,52 @@ describe('workflow chat event adapter', () => {
     }));
   });
 
+  it('does not promise a repair when the audit problem cannot be repaired', () => {
+    // repair_planned already carries the plan status: when no repair chain can
+    // be built the status is needs_human_review with no rerun steps, so the
+    // learner must not be told a partial repair was prepared, nor that a
+    // repair later failed, because no repair step ever ran.
+    const blocked = runtimeEventToTrace({
+      event: 'repair_planned',
+      trigger_step_id: 'audit',
+      status: 'needs_human_review',
+      rerun_step_ids: [],
+      ts: 30,
+    });
+    expect(blocked).toEqual(expect.objectContaining({
+      type: 'repair_event', kind: 'planned', status: 'needs_human_review',
+    }));
+    expect(blocked.text).toContain('人工复核');
+    expect(blocked.text).not.toContain('准备仅返修');
+
+    const planned = runtimeEventToTrace({
+      event: 'repair_planned',
+      trigger_step_id: 'audit',
+      status: 'planned',
+      rerun_step_ids: ['diagnosis'],
+      ts: 31,
+    });
+    expect(planned.text).toBe('审核已定位问题，准备仅返修受影响的环节');
+
+    const stopped = runtimeEventToTrace({
+      event: 'repair_stopped',
+      trigger_step_id: 'audit',
+      status: 'needs_human_review',
+      ts: 32,
+    });
+    expect(stopped.kind).toBe('stopped');
+    expect(stopped.text).not.toContain('返修后仍未通过');
+    expect(stopped.text).toContain('人工复核');
+
+    const started = runtimeEventToTrace({
+      event: 'audit_revision_started',
+      audit_step_id: 'audit',
+      status: 'running',
+      ts: 33,
+    });
+    expect(started.text).not.toContain('安排返修');
+  });
+
   it('maps external search results to completed inline tool events', () => {
     expect(runtimeEventToTrace({
       event: 'web_search_status', provider: 'exa', resource_type: 'reference',

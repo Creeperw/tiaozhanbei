@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from threading import RLock
 from typing import Any, Callable
@@ -8,6 +9,7 @@ from uuid import uuid4
 from competition_app.contracts.learning_plan import (
     DailyTaskItemSpec,
     LearningTask,
+    is_executable_item,
     is_externally_owned_item,
 )
 from competition_app.contracts.exam_scope import ExamWorkspaceContext
@@ -29,6 +31,8 @@ from competition_app.services.daily_task_scheduler import (
 
 
 DAILY_TASK_REFRESH_INTERVAL = timedelta(hours=24)
+
+logger = logging.getLogger(__name__)
 
 
 class DailyTaskRefreshService:
@@ -262,11 +266,31 @@ class DailyTaskRefreshService:
         这些项无法从短期计划正文推导出来，重建今日任务时必须显式带回；
         已完成的项不再带过来。进度不可用时保守保留，因为静默丢掉用户
         刚刚确认的安排比多保留一次更不可接受。
+
+        没有完成路径的项不带入新窗口：执行层没有它们的完成入口，带过去
+        只会成为点不开的项，并让整版发布被拒收。
         """
 
         external_items = [
-            item for item in task.items if is_externally_owned_item(item)
+            item
+            for item in task.items
+            if is_externally_owned_item(item) and is_executable_item(item)
         ]
+        dropped = [
+            item
+            for item in task.items
+            if is_externally_owned_item(item) and not is_executable_item(item)
+        ]
+        if dropped:
+            logger.warning(
+                "dropped externally owned items without a completion path: "
+                "learner=%s task=%s dropped=%s",
+                task.learner_id,
+                task.task_id,
+                ", ".join(
+                    f"{item.task_item_id}({item.item_type})" for item in dropped
+                ),
+            )
         if not external_items or self.progress_loader is None:
             return external_items
         try:

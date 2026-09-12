@@ -174,7 +174,7 @@ class DailyTaskProgressServiceTests(unittest.TestCase):
                 "formal-content:knowledge-atlas-2026-07-18",
             )
 
-    def test_publication_rejects_uncompletable_recall_before_persisting_parent(self):
+    def test_publication_rejects_payload_without_any_completable_item(self):
         with self.session_factory() as db:
             with self.assertRaises(DailyTaskProgressError) as captured:
                 upsert_daily_task_snapshot(db, user_id=1, payload={
@@ -184,9 +184,45 @@ class DailyTaskProgressServiceTests(unittest.TestCase):
                 })
 
             self.assertEqual(captured.exception.code, 409)
-            self.assertIn("without a verifiable completion path", str(captured.exception))
+            self.assertIn("no item with a verifiable completion path", str(captured.exception))
             self.assertEqual(db.query(database.DailyTaskInstanceRecord).count(), 0)
             self.assertEqual(db.query(database.DailyTaskItemRecord).count(), 0)
+
+    def test_publication_skips_uncompletable_item_and_keeps_the_rest(self):
+        """一个不可完成项不得拖垮同版本其它完全可执行的项。
+
+        回归：整版原子校验曾把「一项不可完成」放大成「今天所有任务项都
+        点不开」——同版本的练习/视频项一起被拒收，而前端仍按计划层渲染，
+        点击即 404。
+        """
+
+        with self.session_factory() as db:
+            result = upsert_daily_task_snapshot(db, user_id=1, payload={
+                "host_task_id": "TASK_MIXED",
+                "host_task_version": 1,
+                "items": [
+                    {"task_item_id": "RECALL_1", "item_type": "recall"},
+                    {
+                        "task_item_id": "PRACTICE_1",
+                        "item_type": "knowledge_practice",
+                        "kp_id": "KP_1",
+                        "required_question_count": 1,
+                        "completion_policy": {"policy": "frozen_question_set"},
+                    },
+                ],
+            })
+
+            persisted_ids = [item["task_item_id"] for item in result["items"]]
+            self.assertEqual(persisted_ids, ["PRACTICE_1"])
+            self.assertIsNone(
+                db.query(database.DailyTaskItemRecord)
+                .filter_by(task_item_id="RECALL_1")
+                .one_or_none()
+            )
+            practice = db.query(database.DailyTaskItemRecord).filter_by(
+                task_item_id="PRACTICE_1"
+            ).one()
+            self.assertEqual(practice.status, "pending")
 
     def tearDown(self):
         self.engine.dispose()

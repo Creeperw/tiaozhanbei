@@ -58,12 +58,28 @@ class FakeRepository:
 
 
 class FakePlanService:
-    def __init__(self, current=None, saved_result=True):
+    def __init__(self, current=None, saved_result=True, knowledge_point_resolver=None):
         self._current = current
         self.plan_repository = FakeRepository(saved_result=saved_result)
+        self.knowledge_point_resolver = knowledge_point_resolver
 
     def get_current(self, learner_id):
         return self._current
+
+
+def _resolver(mapping=None):
+    """把名称映射为正式知识点 ID 的测试替身；未登记的名称解析失败。"""
+
+    known = dict(mapping or {
+        "中医诊断学·舌诊": "KP_TONGUE",
+        "四君子汤": "KP_SIJUNZI",
+        "舌诊": "KP_TONGUE",
+    })
+
+    def resolve(name, learning_chapter=""):
+        return known.get(str(name).strip())
+
+    return resolve
 
 
 _INTERVENTION = {
@@ -86,37 +102,69 @@ _INTERVENTION = {
 
 
 def test_applies_review_intervention_as_daily_task_item():
-    service = FakePlanService(current=LearningPlanResult(learning_task=_task()))
+    service = FakePlanService(
+        current=LearningPlanResult(learning_task=_task()),
+        knowledge_point_resolver=_resolver(),
+    )
     result = apply_accepted_intervention(service, "USER_1", _INTERVENTION)
 
     assert result["applied"] is True
-    assert result["title"] == "错题复盘：中医诊断学·舌诊、四君子汤"
+    assert result["title"] == "错题复盘：中医诊断学·舌诊、错题复盘：四君子汤"
     assert result["summary"].startswith("建议今日安排错题复盘")
 
     task = service.plan_repository.saved[0][1].learning_task
     assert task.version == 4
     assert task.estimated_minutes == 60.0 + INTERVENTION_ADDED_MINUTES
-    assert len(task.items) == 1
-    item = task.items[0]
-    assert item.item_type == "recall"
-    assert item.ordinal == 1
-    assert item.estimated_minutes == INTERVENTION_ADDED_MINUTES
-    assert item.resource_ref["intervention_id"] == "13"
-    assert item.resource_ref["source"] == "learning_intervention"
-    assert "错题复盘：中医诊断学·舌诊、四君子汤" in task.task_content
+    assert len(task.items) == 2
+    # 加练项必须可执行：执行层只为 knowledge_practice / video_section 提供
+    # 完成入口，生成 recall 会让整版发布被拒收。
+    for offset, item in enumerate(task.items):
+        assert item.item_type == "knowledge_practice"
+        assert item.ordinal == offset + 1
+        assert item.kp_id
+        assert item.required_question_count == 3
+        assert item.completion_policy == {"policy": "frozen_question_set"}
+        assert item.resource_ref["intervention_id"] == "13"
+        assert item.resource_ref["source"] == "learning_intervention"
+    assert [item.kp_id for item in task.items] == ["KP_TONGUE", "KP_SIJUNZI"]
+    assert abs(sum(item.estimated_minutes for item in task.items) - INTERVENTION_ADDED_MINUTES) < 1e-9
+    assert "错题复盘：中医诊断学·舌诊" in task.task_content
+    assert "错题复盘：四君子汤" in task.task_content
+
+
+def test_does_not_add_placeholder_item_when_focus_cannot_be_resolved():
+    service = FakePlanService(
+        current=LearningPlanResult(learning_task=_task()),
+        knowledge_point_resolver=_resolver({"舌诊": "KP_TONGUE"}),
+    )
+    intervention = {
+        **_INTERVENTION,
+        "reason": "重复出现的薄弱知识点（尚未入库的生僻表述）。",
+    }
+
+    result = apply_accepted_intervention(service, "USER_1", intervention)
+
+    assert result["applied"] is False
+    assert result["retryable"] is False
+    assert "暂未安排进今日任务" in result["reason"]
+    assert service.plan_repository.saved == []
 
 
 def test_skips_duplicate_application_of_same_intervention():
     existing = DailyTaskItemSpec(
         task_item_id="ITM_INTERV_aaaa",
         ordinal=1,
-        item_type="recall",
+        item_type="knowledge_practice",
         title="错题复盘：中医诊断学·舌诊、四君子汤",
         estimated_minutes=15.0,
+        kp_id="KP_TONGUE",
+        required_question_count=3,
         resource_ref={"intervention_id": "13", "source": "learning_intervention"},
+        completion_policy={"policy": "frozen_question_set"},
     )
     service = FakePlanService(
-        current=LearningPlanResult(learning_task=_task(items=[existing]))
+        current=LearningPlanResult(learning_task=_task(items=[existing])),
+        knowledge_point_resolver=_resolver(),
     )
     result = apply_accepted_intervention(service, "USER_1", _INTERVENTION)
 
@@ -152,7 +200,9 @@ def test_does_not_apply_without_daily_task():
 
 def test_reports_when_save_conflicts():
     service = FakePlanService(
-        current=LearningPlanResult(learning_task=_task()), saved_result=False
+        current=LearningPlanResult(learning_task=_task()),
+        saved_result=False,
+        knowledge_point_resolver=_resolver(),
     )
     result = apply_accepted_intervention(service, "USER_1", _INTERVENTION)
 
@@ -173,7 +223,10 @@ def test_reads_flat_normalized_agent_summary_and_operation():
             },
         },
     }
-    service = FakePlanService(current=LearningPlanResult(learning_task=_task()))
+    service = FakePlanService(
+        current=LearningPlanResult(learning_task=_task()),
+        knowledge_point_resolver=_resolver(),
+    )
 
     result = apply_accepted_intervention(service, "USER_1", intervention)
 

@@ -95,14 +95,17 @@ def _intervention_item(
     return DailyTaskItemSpec(
         task_item_id=item_id,
         ordinal=ordinal,
-        item_type="recall",
+        item_type="knowledge_practice",
         title="错题复盘：近期薄弱知识点",
         estimated_minutes=15.0,
+        kp_id="KP_FJ_001",
+        required_question_count=3,
         resource_ref={
             "intervention_id": "6",
             "source": "learning_intervention",
             "summary": "先完成薄弱知识点的错题复盘，再增加新内容。",
         },
+        completion_policy={"policy": "frozen_question_set"},
     )
 
 
@@ -151,6 +154,7 @@ def test_overdue_refresh_keeps_unfinished_intervention_item() -> None:
     )
     service = DailyTaskRefreshService(
         repository,
+        knowledge_point_resolver=lambda name, chapter="": "KP_FJ_001",
         video_resource_resolver=lambda resource_ref: None,
         progress_loader=lambda learner_id, task: {
             "items": [
@@ -269,8 +273,9 @@ def test_overdue_task_rolls_to_next_short_term_block_once() -> None:
     assert first["previous_task_id"] == "TASK_REFRESH_1"
     assert second["refreshed"] is False
     assert stored.task_content == "辨析四君子汤与参苓白术散"
-    # 展示时长 = 实际资源合计 T：视频 120s→2 分钟 + 无解析知识的回忆 1 分钟
-    assert stored.estimated_minutes == 3.0
+    # 展示时长 = 实际资源合计 T：视频 120s→2 分钟。当日没有可解析知识点时
+    # 不再伪造 1 分钟回忆原子项，展示时长就只算真实资源。
+    assert stored.estimated_minutes == 2.0
     assert stored.status == "pending"
     assert stored.refresh_due_at == now + timedelta(hours=24)
     assert second["current_task_id"] == stored.task_id
@@ -308,11 +313,11 @@ def test_overdue_task_applies_system_task_load_policy_without_filling_budget() -
     result = service.ensure_current("learner-daily-refresh", now=now)
     stored = repository.get_current("learner-daily-refresh").learning_task
 
-    assert stored.estimated_minutes == 3.0
+    assert stored.estimated_minutes == 2.0
     # 视频原子项按真实时长占位（30s→150s，120 秒 = 2 分钟），
-    # 展示时长 = 实际资源合计 T（视频 2 + 回忆 1），不再填满任务预算。
+    # 展示时长 = 实际资源合计 T，不再填满任务预算，也不再伪造回忆项。
     assert stored.items[0].estimated_minutes == 2
-    assert sum(item.estimated_minutes for item in stored.items) == 3.0
+    assert sum(item.estimated_minutes for item in stored.items) == 2.0
     assert result["task_load_policy"]["direction"] == "decrease"
     assert policy_calls[0][1]["plan_context"]["learning_task"]["task_id"] == (
         "TASK_REFRESH_1"

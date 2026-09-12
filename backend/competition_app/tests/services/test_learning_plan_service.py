@@ -439,15 +439,13 @@ def test_service_does_not_persist_model_knowledge_point_names_as_ids() -> None:
 
     task = LearningPlanService().materialize("LEARNER_MODEL_SHAPE", value).learning_task
 
-    assert [item.item_type for item in task.items] == ["recall", "recall"]
-    assert [item.knowledge_point_name for item in task.items] == [
-        "四君子汤",
-        "君臣佐使配伍",
-    ]
-    assert all(item.kp_id is None for item in task.items)
+    # 模型给的知识点名称没有解析器就得不到正式 ID，执行层没有题组可发。
+    # 名称只留在计划正文的焦点里，不能变成一个点不开的原子项。
+    assert task.items == []
+    assert task.focus_knowledge_points == ["四君子汤", "君臣佐使配伍"]
 
 
-def test_service_downgrades_unverified_video_resource_to_reading(
+def test_service_does_not_create_atom_for_unverified_video_resource(
     repository: DefaultRouteRepository,
 ) -> None:
     value = structured_proposal(repository)
@@ -466,12 +464,13 @@ def test_service_downgrades_unverified_video_resource_to_reading(
         completion_criteria="完成学习",
     )
 
-    item = LearningPlanService(repository).materialize(
+    task = LearningPlanService(repository).materialize(
         "LEARNER_UNVERIFIED_VIDEO", value
-    ).learning_task.items[0]
+    ).learning_task
 
-    assert item.item_type == "reading"
-    assert item.resource_ref == {}
+    # 未通过可信资源校验的视频不能成为原子项；也不能降级成 reading——
+    # reading 同样没有完成入口，只会成为一个点不开的项。
+    assert task.items == []
 
 
 def test_service_selects_published_video_for_legacy_model_block_from_formal_kp(
@@ -1962,7 +1961,9 @@ def test_ensure_executable_daily_resources_preserves_intervention_item(
     service = LearningPlanService(
         repository,
         knowledge_point_resolver=lambda name: (
-            "KP_FORMAL_1" if name == "四君子汤" else None
+            "KP_FORMAL_1"
+            if name in {"四君子汤", "中医诊断学·舌诊"}
+            else None
         ),
         video_resource_resolver=lambda resource_ref: None,
     )
@@ -1982,7 +1983,7 @@ def test_ensure_executable_daily_resources_preserves_intervention_item(
     )
     assert applied["applied"] is True
     accepted = service.get_current(learner_id).learning_task
-    assert accepted.items[-1].item_type == "recall"
+    assert accepted.items[-1].item_type == "knowledge_practice"
 
     normalized = service.ensure_executable_daily_resources(learner_id)
 
@@ -2006,7 +2007,9 @@ def test_ensure_executable_daily_resources_rebuilds_around_intervention_item(
     service = LearningPlanService(
         repository,
         knowledge_point_resolver=lambda name: (
-            "KP_FORMAL_1" if name == "四君子汤" else None
+            "KP_FORMAL_1"
+            if name in {"四君子汤", "中医诊断学·舌诊"}
+            else None
         ),
         video_resource_resolver=lambda resource_ref: None,
     )

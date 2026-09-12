@@ -12,12 +12,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
-from uuid import uuid4
 
 from competition_app.contracts.learning_plan import (
     LEARNING_INTERVENTION_ITEM_SOURCE,
-    DailyTaskItemSpec,
 )
+from competition_app.services.daily_task_addon import build_review_addon_items
 from competition_app.services.plan_review_apply import apply_reduce_load
 
 # 展示文案与执行操作必须解耦。规则候选提供确定性 execution_operation，
@@ -164,27 +163,40 @@ def apply_accepted_intervention(
 
     summary = _decision_summary(intervention)
     focus = _focus_from_reason(summary, intervention.get("reason") or "")
-    title = f"错题复盘：{focus}"
-
-    new_item = DailyTaskItemSpec(
-        task_item_id=f"ITM_INTERV_{uuid4().hex[:12]}",
-        ordinal=len(task.items) + 1,
-        item_type="recall",
-        title=title,
-        estimated_minutes=INTERVENTION_ADDED_MINUTES,
-        knowledge_point_name=None,
-        kp_id=None,
-        required_question_count=None,
+    addon_items, unresolved = build_review_addon_items(
+        resolver=getattr(learning_plan_service, "knowledge_point_resolver", None),
+        focus_text=focus,
+        learning_chapter=str(getattr(task, "learning_chapter", "") or ""),
+        total_minutes=INTERVENTION_ADDED_MINUTES,
+        item_id_prefix="ITM_INTERV_",
+        title_prefix="错题复盘：",
         resource_ref={
             "intervention_id": str(intervention_id or ""),
             "source": _ITEM_SOURCE,
             "summary": summary[:200],
         },
-        completion_policy={},
+        start_ordinal=len(task.items) + 1,
     )
-    items = list(task.items) + [new_item]
+    if not addon_items:
+        # 文案里的知识点一个都解析不出可执行题组。这里不加占位项：占位项
+        # 本身点不开，还会让整份今日任务被执行层拒收。如实告知用户并让
+        # 其可以稍后重试，比塞一个假任务项更有用。
+        return {
+            "applied": False,
+            "already_applied": False,
+            "retryable": False,
+            "reason": (
+                "该建议涉及的薄弱知识点当前没有可用的练习题，暂未安排进今日任务。"
+                + (f"（未解析出：{'、'.join(unresolved)}）" if unresolved else "")
+            ),
+            "summary": "",
+            "title": "",
+        }
+
+    items = list(task.items) + addon_items
+    titles = [item.title for item in addon_items]
     timestamp = datetime.now(timezone.utc)
-    note = f"【今日加练】已按你的确认安排：{title}。"
+    note = f"【今日加练】已按你的确认安排：{'、'.join(titles)}。"
     task_content = f"{task.task_content}\n\n{note}"
     updated = task.model_copy(
         update={
@@ -216,5 +228,5 @@ def apply_accepted_intervention(
         "retryable": False,
         "reason": "",
         "summary": summary,
-        "title": title,
+        "title": "、".join(titles),
     }

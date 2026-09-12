@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,16 +11,89 @@ from uuid import uuid4
 from sqlalchemy import Engine, text
 
 from competition_app.repositories.learning_plan import LearningPlanRepository
-from competition_app.contracts.learning_plan import StageEvidenceRecord
+from competition_app.contracts.learning_plan import (
+    StageEvidenceRecord,
+    is_executable_item,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _item_identity(item: Any) -> str:
+    """原子项的可读标识，仅用于日志与留痕。"""
+
+    if isinstance(item, dict):
+        return str(item.get("task_item_id") or item.get("title") or "")
+    return str(getattr(item, "task_item_id", "") or getattr(item, "title", "") or "")
+
+
+def _item_label(item: Any) -> str:
+    if isinstance(item, dict):
+        return f"{item.get('task_item_id') or ''}({item.get('item_type') or ''})"
+    return f"{getattr(item, 'task_item_id', '')}({getattr(item, 'item_type', '')})"
+
+
+def split_executable_items(items: Any) -> tuple[list[Any], list[Any]]:
+    """把原子项拆成「可执行」与「没有完成路径」两组。"""
+
+    kept: list[Any] = []
+    dropped: list[Any] = []
+    for item in items or []:
+        (kept if is_executable_item(item) else dropped).append(item)
+    return kept, dropped
+
+
+def executable_publish_payload(
+    payload: Any,
+    *,
+    learner_id: str,
+    source: str,
+) -> Any:
+    """发布前剔除执行层没有完成路径的原子项。
+
+    计划层历史允许模型标签 ``recall`` / ``reading`` 直接成为原子项，而执行层
+    只为 ``knowledge_practice`` / ``video_section`` 提供完成入口。执行层按整版
+    原子校验，一个这样的项会让**同版本全部可执行项**一起被拒收，用户看到
+    今日任务全部点不开。这里在发布边界统一过滤，使任何生产者都不可能再让
+    整版发布因单个坏项失败；被丢弃的项写 WARNING 便于定位来源。
+    """
+
+    if not isinstance(payload, dict):
+        return payload
+    items = payload.get("items")
+    if not isinstance(items, list) or not items:
+        return payload
+    kept, dropped = split_executable_items(items)
+    if not dropped:
+        return payload
+    logger.warning(
+        "daily task publication dropped items without a completion path: "
+        "learner=%s source=%s dropped=%s remaining=%s",
+        learner_id,
+        source,
+        ", ".join(_item_label(item) for item in dropped),
+        len(kept),
+    )
+    return {**payload, "items": kept}
 
 
 def daily_task_progress_request(task: Any) -> dict[str, Any]:
     """构造服务端进度查询载荷。
 
     刷新与执行两条链路共用同一份载荷定义，避免其中一条漏带字段后把
-    进度查询退化为「全部未完成」。
+    进度查询退化为「全部未完成」。载荷只包含有完成路径的原子项：执行层
+    不认识其它类型，带上它们只会让整版校验失败。
     """
 
+    kept, dropped = split_executable_items(getattr(task, "items", None))
+    if dropped:
+        logger.warning(
+            "daily task progress request ignored items without a completion path: "
+            "learner=%s task=%s dropped=%s",
+            getattr(task, "learner_id", ""),
+            getattr(task, "task_id", ""),
+            ", ".join(_item_label(item) for item in dropped),
+        )
     return {
         "task_id": task.task_id,
         "host_task_id": task.task_id,
@@ -31,7 +105,7 @@ def daily_task_progress_request(task: Any) -> dict[str, Any]:
                 "kp_id": item.kp_id,
                 "required_question_count": item.required_question_count,
             }
-            for item in task.items
+            for item in kept
         ],
     }
 
@@ -41,6 +115,16 @@ class DailyTaskExecutionCoordinator:
     engine: Engine | None
     plan_repository: LearningPlanRepository
     backend_handoff_runtime: Any | None = None
+
+    # A publication payload is deterministic: when the execution side rejects
+    # it for a contract reason, retrying the identical payload cannot succeed.
+    # Retrying forever with no ceiling and no log hid a real outage for hours
+    # (outbox attempt_count reached 7 while the learner's whole daily task
+    # stayed un-completable).  After this many attempts the event is parked so
+    # the retry loop stops and the failure stays queryable; an operator can
+    # requeue it by setting status back to 'pending'.
+    _MAX_PUBLISH_ATTEMPTS = 10
+    _PARKED_STATUS = "dead"
 
     def dispatch_pending(self, learner_id: str, limit: int = 20) -> int:
         if self.engine is None or self.backend_handoff_runtime is None:
@@ -67,6 +151,11 @@ class DailyTaskExecutionCoordinator:
                         payload = json.loads(payload)
                     if not isinstance(payload, dict):
                         raise ValueError("outbox payload must be an object")
+                    payload = executable_publish_payload(
+                        payload,
+                        learner_id=learner_id,
+                        source=f"outbox:{row['event_id']}",
+                    )
                     self.backend_handoff_runtime.upsert_daily_task_execution(learner_id, payload)
                     connection.execute(
                         text(
@@ -78,15 +167,32 @@ class DailyTaskExecutionCoordinator:
                     dispatched += 1
                 except Exception as exc:
                     message = self._sanitize_error(exc)
+                    attempt_count = int(row["attempt_count"] or 0) + 1
+                    parked = attempt_count >= self._MAX_PUBLISH_ATTEMPTS
                     connection.execute(
                         text(
-                            "UPDATE learning_task_sync_outbox SET status='pending', attempt_count=attempt_count+1, "
+                            "UPDATE learning_task_sync_outbox SET status=:status, attempt_count=attempt_count+1, "
                             "last_error=:last_error WHERE event_id=:event_id"
                         ),
                         {
                             "event_id": row["event_id"],
+                            "status": self._PARKED_STATUS if parked else "pending",
                             "last_error": message,
                         },
+                    )
+                    log = logger.error if parked else logger.warning
+                    log(
+                        "daily task publication failed: learner=%s event=%s task=%s version=%s "
+                        "attempt=%s/%s parked=%s error=%s",
+                        learner_id,
+                        row["event_id"],
+                        row["task_id"],
+                        row["task_version"],
+                        attempt_count,
+                        self._MAX_PUBLISH_ATTEMPTS,
+                        parked,
+                        message,
+                        exc_info=attempt_count == 1,
                     )
         return dispatched
 
@@ -111,17 +217,101 @@ class DailyTaskExecutionCoordinator:
         return progress if isinstance(progress, dict) else {}
 
     def ensure_current_snapshot(self, learner_id: str) -> bool:
-        """Idempotently repair a missing delivered snapshot for the current version."""
+        """Idempotently repair a missing delivered snapshot for the current version.
+
+        Before publishing, the stored task is converged onto the item types the
+        execution side can actually complete.  A task that still carries a
+        model-only label (``recall`` / ``reading``) is corrected in place, so
+        the learner's plan and the execution side agree again instead of the
+        learner seeing items that no endpoint can serve.
+        """
 
         if self.backend_handoff_runtime is None:
             return False
         plans = self.plan_repository.get_current(learner_id)
         if plans is None or plans.learning_task is None:
             return False
-        task = plans.learning_task
-        payload = task.model_dump(mode="json")
-        self.backend_handoff_runtime.upsert_daily_task_execution(learner_id, payload)
+        task = self._converge_stored_task(learner_id, plans)
+        payload = executable_publish_payload(
+            task.model_dump(mode="json"),
+            learner_id=learner_id,
+            source="ensure_current_snapshot",
+        )
+        try:
+            self.backend_handoff_runtime.upsert_daily_task_execution(learner_id, payload)
+        except Exception as exc:
+            # This runs on read paths that must still render.  The caller on
+            # /learning-plans/current wraps the whole refresh in one try, so a
+            # raise here blanked the learner's task progress, and
+            # /learning-tasks/current/refresh had no handler at all and
+            # answered 500.  Report and degrade instead of raising.
+            logger.warning(
+                "daily task snapshot repair failed: learner=%s task=%s version=%s error=%s",
+                learner_id,
+                task.task_id,
+                task.version,
+                self._sanitize_error(exc),
+                exc_info=True,
+            )
+            return False
         return True
+
+    def _converge_stored_task(self, learner_id: str, plans: Any) -> Any:
+        """把已存储的每日任务收敛到可执行的原子项集合。
+
+        只处理计划层历史遗留或外部写入造成的不可执行项；收敛结果会写回
+        计划，使前端渲染的今日任务与执行层持有的项一致。写回失败（版本
+        冲突）时退回使用当前最新任务，不阻塞读取链路。
+        """
+
+        task = plans.learning_task
+        kept, dropped = split_executable_items(task.items)
+        if not dropped:
+            return task
+        logger.warning(
+            "converging stored daily task onto executable items: learner=%s "
+            "task=%s version=%s dropped=%s",
+            learner_id,
+            task.task_id,
+            task.version,
+            ", ".join(_item_label(item) for item in dropped),
+        )
+        now = datetime.now(timezone.utc)
+        note = (
+            "\n\n（说明：以下安排没有可执行的完成路径，已从今日任务中移除，"
+            "仅保留在此说明里："
+            + "、".join(str(item.title) for item in dropped)
+            + "。）"
+        )
+        remaining_minutes = sum(float(item.estimated_minutes) for item in kept)
+        converged = task.model_copy(
+            update={
+                "items": [
+                    item.model_copy(update={"ordinal": index})
+                    for index, item in enumerate(kept, start=1)
+                ],
+                # 契约要求展示时长大于 0：全部项被移除时保留原预算，
+                # 否则按保留下来的项重算。
+                "estimated_minutes": remaining_minutes
+                if remaining_minutes > 0
+                else task.estimated_minutes,
+                "task_content": f"{task.task_content}{note}",
+                "version": task.version + 1,
+                "updated_at": now,
+            }
+        )
+        saved = self.plan_repository.save_current(
+            learner_id,
+            plans.model_copy(update={"learning_task": converged}),
+            expected_task_id=task.task_id,
+            expected_task_version=task.version,
+        )
+        if saved:
+            return converged
+        current = self.plan_repository.get_current(learner_id)
+        if current is not None and current.learning_task is not None:
+            return current.learning_task
+        return task
 
     def reconcile_parent_status(self, learner_id: str) -> bool:
         if self.backend_handoff_runtime is None:
