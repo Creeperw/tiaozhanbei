@@ -1,4 +1,5 @@
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
+import { randomToken } from './utils/requestId';
 import { removeTraceEventsFromContent } from './chatProtocol';
 
 const RUN_STARTUP_LOOKUP_ATTEMPTS = 3;
@@ -9,11 +10,9 @@ const RUN_STARTUP_LOOKUP_DELAY_MS = 120;
 // one React render per token.
 export const STREAM_UI_BATCH_MS = 50;
 
-export const createWorkflowRunId = () => {
-  const suffix = globalThis.crypto?.randomUUID?.().replaceAll('-', '')
-    || `${Date.now()}${Math.random().toString(16).slice(2)}`;
-  return `THREAD_${suffix}`;
-};
+// Wire format stays `THREAD_<dash-free token>`; the token helper also covers
+// non-secure contexts where `crypto.randomUUID` is unavailable.
+export const createWorkflowRunId = () => `THREAD_${randomToken()}`;
 
 const agentPhase = (agent = '') => {
   if (agent === 'planner_agent' || agent === 'route_agent' || agent === 'default_route_resolver') return 'planning';

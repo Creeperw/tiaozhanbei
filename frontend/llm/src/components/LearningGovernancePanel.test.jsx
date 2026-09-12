@@ -239,4 +239,68 @@ describe('LearningGovernancePanel', () => {
     expect(screen.getByRole('button', { name: '重试调整' })).toBeEnabled();
     expect(screen.getByText('执行失败')).toBeVisible();
   });
+
+  it('shows the decision instead of an execution status for a decided review', async () => {
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.includes('/v1/notifications?')) return Promise.resolve({ ok: true, payload: { unread_count: 0, items: [] } });
+      if (url.includes('/v1/interventions?')) return Promise.resolve({ ok: true, payload: { items: [] } });
+      if (url.includes('/v1/plan-reviews?')) return Promise.resolve({
+        ok: true,
+        payload: {
+          items: [{
+            review_id: 'REVIEW_REJECTED',
+            outcome: 'short_replan_suggested',
+            summary: '建议调整短期计划',
+            period_key: '2026-W37',
+            evidence: ['任务完成率 0%'],
+            status: 'rejected',
+            execution_status: 'not_started',
+            proposal: { target_layer: 'short_term', operation: 'replan_for_low_completion' },
+          }],
+        },
+      });
+      return Promise.resolve({ ok: false, payload: { detail: 'Unexpected request' } });
+    });
+    render(<LearningGovernancePanel />);
+
+    expect(await screen.findByText('已保持原计划')).toBeVisible();
+    expect(screen.queryByText('待执行')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '接受调整' })).not.toBeInTheDocument();
+  });
+
+  it('runs a plan review from the governance panel and reports the conclusion', async () => {
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.includes('/v1/notifications?')) return Promise.resolve({ ok: true, payload: { unread_count: 0, items: [] } });
+      if (url.includes('/v1/interventions?')) return Promise.resolve({ ok: true, payload: { items: [] } });
+      if (url.endsWith('/v1/plan-reviews/run')) return Promise.resolve({
+        ok: true,
+        payload: { review_id: 'REVIEW_MANUAL', status: 'proposal_pending', outcome: 'short_replan_suggested', summary: '最近连续3天完成率偏低，建议缩小单次任务范围。' },
+      });
+      if (url.includes('/v1/plan-reviews?')) return Promise.resolve({ ok: true, payload: { items: [] } });
+      return Promise.resolve({ ok: false, payload: { detail: 'Unexpected request' } });
+    });
+    render(<LearningGovernancePanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '立即复盘' }));
+    await waitFor(() => expect(fetchWithAuth).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/plan-reviews/run'),
+      expect.objectContaining({ method: 'POST' }),
+    ));
+    expect(await screen.findByText(/建议缩小单次任务范围/)).toBeVisible();
+  });
+
+  it('surfaces a failure when the manual plan review cannot run', async () => {
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.includes('/v1/notifications?')) return Promise.resolve({ ok: true, payload: { unread_count: 0, items: [] } });
+      if (url.includes('/v1/interventions?')) return Promise.resolve({ ok: true, payload: { items: [] } });
+      if (url.endsWith('/v1/plan-reviews/run')) return Promise.resolve({ ok: false, payload: { detail: '规划复盘服务未启用' } });
+      if (url.includes('/v1/plan-reviews?')) return Promise.resolve({ ok: true, payload: { items: [] } });
+      return Promise.resolve({ ok: false, payload: { detail: 'Unexpected request' } });
+    });
+    render(<LearningGovernancePanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '立即复盘' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('规划复盘服务未启用');
+    expect(screen.getByRole('button', { name: '立即复盘' })).toBeEnabled();
+  });
 });

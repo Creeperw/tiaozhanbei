@@ -20,6 +20,8 @@ from typing import Any, Callable
 import httpx
 from pypdf import PdfReader
 
+from competition_app.llm.provider_session import current_provider_session
+from competition_app.llm.upload_provider import upload_provider_headers
 from competition_app.services.textbook_pdf import TextbookPdfService
 
 MAX_TEXT_CHARS = 12_000
@@ -45,6 +47,8 @@ class TextbookPdfAiService:
         self.textbook_pdf_service = textbook_pdf_service
         self.settings = settings
         self.conversation_repository = conversation_repository
+        # opencode.ai 需要稳定的会话标识才能路由请求；按服务实例复用同一个。
+        self._provider_session = current_provider_session() or f"tcm-textbook-{uuid.uuid4().hex}"
 
     def page_text(
         self,
@@ -87,11 +91,13 @@ class TextbookPdfAiService:
             "stream": True,
             "temperature": temperature,
         }
+        headers = {"Authorization": f"Bearer {self.settings.api_key}"}
+        headers.update(upload_provider_headers(self.settings.base_url, self._provider_session))
         async with httpx.AsyncClient(timeout=self.settings.timeout_seconds) as client:
             async with client.stream(
                 "POST",
                 f"{self.settings.base_url.rstrip('/')}/chat/completions",
-                headers={"Authorization": f"Bearer {self.settings.api_key}"},
+                headers=headers,
                 json=payload,
             ) as response:
                 response.raise_for_status()

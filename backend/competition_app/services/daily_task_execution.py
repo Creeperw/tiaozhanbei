@@ -13,6 +13,29 @@ from competition_app.repositories.learning_plan import LearningPlanRepository
 from competition_app.contracts.learning_plan import StageEvidenceRecord
 
 
+def daily_task_progress_request(task: Any) -> dict[str, Any]:
+    """构造服务端进度查询载荷。
+
+    刷新与执行两条链路共用同一份载荷定义，避免其中一条漏带字段后把
+    进度查询退化为「全部未完成」。
+    """
+
+    return {
+        "task_id": task.task_id,
+        "host_task_id": task.task_id,
+        "host_task_version": task.version,
+        "items": [
+            {
+                "task_item_id": item.task_item_id,
+                "item_type": item.item_type,
+                "kp_id": item.kp_id,
+                "required_question_count": item.required_question_count,
+            }
+            for item in task.items
+        ],
+    }
+
+
 @dataclass
 class DailyTaskExecutionCoordinator:
     engine: Engine | None
@@ -458,20 +481,7 @@ class DailyTaskExecutionCoordinator:
 
     @staticmethod
     def _progress_request(task: Any) -> dict[str, Any]:
-        return {
-            "task_id": task.task_id,
-            "host_task_id": task.task_id,
-            "host_task_version": task.version,
-            "items": [
-                {
-                    "task_item_id": item.task_item_id,
-                    "item_type": item.item_type,
-                    "kp_id": item.kp_id,
-                    "required_question_count": item.required_question_count,
-                }
-                for item in task.items
-            ],
-        }
+        return daily_task_progress_request(task)
 
     @staticmethod
     def _sanitize_error(exc: Exception) -> str:

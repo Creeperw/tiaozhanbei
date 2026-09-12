@@ -6,6 +6,7 @@ import {
   Star, Activity, FileText, RotateCcw, X, User, Crosshair
 } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
+import { createRequestId } from '../utils/requestId';
 import AcupuncturePractice from './acupuncture/AcupuncturePractice';
 import {
   BUILTIN_ACUPUNCTURE_CASES,
@@ -117,7 +118,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
     setLoading(true);
     setError('');
     try {
-      const id = (forceNewSession || !sessionIdRef.current) ? `sp-${crypto.randomUUID()}` : sessionIdRef.current;
+      const id = (forceNewSession || !sessionIdRef.current) ? createRequestId('sp') : sessionIdRef.current;
       const res = await fetchWithAuth('/api/v1/simulated-patient', {
         method: 'POST',
         body: JSON.stringify({ session_id: id, action, ...payload }),

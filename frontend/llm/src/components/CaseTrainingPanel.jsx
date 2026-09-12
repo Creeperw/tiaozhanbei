@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HelpCircle, Loader2, RotateCcw, Send } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
+import { createRequestId } from '../utils/requestId';
 
 const storageKey = 'simulated-patient-session-id';
 
@@ -29,7 +30,7 @@ export default function CaseTrainingPanel({ enabled }) {
   const run = async (action, payload = {}) => {
     setLoading(true); setError('');
     try {
-      const id = sessionId || `sp-${crypto.randomUUID()}`;
+      const id = sessionId || createRequestId('sp');
       const result = await callPatient(id, action, payload);
       setSessionId(result.session_id || id);
       sessionStorage.setItem(storageKey, result.session_id || id);

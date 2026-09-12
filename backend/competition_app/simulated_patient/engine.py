@@ -438,7 +438,7 @@ class SimulatedPatientEngine:
                 session_id=request.session_id,
                 action="dialogue",
                 success=False,
-                error="Patient communication failed"
+                error="患者回复生成失败，请稍后重试"
             )
 
         self.session_manager.set(request.session_id, session)

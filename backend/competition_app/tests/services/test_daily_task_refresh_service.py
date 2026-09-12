@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from competition_app.contracts.learning_plan import (
+    DailyTaskItemSpec,
     LearningPlanResult,
     LearningTask,
     ShortTermLearningPackage,
@@ -84,6 +85,150 @@ def _state(
         ],
     )
     return LearningPlanResult(short_term_plan=short_plan, learning_task=task)
+
+
+def _intervention_item(
+    *,
+    item_id: str = "ITM_INTERV_KEEP",
+    ordinal: int = 2,
+) -> DailyTaskItemSpec:
+    return DailyTaskItemSpec(
+        task_item_id=item_id,
+        ordinal=ordinal,
+        item_type="recall",
+        title="错题复盘：近期薄弱知识点",
+        estimated_minutes=15.0,
+        resource_ref={
+            "intervention_id": "6",
+            "source": "learning_intervention",
+            "summary": "先完成薄弱知识点的错题复盘，再增加新内容。",
+        },
+    )
+
+
+def _state_with_intervention(
+    now: datetime,
+    *,
+    due_at: datetime | None,
+    item_id: str = "ITM_INTERV_KEEP",
+) -> LearningPlanResult:
+    """已接受的干预项：由干预模块写入，短期计划正文无法推导。"""
+
+    state = _state(now, due_at=due_at)
+    task = state.learning_task
+    items = list(task.items) + [_intervention_item(item_id=item_id)]
+    updated = task.model_copy(
+        update={
+            "items": items,
+            "estimated_minutes": task.estimated_minutes + 15.0,
+        }
+    )
+    # model_copy 不做校验，重新过一遍契约校验，保持与持久化读回一致。
+    return LearningPlanResult.model_validate(
+        state.model_copy(update={"learning_task": updated}).model_dump(
+            mode="json"
+        )
+    )
+
+def _carried(stored: LearningTask) -> list:
+    return [
+        item
+        for item in stored.items
+        if item.resource_ref.get("source") == "learning_intervention"
+    ]
+
+
+def test_overdue_refresh_keeps_unfinished_intervention_item() -> None:
+    """未完成的加练项跨窗口保留，且不被新窗口的排程挤掉。"""
+
+    now = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    repository = InMemoryLearningPlanRepository()
+    repository.save_current(
+        "learner-daily-refresh",
+        _state_with_intervention(
+            now - timedelta(hours=25), due_at=now - timedelta(hours=1)
+        ),
+    )
+    service = DailyTaskRefreshService(
+        repository,
+        video_resource_resolver=lambda resource_ref: None,
+        progress_loader=lambda learner_id, task: {
+            "items": [
+                {"task_item_id": "ITM_INTERV_KEEP", "status": "pending"}
+            ]
+        },
+    )
+
+    result = service.ensure_current("learner-daily-refresh", now=now)
+
+    stored = repository.get_current("learner-daily-refresh").learning_task
+    assert result["refreshed"] is True
+    carried = _carried(stored)
+    assert len(carried) == 1
+    assert carried[0].task_item_id == "ITM_INTERV_KEEP"
+    assert carried[0].title == "错题复盘：近期薄弱知识点"
+    # 追加在末尾并重排序号。
+    assert carried[0].ordinal == len(stored.items)
+    assert [item.ordinal for item in stored.items] == list(
+        range(1, len(stored.items) + 1)
+    )
+    assert len(stored.items) > 1
+
+
+def test_overdue_refresh_drops_completed_intervention_item() -> None:
+    """已完成的加练项不再带进下一个窗口。"""
+
+    now = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    repository = InMemoryLearningPlanRepository()
+    repository.save_current(
+        "learner-daily-refresh",
+        _state_with_intervention(
+            now - timedelta(hours=25), due_at=now - timedelta(hours=1)
+        ),
+    )
+    service = DailyTaskRefreshService(
+        repository,
+        video_resource_resolver=lambda resource_ref: None,
+        progress_loader=lambda learner_id, task: {
+            "items": [
+                {"task_item_id": "ITM_INTERV_KEEP", "status": "completed"}
+            ]
+        },
+    )
+
+    result = service.ensure_current("learner-daily-refresh", now=now)
+
+    stored = repository.get_current("learner-daily-refresh").learning_task
+    assert result["refreshed"] is True
+    assert _carried(stored) == []
+
+
+def test_overdue_refresh_keeps_intervention_item_when_progress_unavailable() -> None:
+    """进度读取失败时保守保留，静默丢失用户已确认的安排更不可接受。"""
+
+    now = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    repository = InMemoryLearningPlanRepository()
+    repository.save_current(
+        "learner-daily-refresh",
+        _state_with_intervention(
+            now - timedelta(hours=25), due_at=now - timedelta(hours=1)
+        ),
+    )
+
+    def failing_progress_loader(learner_id, task):
+        raise RuntimeError("progress backend unavailable")
+
+    service = DailyTaskRefreshService(
+        repository,
+        video_resource_resolver=lambda resource_ref: None,
+        progress_loader=failing_progress_loader,
+    )
+
+    result = service.ensure_current("learner-daily-refresh", now=now)
+
+    stored = repository.get_current("learner-daily-refresh").learning_task
+    assert result["refreshed"] is True
+    assert len(_carried(stored)) == 1
 
 
 def test_legacy_task_receives_a_full_24_hour_window_without_being_replaced() -> None:

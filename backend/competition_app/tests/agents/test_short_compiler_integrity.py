@@ -128,7 +128,7 @@ async def test_real_prompt_boundary_has_required_anchors_and_short_repair_rules(
         async def complete_json(self, role, context):
             client = OpenAICompatibleChatModel(base_url="https://example.test/v1", api_key="test", model="test")
             system, user = [message["content"] for message in client._build_messages(role, context, strict_json=True)]
-            short_contract = system.split("CompiledShortTermContract：", 1)[1].split("CompiledDailyTaskContract：", 1)[0]
+            short_contract = system.split("类型说明 CompiledShortTermContract，", 1)[1].split("类型说明 CompiledDailyTaskContract，", 1)[0]
             assert "field_anchors（object，必填）" in short_contract
             assert "/progression_nodes（array，必填）" in short_contract
             assert "短期正文提取与纠错" in system

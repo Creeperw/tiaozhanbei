@@ -7,7 +7,6 @@ Agent 调用层 - 定义所有 Agent 的接口，提供测试环境实现
 """
 
 import json
-import random
 import uuid
 from typing import Dict, List, Optional
 from abc import ABC, abstractmethod
@@ -446,8 +445,9 @@ class TestExpertAgent(ExpertAgent):
         
         if response:
             return response
-        # 降级：使用模板
-        return random.choice(style.get("opening_templates", ["请描述您的症状。"]))
+        # 不降级为开场白模板：那会让学员看到与提问无关的重复问候，
+        # 却以为问诊仍在正常进行。返回空串交由 engine 报告真实失败。
+        return ""
 
     def generate_help(self, help_type: str, case: Dict, history: List[Dict]) -> Dict:
         """使用千问模型生成帮助内容"""

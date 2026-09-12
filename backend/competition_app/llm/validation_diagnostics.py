@@ -66,6 +66,13 @@ def validation_issues(error: BaseException, schema: Any) -> list[dict[str, str]]
                 mapping = discriminator.get("mapping", {})
                 target = mapping.get(selected) if isinstance(selected, str) else None
                 branches = current.schema.get(current.validator, [])
+                if field in names and isinstance(current.instance, dict) and mapping:
+                    if field not in current.instance:
+                        return [issue([*current.absolute_path, field], "required")]
+                    if not isinstance(selected, str):
+                        return [issue([*current.absolute_path, field], "type")]
+                    if target is None:
+                        return [issue([*current.absolute_path, field], "enum")]
                 if target:
                     for index, branch in enumerate(branches):
                         if branch.get("$ref") != target:

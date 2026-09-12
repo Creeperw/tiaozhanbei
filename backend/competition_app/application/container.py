@@ -61,7 +61,10 @@ from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
 from competition_app.services.learning_path_projection import LearningPathProjectionService
 from competition_app.services.daily_task_refresh import DailyTaskRefreshService
-from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
+from competition_app.services.daily_task_execution import (
+    DailyTaskExecutionCoordinator,
+    daily_task_progress_request,
+)
 from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.review import ReviewService
@@ -650,6 +653,7 @@ class ApplicationContainer:
         )
         task_load_policy_loader = None
         path_candidate_loader = None
+        daily_task_progress_loader = None
         if backend_handoff_runtime is not None:
 
             def load_task_load_policy(
@@ -672,6 +676,16 @@ class ApplicationContainer:
 
             task_load_policy_loader = load_task_load_policy
             path_candidate_loader = backend_handoff_runtime.load_path_candidates
+
+            def load_daily_task_progress(learner_id: str, task) -> dict:
+                """原子项完成进度，用于滚动刷新时保留未完成的外部项。"""
+
+                return backend_handoff_runtime.load_daily_task_progress(
+                    learner_id,
+                    daily_task_progress_request(task),
+                )
+
+            daily_task_progress_loader = load_daily_task_progress
         daily_task_refresh_service = DailyTaskRefreshService(
             plan_repository,
             knowledge_point_resolver=knowledge_point_resolver,
@@ -679,6 +693,7 @@ class ApplicationContainer:
             task_load_policy_loader=task_load_policy_loader,
             path_candidate_loader=path_candidate_loader,
             review_knowledge_point_loader=load_review_knowledge_points,
+            progress_loader=daily_task_progress_loader,
         )
         knowledge_tool = KnowledgeRetrievalTool(
             repository,

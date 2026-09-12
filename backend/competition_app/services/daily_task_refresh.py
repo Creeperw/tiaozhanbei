@@ -5,7 +5,11 @@ from threading import RLock
 from typing import Any, Callable
 from uuid import uuid4
 
-from competition_app.contracts.learning_plan import LearningTask
+from competition_app.contracts.learning_plan import (
+    DailyTaskItemSpec,
+    LearningTask,
+    is_externally_owned_item,
+)
 from competition_app.contracts.exam_scope import ExamWorkspaceContext
 from competition_app.exam_scope import (
     bind_exam_workspace_context,
@@ -38,6 +42,7 @@ class DailyTaskRefreshService:
         task_load_policy_loader: Callable[..., dict[str, Any]] | None = None,
         path_candidate_loader: Callable[..., dict[str, Any]] | None = None,
         review_knowledge_point_loader: Callable[[str], list[str]] | None = None,
+        progress_loader: Callable[[str, LearningTask], dict[str, Any]] | None = None,
     ) -> None:
         self.repository = repository
         self.knowledge_point_resolver = knowledge_point_resolver
@@ -46,6 +51,8 @@ class DailyTaskRefreshService:
         self.path_candidate_loader = path_candidate_loader
         # 到期复习知识点名称列表；用于把复习知识点纳入 24h 滚动任务的每日测验。
         self.review_knowledge_point_loader = review_knowledge_point_loader
+        # 服务端原子项完成进度；用于判断跨窗口哪些外部项仍需保留。
+        self.progress_loader = progress_loader
         self._lock = RLock()
 
     @staticmethod
@@ -247,6 +254,43 @@ class DailyTaskRefreshService:
             block,
         )
 
+    def _carried_external_items(
+        self, task: LearningTask
+    ) -> list[DailyTaskItemSpec]:
+        """跨窗口保留未完成的外部来源原子项（如已接受的干预安排）。
+
+        这些项无法从短期计划正文推导出来，重建今日任务时必须显式带回；
+        已完成的项不再带过来。进度不可用时保守保留，因为静默丢掉用户
+        刚刚确认的安排比多保留一次更不可接受。
+        """
+
+        external_items = [
+            item for item in task.items if is_externally_owned_item(item)
+        ]
+        if not external_items or self.progress_loader is None:
+            return external_items
+        try:
+            progress = self.progress_loader(task.learner_id, task)
+        except Exception:
+            # 进度不可用不能阻塞 24 小时滚动刷新。
+            return external_items
+        recorded = progress.get("items") if isinstance(progress, dict) else None
+        if not isinstance(recorded, list) or not recorded:
+            return external_items
+        completed_ids = {
+            str(entry.get("task_item_id") or "")
+            for entry in recorded
+            if isinstance(entry, dict)
+            and str(entry.get("status") or "").lower() == "completed"
+        }
+        if not completed_ids:
+            return external_items
+        return [
+            item
+            for item in external_items
+            if item.task_item_id not in completed_ids
+        ]
+
     def _next_task(
         self,
         task: LearningTask,
@@ -287,12 +331,20 @@ class DailyTaskRefreshService:
             expected_output = task.expected_output
             completion_criteria = task.completion_criteria
 
+        carried_items = self._carried_external_items(task)
+        carried_minutes = sum(
+            item.estimated_minutes for item in carried_items
+        )
+        # 外部项已计入当前任务预算，回退取预算时不能把它们重复计入新内容。
+        base_minutes = max(
+            1.0, float(task.estimated_minutes) - carried_minutes
+        )
         target_minutes = (
             float(recommended_minutes)
             if isinstance(recommended_minutes, (int, float))
             and not isinstance(recommended_minutes, bool)
             and float(recommended_minutes) > 0
-            else float(minutes or task.estimated_minutes)
+            else float(minutes or base_minutes)
         )
         target_minutes = max(10, min(24 * 60, target_minutes))
         review_points = self._review_knowledge_points(task.learner_id)
@@ -361,7 +413,7 @@ class DailyTaskRefreshService:
             # Preserve the last executable budget if an unusually dense legacy
             # task cannot fit into the reduced recommendation.
             target_minutes = max(
-                target_minutes, float(minutes or task.estimated_minutes)
+                target_minutes, float(minutes or base_minutes)
             )
             items = materialize_daily_task_items(
                 task_content=content,
@@ -374,6 +426,14 @@ class DailyTaskRefreshService:
                 quiz_target_count=None,
                 review_knowledge_points=review_points,
             )
+        if carried_items:
+            # 外部项不是本窗口的排程产物，追加在末尾并重排序号。
+            items = [
+                item.model_copy(update={"ordinal": ordinal})
+                for ordinal, item in enumerate(
+                    items + carried_items, start=1
+                )
+            ]
         actual_kp_ids = {
             str(item.kp_id)
             for item in items

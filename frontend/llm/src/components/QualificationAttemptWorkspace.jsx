@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Bookmark, ChevronLeft, ChevronRight, ClipboardList, LogOut, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
+import { createRequestId } from '../utils/requestId';
 import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
 
 const request = async (path, options = {}) => {
@@ -89,7 +90,7 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
   const submit = async () => {
     try {
       await save(false);
-      const result = await request(`/qualification-paper-attempts/${attempt.attempt_id}/submit`, { method: 'POST', body: JSON.stringify({ request_id: `submit-${crypto.randomUUID()}` }) });
+      const result = await request(`/qualification-paper-attempts/${attempt.attempt_id}/submit`, { method: 'POST', body: JSON.stringify({ request_id: createRequestId('submit') }) });
       setReport(result);
       setReportPosition(1);
       setAttempt((value) => ({ ...value, status: 'submitted' }));

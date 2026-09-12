@@ -7,11 +7,17 @@ LLM 适配器 — 使用项目在 .env.local 中配置的 DashScope 模型。
 
 from __future__ import annotations
 
+import logging
 from typing import List, Dict, Optional
+from uuid import uuid4
 
 import httpx
 
+from ..llm.provider_session import current_provider_session
+from ..llm.upload_provider import upload_provider_headers
 from .llm_provider import LLMProvider
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectLLMProvider(LLMProvider):
@@ -25,6 +31,13 @@ class ProjectLLMProvider(LLMProvider):
         self._api_key: str = settings.llm_api_key
         self._model: str = settings.chat_model
         self._timeout: float = timeout_seconds
+        # opencode.ai 需要稳定的会话标识才能路由请求；按 provider 实例复用同一个。
+        self._provider_session: str = current_provider_session() or f"tcm-sp-{uuid4().hex}"
+
+    def _provider_headers(self) -> Dict[str, str]:
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+        headers.update(upload_provider_headers(self._base_url, self._provider_session))
+        return headers
 
     def chat(
         self,
@@ -59,11 +72,19 @@ class ProjectLLMProvider(LLMProvider):
             with httpx.Client(timeout=self._timeout) as client:
                 resp = client.post(
                     f"{self._base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    headers=self._provider_headers(),
                     json=request_body,
                 )
                 resp.raise_for_status()
                 body = resp.json()
                 return body["choices"][0]["message"]["content"]
         except Exception:
+            # 保留返回 None 的契约，但必须留下日志：静默吞掉异常会让上层把
+            # “调用失败”当成“模型没有输出”，进而回退到与提问无关的兜底文案。
+            logger.warning(
+                "simulated-patient LLM call failed (model=%s, base_url=%s)",
+                self._model,
+                self._base_url,
+                exc_info=True,
+            )
             return None

@@ -9,6 +9,30 @@ from competition_app.contracts.base import ContractModel
 from competition_app.contracts.default_route import ResolvedPlanningRoute
 from competition_app.contracts.daily_task_scheduling import DailyTaskSchedule
 
+# 由其他功能写入今日任务的原子项来源标记。这些项无法从任务正文推导出来，
+# 因此「按正文重建任务」的修复流程必须原样保留它们，否则会把用户已经确认
+# 的安排静默删除。新增此类来源时在此登记。
+LEARNING_INTERVENTION_ITEM_SOURCE = "learning_intervention"
+EXTERNAL_ITEM_SOURCES: frozenset[str] = frozenset(
+    {LEARNING_INTERVENTION_ITEM_SOURCE}
+)
+
+
+def is_externally_owned_item(item: Any) -> bool:
+    """该原子项是否由其他功能写入。
+
+    同时接受契约对象与未校验的 dict：``model_copy(update=...)`` 不触发校验，
+    内部调用方可能持有没有转换过的载荷，而定时刷新链路不能因此抛错。
+    """
+
+    resource_ref = (
+        item.get("resource_ref") if isinstance(item, dict)
+        else getattr(item, "resource_ref", None)
+    )
+    if not isinstance(resource_ref, dict):
+        return False
+    return str(resource_ref.get("source") or "") in EXTERNAL_ITEM_SOURCES
+
 
 PlanScope: TypeAlias = Literal["long_term", "short_term", "daily_task"]
 
@@ -154,6 +178,16 @@ class DailyTaskItemSpec(ContractModel):
     required_question_count: int | None = Field(default=None, ge=1)
     resource_ref: dict[str, Any] = Field(default_factory=dict)
     completion_policy: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def externally_owned(self) -> bool:
+        """该原子项是否由其他功能写入。
+
+        此类项无法从任务正文或短期计划推导出来，任何「按正文重建任务」
+        的流程都必须显式保留它们，否则会把用户已确认的安排静默删除。
+        """
+
+        return is_externally_owned_item(self)
 
     @model_validator(mode="after")
     def validate_execution_policy(self) -> "DailyTaskItemSpec":

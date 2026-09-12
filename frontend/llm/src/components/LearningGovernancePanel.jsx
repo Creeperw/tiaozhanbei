@@ -26,6 +26,14 @@ const executionLabel = {
   failed: '执行失败',
 };
 
+// 复盘决策状态与 execution_status（异步重规划执行）是两条独立状态线。
+// 已决策的复盘必须显示用户的决定，不能回落到执行态的「待执行」。
+const reviewStatusLabel = {
+  proposal_pending: '待你确认',
+  accepted: '已接受调整',
+  rejected: '已保持原计划',
+};
+
 function isAsyncPlanReview(item) {
   const proposal = item?.proposal || {};
   return proposal.target_layer === 'short_term'
@@ -176,6 +184,21 @@ export default function LearningGovernancePanel({ focusNotificationId = '' }) {
     }
   };
 
+  const runReview = async () => {
+    setBusy('review:run');
+    setError('');
+    setNotice('');
+    try {
+      const payload = await request('/v1/plan-reviews/run', { method: 'POST' });
+      setNotice(payload?.summary || '复盘已完成，可在下方查看结论。');
+      await load();
+    } catch (actionError) {
+      setError(actionError.message || '复盘运行失败，请稍后重试。');
+    } finally {
+      setBusy('');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="rounded-[28px] bg-[#f2f8f4] p-5 sm:p-6">
@@ -222,21 +245,25 @@ export default function LearningGovernancePanel({ focusNotificationId = '' }) {
       </section>
 
       <section className="rounded-[26px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Route size={16} />规划复盘记录</div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Route size={16} />规划复盘记录</div>
+          <button type="button" className="button button--secondary" disabled={busy === 'review:run'} onClick={runReview}>{busy === 'review:run' ? '复盘中…' : '立即复盘'}</button>
+        </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           {reviews.map((item) => {
             const asyncPlanReview = isAsyncPlanReview(item);
             const executionStatus = asyncPlanReview ? item.execution_status : 'not_started';
+            const showExecution = asyncPlanReview && Boolean(executionStatus) && executionStatus !== 'not_started';
             return (
             <article key={item.review_id} className="rounded-2xl bg-slate-50 p-4">
-              <div className="flex items-start justify-between gap-4"><div><div className="text-sm font-semibold text-slate-950">{outcomeLabel[item.outcome] || item.outcome}</div><p className="mt-2 text-sm leading-6 text-slate-600">{item.summary}</p></div><div className="text-right"><span className="text-xs text-slate-400">{item.period_key}</span>{asyncPlanReview && <div className={`mt-1 text-xs ${executionStatus === 'failed' ? 'text-rose-600' : executionStatus === 'succeeded' ? 'text-emerald-600' : 'text-amber-600'}`}>{executionLabel[executionStatus] || executionStatus || '待执行'}</div>}</div></div>
+              <div className="flex items-start justify-between gap-4"><div><div className="text-sm font-semibold text-slate-950">{outcomeLabel[item.outcome] || item.outcome}</div><p className="mt-2 text-sm leading-6 text-slate-600">{item.summary}</p></div><div className="text-right"><span className="text-xs text-slate-400">{item.period_key}</span>{reviewStatusLabel[item.status] && <div className="mt-1 text-xs text-slate-500">{reviewStatusLabel[item.status]}</div>}{showExecution && <div className={`mt-1 text-xs ${executionStatus === 'failed' ? 'text-rose-600' : executionStatus === 'succeeded' ? 'text-emerald-600' : 'text-amber-600'}`}>{executionLabel[executionStatus] || executionStatus}</div>}</div></div>
               <ul className="mt-3 space-y-1 text-xs text-slate-500">{(item.evidence || []).map((evidence) => <li key={evidence}>· {evidence}</li>)}</ul>
               {executionStatus === 'failed' && <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{item.execution?.error || '执行失败，可重新接受调整。'}</p>}
               {(item.status === 'proposal_pending' || executionStatus === 'failed') && <div className="mt-4 flex gap-2"><button type="button" className="button button--primary" disabled={busy === `review:${item.review_id}`} onClick={() => decideReview(item.review_id, 'accept')}>{executionStatus === 'failed' ? '重试调整' : '接受调整'}</button>{item.status === 'proposal_pending' && <button type="button" className="button button--secondary" disabled={busy === `review:${item.review_id}`} onClick={() => decideReview(item.review_id, 'reject')}>保持原计划</button>}</div>}
             </article>
             );
           })}
-          {!loading && reviews.length === 0 && <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">暂无规划复盘记录。</div>}
+          {!loading && reviews.length === 0 && <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">暂无规划复盘记录。系统会按周生成，也可以立即运行一次。</div>}
         </div>
       </section>
       {loading && <div role="status" className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">正在读取通知、干预和复盘记录…</div>}

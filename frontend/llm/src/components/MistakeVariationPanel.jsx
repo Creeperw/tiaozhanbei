@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
+import { createRequestId } from '../utils/requestId';
 import { loadMistakes, submitMistakeAnswerContext, submitTrainingWorkspaceTask } from '../pageDataLoaders';
 
-const requestId = () => `variation-${crypto.randomUUID()}`;
+const requestId = () => createRequestId('variation');
 
 export default function MistakeVariationPanel({ enabled }) {
   const [mistakes, setMistakes] = useState([]);

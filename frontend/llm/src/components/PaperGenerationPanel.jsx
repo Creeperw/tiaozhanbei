@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
+import { createRequestId } from '../utils/requestId';
 import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, savePaperAnswers, setPaperTimerPaused, submitPaper } from '../pageDataLoaders';
 import { groupPaperItems } from './paperQuestionGroups';
 import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
@@ -141,7 +142,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     setAnswers(Object.fromEntries(normalizedPaper.items.map((item) => [item.paper_item_id, item.answer])));
     setSubmitted(normalizedPaper.status === 'submitted' ? normalizedPaper.result : null);
     setRemainingSeconds(normalizedPaper.timing?.remaining_seconds ?? null);
-    setSubmissionRequestId(`paper-${crypto.randomUUID()}`);
+    setSubmissionRequestId(createRequestId('paper'));
     setPosition(1);
     setMarkedPositions([]);
     setAnswerCardOpen(false);

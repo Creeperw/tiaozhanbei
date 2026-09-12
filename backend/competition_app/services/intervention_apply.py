@@ -14,7 +14,10 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from competition_app.contracts.learning_plan import DailyTaskItemSpec
+from competition_app.contracts.learning_plan import (
+    LEARNING_INTERVENTION_ITEM_SOURCE,
+    DailyTaskItemSpec,
+)
 from competition_app.services.plan_review_apply import apply_reduce_load
 
 # 展示文案与执行操作必须解耦。规则候选提供确定性 execution_operation，
@@ -29,7 +32,7 @@ _REDUCE_LOAD_OPERATION = "reduce_load"
 # 落地一项错题复盘的预计耗时（分钟），并同步增加父任务预算。
 INTERVENTION_ADDED_MINUTES = 15.0
 
-_ITEM_SOURCE = "learning_intervention"
+_ITEM_SOURCE = LEARNING_INTERVENTION_ITEM_SOURCE
 
 
 def _focus_from_reason(primary: str, secondary: str = "") -> str:

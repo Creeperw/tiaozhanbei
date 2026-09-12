@@ -32,6 +32,7 @@ from competition_app.contracts.learning_plan import (
     TextbookSelectionContext,
 )
 from competition_app.services.default_route import DefaultRouteRepository
+from competition_app.services.intervention_apply import apply_accepted_intervention
 from competition_app.services.learning_plan import (
     LearningPlanService,
     materialize_daily_task_items,
@@ -1940,6 +1941,121 @@ def test_ensure_executable_daily_resources_keeps_quiz_policy(
     # 20 分钟预算：回忆 1 + 练习 4.5 → 测验 floor(14.5/1.5)=9 题（动态）
     assert quiz_items[0].required_question_count == 9
     assert quiz_items[0].completion_policy["quiz_target_count"] == 9
+
+
+_INTERVENTION_WITH_MISTAKE_REVIEW = {
+    "intervention_id": "6",
+    "action": "安排错题复盘",
+    "reason": "系统根据近期学习监控判断当前处于“错题积压”，存在重复出现的"
+    "薄弱知识点（中医诊断学·舌诊）。",
+}
+
+
+def test_ensure_executable_daily_resources_preserves_intervention_item(
+    repository: DefaultRouteRepository,
+) -> None:
+    """已接受的干预项由干预模块维护，正文重建不得删除它。
+
+    回归：干预项 item_type=recall 曾使 ensure 判定任务“不可执行”，于是按
+    正文重新物化整个 items 列表，把用户刚确认的安排静默删除。
+    """
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+        video_resource_resolver=lambda resource_ref: None,
+    )
+    value = structured_proposal(repository)
+    value.task_proposal.task_content = "学习四君子汤并完成配套练习"
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.estimated_minutes = 20
+    value.task_proposal.focus_knowledge_points = ["四君子汤"]
+    value.short_term_learning_package.task_blocks = [
+        "学习四君子汤并完成配套练习"
+    ]
+    learner_id = "LEARNER_INTERVENTION_KEEP"
+    service.materialize(learner_id, value)
+
+    applied = apply_accepted_intervention(
+        service, learner_id, _INTERVENTION_WITH_MISTAKE_REVIEW
+    )
+    assert applied["applied"] is True
+    accepted = service.get_current(learner_id).learning_task
+    assert accepted.items[-1].item_type == "recall"
+
+    normalized = service.ensure_executable_daily_resources(learner_id)
+
+    assert normalized is not None
+    assert [item.item_type for item in normalized.items] == [
+        item.item_type for item in accepted.items
+    ]
+    preserved = normalized.items[-1]
+    assert preserved.resource_ref["source"] == "learning_intervention"
+    assert preserved.resource_ref["intervention_id"] == "6"
+    assert preserved.title.startswith("错题复盘：")
+    assert [item.ordinal for item in normalized.items] == list(
+        range(1, len(normalized.items) + 1)
+    )
+
+
+def test_ensure_executable_daily_resources_rebuilds_around_intervention_item(
+    repository: DefaultRouteRepository,
+) -> None:
+    """legacy 任务重建时，外部干预项被追加保留而不是丢弃。"""
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+        video_resource_resolver=lambda resource_ref: None,
+    )
+    value = structured_proposal(
+        repository,
+        task_content="对照纠错",
+        task_blocks=[
+            {
+                "content": "对照纠错",
+                "estimated_minutes": 5,
+                "item_type": "recall",
+            }
+        ],
+    )
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.estimated_minutes = 20
+    value.task_proposal.focus_knowledge_points = ["四君子汤"]
+    learner_id = "LEARNER_INTERVENTION_REBUILD"
+    service.materialize(learner_id, value)
+
+    applied = apply_accepted_intervention(
+        service, learner_id, _INTERVENTION_WITH_MISTAKE_REVIEW
+    )
+    assert applied["applied"] is True
+
+    normalized = service.ensure_executable_daily_resources(learner_id)
+
+    assert normalized is not None
+    preserved = [
+        item
+        for item in normalized.items
+        if item.resource_ref.get("source") == "learning_intervention"
+    ]
+    assert len(preserved) == 1
+    # 重建后仍追加在末尾，且序号连续。
+    assert preserved[0].ordinal == len(normalized.items)
+    assert [item.ordinal for item in normalized.items] == list(
+        range(1, len(normalized.items) + 1)
+    )
+    # 旧的无来源 recall 项被重建为可执行原子，外部干预项不受影响。
+    assert [
+        item
+        for item in normalized.items
+        if item.item_type == "recall"
+        and item.resource_ref.get("source") != "learning_intervention"
+    ] == []
+    assert normalized.estimated_minutes >= sum(
+        item.estimated_minutes for item in normalized.items
+    )
 
 
 def _video_ref(*, duration_seconds: int) -> dict[str, object]:

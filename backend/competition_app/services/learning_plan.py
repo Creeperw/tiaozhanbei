@@ -15,6 +15,7 @@ from competition_app.contracts.learning_plan import (
     LongTermPlan,
     StageEvidenceRecord,
     ShortTermPlan,
+    is_externally_owned_item,
 )
 from competition_app.repositories.learning_plan import (
     InMemoryLearningPlanRepository,
@@ -790,7 +791,12 @@ class LearningPlanService:
         *,
         now: datetime | None = None,
     ) -> LearningTask | None:
-        """Upgrade a legacy prose/recall task to verified video/question atoms."""
+        """Upgrade a legacy prose/recall task to verified video/question atoms.
+
+        由其他功能写入的原子项（例如用户已接受的干预安排）不属于本模块的
+        维护范围：它们无法从任务正文推导出来，重建时原样保留，否则用户刚
+        确认过的安排会被静默删除。
+        """
 
         current = self.plan_repository.get_current(learner_id)
         if current is None or current.learning_task is None:
@@ -798,29 +804,53 @@ class LearningPlanService:
         task = current.learning_task
         if task.status == "completed":
             return task
-        has_executable_items = bool(task.items) and all(
+        external_items = [
+            item for item in task.items if is_externally_owned_item(item)
+        ]
+        repairable_items = [
+            item for item in task.items if not is_externally_owned_item(item)
+        ]
+        has_executable_items = bool(repairable_items) and all(
             item.item_type in {"video_section", "knowledge_practice"}
-            for item in task.items
+            for item in repairable_items
         )
-        items = (
-            list(task.items)
-            if has_executable_items
-            else materialize_daily_task_items(
-                task_content=task.task_content,
-                learning_chapter=task.learning_chapter,
-                estimated_minutes=task.estimated_minutes,
-                focus_knowledge_points=list(task.focus_knowledge_points),
-                task_blocks=[],
-                knowledge_point_resolver=self.knowledge_point_resolver,
-                video_resource_resolver=self.video_resource_resolver,
-                quiz_target_count=None,
+        if has_executable_items:
+            items = list(task.items)
+        else:
+            # 预算可能在扣除外部项后小于原子项数，此时回退到完整预算。
+            def materialize_items(budget_minutes: float) -> list[DailyTaskItemSpec]:
+                return materialize_daily_task_items(
+                    task_content=task.task_content,
+                    learning_chapter=task.learning_chapter,
+                    estimated_minutes=budget_minutes,
+                    focus_knowledge_points=list(task.focus_knowledge_points),
+                    task_blocks=[],
+                    knowledge_point_resolver=self.knowledge_point_resolver,
+                    video_resource_resolver=self.video_resource_resolver,
+                    quiz_target_count=None,
+                )
+
+            # 外部项不参与本次预算，避免它们被重复计入重建后的任务时长。
+            external_minutes = sum(
+                item.estimated_minutes for item in external_items
             )
-        )
-        if not items or any(
-            item.item_type not in {"video_section", "knowledge_practice"}
-            for item in items
-        ):
-            return task
+            budget = max(1.0, task.estimated_minutes - external_minutes)
+            try:
+                materialized = materialize_items(budget)
+            except ValueError:
+                # 预算过小无法容纳原子项时退回完整预算，修复本身不能失败。
+                materialized = materialize_items(task.estimated_minutes)
+            if not materialized or any(
+                item.item_type not in {"video_section", "knowledge_practice"}
+                for item in materialized
+            ):
+                return task
+            items = [
+                item.model_copy(update={"ordinal": ordinal})
+                for ordinal, item in enumerate(
+                    materialized + external_items, start=1
+                )
+            ]
         practice_items = [
             item for item in items if item.item_type == "knowledge_practice"
         ]
