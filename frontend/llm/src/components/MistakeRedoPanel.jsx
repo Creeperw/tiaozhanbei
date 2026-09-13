@@ -69,6 +69,9 @@ function mapMistake(m, counts) {
     status: isResolved || localMastered ? 'mastered' : (reviewCount > 0 ? 'reviewing' : 'pending'),
     wrongAnswer: String(m.student_answer || ''),
     correctAnswer: '',
+    // Set when the question detail request fails. Without it the drawer cannot
+    // tell "the bank has no recorded answer" apart from "we failed to load it".
+    detailUnavailable: false,
     explanation: String(m.feedback || m.summary || ''),
     reviewCount,
     tags: Array.isArray(m.kp_names) ? m.kp_names : [],
@@ -147,7 +150,7 @@ function ReviewSession({ mistake, currentIndex, totalCount, onSubmit, onExit, on
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-medium text-emerald-700"><CheckCircle2 size={16} />正确答案</div>
-              <div>{mistake.correctAnswer || '答案暂未收录'}</div>
+              <div>{mistake.correctAnswer || (mistake.detailUnavailable ? '题目详情加载失败，请稍后重试' : '答案暂未收录')}</div>
             </div>
             {mistake.explanation && (
               <div className="rounded-xl border border-amber-200 bg-amber-50/50">
@@ -282,7 +285,12 @@ export default function MistakeRedoPanel() {
               return opt ? `${opt.option_id || ''}. ${opt.content || ''}` : String(a);
             }).join('；') : String(d.answer || '');
             base.explanation = d.explanation || base.explanation;
-          } catch {}
+          } catch (error) {
+            // Swallowing this used to surface as "答案未收录", which reads as a
+            // gap in the question bank rather than a failed request.
+            base.detailUnavailable = true;
+            console.warn('mistake question detail unavailable', base.questionId, error);
+          }
           return base;
         }));
         if (active) { setMistakes(enriched); setLoading(false); }
@@ -457,7 +465,7 @@ export default function MistakeRedoPanel() {
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><div className="mb-1 text-xs font-medium text-amber-700">我的首次作答</div><div className="text-sm text-amber-800">{viewingMistake.wrongAnswer || '未填写'}</div></div>
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"><div className="mb-1 text-xs font-medium text-emerald-600">正确答案</div><div className="text-sm text-emerald-700">{viewingMistake.correctAnswer || '未收录'}</div></div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"><div className="mb-1 text-xs font-medium text-emerald-600">正确答案</div><div className="text-sm text-emerald-700">{viewingMistake.correctAnswer || (viewingMistake.detailUnavailable ? '题目详情加载失败，请稍后重试' : '未收录')}</div></div>
               </div>
               {viewingMistake.explanation && <div><h3 className="mb-2 text-sm font-medium text-slate-500">解析</h3><div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{viewingMistake.explanation}</div></div>}
               {viewingMistake.tags?.length > 0 && <div className="flex flex-wrap gap-1.5">{viewingMistake.tags.map((tag) => <span key={tag} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">{tag}</span>)}</div>}

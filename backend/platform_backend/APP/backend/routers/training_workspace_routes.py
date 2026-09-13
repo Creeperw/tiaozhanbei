@@ -282,20 +282,29 @@ def _mistake_question(db: Session, mistake: MistakeRecord, user_id: int) -> dict
 
 
 def _mistake_attempt(db: Session, mistake: MistakeRecord, user_id: int) -> dict[str, Any]:
-    if mistake.attempt_item_id:
+    # ``attempt_item_id`` follows the most recent wrong attempt, so the answer
+    # the learner originally gave lives in its own immutable snapshot. Rows
+    # written before that snapshot existed fall back to whatever they point at.
+    for attempt_item_id in (
+        mistake.first_attempt_item_id,
+        mistake.attempt_item_id,
+    ):
+        if not attempt_item_id:
+            continue
         item = db.query(LearningAttemptItemRecord).filter_by(
-            attempt_item_id=mistake.attempt_item_id,
+            attempt_item_id=attempt_item_id,
         ).one_or_none()
+        if item is None:
+            continue
         grading = db.query(GradingResultRecord).filter_by(
-            attempt_item_id=mistake.attempt_item_id,
+            attempt_item_id=attempt_item_id,
         ).order_by(GradingResultRecord.id.desc()).first()
-        if item is not None:
-            return {
-                "student_answer": item.submitted_answer,
-                "score": float(grading.score) if grading and grading.score is not None else None,
-                "max_score": float(grading.max_score) if grading and grading.max_score is not None else None,
-                "feedback": grading.error_reason if grading else "",
-            }
+        return {
+            "student_answer": item.submitted_answer,
+            "score": float(grading.score) if grading and grading.score is not None else None,
+            "max_score": float(grading.max_score) if grading and grading.max_score is not None else None,
+            "feedback": grading.error_reason if grading else "",
+        }
     attempt = db.query(QuestionAttempt).filter(
         QuestionAttempt.user_id == user_id,
         QuestionAttempt.question_id == mistake.question_id,
@@ -347,6 +356,7 @@ def _mistake_payload(
         "question_id": mistake.question_id,
         "question_version_id": mistake.question_version_id,
         "attempt_item_id": mistake.attempt_item_id,
+        "first_attempt_item_id": mistake.first_attempt_item_id,
         "stem": question["stem"],
         "question_type": question["question_type"],
         "kp_ids": kp_ids,

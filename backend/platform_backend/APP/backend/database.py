@@ -1017,6 +1017,10 @@ class MistakeRecord(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     question_id = Column(String(120), index=True)
     attempt_item_id = Column(String(120), ForeignKey("learning_attempt_items.attempt_item_id"), nullable=True, index=True)
+    # Immutable snapshot of the attempt that first got the question wrong.
+    # ``attempt_item_id`` keeps moving to the most recent wrong attempt, so it
+    # cannot be used to show the learner what they originally answered.
+    first_attempt_item_id = Column(String(120), nullable=True, index=True)
     question_version_id = Column(String(120), ForeignKey("question_version_records.question_version_id"), nullable=True, index=True)
     kp_ids_json = Column(Text, default="[]")
     error_type = Column(String(120), default="", index=True)
@@ -3289,6 +3293,9 @@ def _ensure_learning_workshop_schema(bind):
         "paper_items": {
             "options_snapshot_json": options_definition,
             "max_score_snapshot": "FLOAT NOT NULL DEFAULT 100",
+        },
+        "mistake_records": {
+            "first_attempt_item_id": "VARCHAR(120) NULL",
         },
     }
     for table_name, columns_to_add in additions.items():

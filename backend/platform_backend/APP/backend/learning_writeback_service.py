@@ -80,6 +80,40 @@ def _result_from_receipt(receipt: LearningWritebackReceipt) -> LearningWriteback
     )
 
 
+def _earliest_attempt_item_id(
+    db: Session, *, learner_id: int, question_id: str
+) -> str | None:
+    """Return the learner's earliest recorded attempt on a question.
+
+    The lookup joins through the question version so that attempts made on any
+    version of the question count, not just the version that happens to be
+    current. It is used to backfill the immutable first-attempt snapshot.
+    """
+
+    row = (
+        db.query(LearningAttemptItemRecord.attempt_item_id)
+        .join(
+            LearningAttemptRecord,
+            LearningAttemptRecord.attempt_id == LearningAttemptItemRecord.attempt_id,
+        )
+        .join(
+            QuestionVersionRecord,
+            QuestionVersionRecord.question_version_id
+            == LearningAttemptItemRecord.question_version_id,
+        )
+        .filter(
+            LearningAttemptRecord.learner_id == learner_id,
+            QuestionVersionRecord.question_id == question_id,
+        )
+        .order_by(
+            LearningAttemptItemRecord.created_at.asc(),
+            LearningAttemptItemRecord.attempt_item_id.asc(),
+        )
+        .first()
+    )
+    return str(row[0]) if row is not None else None
+
+
 def apply_grading_writeback(db: Session, learner_id: int, command: GradingWritebackCommand) -> LearningWritebackResult:
     item = db.query(LearningAttemptItemRecord).filter_by(attempt_item_id=command.attempt_item_id).one_or_none()
     if item is None:
@@ -326,18 +360,45 @@ def apply_grading_writeback(db: Session, learner_id: int, command: GradingWriteb
                 pending_task.scheduled_at = now + timedelta(seconds=300)
                 pending_task.source_attempt_item_id = item.attempt_item_id
             task_ids.append(pending_task.review_task_id)
-        mistake = db.query(MistakeRecord).filter_by(
-            user_id=learner_id,
-            question_id=item.question_version_id,
-            status="active",
-        ).one_or_none()
-        if mistake is None:
-            mistake = MistakeRecord(user_id=learner_id, question_id=item.question_version_id, status="active")
-            db.add(mistake)
-        mistake.attempt_item_id = item.attempt_item_id
         authoritative_version = db.query(QuestionVersionRecord).filter_by(
             question_version_id=item.question_version_id,
         ).one_or_none()
+        # ``mistake_records.question_id`` identifies the question, whereas the
+        # attempt item only carries the version identifier. Knowledge-atlas
+        # variants name their version ``<question_id>:atlas:<hash>``, so writing
+        # the version id into the question id made the mistake detail lookup
+        # resolve against a key no question is stored under: options and the
+        # standard answer silently fell back to "not recorded".
+        question_id = (
+            str(authoritative_version.question_id)
+            if authoritative_version is not None
+            and str(authoritative_version.question_id or "").strip()
+            else str(item.question_version_id)
+        )
+        mistake = db.query(MistakeRecord).filter_by(
+            user_id=learner_id,
+            question_id=question_id,
+            status="active",
+        ).one_or_none()
+        if mistake is None:
+            mistake = MistakeRecord(
+                user_id=learner_id,
+                question_id=question_id,
+                status="active",
+                first_attempt_item_id=item.attempt_item_id,
+            )
+            db.add(mistake)
+        elif not mistake.first_attempt_item_id:
+            # Rows written before the snapshot column existed get the earliest
+            # attempt still attributable to them, so the backfill is idempotent
+            # even when the migration script has not run yet.
+            mistake.first_attempt_item_id = (
+                _earliest_attempt_item_id(
+                    db, learner_id=learner_id, question_id=question_id
+                )
+                or item.attempt_item_id
+            )
+        mistake.attempt_item_id = item.attempt_item_id
         mistake.question_version_id = (
             authoritative_version.question_version_id
             if authoritative_version is not None
