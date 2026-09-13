@@ -28,11 +28,34 @@ loaded)::
 from __future__ import annotations
 
 import argparse
+import os
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
-from APP.backend.database import (
+
+def _resolve_target_database() -> str:
+    """Align the repair with the database the learner workspace is served from.
+
+    The workspace reaches its tables through the handoff layer, which keeps its
+    data in ``BACKEND_HANDOFF_MYSQL_DATABASE`` while ``MYSQL_DATABASE`` names the
+    main application database. Importing the models without aligning the two
+    silently connects to the empty schema, and the run then reports "nothing to
+    repair" instead of failing. An explicit ``DATABASE_URL`` always wins.
+    """
+
+    if (os.getenv("DATABASE_URL") or "").strip():
+        return "DATABASE_URL"
+    handoff = (os.getenv("BACKEND_HANDOFF_MYSQL_DATABASE") or "").strip()
+    current = (os.getenv("MYSQL_DATABASE") or "").strip()
+    if handoff and handoff != current:
+        os.environ["MYSQL_DATABASE"] = handoff
+    return os.environ.get("MYSQL_DATABASE", "")
+
+
+TARGET_DATABASE = _resolve_target_database()
+
+from APP.backend.database import (  # noqa: E402  (import after the env is aligned)
     LearningAttemptItemRecord,
     LearningAttemptRecord,
     MistakeRecord,
@@ -206,7 +229,7 @@ def main() -> None:
     try:
         _require_snapshot_column(db)
         mode = "APPLY" if args.apply else "DRY-RUN"
-        print(f"[{mode}] repairing mistake_records")
+        print(f"[{mode}] repairing mistake_records on {TARGET_DATABASE or '<default>'}")
         repair_question_ids(db, apply=args.apply)
         repair_first_attempts(db, apply=args.apply)
         print(f"[{mode}] done")
