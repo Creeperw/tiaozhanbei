@@ -550,11 +550,11 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, fee
         {!isUser && isGenerating && publicationStatus && (
           <div className="assistant-publication-state" role="status">
             <ShieldCheck size={13} aria-hidden="true" />
+            {/* 后端只发 approved 与 interrupted：审核只有 pass / revise 两个
+                终态，未通过时内容仍会发布并记入失败案例库，不再有人工复核。 */}
             {publicationStatus === 'approved'
               ? '已通过发布门禁，正在输出正式回答'
-              : publicationStatus === 'human_review'
-                ? '正在输出人工复核说明'
-                : '正在输出需要你补充的信息'}
+              : '正在输出需要你补充的信息'}
           </div>
         )}
 

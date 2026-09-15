@@ -58,7 +58,9 @@ function runtimeEventToTracePayload(event) {
   if (name === 'audit_revision_completed') return {
     type: 'repair_event',
     kind: 'completed',
-    text: event.status === 'needs_human_review' ? '修订复核完成，等待人工复核' : '修订复核已完成',
+    // 该事件只会在返修链无法构造时以 failed 发出。产品约定没有“等待人工
+    // 复核”这个终态，所以不能向学习者承诺人工介入。
+    text: event.status === 'failed' ? '本次修订未能完成' : '修订复核已完成',
     auditStepId: event.audit_step_id || event.trigger_step_id || 'audit',
     status: event.status || 'completed',
   };
@@ -181,12 +183,14 @@ function runtimeEventToTracePayload(event) {
     // built the status is already needs_human_review and rerun_step_ids is
     // empty, so promising a partial repair here was a false statement: the
     // learner was told a repair was prepared and then told it had failed.
+    // 该状态表示返修链无法构造（系统结构故障），随后会以 failed 中止本次
+    // 处理。产品约定没有“等待人工复核”这个终态，所以只能说明无法自动修正。
     const blocked = event.status === 'needs_human_review';
     return {
       type: 'repair_event',
       kind: 'planned',
       text: blocked
-        ? '审核判定的问题无法在当前执行路径上自动修正，已转人工复核'
+        ? '审核判定的问题无法在当前执行路径上自动修正，本次处理已中止'
         : '审核已定位问题，准备仅返修受影响的环节',
       auditStepId: event.trigger_step_id || '',
       targetStepIds: event.rerun_step_ids || [],
@@ -216,17 +220,18 @@ function runtimeEventToTracePayload(event) {
   }
   if (name === 'repair_completed' || name === 'repair_stopped') {
     const completed = name === 'repair_completed';
-    // A stop with status needs_human_review means no repair step ever ran,
-    // so "返修后仍未通过" would describe a step that did not happen.
-    const neverRan = !completed && event.status === 'needs_human_review';
+    // repair_completed 的 status 是审核器自己的结论。产品约定只有 pass 与
+    // revise 两个审核终态：未通过时内容仍会发布并记入失败案例库，所以
+    // revise / reject 等取值只说明“已走完一轮受控返修”，不是等待人工。
+    // repair_stopped 只在返修无法进行时发出，此时内容确实没有发布。
     return {
       type: 'repair_event',
       kind: completed ? 'completed' : 'stopped',
       text: completed
-        ? '复审通过，返修内容可以发布'
-        : neverRan
-          ? '该问题不能自动修正，内容未自动发布，已转人工复核'
-          : '返修后仍未通过，内容未自动发布',
+        ? (event.status === 'pass'
+          ? '复审通过，返修内容可以发布'
+          : '已完成一轮受控返修，内容可以继续使用')
+        : '该问题未能自动修正，内容未自动发布',
       auditStepId: event.trigger_step_id || '',
       status: event.status || (completed ? 'pass' : 'failed'),
     };

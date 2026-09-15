@@ -517,6 +517,12 @@ export function reduceLangGraphEvent(state, ev) {
   } else if (ev.type === 'repair_event') {
     if (['planned', 'step_started', 'reaudit_started'].includes(ev.kind)) isRollingBack = true;
     if (['completed', 'stopped'].includes(ev.kind)) isRollingBack = false;
+    // completed / stopped 都是本轮返修的终态。产品约定未通过的审核也会发布
+    // 内容并记入失败案例库，所以 repair_completed 携带的 revise / reject /
+    // needs_human_review 只是审核器自己的结论，不能再显示成等待人工。只有
+    // 旧版本发出的 repair_stopped + needs_human_review 才代表人工复核。
+    const stoppedForHumanReview = ev.kind === 'stopped' && ev.status === 'needs_human_review';
+    const settled = ['completed', 'stopped'].includes(ev.kind);
     const auditNode = nodes.find((node) => node.agent === 'audit_agent');
     const targetId = auditNode?.id || ev.auditStepId || 'audit';
     if (!auditNode) {
@@ -526,10 +532,10 @@ export function reduceLangGraphEvent(state, ev) {
       ...node,
       status: ev.status === 'failed'
         ? 'error'
-        : (ev.status === 'needs_human_review'
+        : (stoppedForHumanReview
           ? 'waiting_human_review'
-          : (['pass', 'completed', 'success'].includes(ev.status) ? 'done' : node.status)),
-      endTime: ['needs_human_review', 'failed', 'pass', 'completed', 'success'].includes(ev.status)
+          : (settled || ['pass', 'completed', 'success'].includes(ev.status) ? 'done' : node.status)),
+      endTime: settled || ev.status === 'failed'
         ? (node.endTime || ts)
         : node.endTime,
       error: ev.status === 'failed' ? (ev.text || '返修后审核失败') : undefined,

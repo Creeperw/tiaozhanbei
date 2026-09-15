@@ -361,10 +361,9 @@ describe('workflow chat event adapter', () => {
   });
 
   it('does not promise a repair when the audit problem cannot be repaired', () => {
-    // repair_planned already carries the plan status: when no repair chain can
-    // be built the status is needs_human_review with no rerun steps, so the
-    // learner must not be told a partial repair was prepared, nor that a
-    // repair later failed, because no repair step ever ran.
+    // repair_planned 携带计划状态：当返修链无法构造时 status 为
+    // needs_human_review 且没有可重跑的步骤，随后会以 failed 中止本次处理。
+    // 学习者既不该被告知“已准备好局部返修”，也不该被告知会有人工接管。
     const blocked = runtimeEventToTrace({
       event: 'repair_planned',
       trigger_step_id: 'audit',
@@ -375,8 +374,9 @@ describe('workflow chat event adapter', () => {
     expect(blocked).toEqual(expect.objectContaining({
       type: 'repair_event', kind: 'planned', status: 'needs_human_review',
     }));
-    expect(blocked.text).toContain('人工复核');
     expect(blocked.text).not.toContain('准备仅返修');
+    expect(blocked.text).not.toContain('人工复核');
+    expect(blocked.text).toContain('本次处理已中止');
 
     const planned = runtimeEventToTrace({
       event: 'repair_planned',
@@ -387,15 +387,19 @@ describe('workflow chat event adapter', () => {
     });
     expect(planned.text).toBe('审核已定位问题，准备仅返修受影响的环节');
 
-    const stopped = runtimeEventToTrace({
-      event: 'repair_stopped',
-      trigger_step_id: 'audit',
-      status: 'needs_human_review',
-      ts: 32,
-    });
-    expect(stopped.kind).toBe('stopped');
-    expect(stopped.text).not.toContain('返修后仍未通过');
-    expect(stopped.text).toContain('人工复核');
+    // 当前后端只会以 failed 停止返修，历史记录里还存在 needs_human_review；
+    // 两者都不能再向学习者承诺人工复核。
+    for (const status of ['failed', 'needs_human_review']) {
+      const stopped = runtimeEventToTrace({
+        event: 'repair_stopped',
+        trigger_step_id: 'audit',
+        status,
+        ts: 32,
+      });
+      expect(stopped.kind).toBe('stopped');
+      expect(stopped.text).not.toContain('返修后仍未通过');
+      expect(stopped.text).not.toContain('人工复核');
+    }
 
     const started = runtimeEventToTrace({
       event: 'audit_revision_started',
@@ -404,6 +408,30 @@ describe('workflow chat event adapter', () => {
       ts: 33,
     });
     expect(started.text).not.toContain('安排返修');
+  });
+
+  it('describes a bounded repair as finished instead of waiting for a human', () => {
+    // 产品约定只有 pass 与 revise 两个审核终态：未通过时内容仍会发布并记入
+    // 失败案例库。repair_completed 的 status 是审核器自己的结论，不能把它
+    // 渲染成“等待人工复核”。
+    const passed = runtimeEventToTrace({
+      event: 'repair_completed', trigger_step_id: 'audit', status: 'pass', ts: 40,
+    });
+    expect(passed.text).toBe('复审通过，返修内容可以发布');
+
+    for (const status of ['revise', 'reject', 'needs_human_review']) {
+      const bounded = runtimeEventToTrace({
+        event: 'repair_completed', trigger_step_id: 'audit', status, ts: 41,
+      });
+      expect(bounded.kind).toBe('completed');
+      expect(bounded.text).not.toContain('人工复核');
+      expect(bounded.text).toContain('可以继续使用');
+    }
+
+    const failedRevision = runtimeEventToTrace({
+      event: 'audit_revision_completed', status: 'failed', ts: 42,
+    });
+    expect(failedRevision.text).not.toContain('人工复核');
   });
 
   it('maps external search results to completed inline tool events', () => {

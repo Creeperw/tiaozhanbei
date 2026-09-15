@@ -62,6 +62,48 @@ describe('LangGraph six-agent trace state', () => {
     expect(state.isRollingBack).toBe(false);
   });
 
+  it('settles the audit node after a bounded repair even when the verdict is not pass', () => {
+    // 未通过的审核也会发布归一化后的内容，所以 repair_completed 携带的
+    // revise / reject / needs_human_review 只表示本轮返修结束，不能把审核
+    // 节点留在“等待人工复核”。
+    for (const status of ['pass', 'revise', 'reject', 'needs_human_review']) {
+      let state = reduceLangGraphEvent(emptyState, {
+        type: 'feedback_start', agent: 'audit_agent', stepId: 'audit', text: '审核内容', ts: 10,
+      });
+      state = reduceLangGraphEvent(state, {
+        type: 'repair_event',
+        kind: 'completed',
+        text: '已完成一轮受控返修，内容可以继续使用',
+        status,
+        auditStepId: 'audit',
+        ts: 20,
+      });
+
+      const audit = state.nodes.find((node) => node.id === 'audit');
+      expect(audit?.status, status).toBe('done');
+      expect(audit?.endTime).toBe(20);
+      expect(state.isRollingBack).toBe(false);
+    }
+  });
+
+  it('still shows a legacy human-review stop as waiting', () => {
+    // 旧版本用 repair_stopped + needs_human_review 表示人工复核，历史会话
+    // 仍按当时的状态渲染，不能被新约定覆盖。
+    let state = reduceLangGraphEvent(emptyState, {
+      type: 'feedback_start', agent: 'audit_agent', stepId: 'audit', text: '审核内容', ts: 10,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'repair_event',
+      kind: 'stopped',
+      text: '该问题未能自动修正，内容未自动发布',
+      status: 'needs_human_review',
+      auditStepId: 'audit',
+      ts: 20,
+    });
+
+    expect(state.nodes.find((node) => node.id === 'audit')?.status).toBe('waiting_human_review');
+  });
+
   it('keeps every compiled agent visible before its step starts', () => {
     let state = reduceLangGraphEvent(emptyState, {
       type: 'planning_start', agent: 'planner_agent', stepId: 'planner', text: '开始规划', ts: 10,
