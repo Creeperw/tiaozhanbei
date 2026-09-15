@@ -86,7 +86,10 @@ async def test_explicit_safety_required_even_when_overall_decision_passes(safety
             learner_id=context["learner_id"], scope="short_term",
         )
     else:
-        assert result.decision == "needs_human_review"
+        # 安全非 safe 不得发布，也不得签发安全批准；产品约定只有 pass /
+        # revise，因此转返修（重跑 Diagnosis 重写规划）。
+        assert result.decision == "revise"
+        assert result.medical_safety_approval is None
         assert result.medical_safety_approval is None
 
 
@@ -101,7 +104,8 @@ async def test_contradictory_safety_finding_never_becomes_advisory(kind, monkeyp
         return [RepairIssue(issue_id="ISSUE", issue_type=kind, message="需要安全复核", blocking=True)]
     monkeypatch.setattr(agent, "_compile_model_issues", issues)
     result = (await agent.run(_short_plan_context())).payload
-    assert result.decision == "needs_human_review"
+    # 矛盾的安全发现不得被降级为非阻断建议，也不得签发安全批准。
+    assert result.decision == "revise"
     assert result.medical_safety_approval is None
 
 

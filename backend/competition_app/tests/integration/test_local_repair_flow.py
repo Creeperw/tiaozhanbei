@@ -1,4 +1,5 @@
 import pytest
+from pydantic import BaseModel
 
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.resource import AuditResult
@@ -6,6 +7,12 @@ from competition_app.contracts.local_repair import RepairIssue
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
 from competition_app.runtime.orchestrator import Orchestrator
+
+
+class AuditOutput(BaseModel):
+    """Mirror the production audit output shape (a copyable payload holder)."""
+
+    payload: AuditResult
 
 
 class RecordingAgent:
@@ -26,16 +33,12 @@ class EmptyFindingsAuditAgent:
     async def run(self, context):
         self.calls.append("audit")
         self.count += 1
-        return type(
-            "AuditOutput",
-            (),
-            {
-                "payload": AuditResult(
-                    audit_result_id=f"EMPTY_{self.count}",
-                    decision="revise",
-                )
-            },
-        )()
+        return AuditOutput(
+            payload=AuditResult(
+                audit_result_id=f"EMPTY_{self.count}",
+                decision="revise",
+            )
+        )
 
 
 class FailsDuringRepairAgent(RecordingAgent):
@@ -65,32 +68,28 @@ class LocatedContentAuditAgent:
         self.calls.append("audit")
         self.count += 1
         revise = self.count == 1
-        return type(
-            "AuditOutput",
-            (),
-            {
-                "payload": AuditResult(
-                    audit_result_id=f"LOCATED_{self.count}",
-                    decision="revise" if revise else "pass",
-                    findings=["资源正文表达不清"] if revise else [],
-                    structured_findings=(
-                        [
-                            RepairIssue(
-                                issue_id="RESOURCE_CONTENT_1",
-                                issue_type="content_quality",
-                                message="资源正文表达不清",
-                                origin_step_id="expert",
-                                owner_step_id="expert",
-                                affected_step_ids=["expert"],
-                                origin="audit_model",
-                            )
-                        ]
-                        if revise
-                        else []
-                    ),
-                )
-            },
-        )()
+        return AuditOutput(
+            payload=AuditResult(
+                audit_result_id=f"LOCATED_{self.count}",
+                decision="revise" if revise else "pass",
+                findings=["资源正文表达不清"] if revise else [],
+                structured_findings=(
+                    [
+                        RepairIssue(
+                            issue_id="RESOURCE_CONTENT_1",
+                            issue_type="content_quality",
+                            message="资源正文表达不清",
+                            origin_step_id="expert",
+                            owner_step_id="expert",
+                            affected_step_ids=["expert"],
+                            origin="audit_model",
+                        )
+                    ]
+                    if revise
+                    else []
+                ),
+            )
+        )
 
 
 class RevisingAuditAgent:
@@ -103,22 +102,18 @@ class RevisingAuditAgent:
         self.calls.append("audit")
         decision = self.decisions[min(self.count, len(self.decisions) - 1)]
         self.count += 1
-        return type(
-            "AuditOutput",
-            (),
-            {
-                "payload": AuditResult(
-                    audit_result_id=f"AUDIT_{self.count}",
-                    decision=decision,
-                    findings=["证据缺失"] if decision == "revise" else [],
-                    structured_findings=[RepairIssue(
-                        issue_id=f"MISSING_{self.count}", issue_type="missing_evidence",
-                        message="证据缺失", origin="audit_model",
-                        owner_step_id="knowledge", affected_step_ids=["knowledge"],
-                    )] if decision == "revise" else [],
-                )
-            },
-        )()
+        return AuditOutput(
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_{self.count}",
+                decision=decision,
+                findings=["证据缺失"] if decision == "revise" else [],
+                structured_findings=[RepairIssue(
+                    issue_id=f"MISSING_{self.count}", issue_type="missing_evidence",
+                    message="证据缺失", origin="audit_model",
+                    owner_step_id="knowledge", affected_step_ids=["knowledge"],
+                )] if decision == "revise" else [],
+            )
+        )
 
 
 def _plan() -> ExecutionPlan:
@@ -194,10 +189,13 @@ async def test_second_failed_audit_stops_without_third_round() -> None:
 
     result = await Orchestrator(registry).execute(_plan(), {})
 
-    assert result.status == "waiting_human_review"
+    # 关键安全属性不变：第二轮审核仍非 pass 时绝不启动第三轮返修；
+    # 差别只是不再挂起等待人工，而是发布返修后的内容并记入失败案例库。
     assert len(result.repair_trace) == 1
-    assert result.repair_trace[0].status == "stopped"
     assert audit.count == 2
+    assert result.status == "success"
+    assert result.repair_trace[0].status == "completed"
+    assert result.repair_trace[0].final_audit_decision == "revise"
 
 
 @pytest.mark.asyncio
@@ -239,10 +237,13 @@ async def test_empty_modern_audit_findings_fail_closed_without_legacy_revision()
 
     result = await Orchestrator(registry).execute(_plan(), {})
 
-    assert result.status == "waiting_human_review"
-    assert calls == ["knowledge", "expert", "audit"]
-    assert result.repair_trace[0].status == "stopped"
-    assert result.repair_trace[0].final_audit_decision == "needs_human_review"
+    # 审核给了非 pass 结论却没有可定位的问题：不挂起等待人工，而是兜底重跑
+    # 内容节点后再次送审；一轮返修后仍非 pass 则发布并记入失败案例库。
+    assert result.status == "success"
+    assert calls == ["knowledge", "expert", "audit", "expert", "audit"]
+    assert result.repair_trace[0].status == "completed"
+    assert result.repair_trace[0].issue_types == ["content_quality"]
+    assert result.repair_trace[0].rerun_step_ids == ["expert", "audit"]
 
 
 @pytest.mark.asyncio

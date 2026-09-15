@@ -139,6 +139,7 @@ class InMemoryRunStateRepository:
             existing = self._states.get(thread_id)
             if existing is None:
                 return None
+            # waiting_human_review 已不再产生，但仍需接受历史运行的持久状态。
             if existing.get("status") in {"cancelled", "completed", "failed", "interrupted", "waiting_human_review"}:
                 return _copy_json(existing)
             existing["status"] = "cancellation_requested"
@@ -150,6 +151,7 @@ class InMemoryRunStateRepository:
             existing = self._states.get(thread_id)
             if existing is None:
                 return None
+            # waiting_human_review 已不再产生，但仍需接受历史运行的持久状态。
             if existing.get("status") in {"completed", "failed", "interrupted", "waiting_human_review"}:
                 return _copy_json(existing)
             existing.update({
@@ -407,6 +409,7 @@ class SqlRunStateRepository:
                 raw = raw.decode("utf-8")
             state = json.loads(raw) if isinstance(raw, str) else dict(raw)
             current = str(state.get("status") or "")
+            # waiting_human_review 已不再产生，但仍需接受历史运行的持久状态。
             terminal_states = {
                 "completed", "failed", "interrupted", "waiting_human_review"
             }

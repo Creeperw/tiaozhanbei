@@ -24,7 +24,6 @@ _TERMINAL_EVENTS = {
     "run_completed",
     "run_failed",
     "run_interrupted",
-    "run_waiting_human_review",
     "run_cancelled",
 }
 

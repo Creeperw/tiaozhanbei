@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from pydantic import BaseModel
 
 from competition_app.contracts.resource import AuditResult
 from competition_app.contracts.local_repair import RepairIssue
@@ -12,6 +13,12 @@ from competition_app.runtime.tool_registry import ToolRegistry
 from competition_app.runtime.trace import TraceRecorder
 
 
+class AuditOutput(BaseModel):
+    """Mirror the production audit output shape (a copyable payload holder)."""
+
+    payload: AuditResult
+
+
 class AuditSequenceAgent:
     def __init__(self, decisions: list[str]) -> None:
         self.decisions = decisions
@@ -20,7 +27,7 @@ class AuditSequenceAgent:
     async def run(self, context):
         decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
         self.calls += 1
-        return type("Output", (), {"payload": AuditResult(
+        return AuditOutput(payload=AuditResult(
             audit_result_id=f"AUDIT_{self.calls}",
             decision=decision,
             structured_findings=(
@@ -36,7 +43,7 @@ class AuditSequenceAgent:
                 if decision == "revise"
                 else []
             ),
-        )})()
+        ))
 
 
 class HumanReviewRepairSequenceAgent(AuditSequenceAgent):
@@ -242,7 +249,7 @@ async def test_orchestrator_emits_revision_events() -> None:
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_waits_for_human_when_revision_is_still_not_approved() -> None:
+async def test_orchestrator_publishes_after_one_bounded_revision_round() -> None:
     registry = AgentRegistry()
     expert = CountingAgent()
     audit = AuditSequenceAgent(["revise", "revise"])
@@ -257,9 +264,13 @@ async def test_orchestrator_waits_for_human_when_revision_is_still_not_approved(
 
     result = await Orchestrator(registry).execute(plan, {})
 
-    assert result.status == "waiting_human_review"
+    # 关键安全属性：受控返修只跑一轮，绝不会因为“再审仍不通过”而启动第三轮；
+    # 差别只是不再挂起等待人工，而是发布返修后的内容并把剩余问题记入失败案例库。
     assert expert.calls == 2
     assert audit.calls == 2
+    assert result.status == "success"
+    assert result.repair_trace[0].status == "completed"
+    assert result.repair_trace[0].final_audit_decision == "revise"
 
 
 @pytest.mark.asyncio
@@ -304,7 +315,7 @@ async def test_orchestrator_repairs_human_review_before_publishing() -> None:
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_fails_when_revision_is_rejected() -> None:
+async def test_orchestrator_revises_when_revision_is_rejected() -> None:
     registry = AgentRegistry()
     registry.register("expert_agent", CountingAgent())
     registry.register("audit_agent", AuditSequenceAgent(["revise", "reject"]))
@@ -317,7 +328,11 @@ async def test_orchestrator_fails_when_revision_is_rejected() -> None:
 
     result = await Orchestrator(registry).execute(plan, {})
 
-    assert result.status == "failed"
+    # reject 不再是终态：审核器给出的拒绝等同于“未通过”，走同一条受控返修
+    # 路径，返修后再审一次，然后发布返修后的内容。
+    assert result.status == "success"
+    assert result.repair_trace[0].status == "completed"
+    assert result.repair_trace[0].final_audit_decision == "reject"
 
 
 @pytest.mark.asyncio
@@ -369,11 +384,8 @@ async def test_knowledge_explanation_revision_reuses_explanation_agent() -> None
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("decision", "expected_status"),
-    [("reject", "failed"), ("needs_human_review", "waiting_human_review")],
-)
-async def test_orchestrator_maps_terminal_audit_decisions(decision, expected_status) -> None:
+@pytest.mark.parametrize("decision", ["reject", "needs_human_review"])
+async def test_orchestrator_never_treats_non_pass_audit_as_approval(decision) -> None:
     registry = AgentRegistry()
     registry.register("expert_agent", CountingAgent())
     registry.register("audit_agent", AuditSequenceAgent([decision]))
@@ -386,7 +398,11 @@ async def test_orchestrator_maps_terminal_audit_decisions(decision, expected_sta
 
     result = await Orchestrator(registry).execute(plan, {})
 
-    assert result.status == expected_status
+    # 任何非 pass 取值都必须先经过受控返修，不能当成通过直接发布。
+    assert result.status == "success"
+    assert len(result.repair_trace) == 1
+    assert result.repair_trace[0].status == "completed"
+    assert result.repair_trace[0].final_audit_decision == decision
 
 
 class RecordingAgent:

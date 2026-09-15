@@ -392,18 +392,18 @@ def public_workflow_result(result: Any) -> dict[str, Any] | None:
     if not isinstance(result, dict):
         return None
     # These fields are internal observability/execution artifacts.  In
-    # particular model_trace contains complete prompt and transport payloads.
+    # particular model_trace contains complete prompt and transport payloads,
+    # and review contains the raw audit report plus the pending draft.  The
+    # audit report and its findings are internal review material: they must
+    # never reach the learner-facing SSE payload under any status.
     internal_fields = {
         "agent_outputs",
         "model_trace",
         "snapshot_path",
         "writeback_intents",
         "coordination",
+        "review",
     }
-    # 审核未通过时只告诉用户流程尚未发布。审核报告、findings 和待复核
-    # 草稿属于内部审核/返修信息，不能通过 SSE 结果对象泄露到用户端。
-    if result.get("status") == "waiting_human_review":
-        internal_fields.add("review")
     return _sanitize(
         {key: value for key, value in result.items() if key not in internal_fields}
     )

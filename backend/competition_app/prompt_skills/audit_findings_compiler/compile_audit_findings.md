@@ -1,6 +1,6 @@
 ---
 skill_id: audit-findings-compiler-v1
-version: 1.1.0
+version: 1.2.0
 agent: audit_findings_compiler
 task_type: compile_audit_findings
 ---
@@ -13,15 +13,19 @@ task_type: compile_audit_findings
 2. `source_quote` 必须是对应来源字段中的连续原文。
 3. `location_keys` 只能选择 `location_catalog` 中已有的键；无法精确定位时选择
    当前对象的 `whole_subject`，不得发明题号、阶段或字段。
-4. 只把影响正确性、安全性、用户硬约束或可执行性的要求标为 `blocking=true`；
-   表达偏好和可选优化必须为 `false`。
+4. `findings` 中的每一条都必须逐条出现在 `issues` 里，一条不漏，也不得合并成
+   一条。一条问题是否要求返修由 `blocking` 表达，不由“是否输出”表达：
+   影响正确性、安全性、用户硬约束或可执行性的要求标为 `blocking=true`；
+   表达偏好、可选优化、补充建议的一律标为 `blocking=false`，但必须输出。
+   遗漏输出会被判为漏编译，等同于没完成本次编译。
 5. 不生成 owner、step ID、返修链、审核决定、发布状态或数据库字段。
 6. 无法可靠逐字提取时输出 `status=needs_revision`。
 7. 只输出JSON。
 8. `findings` 为空时仍应阅读完整 `audit_report`。由你理解否定、转折和建议的语义，
    “未发现事实错误”不是事实错误问题；不得仅凭词语出现分类。
 9. 收到 `compilation_feedback` 时，在原始材料和允许位置不变的前提下修正协议。
-   不得为满足格式而臆造问题；报告确无问题且 findings 为空时可输出空 issues。
+   不得为满足格式而臆造问题；但只有在 `findings` 为空时才能输出空 `issues`，
+   `findings` 非空而 `issues` 为空会被判为漏编译并重试。
 
 ## 问题类型边界
 

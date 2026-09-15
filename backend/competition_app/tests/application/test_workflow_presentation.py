@@ -1,7 +1,6 @@
 import json
 import asyncio
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -24,7 +23,6 @@ from competition_app.contracts.memory import (
     MemoryGovernanceDecision,
 )
 from competition_app.agents.memory import MemoryAgentResult
-from competition_app.contracts.resource import AuditResult
 from competition_app.repositories.runtime import InMemoryRunStateRepository
 from competition_app.runtime.orchestrator import ExecutionResult
 from competition_app.runtime.trace import CommunicationTrace
@@ -261,20 +259,13 @@ def test_model_transport_error_has_safe_retry_message() -> None:
     assert "http" not in safe_message.lower()
 
 
-def test_waiting_human_review_is_presented_as_a_review_request() -> None:
-    message = workflow_result_to_markdown({
-        "status": "waiting_human_review",
-        "review": {
-            "findings": ["实时信息来源需要人工核验。"],
-        },
-    })
+def test_legacy_human_review_result_never_renders_audit_content() -> None:
+    """审核意见绝不进入用户可见消息（2026-09-15 线上事故的回归点）。
 
-    assert "人工复核" in message
-    assert "实时信息来源需要人工核验。" in message
-    assert "审核未能完成" not in message
-
-
-def test_waiting_human_review_shows_draft_content_and_audit_advice() -> None:
+    事故经过：审核模型判 pass、但问题编译失败，系统把它升级成
+    needs_human_review，随后本模块把审核报告、findings 与待复核草稿整段渲染
+    进了用户会话。该终态已不再产生，这里锁定“不外泄审核内容”这一不变量。
+    """
     message = workflow_result_to_markdown({
         "status": "waiting_human_review",
         "review": {
@@ -286,93 +277,26 @@ def test_waiting_human_review_shows_draft_content_and_audit_advice() -> None:
                 "producer": "expert_agent",
                 "payload": {
                     "title": "气血知识讲解",
-                    "content": {
-                        "知识讲解": "气与血是人体基本物质。",
-                        "思考问题": ["气能生血，你能举例说明吗？"],
-                    },
+                    "content": {"知识讲解": "气与血是人体基本物质。"},
                 },
             },
         ],
     })
 
-    assert "### 待复核内容" in message
-    assert "「气血知识讲解」" in message
-    assert "气与血是人体基本物质。" in message
-    assert "### 审核意见" in message
-    assert "讲解结构符合要求，但证据引用需要人工确认。" in message
-    assert "### 需要确认的问题" in message
-    assert "教材证据原文需要人工核验。" in message
-    assert "确认后我会继续发布" in message
-
-
-def test_waiting_human_review_without_agent_outputs_still_lists_findings() -> None:
-    message = workflow_result_to_markdown({
-        "status": "waiting_human_review",
-        "review": {
-            "audit_report": "",
-            "findings": ["需要确认信息来源。"],
-        },
-    })
-
+    assert "### 审核意见" not in message
     assert "### 待复核内容" not in message
-    assert "需要确认的问题" in message
-    assert "需要确认信息来源。" in message
+    assert "### 需要确认的问题" not in message
+    assert "讲解结构符合要求，但证据引用需要人工确认。" not in message
+    assert "教材证据原文需要人工核验。" not in message
+    assert "气与血是人体基本物质。" not in message
+    assert message.strip()
 
 
-def test_waiting_human_review_execution_builds_a_normal_review_result() -> None:
-    use_case = object.__new__(PersonalizedReviewCardUseCase)
-    use_case.model_trace_recorder = None
-    audit = AuditResult(
-        audit_result_id="AUDIT_REVIEW",
-        decision="needs_human_review",
-        findings=["实时信息来源需要人工核验。"],
-    )
-    execution = ExecutionResult(
-        status="waiting_human_review",
-        outputs={"audit": SimpleNamespace(payload=audit)},
-    )
+def test_legacy_human_review_result_without_review_payload_stays_neutral() -> None:
+    message = workflow_result_to_markdown({"status": "waiting_human_review"})
 
-    result = use_case._human_review_result(
-        execution_id="EXE_REVIEW",
-        task_type="general_learning_support",
-        execution=execution,
-    )
-
-    assert result.status == "waiting_human_review"
-    assert result.review == audit
-    assert "人工复核" in workflow_result_to_markdown(result)
-
-
-def test_waiting_human_review_after_repair_keeps_original_findings() -> None:
-    use_case = object.__new__(PersonalizedReviewCardUseCase)
-    use_case.model_trace_recorder = None
-    first_audit = AuditResult(
-        audit_result_id="AUDIT_PASS",
-        decision="pass",
-        findings=[],
-    )
-    audit = AuditResult(
-        audit_result_id="AUDIT_REVISE",
-        decision="revise",
-        findings=["事实来源仍需人工核验。"],
-    )
-    execution = ExecutionResult(
-        status="waiting_human_review",
-        outputs={
-            "audit_long": SimpleNamespace(payload=first_audit),
-            "audit_short": SimpleNamespace(payload=audit),
-        },
-        error_type="AuditRevisionNeedsHumanReview",
-    )
-
-    result = use_case._human_review_result(
-        execution_id="EXE_REPAIR_REVIEW",
-        task_type="general_learning_support",
-        execution=execution,
-    )
-
-    assert result.review.decision == "needs_human_review"
-    assert result.review.findings == ["事实来源仍需人工核验。"]
+    assert "人工复核" not in message
+    assert message.strip()
 
 
 @pytest.mark.asyncio

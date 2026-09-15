@@ -172,11 +172,6 @@ _NON_TRACE_EVENT_TYPES = frozenset({
 })
 
 
-class SmartPaperHumanReviewAction(BaseModel):
-    action: Literal["approve_publish", "reject"]
-    note: str = Field(min_length=3, max_length=2000)
-
-
 class _AsgiDelegateResponse(Response):
     """Pass one matched request to a sibling ASGI application."""
 
@@ -7017,27 +7012,6 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             user_request=request.user_request,
         )
 
-    @app.post("/api/v1/workshop/smart-papers/reviews/{thread_id}")
-    async def resolve_smart_paper_review(
-        thread_id: str,
-        payload: SmartPaperHumanReviewAction,
-        http_request: Request,
-    ):
-        reviewer = require_admin(http_request)
-        try:
-            result = await asyncio.to_thread(
-                container.review_card_use_case.resolve_smart_paper_human_review,
-                thread_id,
-                action=payload.action,
-                reviewer_id=reviewer.user_id,
-                note=payload.note,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="待复核试卷不存在") from exc
-        except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        return public_workflow_result(result) if hasattr(result, "model_dump") else result
-
     @app.post("/api/v1/review-cards/stream")
     async def stream_review_card(
         request: ReviewCardRequest, http_request: Request
@@ -7106,6 +7080,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
     @app.post("/api/v1/review-cards/runs/{thread_id}/cancel")
     async def cancel_review_card_run(thread_id: str, request: Request):
         state = await asyncio.to_thread(require_run_owner, request, thread_id)
+        # waiting_human_review 已不再产生，但历史运行可能仍停在该状态。
         if state.get("status") in {
             "completed", "failed", "interrupted", "waiting_human_review", "cancelled"
         }:
@@ -7921,21 +7896,17 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                         or "workflow execution failed"
                     )
                     raise RuntimeError(str(detail))
+                # 审核只有 pass / revise 两个终态，发布不再经过人工复核：运行
+                # 要么完成（approved），要么因缺少用户输入而中断。
                 event_name = (
                     "run_interrupted"
                     if result_status == "interrupted"
-                    else "run_waiting_human_review"
-                    if result_status == "waiting_human_review"
                     else "run_completed"
                 )
                 assistant_message = workflow_result_to_markdown(result)
                 streamable_answer = _public_streamable_answer(assistant_message)
                 publication_status = (
-                    "interrupted"
-                    if event_name == "run_interrupted"
-                    else "human_review"
-                    if event_name == "run_waiting_human_review"
-                    else "approved"
+                    "interrupted" if event_name == "run_interrupted" else "approved"
                 )
                 await queue.put(
                     _sequence_event({

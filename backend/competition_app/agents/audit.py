@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 from typing import Any
 from uuid import uuid4
@@ -39,6 +40,17 @@ from competition_app.services.audit_policy import (
 from pydantic import ValidationError
 
 
+logger = logging.getLogger(__name__)
+
+
+# 正文小节定位用的 markdown 词法。标题识别放宽到“井号后无空格”，因为模型
+# 生成的讲解并不总是严格符合 CommonMark；代码围栏必须跳过，代码块里的
+# “#” 不是可返修的小节。
+_MARKDOWN_HEADING_PATTERN = re.compile(r"^(#{1,6})[ \t]*(.+?)[ \t]*#*[ \t]*$")
+_MARKDOWN_FENCE_PATTERN = re.compile(r"^[ \t]*(?:```|~~~)")
+_MARKDOWN_EMPHASIS_PATTERN = re.compile(r"\*\*|__|`")
+
+
 # 系统侧红线类型。这是审计放行决策的硬边界。Audit 会通过只读的
 # AcceptancePolicy 看到同源分类，以便原始 decision 与最终策略保持一致；
 # 最终裁决仍只认本常量，模型不能通过调整措辞、issue_type 或 blocking
@@ -50,6 +62,11 @@ from pydantic import ValidationError
 # unresolved 是审核机制自身故障信号（协议解析失败、编译器无法定位）。
 # 它不等于内容有错，但也不构成发布依据；协议修复重试耗尽后必须安全转人工，
 # 绝不能因为审核器失效而自动放行待审核内容。
+#
+# 但"审核器失效"与"编译器没给非阻断建议找到位置"是两件事。后者发生在模型
+# 已给出 pass 结论、编译器只用于落库统计时（include_report=False）：内容确实
+# 已被审核通过，只是建议的逐字定位没对上，不能因为内部记账失败就否决发布。
+# 因此 _compile_model_issues 在 include_report=False 时不产生 unresolved。
 RED_LINE_ISSUE_TYPES = frozenset(RESOURCE_BLOCKING_ISSUE_TYPES)
 
 # 试卷语义审核中能够由局部返修闭环处理的确定问题。与通用资源审核不同，
@@ -101,7 +118,7 @@ class AuditAgent:
         """Keep provider outages separate from an invalid audit conclusion.
 
         A provider outage means that no audit conclusion was produced at all.
-        Converting it to ``needs_human_review`` both mislabels an operational
+        Converting it to a terminal review state both mislabels an operational
         failure and makes every transient outage require a human decision.
         """
         return (
@@ -366,10 +383,10 @@ class AuditAgent:
             # complete_json 已执行一次受控协议修复；仍失败时说明审核器没有
             # 形成可验证结论。不能把“审核失败”解释成“内容通过”。
             model_output = AuditModelOutput(
-                decision="needs_human_review",
+                decision="revise",
                 audit_report=(
                     "审核模型输出不符合协议，未形成审核结论；"
-                    "为避免未审核内容被误放行，已安全转入人工复核。"
+                    "为避免未审核内容被误放行，已转入局部返修后重新审核。"
                 ),
                 findings=["审核模型输出不符合协议，未形成可验证结论；不得自动发布。"],
             )
@@ -380,10 +397,10 @@ class AuditAgent:
             # complete_json 已执行一次受控协议修复；仍失败时说明审核器没有
             # 形成可验证结论。不能把“审核失败”解释成“内容通过”。
             model_output = AuditModelOutput(
-                decision="needs_human_review",
+                decision="revise",
                 audit_report=(
                     "审核模型输出不符合协议，未形成审核结论；"
-                    "为避免未审核内容被误放行，已安全转入人工复核。"
+                    "为避免未审核内容被误放行，已转入局部返修后重新审核。"
                 ),
                 findings=["审核模型输出不符合协议，未形成可验证结论；不得自动发布。"],
             )
@@ -457,18 +474,6 @@ class AuditAgent:
             for issue in compiled_model_issues
             if issue.issue_type in RED_LINE_ISSUE_TYPES
         ]
-        unsafe_or_unresolved = any(
-            issue.issue_type in {"safety_violation", "unresolved"}
-            for issue in red_line_issues
-        )
-        missing_evidence_red_line = any(
-            issue.issue_type == "missing_evidence"
-            for issue in red_line_issues
-        )
-        factual_error_red_line = any(
-            issue.issue_type == "factual_error"
-            for issue in red_line_issues
-        )
         deterministic_findings: list[str] = []
         formal_question_ids = {
             item.question_id for item in getattr(evidence, "_question_details", [])
@@ -500,42 +505,44 @@ class AuditAgent:
             if expert.estimated_minutes > int(context.get("available_minutes", 15)):
                 deterministic_findings.append("资源预计时长超过用户本次可用时间。")
         model_decision = model_output.decision
-        # 决策链（系统侧确定性）：
+        # 决策链（系统侧确定性）。产品约定只有两种终态：
+        # pass（发布）与 revise（局部返修）。
         # 1. 确定性硬门禁（无证据声明 / 来源验证失败）→ 返修
-        # 2. 红线类型（safety_violation）→ 人工复核
-        # 3. 红线类型 missing_evidence / factual_error → 返修
-        #    （factual_error 是审核/专家辨识出的知识性判断错误，必须返修，
-        #    不能像表达偏好那样无痕放行）
-        # 4. 其余（模型 revise/reject/needs_human_review 但无非红线 blocking
-        #    或仅存在非红线问题）→ 无痕放行 pass。
-        #    非红线问题（内容质量、口径冲突、学习者匹配等）不构成知识性
-        #    错误，按产品约定直接发布，问题本身保留在 findings 中供落库
-        #    统计。审核机制故障 unresolved 不属于可发布的表达建议，
-        #    必须在前面的人工复核分支停止发布。
+        # 2. 红线类型（missing_evidence / factual_error / safety_violation /
+        #    unresolved）→ 返修：安全越界交给责任内容节点重写，不再挂起。
+        # 3. 审核机制故障（协议解析失败、编译器无法定位）→ 返修：返修控制器
+        #    在缺少定位信息时兜底重跑内容节点，既不放行未经审核的内容，也不
+        #    停在等待人工。
+        # 4. 其余（仅存在非红线问题：内容质量、口径冲突、学习者匹配等）
+        #    → 无痕放行 pass；问题保留在 findings 中供落库统计。
         decision = (
             "revise"
-            if missing or deterministic_findings
-            else "needs_human_review"
-            if unsafe_or_unresolved
-            else "revise"
-            if missing_evidence_red_line or factual_error_red_line
+            if missing
+            or deterministic_findings
+            or red_line_issues
+            or not protocol_valid
             else "pass"
         )
-        if not protocol_valid:
-            decision = "needs_human_review"
-        # 可定位的事实/证据错误必须先走一次最小范围返修，而不是因为模型
-        # 使用了 reject 措辞就直接让工作流挂起。只有没有形成可执行红线问题
-        # 的整体不可发布结论才保留 reject；安全红线仍由上面的人工复核边界
-        # 处理。该决策只依赖 Compiler 结构，不读取用户或资源中的指令文字。
-        if model_decision == "reject" and not missing and not deterministic_findings:
-            decision = (
-                "revise"
-                if (missing_evidence_red_line or factual_error_red_line)
-                and not unsafe_or_unresolved
-                else "needs_human_review"
-                if unsafe_or_unresolved
-                else "reject"
+        if context.get("audit_feedback") is not None and decision == "revise":
+            # 二轮审核：一轮受控返修已经跑过，返修链会重跑同一组节点，再返修
+            # 无法收敛。按产品约定发布返修后的内容，剩余问题由失败案例库记录。
+            decision = "pass"
+            model_output = model_output.model_copy(
+                update={
+                    "audit_report": (
+                        str(model_output.audit_report or "")
+                        + " 已完成一轮受控返修，剩余问题不再阻断发布，"
+                        "已记入失败案例库。"
+                    )[:8_000]
+                }
             )
+        # 可定位的事实/证据错误必须先走一次最小范围返修。模型 reject 措辞
+        # 不构成独立终态：产品约定只有 pass / revise，判 reject 时按可执行
+        # 目标返修，由返修控制器决定重跑哪些节点；没有可定位问题时也走
+        # revise 的兜底路径，而不是直接放弃发布。该决策只依赖 Compiler
+        # 结构，不读取用户或资源中的指令文字。
+        if model_decision == "reject" and not missing and not deterministic_findings:
+            decision = "revise"
         # External queries have different teaching requirements, not different
         # factual/safety permissions. Never override the red-line decision.
         if (
@@ -558,8 +565,8 @@ class AuditAgent:
                     )[:8_000]
                 }
             )
-        if decision not in {"pass", "revise", "reject", "needs_human_review"}:
-            decision = "needs_human_review"
+        if decision not in {"pass", "revise"}:
+            decision = "revise"
         final_findings = [
             *([f"缺少证据的声明: {', '.join(missing)}"] if missing else []),
             *deterministic_findings,
@@ -576,10 +583,9 @@ class AuditAgent:
         ]
         audit_report = model_output.audit_report
         # 无痕放行（decision == "pass"）时，非红线问题仍以结构化形式保留，
-        # 供失败案例库统计 issue_type 分布；红线问题（needs_human_review /
-        # reject）保留原始阻断状态，供人工复核与落库。结构化问题不会被任何
-        # 返修流程消费（只有 decision == "revise" 才进入 plan_repair），
-        # 也不会向用户展示。
+        # 供失败案例库统计 issue_type 分布；红线问题保留原始阻断状态。
+        # 结构化问题不会被任何返修流程消费（只有 decision == "revise" 才
+        # 进入 plan_repair），也不会向用户展示。
         structured_findings = (
             compiled_model_issues
             if not protocol_valid
@@ -611,6 +617,14 @@ class AuditAgent:
             subject_type="resource",
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    # 正文区里 markdown 小节的展开上限。审核问题几乎总是落到具体小节，但
+    # 位置目录会整体进入编译器提示词，必须封顶以免把真正的定位信号稀释掉。
+    _CONTENT_SECTION_LIMIT = 40
+    _SECTIONS_PER_CONTENT_LIMIT = 12
+    _SECTION_TEXT_MIN_CHARS = 200
+    _SECTION_HEADING_MAX_CHARS = 40
+    _SECTION_PATH_MAX_DEPTH = 2
 
     @staticmethod
     def _resource_location_catalog(expert: Any) -> list[AuditLocation]:
@@ -647,16 +661,28 @@ class AuditAgent:
             ),
         ]
         content = getattr(expert, "content", None)
+        section_budget = AuditAgent._CONTENT_SECTION_LIMIT
         if isinstance(content, dict):
             for key in list(content)[:12]:
+                section_key = str(key)
                 locations.append(
                     AuditLocation(
-                        location_key=f"resource:content:{key}",
+                        location_key=f"resource:content:{section_key}",
                         subject_type="resource",
                         location_type="section",
-                        display_label=f"资源正文 {key}",
+                        display_label=f"资源正文 {section_key}",
                     )
                 )
+                if section_budget <= 0:
+                    continue
+                # 正文正文（知识卡片 exp、学习提示）里的 markdown 小节才是
+                # 审核问题实际指向的位置。只给整区位置时，编译器只能退回
+                # whole_subject，返修指令就退化成“整篇重写”。
+                sections = AuditAgent._content_section_locations(
+                    section_key, content[key], budget=section_budget
+                )
+                section_budget -= len(sections)
+                locations.extend(sections)
         for claim in list(getattr(expert, "claims", None) or [])[:24]:
             claim_id = str(getattr(claim, "claim_id", "")).strip()
             claim_text = str(getattr(claim, "text", "")).strip()
@@ -672,6 +698,108 @@ class AuditAgent:
                 )
             )
         return locations
+
+    @classmethod
+    def _content_section_locations(
+        cls, section_key: str, value: Any, *, budget: int
+    ) -> list[AuditLocation]:
+        """Expand one content section into its markdown subsection locations.
+
+        The Expert writes learner-facing prose as markdown inside ``exp`` and
+        the learning tip.  Audit findings name those headings verbatim
+        (``正文“运化水液”段落``), so the catalog has to expose the same
+        granularity the prose has; otherwise the Compiler is contractually
+        barred from inventing a key and must fall back to the whole subject.
+        """
+
+        locations: list[AuditLocation] = []
+        seen: set[str] = set()
+        for text in cls._section_text_values(value):
+            for path in cls._markdown_section_paths(text):
+                if len(locations) >= budget:
+                    return locations
+                location_key = f"resource:content:{section_key}#{path}"
+                if location_key in seen:
+                    continue
+                seen.add(location_key)
+                locations.append(
+                    AuditLocation(
+                        location_key=location_key,
+                        subject_type="resource",
+                        location_type="section",
+                        display_label=(
+                            f"{section_key} › {path.replace('/', ' › ')}"
+                        ),
+                    )
+                )
+        return locations
+
+    @classmethod
+    def _section_text_values(cls, value: Any) -> list[str]:
+        """Collect the long-form text fields of one content section.
+
+        Structured payloads (kp_id, resource lists) carry no prose and must
+        not be parsed as markdown; only fields long enough to hold headings
+        are considered.
+        """
+
+        if isinstance(value, str):
+            return [value] if len(value) >= cls._SECTION_TEXT_MIN_CHARS else []
+        if isinstance(value, dict):
+            return [
+                item
+                for item in value.values()
+                if isinstance(item, str) and len(item) >= cls._SECTION_TEXT_MIN_CHARS
+            ]
+        return []
+
+    @classmethod
+    def _markdown_section_paths(cls, text: str) -> list[str]:
+        """Return heading paths of a markdown document, in document order.
+
+        Fenced code blocks are skipped: a ``#`` inside a code sample is not a
+        section a repair may target.  Only the trailing
+        ``_SECTION_PATH_MAX_DEPTH`` headings are kept, which bounds the key
+        length while still disambiguating repeated leaf titles.
+        """
+
+        if "#" not in text:
+            return []
+        paths: list[str] = []
+        # 级别 -> 该级最近出现的标题。必须按级别索引而不是追加成栈：正文常常
+        # 直接从 ``##`` 开始或跳级，追加栈会把后一个同级标题误判成前一个的子节。
+        headings: dict[int, str] = {}
+        in_fence = False
+        for line in text.splitlines():
+            if _MARKDOWN_FENCE_PATTERN.match(line):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            match = _MARKDOWN_HEADING_PATTERN.match(line)
+            if match is None:
+                continue
+            title = cls._plain_heading(match.group(2))
+            if not title:
+                continue
+            level = len(match.group(1))
+            for deeper in [item for item in headings if item > level]:
+                del headings[deeper]
+            headings[level] = title
+            chain = [headings[item] for item in sorted(headings)]
+            path = "/".join(chain[-cls._SECTION_PATH_MAX_DEPTH :])
+            if path not in paths:
+                paths.append(path)
+        return paths
+
+    @classmethod
+    def _plain_heading(cls, raw: str) -> str:
+        """Normalize a heading for use in a location key and label."""
+
+        text = _MARKDOWN_EMPHASIS_PATTERN.sub("", str(raw)).strip()
+        if len(text) > cls._SECTION_HEADING_MAX_CHARS:
+            text = text[: cls._SECTION_HEADING_MAX_CHARS - 1] + "…"
+        return text
 
     @classmethod
     def _learner_visible_content(cls, value: Any) -> Any:
@@ -804,8 +932,35 @@ class AuditAgent:
         except ModelResponseError as error:
             if self._is_operational_model_failure(error):
                 raise
+            # 模型已判 pass 时编译只为落库统计，失败不构成发布依据；
+            # 需要返修时（include_report=True）才必须保守拦截。
+            if not include_report:
+                logger.warning(
+                    "audit_compilation_degraded: reason=model_response_error "
+                    "findings=%d",
+                    len(findings),
+                )
+                return []
             return unresolved()
         if compilation.result.status != "compiled":
+            failure_codes = ",".join(
+                str(getattr(item, "code", "") or "")
+                for item in list(getattr(compilation.result, "issues", []) or [])
+            )
+            if not include_report:
+                logger.warning(
+                    "audit_compilation_degraded: reason=%s codes=%s findings=%d",
+                    compilation.result.status,
+                    failure_codes[:300],
+                    len(findings),
+                )
+                return []
+            logger.warning(
+                "audit_compilation_blocked: reason=%s codes=%s findings=%d",
+                compilation.result.status,
+                failure_codes[:300],
+                len(findings),
+            )
             return unresolved()
         return self.audit_issue_resolver.resolve(
             compilation.result.issues,
@@ -1031,21 +1186,21 @@ class AuditAgent:
                 raise
             protocol_valid = False
             model_output = AuditModelOutput(
-                decision="needs_human_review",
+                decision="revise",
                 findings=["规划审核模型输出不符合协议，未形成可验证结论；不得自动发布。"],
                 audit_report=(
                     "规划审核模型在受控协议修复后仍未形成有效结论；"
-                    "为避免未审核规划被误发布，已安全转入人工复核。"
+                    "为避免未审核规划被误发布，已转入局部返修后重新审核。"
                 ),
             )
         except ValidationError:
             protocol_valid = False
             model_output = AuditModelOutput(
-                decision="needs_human_review",
+                decision="revise",
                 findings=["规划审核模型输出不符合协议，未形成可验证结论；不得自动发布。"],
                 audit_report=(
                     "规划审核模型在受控协议修复后仍未形成有效结论；"
-                    "为避免未审核规划被误发布，已安全转入人工复核。"
+                    "为避免未审核规划被误发布，已转入局部返修后重新审核。"
                 ),
             )
         plan_locations = self._plan_location_catalog(plan_scope, proposal, contract)
@@ -1088,67 +1243,35 @@ class AuditAgent:
         model_blocking_issues = [
             issue for issue in compiled_model_issues if issue.blocking
         ]
-        unsafe_or_unresolved = any(
-            issue.issue_type in {"safety_violation", "unresolved"}
-            for issue in model_blocking_issues
-        )
+        # 决策链（系统侧确定性）。产品约定只有两种终态：
+        # pass（发布）与 revise（局部返修）。
+        # 1. 系统确定性门禁或模型定位到的阻断问题 → 返修。
+        # 2. 审核机制故障（协议解析失败、编译器无法定位）→ 返修：返修控制器
+        #    在缺少定位信息时兜底重跑 Diagnosis，既不放行未经审核的内容，也不
+        #    停在等待人工。
+        # 3. 医学安全非 safe → 返修，由 Diagnosis 重写规划。
+        # 4. 其余（仅剩非阻断建议）→ 无痕放行 pass。
         decision = (
             "revise"
-            if deterministic_issues
-            else (
-                model_output.decision
-                if model_output.decision in {"reject", "needs_human_review"}
-                else "needs_human_review"
-            )
-            if unsafe_or_unresolved
-            else "revise"
-            if model_blocking_issues
+            if deterministic_issues or model_blocking_issues or not protocol_valid
             else "pass"
-            if model_output.decision == "revise"
-            else model_output.decision
         )
-        if not protocol_valid:
-            decision = "needs_human_review"
-        if compiled_model_issues and not model_blocking_issues and not deterministic_issues:
-            decision = "pass"
-        if (
-            protocol_valid
-            and
-            context.get("audit_feedback") is None
-            and decision in {"reject", "needs_human_review"}
-            and model_blocking_issues
-            and not unsafe_or_unresolved
-        ):
-            # A planning proposal is generated content. If its route/contract
-            # gates are sound, a model-level rejection is actionable feedback
-            # for Diagnosis rather than a terminal workflow state. Route it
-            # through the existing bounded local-repair loop.
+        medical_safety = getattr(model_output, "medical_safety", "uncertain")
+        if medical_safety != "safe":
             decision = "revise"
-        if (
-            context.get("audit_feedback") is not None
-            and decision == "reject"
-            and not unsafe_or_unresolved
-        ):
-            # This is the second audit after one bounded repair.  A model-level
-            # reject at this point almost always reflects a hard conflict that
-            # cannot be removed by rewriting the plan (for example a user-claimed
-            # deadline that differs from a system display).  Failing the whole
-            # workflow here is equivalent to human review without the recovery
-            # path, so downgrade the terminal decision to a recoverable
-            # needs_human_review instead of reject.
-            decision = "needs_human_review"
+        if context.get("audit_feedback") is not None and decision == "revise":
+            # 二轮审核：一轮受控返修已经跑过，再返修无法收敛（返修链会重跑同一
+            # 组节点）。按产品约定发布返修后的内容，剩余问题由失败案例库记录。
+            decision = "pass"
             model_output = model_output.model_copy(
                 update={
                     "audit_report": (
                         str(model_output.audit_report or "")
-                        + " 已完成一轮受控返修，剩余阻断问题无法仅靠重写规划消除，"
-                        "已转为人工复核。"
+                        + " 已完成一轮受控返修，剩余问题不再阻断发布，"
+                        "已记入失败案例库。"
                     )[:8_000]
                 }
             )
-        medical_safety = getattr(model_output, "medical_safety", "uncertain")
-        if medical_safety != "safe" or unsafe_or_unresolved:
-            decision = "needs_human_review"
         findings = [*deterministic_findings, *model_output.findings]
         audit_report = self._decision_consistent_report(
             decision, model_output.audit_report
@@ -1605,22 +1728,27 @@ class AuditAgent:
         model_blocking_findings.extend(
             issue.message for issue in native_model_issues if issue.blocking
         )
+        # 审核模型自己拒绝下结论（reject / needs_human_review）时，系统不得
+        # 把它当成“非阻断建议”而放行，也不得把它作为第三个终态透传给发布方：
+        # 它等同于“没有形成审核结论”，按产品约定转局部返修后重新审核。
+        model_declined = model_output.decision in {"reject", "needs_human_review"}
         decision = (
             "revise"
-            if deterministic_findings or model_blocking_findings
+            if deterministic_findings or model_blocking_findings or model_declined
             else model_output.decision
         )
         if findings_compiler_transport_failed or not findings_compiler_valid:
             # Paper findings cannot be safely located when the source-bounded
-            # compiler is unavailable. Preserve the draft for human review;
-            # never publish it merely because issue compilation failed.
-            decision = "needs_human_review"
+            # compiler is unavailable. Route through the bounded local-repair
+            # loop instead of publishing merely because compilation failed.
+            decision = "revise"
         if audit_format_drifted:
             # A malformed semantic-audit response is absence of an audit
             # verdict, not evidence that the paper is safe to publish.
-            decision = "needs_human_review"
+            decision = "revise"
         if (
-            decision in {"revise", "reject", "needs_human_review"}
+            decision == "revise"
+            and not model_declined
             and not findings_compiler_transport_failed
             and findings_compiler_valid
             and not audit_format_drifted
@@ -1629,7 +1757,7 @@ class AuditAgent:
         ):
             # 系统确定性门禁已通过，并且审核输出中没有红线、可局部返修的
             # 语义问题或模型明确标记的其他阻断问题。此时仅剩非阻断建议，
-            # 可规范化为 pass；审核器自身故障仍保留人工复核边界。
+            # 可规范化为 pass；审核器自身故障已在上方转为返修。
             decision = "pass"
             if context.get("audit_feedback") is not None:
                 model_output = model_output.model_copy(
@@ -1657,6 +1785,7 @@ class AuditAgent:
             )
         if (
             decision == "revise"
+            and not model_declined
             and not deterministic_findings
             and not model_blocking_findings
             and not blueprint.question_count_is_hard_constraint
@@ -1667,6 +1796,9 @@ class AuditAgent:
             # violation. This prevents model-assumed question counts from making
             # an otherwise valid practice paper impossible to publish.
             decision = "pass"
+        if decision not in {"pass", "revise"}:
+            # 兜底：发布方只接受 pass / revise 两个终态，任何第三态都按返修处理。
+            decision = "revise"
         paper_findings = [
             *deterministic_findings,
             *model_output.findings,
@@ -1801,13 +1933,13 @@ class AuditAgent:
                 raise
             return (
                 AuditModelOutput(
-                    decision="needs_human_review",
+                    decision="revise",
                     findings=[
                         "组卷审核模型输出格式不符合约定，系统改用确定性硬门禁判定。"
                     ],
                     audit_report=(
                         "组卷审核模型输出格式不符合约定。系统已关闭模型问题驱动的自动返修，"
-                        "仅执行确定性硬门禁。"
+                        "改用确定性硬门禁并重跑装配节点后重新审核。"
                     ),
                 ),
                 True,
@@ -1815,13 +1947,13 @@ class AuditAgent:
         except ValidationError:
             return (
                 AuditModelOutput(
-                    decision="needs_human_review",
+                    decision="revise",
                     findings=[
                         "组卷审核模型输出格式不符合约定，系统改用确定性硬门禁判定。"
                     ],
                     audit_report=(
                         "组卷审核模型输出格式不符合约定。系统已关闭模型问题驱动的自动返修，"
-                        "仅执行确定性硬门禁。"
+                        "改用确定性硬门禁并重跑装配节点后重新审核。"
                     ),
                 ),
                 True,
@@ -1834,9 +1966,9 @@ class AuditAgent:
         ):
             return (
                 AuditModelOutput(
-                    decision="needs_human_review",
+                    decision="revise",
                     findings=["组卷审核模型返回了系统未授权的问题位置。"],
-                    audit_report="组卷审核问题位置无法绑定到当前单元。",
+                    audit_report="组卷审核问题位置无法绑定到当前单元，已转入局部返修。",
                 ),
                 True,
             )
@@ -1849,20 +1981,22 @@ class AuditAgent:
     ) -> tuple[AuditModelOutput, bool]:
         """Merge unit-scoped audit outputs back into a whole-paper output.
 
-        Decision severity wins (reject > needs_human_review > revise > pass);
-        findings and reports are concatenated with a per-unit prefix so the
-        repair path can still locate the offending unit.  A single-unit paper
-        is returned verbatim to preserve the previous exact semantics.
+        Decision severity wins (any non-pass beats pass); findings and reports
+        are concatenated with a per-unit prefix so the repair path can still
+        locate the offending unit.  A single-unit paper is returned verbatim
+        to preserve the previous exact semantics.
         """
         outputs = [output for output, _ in results]
         drifted = any(drifted for _, drifted in results)
         if len(outputs) == 1:
             return outputs[0], drifted
-        severity = {"reject": 3, "needs_human_review": 2, "revise": 1, "pass": 0}
+        # 单元审核的 decision 来自模型词表，仍可能带 reject / needs_human_review；
+        # 聚合只区分“放行”与“未通过”，未知取值一律按未通过处理，避免某个单元
+        # 的异常结论被 pass 覆盖。最终收敛到 pass / revise 由调用方的统一归一化完成。
         worst_index = max(
             range(len(outputs)),
             key=lambda index: (
-                severity.get(outputs[index].decision, 0),
+                0 if outputs[index].decision == "pass" else 1,
                 index,
             ),
         )

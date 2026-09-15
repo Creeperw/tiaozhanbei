@@ -2,7 +2,6 @@ from pathlib import Path
 import json
 from datetime import datetime, timezone
 
-import pytest
 from fastapi.testclient import TestClient
 
 from competition_app.api.app import create_app
@@ -10,12 +9,10 @@ from competition_app.agents.common import envelope
 from competition_app.application.container import ApplicationContainer
 from competition_app.application.personalized_review_card import (
     ExamWorkspaceChangedError,
-    WorkflowHumanReviewResult,
 )
 from competition_app.config import Settings
 from competition_app.contracts.learning_plan import LearningPlanResult, LongTermPlan, LongTermPlanStage
 from competition_app.contracts.resource import AuditResult
-from competition_app.contracts.local_repair import RepairIssue
 
 
 def test_review_card_api_runs_shared_use_case(tmp_path: Path) -> None:
@@ -673,23 +670,34 @@ def test_stream_api_emits_model_and_system_events_before_final_result(tmp_path: 
     assert '"selected_agents"' in planner_agent_text
 
 
-def test_stream_api_emits_waiting_human_review_as_a_normal_terminal_event(
+def test_stream_api_never_exposes_audit_details_for_a_legacy_review_result(
     tmp_path: Path,
 ) -> None:
+    """审核意见不得出现在用户可见的 SSE 结果或助手消息里。
+
+    2026-09-15 线上事故：审核模型判 pass、但问题编译失败被升级成
+    needs_human_review 后，SSE 终态事件把审核报告与 findings 一并推给了前端。
+    该终态已不再产生，这里锁定“任何状态都不外泄审核内容”这一不变量。
+    """
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 
-    async def wait_for_review(_request):
-        return WorkflowHumanReviewResult(
-            execution_id="EXE_REVIEW",
-            task_type="general_learning_support",
-            review=AuditResult(
-                audit_result_id="AUDIT_REVIEW",
-                decision="needs_human_review",
-                findings=["实时信息来源需要人工核验。"],
-            ),
+    class _LegacyReviewResult(dict):
+        status = "waiting_human_review"
+
+    async def legacy_review(_request):
+        return _LegacyReviewResult(
+            {
+                "status": "waiting_human_review",
+                "execution_id": "EXE_REVIEW",
+                "task_type": "general_learning_support",
+                "review": {
+                    "audit_report": "内部审核报告：讲解结构符合要求。",
+                    "findings": ["内部审核问题：证据引用需要人工确认。"],
+                },
+            }
         )
 
-    container.review_card_use_case.execute = wait_for_review
+    container.review_card_use_case.execute = legacy_review
     client = TestClient(create_app(container, auth_required=False))
 
     with client.stream(
@@ -708,135 +716,23 @@ def test_stream_api_emits_waiting_human_review_as_a_normal_terminal_event(
         ]
 
     assert response.status_code == 200
-    assert events[-1]["event"] == "run_waiting_human_review"
-    assert events[-1]["result"]["status"] == "waiting_human_review"
-    assert "人工复核" in events[-1]["assistant_message"]
-    assert "审核未能完成" not in events[-1]["assistant_message"]
-
-
-def test_human_review_public_result_exposes_safe_paper_preview_not_audit_details(
-    tmp_path: Path,
-) -> None:
-    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
-
-    async def wait_for_review(_request):
-        return WorkflowHumanReviewResult(
-            review_id="HR_PREVIEW",
-            execution_id="EXE_PREVIEW",
-            task_type="paper_generation",
-            review=AuditResult(
-                audit_result_id="AUDIT_PREVIEW",
-                decision="needs_human_review",
-                findings=["内部审核意见不应公开。"],
-            ),
-            preview={
-                "artifact_type": "paper_draft",
-                "title": "四君子汤练习",
-                "question_count": 1,
-                "questions": [{"question_id": "Q1", "stem": "组成是？"}],
-                "can_answer": False,
-            },
-        )
-
-    container.review_card_use_case.execute = wait_for_review
-    client = TestClient(create_app(container, auth_required=False))
-    with client.stream(
-        "POST",
-        "/api/v1/review-cards/stream",
-        json={"learner_id": "L1", "user_request": "组卷"},
-    ) as response:
-        events = [
-            json.loads(line[6:])
-            for line in response.iter_lines()
-            if line.startswith("data: ")
-        ]
-
-    public_result = events[-1]["result"]
-    assert public_result["preview"]["title"] == "四君子汤练习"
-    assert "review" not in public_result
-    assert "内部审核意见" not in json.dumps(public_result, ensure_ascii=False)
-
-
-def test_human_review_rejects_paper_without_publishing(tmp_path: Path) -> None:
-    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
-    thread_id = "THREAD_HUMAN_REJECT_001"
-    container.review_card_use_case._remember_run(
-        thread_id,
-        {
-            "status": "waiting_human_review",
-            "thread_id": thread_id,
-            "learner_id": "L1",
-            "execution_id": "EXE_HUMAN_REJECT",
-            "result": WorkflowHumanReviewResult(
-                review_id="HR_REJECT",
-                execution_id="EXE_HUMAN_REJECT",
-                task_type="paper_generation",
-                review=AuditResult(
-                    audit_result_id="AUDIT_REJECT",
-                    decision="needs_human_review",
-                ),
-            ),
-        },
+    assert events[-1]["event"] == "run_completed"
+    assert not any(
+        event["event"] == "run_waiting_human_review" for event in events
     )
-
-    result = container.review_card_use_case.resolve_smart_paper_human_review(
-        thread_id,
-        action="reject",
-        reviewer_id="ADMIN_1",
-        note="题目内容需要重新整理",
-    )
-
-    assert result["status"] == "human_review_rejected"
-    assert container.review_card_use_case.get_run_state(thread_id)["status"] == "human_review_rejected"
+    assert "review" not in (events[-1].get("result") or {})
+    payload = json.dumps(events, ensure_ascii=False)
+    assert "内部审核报告" not in payload
+    assert "内部审核问题" not in payload
 
 
-def test_human_review_cannot_override_deterministic_paper_blocker(tmp_path: Path) -> None:
-    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
-    thread_id = "THREAD_HUMAN_BLOCKER_001"
-    container.review_card_use_case._remember_run(
-        thread_id,
-        {
-            "status": "waiting_human_review",
-            "thread_id": thread_id,
-            "learner_id": "L1",
-            "execution_id": "EXE_HUMAN_BLOCKER",
-            "result": WorkflowHumanReviewResult(
-                review_id="HR_BLOCKER",
-                execution_id="EXE_HUMAN_BLOCKER",
-                task_type="paper_generation",
-                review=AuditResult(
-                    audit_result_id="AUDIT_BLOCKER",
-                    decision="needs_human_review",
-                    structured_findings=[
-                        RepairIssue(
-                            issue_id="ISSUE_HARD_COUNT",
-                            issue_type="paper_blueprint_mismatch",
-                            message="题量硬约束未满足",
-                            origin="deterministic",
-                            blocking=True,
-                        )
-                    ],
-                ),
-            ),
-        },
-    )
-
-    with pytest.raises(ValueError, match="硬约束"):
-        container.review_card_use_case.resolve_smart_paper_human_review(
-            thread_id,
-            action="approve_publish",
-            reviewer_id="ADMIN_1",
-            note="人工确认发布",
-        )
-
-
-def test_human_review_can_publish_complete_paper_after_admin_confirmation(
+def test_non_passing_paper_audit_publishes_after_one_bounded_repair(
     tmp_path: Path,
 ) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     thread_id = "THREAD_HUMAN_APPROVE_001"
 
-    class HumanReviewAuditAgent:
+    class NonPassingAuditAgent:
         async def run(self, context):
             return envelope(
                 context,
@@ -859,7 +755,7 @@ def test_human_review_can_publish_complete_paper_after_admin_confirmation(
             return {"paper_id": "PAPER_HUMAN_APPROVED", "status": "published"}
 
     registry = container.review_card_use_case.orchestrator.agent_registry
-    registry._agents["audit_agent"] = HumanReviewAuditAgent()
+    registry._agents["audit_agent"] = NonPassingAuditAgent()
     runtime = RecordingWorkshopRuntime()
     container.review_card_use_case.workshop_runtime = runtime
     client = TestClient(create_app(container, auth_required=False))
@@ -888,20 +784,19 @@ def test_human_review_can_publish_complete_paper_after_admin_confirmation(
             if line.startswith("data: ")
         ]
 
-    assert events[-1]["event"] == "run_waiting_human_review"
-    assert runtime.calls == []
-
-    approved = container.review_card_use_case.resolve_smart_paper_human_review(
-        thread_id,
-        action="approve_publish",
-        reviewer_id="ADMIN_1",
-        note="已核对教材口径，确认题目、答案与解析可以发布。",
+    # 审核器没有给出 pass：不挂起等待人工，而是跑满一轮受控返修后发布，
+    # 剩余问题作为非阻断建议保留并记入失败案例库。
+    assert events[-1]["event"] == "run_completed"
+    assert not any(
+        event["event"] == "run_waiting_human_review" for event in events
     )
-
-    assert approved.status == "success"
     assert len(runtime.calls) == 1
     assert runtime.calls[0][0] == "L_HUMAN_APPROVE"
     assert container.review_card_use_case.get_run_state(thread_id)["status"] == "completed"
+    cases = container.review_card_use_case.failure_case_repository.list_recent(limit=5)
+    assert len(cases) == 1
+    assert cases[0].released is True
+    assert cases[0].repair_json["final_audit_decision"] == "needs_human_review"
 
 
 def test_stream_api_does_not_expose_internal_failure_detail(tmp_path: Path) -> None:

@@ -8,7 +8,6 @@ from competition_app.llm.provider_session import bind_provider_session, reset_pr
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Callable, Literal
 from uuid import uuid4
 
@@ -24,11 +23,6 @@ from competition_app.contracts.learning_plan import (
     LearningTask,
     LongTermPlan,
     ShortTermPlan,
-)
-from competition_app.contracts.paper import (
-    ExamPaperDraft,
-    PaperBlueprint,
-    QuestionCandidatePool,
 )
 from competition_app.contracts.resource import (
     AuditResult,
@@ -253,19 +247,6 @@ class WorkflowInterruptedResult(BaseModel):
     coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
 
 
-class WorkflowHumanReviewResult(BaseModel):
-    status: Literal["waiting_human_review"] = "waiting_human_review"
-    review_id: str = "HR_PENDING"
-    execution_id: str
-    task_type: str
-    review: AuditResult
-    preview: dict[str, Any] = Field(default_factory=dict)
-    completed_steps: list[str] = Field(default_factory=list)
-    agent_outputs: list[AgentEnvelope[Any]] = Field(default_factory=list)
-    model_trace: list[ModelCallTrace] = Field(default_factory=list)
-    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
-
-
 @dataclass
 class _WorkflowContinuation:
     request: ReviewCardRequest
@@ -381,7 +362,7 @@ class PersonalizedReviewCardUseCase:
         request: ReviewCardRequest,
         *,
         execution_entrypoint: str | None = None,
-    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult:
         failure_step_token = _FAILURE_STEP_CONTEXT.set(None)
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
         conversation_id = request.conversation_id or thread_id
@@ -687,7 +668,7 @@ class PersonalizedReviewCardUseCase:
         execution_id: str,
         case_id: str,
         execution_entrypoint: str | None = None,
-    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult:
         self.raise_if_run_cancelled(thread_id)
         smart_paper_v2 = execution_entrypoint == "workshop_smart_paper"
         if smart_paper_v2:
@@ -1737,34 +1718,6 @@ class PersonalizedReviewCardUseCase:
                 persist=self._persist_assistant_message(request),
             )
             return interrupted
-        if execution.status == "waiting_human_review":
-            result = self._human_review_result(
-                execution_id=execution_id,
-                task_type=planner_output.payload.task_type,
-                execution=execution,
-            )
-            _FAILURE_STEP_CONTEXT.set("persistence")
-            self._remember_run(
-                thread_id,
-                {
-                    "status": "waiting_human_review",
-                    "thread_id": thread_id,
-                    "result": result,
-                    "human_review_context": {
-                        "request": request.model_dump(mode="json"),
-                        "execution_plan": execution_plan.model_dump(mode="json"),
-                    },
-                    "continuation": None,
-                },
-            )
-            self._save_assistant_message(
-                conversation_id,
-                request.learner_id,
-                persisted_messages,
-                result,
-                persist=self._persist_assistant_message(request),
-            )
-            return result
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
             if "blocked path candidate" in detail:
@@ -1805,7 +1758,7 @@ class PersonalizedReviewCardUseCase:
         self,
         thread_id: str,
         request: WorkflowResumeRequest,
-    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult:
         failure_step_token = _FAILURE_STEP_CONTEXT.set(None)
         debug_token, debug_writer = self._open_debug_run(thread_id, resumed=True)
         record_debug_trace("run_resumed", request=request)
@@ -1844,7 +1797,7 @@ class PersonalizedReviewCardUseCase:
         self,
         thread_id: str,
         request: WorkflowResumeRequest,
-    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult:
         self.raise_if_run_cancelled(thread_id)
         continuation = self._continuations.get(thread_id)
         if continuation is None:
@@ -2307,31 +2260,6 @@ class PersonalizedReviewCardUseCase:
                 interrupted,
             )
             return interrupted
-        if execution.status == "waiting_human_review":
-            result = self._human_review_result(
-                execution_id=continuation.execution_id,
-                task_type=continuation.planner_output.payload.task_type,
-                execution=execution,
-            )
-            self._continuations.pop(thread_id, None)
-            _FAILURE_STEP_CONTEXT.set("persistence")
-            self._remember_run(
-                thread_id,
-                {
-                    "status": "waiting_human_review",
-                    "thread_id": thread_id,
-                    "result": result,
-                    "continuation": None,
-                },
-            )
-            self.raise_if_run_cancelled(thread_id)
-            self._save_assistant_message(
-                conversation_id,
-                continuation.request.learner_id,
-                persisted_messages,
-                result,
-            )
-            return result
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
             raise WorkflowExecutionError(detail, execution)
@@ -2845,11 +2773,7 @@ class PersonalizedReviewCardUseCase:
         conversation_id: str,
         learner_id: str,
         messages: list[dict[str, Any]],
-        result: (
-            ReviewCardResult
-            | WorkflowInterruptedResult
-            | WorkflowHumanReviewResult
-        ),
+        result: ReviewCardResult | WorkflowInterruptedResult,
         *,
         persist: bool = True,
     ) -> None:
@@ -3108,7 +3032,7 @@ class PersonalizedReviewCardUseCase:
 
     @staticmethod
     def _persisted_trace_events(
-        result: ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult,
+        result: ReviewCardResult | WorkflowInterruptedResult,
     ) -> list[dict[str, Any]]:
         """Build a durable, browser-safe collaboration receipt.
 
@@ -3125,7 +3049,6 @@ class PersonalizedReviewCardUseCase:
         result_status = str(getattr(result, "status", "success") or "success")
         terminal_event = {
             "success": "run_completed",
-            "waiting_human_review": "run_waiting_human_review",
             "interrupted": "run_interrupted",
             "failed": "run_failed",
         }.get(result_status, "run_failed")
@@ -4977,11 +4900,9 @@ class PersonalizedReviewCardUseCase:
             )
             self.failure_case_repository.save(case)
             if self.feedback_governance_service is not None:
-                feedback_source = (
-                    "human_review"
-                    if getattr(execution, "status", "") == "waiting_human_review"
-                    else "audit"
-                )
+                # 审核结论只有 pass / revise，反馈一律来自审核与返修链路；
+                # 系统不再有人工复核这一来源。
+                feedback_source = "audit"
                 source_issues = structured_findings or []
                 if source_issues:
                     for issue in source_issues:
@@ -5062,207 +4983,6 @@ class PersonalizedReviewCardUseCase:
                 self.terminal_trace.error(
                     "failure_case", detail="failure library persistence failed"
                 )
-
-    def _human_review_result(
-        self,
-        *,
-        execution_id: str,
-        task_type: str,
-        execution,
-    ) -> WorkflowHumanReviewResult:
-        audits = [
-            output.payload
-            for output in execution.outputs.values()
-            if isinstance(getattr(output, "payload", None), AuditResult)
-        ]
-        audit = next(
-            (item for item in reversed(audits) if item.decision != "pass"),
-            audits[-1] if audits else None,
-        )
-        if not isinstance(audit, AuditResult):
-            raise RuntimeError("human review status requires an audit result")
-        review = audit.model_copy(update={"decision": "needs_human_review"})
-        paper_output = execution.outputs.get("paper_assembly")
-        paper = getattr(paper_output, "payload", None)
-        preview: dict[str, Any] = {}
-        if task_type == "paper_generation" and paper is not None:
-            preview = {
-                "artifact_type": "paper_draft",
-                "title": str(getattr(paper, "title", "") or "待复核试卷"),
-                "instructions": str(getattr(paper, "instructions", "") or ""),
-                "question_count": len(list(getattr(paper, "items", []) or [])),
-                "questions": [
-                    item.model_dump(mode="json")
-                    for item in list(
-                        getattr(paper, "learner_questions", lambda: [])()
-                    )
-                ],
-                "publication_status": "blocked_pending_admin_review",
-                "can_answer": False,
-            }
-        return WorkflowHumanReviewResult(
-            review_id=f"HR_{execution_id}",
-            execution_id=execution_id,
-            task_type=task_type,
-            review=review,
-            preview=preview,
-            completed_steps=list(execution.outputs),
-            agent_outputs=[
-                output
-                for output in execution.outputs.values()
-                if isinstance(output, AgentEnvelope)
-            ],
-            model_trace=self._model_trace(),
-            coordination=self._execution_coordination(execution),
-        )
-
-    def resolve_smart_paper_human_review(
-        self,
-        thread_id: str,
-        *,
-        action: str,
-        reviewer_id: str,
-        note: str,
-    ) -> ReviewCardResult | dict[str, Any]:
-        """Resolve a persisted smart-paper review without reopening the model graph."""
-
-        state = self.run_state_repository.get(thread_id)
-        if not state or state.get("status") != "waiting_human_review":
-            raise KeyError(thread_id)
-        stored_result = WorkflowHumanReviewResult.model_validate(state.get("result") or {})
-        if stored_result.task_type != "paper_generation":
-            raise ValueError("当前人工复核项不是智能组卷任务")
-        safe_note = re.sub(
-            r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", str(note or "")
-        ).strip()[:2000]
-        if len(safe_note) < 3:
-            raise ValueError("请填写人工复核说明")
-        if action == "reject":
-            rejected = {
-                "status": "human_review_rejected",
-                "thread_id": thread_id,
-                "execution_id": stored_result.execution_id,
-                "task_type": stored_result.task_type,
-                "review_id": stored_result.review_id,
-                "reviewer_id": reviewer_id,
-                "review_note": safe_note,
-                "result": stored_result.model_dump(mode="json"),
-                "continuation": None,
-            }
-            self._remember_run(thread_id, rejected)
-            return rejected
-        if action != "approve_publish":
-            raise ValueError("不支持的人工复核操作")
-
-        deterministic_blockers = [
-            issue
-            for issue in stored_result.review.structured_findings
-            if bool(getattr(issue, "blocking", True))
-            and str(getattr(issue, "origin", "") or "") == "deterministic"
-        ]
-        if deterministic_blockers:
-            raise ValueError("确定性硬约束仍未满足，不能通过人工确认绕过发布门禁")
-
-        review_context = dict(state.get("human_review_context") or {})
-        request = ReviewCardRequest.model_validate(review_context.get("request") or {})
-        execution_plan = ExecutionPlan.model_validate(
-            review_context.get("execution_plan") or build_smart_paper_execution_plan()
-        )
-        raw_outputs = {
-            output.step_id: output.model_dump(mode="json")
-            for output in stored_result.agent_outputs
-        }
-        required_steps = {"paper_blueprint", "question_pool", "paper_assembly"}
-        if not required_steps.issubset(raw_outputs):
-            raise ValueError("待复核试卷缺少可发布的结构化产物")
-        outputs: dict[str, AgentEnvelope[Any]] = {
-            "paper_blueprint": AgentEnvelope[PaperBlueprint].model_validate(
-                raw_outputs["paper_blueprint"]
-            ),
-            "question_pool": AgentEnvelope[QuestionCandidatePool].model_validate(
-                raw_outputs["question_pool"]
-            ),
-            "paper_assembly": AgentEnvelope[ExamPaperDraft].model_validate(
-                raw_outputs["paper_assembly"]
-            ),
-        }
-        approved_audit = stored_result.review.model_copy(
-            update={
-                "audit_result_id": f"AUDIT_HUMAN_{uuid4().hex}",
-                "decision": "pass",
-                "audit_report": (
-                    f"管理员 {reviewer_id} 完成人工复核并确认发布。\n"
-                    f"复核说明：{safe_note}\n\n{stored_result.review.audit_report}"
-                )[:12000],
-            }
-        )
-        base_output = outputs["paper_assembly"]
-        human_review_envelope_context = {
-            "case_id": base_output.case_id,
-            "trace_id": base_output.trace_id,
-            "request_id": base_output.request_id,
-            "execution_id": stored_result.execution_id,
-            "task_type": "paper_generation",
-            "learner_id": request.learner_id,
-        }
-        outputs["audit"] = envelope(
-            {
-                **human_review_envelope_context,
-                "step_id": "audit",
-            },
-            "human_reviewer",
-            "audit_result",
-            approved_audit,
-        )
-        execution = SimpleNamespace(
-            outputs=outputs,
-            trace=[],
-            tool_trace=[],
-            communication_trace=[],
-            repair_trace=list(stored_result.coordination.repair_trace),
-        )
-        planner_output = envelope(
-            {
-                **human_review_envelope_context,
-                "step_id": "entrypoint",
-            },
-            "system_entrypoint",
-            "planner_decision",
-            PlannerDecision(
-                task_type="paper_generation",
-                selected_agents=[
-                    "knowledge_base_agent",
-                    "expert_agent",
-                    "audit_agent",
-                ],
-                routing_reason="管理员对隔离的智能组卷草稿完成人工复核。",
-                risk_level="low",
-                requires_audit=True,
-            ),
-        )
-        result = self._publish_paper_blueprint(
-            request=request,
-            case_id=str(state.get("case_id") or f"CASE_{uuid4().hex}"),
-            execution_id=stored_result.execution_id,
-            execution_plan=execution_plan,
-            execution=execution,
-            planner_output=planner_output,
-            agent_outputs=list(outputs.values()),
-            cancellation_check=lambda: self.raise_if_run_cancelled(thread_id),
-        )
-        self._remember_run(
-            thread_id,
-            {
-                "status": "completed",
-                "thread_id": thread_id,
-                "result": result,
-                "reviewer_id": reviewer_id,
-                "review_note": safe_note,
-                "human_review_context": None,
-                "continuation": None,
-            },
-        )
-        return result
 
     @staticmethod
     def _execution_failure_detail(execution) -> str:

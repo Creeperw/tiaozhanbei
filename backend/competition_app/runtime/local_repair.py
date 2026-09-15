@@ -7,6 +7,47 @@ from typing import Any, Literal
 
 from competition_app.contracts.execution import ExecutionPlan
 from competition_app.contracts.local_repair import LocalRepairPlan, RepairAction, RepairIssue
+from competition_app.contracts.resource import AuditResult
+
+
+PUBLISHED_AFTER_REPAIR_NOTE = (
+    "已完成一轮受控返修，剩余问题不再阻断发布，已记入失败案例库。"
+)
+
+
+def publishable_after_bounded_repair(output: Any, decision: str | None) -> Any:
+    """Normalize a post-repair audit output so it can be released.
+
+    The product contract has exactly two terminal decisions: ``pass`` releases
+    the content and ``revise`` sends it through one bounded repair round.  Once
+    that round has run, running it again would rerun the same nodes and cannot
+    converge, so the repaired content is released and the residual findings are
+    demoted to non-blocking advice.
+
+    Only the publication-facing payload is normalized: the audit's own verdict
+    is already recorded on the repair trace and reaches the failure library
+    from there.  Outputs that are already publishable are returned unchanged.
+    """
+    payload = getattr(output, "payload", None)
+    if decision == "pass" or not isinstance(payload, AuditResult):
+        return output
+    report = str(getattr(payload, "audit_report", "") or "").strip()
+    if PUBLISHED_AFTER_REPAIR_NOTE not in report:
+        report = f"{report} {PUBLISHED_AFTER_REPAIR_NOTE}".strip()
+    findings = [
+        finding
+        if str(finding).startswith("非阻断建议：")
+        else f"非阻断建议：{finding}"
+        for finding in (payload.findings or [])
+    ]
+    normalized = payload.model_copy(
+        update={
+            "decision": "pass",
+            "audit_report": report[:8_000],
+            "findings": findings,
+        }
+    )
+    return output.model_copy(update={"payload": normalized})
 
 
 IssueType = Literal[
@@ -102,89 +143,94 @@ class LocalRepairController:
         structured_findings: Sequence[RepairIssue] | None = None,
     ) -> LocalRepairPlan:
         """Return a deterministic repair plan, or fail closed for unsafe input."""
-        issues = list(structured_findings) if structured_findings else self._classify(audit_findings)
         execution_id = self._execution_id(outputs, plan.plan_id)
         repair_id = f"repair:{execution_id}:{audit_step_id}"
+        issues = list(structured_findings) if structured_findings else self._classify(audit_findings)
+        if not issues:
+            # 审核给出非 pass 结论却没有可定位的问题（模型判 reject 但未逐条
+            # 列出，或编译器未能定位）。产品约定只有发布与返修两种终态，不能
+            # 停在等待人工：构造兜底问题重跑内容生产节点，既不放弃发布，也不
+            # 放行未经审核的内容。
+            fallback = self._fallback_issue(plan)
+            if fallback is not None:
+                issues = [fallback]
+        repaired = self._build_plan(
+            plan=plan,
+            audit_step_id=audit_step_id,
+            issues=issues,
+            outputs=outputs,
+            repair_id=repair_id,
+            execution_id=execution_id,
+        )
+        if repaired is not None:
+            return repaired
+        # 结构性失败：送来的问题都无法绑定到可返修节点（定位目录与 DAG 不匹配、
+        # 返修链合并失败等）。用兜底内容节点重跑一次，而不是停在等待人工。
+        fallback = self._fallback_issue(plan)
+        if fallback is not None:
+            repaired = self._build_plan(
+                plan=plan,
+                audit_step_id=audit_step_id,
+                issues=[fallback],
+                outputs=outputs,
+                repair_id=repair_id,
+                execution_id=execution_id,
+            )
+            if repaired is not None:
+                return repaired
+        return self._human_review_plan(
+            repair_id=repair_id,
+            execution_id=execution_id,
+            audit_step_id=audit_step_id,
+            issues=issues,
+        )
 
+    def _build_plan(
+        self,
+        *,
+        plan: ExecutionPlan,
+        audit_step_id: str,
+        issues: list[RepairIssue],
+        outputs: Mapping[str, Any],
+        repair_id: str,
+        execution_id: str,
+    ) -> LocalRepairPlan | None:
+        """Build one bounded repair plan, or return None when none is safe."""
+        if not issues:
+            return None
         try:
             plan.validate_dag()
         except ValueError:
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
-
-        if not issues or any(
-            issue.issue_type in {"unresolved", "safety_violation"}
-            for issue in issues
-        ):
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
+            return None
 
         steps_by_id = {step.step_id: step for step in plan.steps}
         if (
             audit_step_id not in steps_by_id
             or not self._is_audit_step(steps_by_id[audit_step_id])
         ):
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
+            return None
 
         chains = [
             self._chain_for(issue, audit_step_id, step_ids=frozenset(steps_by_id))
             for issue in issues
         ]
         if any(chain is None for chain in chains):
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
+            return None
         resolved_chains = [chain for chain in chains if chain is not None]
         if not set().union(*resolved_chains).issubset(steps_by_id):
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
+            return None
         merged = self._merge_chains(
             resolved_chains,
             plan,
             available_outputs=frozenset(outputs),
         )
         if merged is None:
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
+            return None
         selected_steps, dependency_steps = merged
         if audit_step_id not in selected_steps or not selected_steps or not selected_steps[-1] == audit_step_id:
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
+            return None
         if not set(selected_steps).issubset(steps_by_id):
-            return self._human_review_plan(
-                repair_id=repair_id,
-                execution_id=execution_id,
-                audit_step_id=audit_step_id,
-                issues=issues,
-            )
+            return None
 
         preserve_outputs = sorted(set(outputs) - set(selected_steps))
         issues_by_step = {
@@ -320,6 +366,46 @@ class LocalRepairController:
             )
         return classified
 
+    # 内容生产节点的兜底优先级：资源审核重跑 Expert，试卷重跑装配，计划重跑
+    # Diagnosis。审核机制故障或问题缺少定位时用它整篇重新生成后再送审。
+    _FALLBACK_TARGETS = ("expert", "paper_assembly", "diagnosis")
+
+    def _fallback_target(self, step_ids: frozenset[str]) -> str | None:
+        return next(
+            (
+                step_id
+                for step_id in self._FALLBACK_TARGETS
+                if step_id in step_ids
+            ),
+            None,
+        )
+
+    def _fallback_issue(self, plan: ExecutionPlan) -> RepairIssue | None:
+        """Build one synthetic, locatable issue for the content-producing node.
+
+        Used when the audit concluded non-pass without a locatable issue, or
+        when no supplied issue can be bound to a repairable node.  The product
+        contract admits only publish and repair, so the workflow reruns the
+        content node instead of stopping for human review.  ``content_quality``
+        is the one issue type whose allowed targets cover all three content
+        nodes, so the issue stays bindable in resource, paper and plan DAGs.
+        """
+        target = self._fallback_target(
+            frozenset(step.step_id for step in plan.steps)
+        )
+        if target is None:
+            return None
+        return RepairIssue(
+            issue_id="REPAIR_FALLBACK",
+            issue_type="content_quality",
+            message="审核未形成可定位的问题，兜底重跑内容生产节点后再次送审。",
+            severity="medium",
+            origin="deterministic",
+            blocking=True,
+            affected_step_ids=[target],
+            owner_step_id=target,
+        )
+
     def _chain_for(
         self,
         issue: RepairIssue,
@@ -328,8 +414,14 @@ class LocalRepairController:
         step_ids: frozenset[str],
     ) -> tuple[str, ...] | None:
         issue_type = issue.issue_type
-        if issue_type == "unresolved":
-            return None
+        if issue_type in {"safety_violation", "unresolved"}:
+            # 安全越界必须由内容节点重写；审核机制故障（协议解析失败、编译器
+            # 无法定位）没有可用的定位信息，只能整篇重新生成后再送审。
+            # 产品约定只有发布与返修两种终态，两者都不能停在等待人工。
+            fallback = self._fallback_target(step_ids)
+            if fallback is None:
+                return None
+            return (fallback, audit_step_id)
         target = self._affected_target(issue)
         if target is None:
             return None
@@ -532,6 +624,15 @@ class LocalRepairController:
         audit_step_id: str,
         issues: list[RepairIssue],
     ) -> LocalRepairPlan:
+        """Last-resort plan for a DAG with no rerunnable content node.
+
+        Reached only when the plan has no ``expert`` / ``paper_assembly`` /
+        ``diagnosis`` step, so no bounded repair can be built.  This is a
+        structural system fault, not a content verdict: callers report it as a
+        failed run rather than a product-level review state.  The contract
+        keeps the ``needs_human_review`` literal for persisted-plan backward
+        compatibility.
+        """
         return LocalRepairPlan(
             repair_id=repair_id,
             execution_id=execution_id,

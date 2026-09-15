@@ -411,8 +411,8 @@ class AdvisoryRevisionAuditModel:
 
 
 @pytest.mark.asyncio
-async def test_invalid_audit_protocol_is_safely_sent_to_human_review() -> None:
-    """审核器没有形成有效结论时，待审核内容不得自动发布。"""
+async def test_invalid_audit_protocol_is_safely_sent_to_repair() -> None:
+    """审核器没有形成有效结论时，待审核内容不得自动发布，必须返修。"""
     ctx = context()
     ctx["step_id"] = "audit"
     knowledge = await KnowledgeBaseAgent(FakeRetrievalTool()).run(context())
@@ -424,7 +424,7 @@ async def test_invalid_audit_protocol_is_safely_sent_to_human_review() -> None:
 
     result = await AuditAgent(InvalidAuditModel()).run(ctx)
 
-    assert result.payload.decision == "needs_human_review"
+    assert result.payload.decision == "revise"
     assert "协议" in result.payload.findings[0]
     assert any(
         issue.issue_type == "unresolved" and issue.blocking

@@ -90,6 +90,12 @@ def test_repair_controller_selects_smallest_whitelisted_chain(
 
 @pytest.mark.parametrize("finding", ["无法确定来源的异常", "不是证据缺失，不要重查", "没有蓝图冲突", "题干不存在表达不清"])
 def test_unresolved_finding_does_not_guess_repair_owner(finding) -> None:
+    """开放文本不得被关键词路由到具体责任方。
+
+    没有可定位信息时，问题类型保持 unresolved（不猜成 missing_evidence /
+    blueprint_mismatch），返修目标是内容生产节点的兜底重跑，而不是从措辞
+    推断出来的具体节点。
+    """
     repair = LocalRepairController().plan_repair(
         plan=resource_plan(),
         audit_step_id="audit",
@@ -97,8 +103,9 @@ def test_unresolved_finding_does_not_guess_repair_owner(finding) -> None:
         outputs=existing_outputs(),
     )
 
-    assert repair.status == "needs_human_review"
-    assert repair.actions == []
+    assert repair.status == "planned"
+    assert {issue.issue_type for issue in repair.issues} == {"unresolved"}
+    assert [item.step_id for item in repair.actions] == ["expert", "audit"]
 
 
 def test_mixed_findings_merge_without_duplicate_reruns() -> None:
@@ -179,6 +186,52 @@ def test_located_paper_item_issue_reruns_only_assembly_and_audit() -> None:
     assert repair.actions[0].previous_output_digest is not None
 
 
+def test_section_location_reaches_the_expert_repair_instruction() -> None:
+    """返修指令必须把问题指到具体小节，否则专家只能整篇重写。
+
+    2026-09-15 事故：位置目录只有整区位置，审核问题里的“运化水液段落”
+    无法定位，指令退化成“当前教学资源：<整条问题>”，专家被要求重新输出
+    完整正文，已通过的小节也随之被改写。
+    """
+
+    repair = LocalRepairController().plan_repair(
+        plan=resource_plan(),
+        audit_step_id="audit",
+        audit_findings=[],
+        structured_findings=[
+            RepairIssue(
+                issue_id="ISSUE_SECTION",
+                issue_type="content_quality",
+                message="该处引文的口径需要补充适用范围说明。",
+                owner_step_id="expert",
+                affected_step_ids=["expert"],
+                origin="audit_model",
+                blocking=True,
+                locations=[
+                    AuditLocation(
+                        location_key="resource:content:知识卡片#运化水液",
+                        subject_type="resource",
+                        location_type="section",
+                        display_label="知识卡片 › 运化水液",
+                    )
+                ],
+            )
+        ],
+        outputs=existing_outputs(),
+    )
+
+    assert repair is not None
+    expert_action = next(
+        action for action in repair.actions if action.step_id == "expert"
+    )
+    assert "知识卡片 › 运化水液" in expert_action.repair_instruction
+    assert expert_action.locations[0].location_key == (
+        "resource:content:知识卡片#运化水液"
+    )
+    # 小节位置不是试卷专用位置类型，资源返修必须保持通用重跑语义。
+    assert expert_action.operation == "rerun_step"
+
+
 def test_located_blueprint_mismatch_replaces_only_the_question_then_reaudits() -> None:
     repair = LocalRepairController().plan_repair(
         plan=paper_or_resource_plan(),
@@ -233,9 +286,15 @@ def test_structured_findings_take_priority_over_legacy_strings() -> None:
     assert [action.step_id for action in repair.actions] == ["paper_assembly", "audit"]
 
 
-def test_controller_fails_closed_when_whitelist_step_is_missing_from_plan() -> None:
+def test_controller_fails_closed_when_plan_has_no_repairable_content_node() -> None:
+    """DAG 里没有可重跑的内容生产节点时，兜底返修也不成立，只能保守停止。"""
     repair = LocalRepairController().plan_repair(
-        plan=resource_plan(),
+        plan=_plan(
+            ExecutionStep(step_id="knowledge", agent="knowledge_base_agent"),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["knowledge"]
+            ),
+        ),
         audit_step_id="audit",
         audit_findings=["题目内容表达不清"],
         outputs=existing_outputs(),

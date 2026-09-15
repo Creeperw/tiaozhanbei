@@ -268,23 +268,26 @@ def test_public_workflow_result_excludes_internal_execution_artifacts() -> None:
 
 
 def test_public_workflow_result_hides_human_review_details() -> None:
-    result = public_workflow_result(
-        {
-            "status": "waiting_human_review",
+    # 审核报告与 findings 属于内部审核信息：无论运行处于什么状态，都不
+    # 得通过 SSE 结果对象外泄（2026-09-15 审核内容泄漏事故的回归点）。
+    for status in ("waiting_human_review", "success", "failed"):
+        result = public_workflow_result(
+            {
+                "status": status,
+                "execution_id": "EXE_REVIEW",
+                "task_type": "paper_generation",
+                "review": {
+                    "audit_report": "内部审核报告",
+                    "findings": ["内部审核问题"],
+                },
+            }
+        )
+
+        assert result == {
+            "status": status,
             "execution_id": "EXE_REVIEW",
             "task_type": "paper_generation",
-            "review": {
-                "audit_report": "内部审核报告",
-                "findings": ["内部审核问题"],
-            },
         }
-    )
-
-    assert result == {
-        "status": "waiting_human_review",
-        "execution_id": "EXE_REVIEW",
-        "task_type": "paper_generation",
-    }
 
 
 def test_public_audit_output_includes_complete_formal_review_result() -> None:

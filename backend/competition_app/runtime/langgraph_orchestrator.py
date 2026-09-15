@@ -31,6 +31,7 @@ from competition_app.contracts.paper import (
     QuestionCandidatePool,
 )
 from competition_app.runtime.event_stream import emit_runtime_event
+from competition_app.runtime.local_repair import publishable_after_bounded_repair
 from competition_app.runtime.orchestrator import (
     ExecutionResult,
     Orchestrator,
@@ -688,10 +689,12 @@ class LangGraphOrchestrator(Orchestrator):
                 return {}
             plan_data = state.get("repair_plans", {}).get(audit_step_id)
             if not isinstance(plan_data, dict):
+                # 检查点里没有可用的返修计划：系统结构故障，按失败上报。
+                # 产品约定没有“等待人工复核”这个终态。
                 return {
                     "terminal_states": {
                         audit_step_id: {
-                            "status": "waiting_human_review",
+                            "status": "failed",
                             "error_type": "RepairPlanUnavailable",
                             "error_message": "repair plan was unavailable after checkpoint recovery",
                         }
@@ -739,13 +742,14 @@ class LangGraphOrchestrator(Orchestrator):
                     "repair_stopped",
                     repair_id=repair_plan.repair_id,
                     trigger_step_id=audit_step_id,
-                    status="needs_human_review",
+                    status="failed",
                 )
+                # 检查点里没有返修轨迹：系统结构故障，按失败上报。
                 return {
                     "repair_progress": {audit_step_id: progress},
                     "terminal_states": {
                         audit_step_id: {
-                            "status": "waiting_human_review",
+                            "status": "failed",
                             "error_type": "RepairTraceUnavailable",
                             "error_message": "repair trace was unavailable after checkpoint recovery",
                         }
@@ -880,26 +884,26 @@ class LangGraphOrchestrator(Orchestrator):
                     **self._communication_update(audit_step_id, trace),
                 }
 
-            record.status = "stopped"
-            progress["status"] = "stopped"
-            status = "failed" if decision == "reject" else "waiting_human_review"
+            # 一轮受控返修已经跑过，返修链会重跑同一组节点，再次返修无法收敛。
+            # 按产品约定发布返修后的内容，剩余问题由失败案例库记录；不得停在
+            # 等待人工，也不得丢弃已生成的内容。发布侧的审核结论归一化为
+            # pass，审核器自己的结论（record.final_audit_decision）保持不变。
+            record.status = "completed"
+            progress["status"] = "completed"
+            published = publishable_after_bounded_repair(result, decision)
+            root_context.setdefault(
+                "_approved_dependency_outputs", {}
+            ).update({**outputs, audit_step_id: published})
             emit_runtime_event(
-                "repair_stopped",
+                "repair_completed",
                 repair_id=repair_plan.repair_id,
                 trigger_step_id=audit_step_id,
-                status=decision or "needs_human_review",
+                status=decision or "revise",
             )
             return {
-                "outputs": {audit_step_id: result},
+                "outputs": {audit_step_id: published},
                 "repair_progress": {audit_step_id: progress},
                 "repair_trace": [record],
-                "terminal_states": {
-                    audit_step_id: {
-                        "status": status,
-                        "error_type": "AuditRevisionNeedsHumanReview",
-                        "error_message": "audit still requires review after the bounded repair",
-                    }
-                },
                 **self._communication_update(audit_step_id, trace),
             }
 
@@ -1037,22 +1041,12 @@ class LangGraphOrchestrator(Orchestrator):
             outputs[step.step_id] = result
             node_outputs = {**preserved_dependencies, step.step_id: result}
             decision = getattr(getattr(result, "payload", None), "decision", None)
-            if decision == "reject":
-                return with_communication({
-                    "outputs": node_outputs,
-                    "terminal_states": {
-                        step.step_id: {
-                            "status": "failed",
-                            "error_type": None,
-                            "error_message": None,
-                        }
-                    },
-                })
-            # needs_human_review 也先尝试受控返修；只有没有安全、可定位
-            # 的返修路径时，下面的 repair plan 才会把流程停在人工复核。
-            # 这样审核通过的结果才能继续进入发布阶段。
-            if decision not in {"revise", "needs_human_review"}:
-                if self._is_audit_step(step) and decision == "pass":
+            # 审核结论只有 pass 与 revise 两个终态：只有 pass 能直接进入发布，
+            # 其余取值（含模型自行给出的 reject / needs_human_review，以及
+            # 没有形成结论）一律按“未通过”处理，走同一套受控局部返修。
+            # 非审核步骤不参与该门禁。
+            if not self._is_audit_step(step) or decision == "pass":
+                if self._is_audit_step(step):
                     root_context.setdefault(
                         "_approved_dependency_outputs", {}
                     ).update(node_outputs)
@@ -1134,26 +1128,29 @@ class LangGraphOrchestrator(Orchestrator):
                 status=repair_plan.status,
             )
             if repair_plan.status == "needs_human_review":
+                # 返修计划无法构造：DAG 里没有可重跑的内容节点。这是系统结构
+                # 故障而非内容结论，按失败上报，不再挂起等待人工。
                 emit_runtime_event(
                     "repair_stopped",
                     repair_id=record.repair_id,
                     trigger_step_id=step.step_id,
-                    status="needs_human_review",
+                    status="failed",
                 )
                 emit_runtime_event(
                     "audit_revision_completed",
                     audit_step_id=step.step_id,
-                    status="needs_human_review",
+                    status="failed",
                 )
                 return with_communication({
                     "outputs": node_outputs,
                     "repair_trace": [record],
                     "terminal_states": {
                         step.step_id: {
-                            "status": "waiting_human_review",
-                            "error_type": "RepairPlanNeedsHumanReview",
+                            "status": "failed",
+                            "error_type": "RepairPlanUnavailable",
                             "error_message": (
-                                "audit findings could not be safely repaired: "
+                                "no repairable content node was found for the "
+                                "audit findings: "
                                 + "; ".join(str(item) for item in findings)
                             ),
                         }

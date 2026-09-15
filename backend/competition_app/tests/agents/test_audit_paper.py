@@ -73,10 +73,11 @@ async def test_report_only_nonblocking_advice_can_be_released():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("decision", ["revise", "reject", "needs_human_review"])
-async def test_empty_nonpass_paper_audit_requires_human_review(decision):
+async def test_empty_nonpass_paper_audit_requires_revision(decision):
     model = ReportOnlyAuditModel(decision, "")
     result = await AuditAgent(model).run(_audit_context(20))
-    assert result.payload.decision == "needs_human_review"
+    # 非 pass 结论不得当成通过；产品约定只有 pass / revise，故转局部返修。
+    assert result.payload.decision == "revise"
 
 
 @pytest.mark.asyncio
@@ -512,7 +513,7 @@ async def test_paper_compiler_format_drift_blocks_without_keyword_repair() -> No
         _audit_context(2, required_count=2)
     )
 
-    assert result.payload.decision == "needs_human_review"
+    assert result.payload.decision == "revise"
     assert result.payload.structured_findings == []
     assert any(
         "题干直接泄露答案" in finding
@@ -526,7 +527,8 @@ async def test_valid_paper_is_not_released_when_audit_format_drifts() -> None:
         _audit_context(2, required_count=2)
     )
 
-    assert result.payload.decision == "needs_human_review"
+    # 格式漂移等于没有形成审核结论，不得发布；转局部返修后重新审核。
+    assert result.payload.decision == "revise"
     assert any("格式" in finding for finding in result.payload.findings)
 
 
@@ -648,6 +650,32 @@ class MultiUnitRevisingAuditModel:
                     "decision": "revise",
                     "findings": ["单元2存在知识覆盖问题。"],
                     "audit_report": "单元2需要修订。",
+                }
+            return {
+                "decision": "pass",
+                "findings": [],
+                "audit_report": "单元1审核通过。",
+            }
+        return {"decision": "pass", "findings": [], "audit_report": "通过。"}
+
+
+class MultiUnitRejectingAuditModel:
+    """U1 passes; U2 declines to conclude with a model-side reject."""
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            return {
+                "status": "compiled",
+                "contract_version": "1.0",
+                "issues": [],
+            }
+        if role == "audit_agent":
+            unit_id = payload["payload"]["paper_blueprint"]["unit"]["unit_id"]
+            if unit_id == "U2":
+                return {
+                    "decision": "reject",
+                    "findings": [],
+                    "audit_report": "单元2无法形成可发布结论。",
                 }
             return {
                 "decision": "pass",
@@ -841,6 +869,22 @@ async def test_paper_audit_aggregates_revise_over_pass_with_unit_prefix() -> Non
 
 
 @pytest.mark.asyncio
+async def test_paper_audit_never_lets_pass_override_a_non_pass_unit() -> None:
+    """聚合必须保守：只有全部单元 pass 时整卷才算通过。
+
+    单元审核的 decision 来自模型词表，可能带 reject / needs_human_review。
+    这些取值不得因为不在聚合表里就被当成 pass 而被覆盖，否则一个单元的
+    未通过结论会被其他单元的 pass 抹掉。
+    """
+
+    result = await AuditAgent(MultiUnitRejectingAuditModel()).run(
+        _multi_unit_context()
+    )
+
+    assert result.payload.decision != "pass"
+
+
+@pytest.mark.asyncio
 async def test_native_structured_paper_issue_binds_system_location() -> None:
     model = NativeStructuredAuditModel()
 
@@ -860,6 +904,7 @@ async def test_native_structured_paper_issue_binds_system_location() -> None:
 async def test_paper_audit_unit_local_drift_blocks_whole_paper_publication() -> None:
     result = await AuditAgent(MixedAuditModel()).run(_multi_unit_context())
 
-    # 任一单元没有形成有效审核结论，整卷就不能声称完成审核。
-    assert result.payload.decision == "needs_human_review"
+    # 任一单元没有形成有效审核结论，整卷就不能声称完成审核；
+    # 转局部返修（重跑装配节点）后重新审核，而不是停在等待人工。
+    assert result.payload.decision == "revise"
     assert any("格式" in finding for finding in result.payload.findings)

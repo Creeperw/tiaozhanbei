@@ -291,6 +291,70 @@ class RejectWithInventedCompilerLocationModel:
         }
 
 
+class PassWithUncompilableAdvisoriesModel:
+    """审核判 pass，三条非阻断建议无法编译。
+
+    2026-09-15 事故 FC_409b09f0 的确切输入形态：编译器按“不得为满足格式而
+    臆造问题”判成空 issues，完整性门禁随即以 source_finding_not_compiled
+    拒绝；该失败在 pass 场景只用于落库统计，不得升级成 unresolved 红线。
+    """
+
+    findings = [
+        "非阻断建议｜位置：正文末尾“试着想一想”栏目及其后的练习说明。",
+        "非阻断建议｜位置：正文“先交代两个术语”中对“藏象”的解释。",
+        "非阻断建议｜位置：正文“运化水液”段落引用“诸湿肿满，皆属于脾”处。",
+    ]
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "audit_findings_compiler":
+            return {
+                "status": "needs_revision",
+                "issues": [
+                    {
+                        "code": "schema_invalid",
+                        "field_path": "/issues",
+                        "detail": "source_finding_not_compiled",
+                    }
+                ],
+            }
+        return {
+            "decision": "pass",
+            "findings": list(self.findings),
+            "audit_report": "讲解结构完整，证据引用有效，未发现事实错误。",
+        }
+
+
+class LocationCatalogCapturingAuditModel:
+    """捕获编译器实际收到的位置目录，并选中一个小节位置。"""
+
+    def __init__(self) -> None:
+        self.payload = None
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "audit_findings_compiler":
+            self.payload = payload
+            message = payload["payload"]["findings"][0]
+            return {
+                "status": "compiled",
+                "issues": [
+                    {
+                        "issue_type": "content_quality",
+                        "message": message,
+                        "blocking": False,
+                        "location_keys": ["resource:content:知识卡片#运化水液"],
+                        "source_anchors": [
+                            {"source_field": "findings", "source_quote": message}
+                        ],
+                    }
+                ],
+            }
+        return {
+            "decision": "pass",
+            "findings": ["正文“运化水液”段落的口径可补充适用范围说明。"],
+            "audit_report": "讲解结构完整，未发现事实错误。",
+        }
+
+
 class ReportNegatesFactualErrorModel:
     async def complete_json(self, role, payload, on_delta=None):
         if role == "audit_findings_compiler":
@@ -572,6 +636,186 @@ def test_resource_location_catalog_contains_claim_level_locations() -> None:
     assert "四君子汤由四味药组成" in claim_location.display_label
 
 
+# 2026-09-15 事故 FC_409b09f0 的真实正文形态：审核问题逐字点到了
+# “运化水液段落”“试着想一想栏目”，而位置目录当时只有整区位置，编译器受
+# “不得发明位置键”的约束只能退回 whole_subject，返修指令因此退化成整篇重写。
+_INCIDENT_CARD_MARKDOWN = """\
+## 一句话抓住核心
+
+脾主运化，是把饮食水谷化为精微并输布全身的过程。理解这一点，后面的运化水谷与运化水液才有落点，也才能理解为什么脾被称为后天之本。
+
+## 运化水谷
+
+运化水谷是指脾对饮食物的消化和吸收。饮食物入胃后，先经胃的腐熟，再经脾的运化化为水谷精微，然后输布到全身，供养脏腑形体与四肢百骸。
+
+## 运化水液
+
+运化水液是指脾对水液的吸收、转输和布散作用。《素问·至真要大论》说“诸湿肿满，皆属于脾”，强调的是脾失运化则水湿内停，而非所有肿满都由脾所致。
+
+## 试着想一想
+
+1. 为什么先学“脾主运化”？
+2. 运化水谷和运化水液有什么不同？
+3. 如果脾失健运，会出现哪些表现？
+"""
+
+
+def _knowledge_card_expert(markdown: str) -> ResourceDraft:
+    return ResourceDraft(
+        resource_draft_id="DRAFT_SECTIONS",
+        title="脾主运化讲解",
+        target_kp_id="KP_1",
+        content={
+            "知识卡片": {
+                "kp_id": "KP_1",
+                "kp_name": "脾主运化",
+                "exp": markdown,
+            },
+            "学习提示": "先闭卷复述，再对照正文自查。",
+            "练习资源": [],
+        },
+        estimated_minutes=10,
+        claims=[],
+    )
+
+
+def test_resource_location_catalog_exposes_markdown_sections_of_prose() -> None:
+    expert = _knowledge_card_expert(_INCIDENT_CARD_MARKDOWN)
+
+    locations = AuditAgent._resource_location_catalog(expert)
+
+    by_key = {item.location_key: item for item in locations}
+    assert "resource:content:知识卡片" in by_key
+    section = by_key["resource:content:知识卡片#运化水液"]
+    assert section.location_type == "section"
+    assert section.subject_type == "resource"
+    assert section.display_label == "知识卡片 › 运化水液"
+    assert (
+        by_key["resource:content:知识卡片#试着想一想"].display_label
+        == "知识卡片 › 试着想一想"
+    )
+
+
+def test_resource_location_catalog_disambiguates_repeated_leaf_titles() -> None:
+    markdown = (
+        "## 甲\n\n"
+        + "甲的内容。" * 40
+        + "\n\n### 概述\n\n"
+        + "甲的概述内容。" * 40
+        + "\n\n## 乙\n\n"
+        + "乙的内容。" * 40
+        + "\n\n### 概述\n\n"
+        + "乙的概述内容。" * 40
+        + "\n"
+    )
+
+    locations = AuditAgent._resource_location_catalog(
+        _knowledge_card_expert(markdown)
+    )
+
+    by_key = {item.location_key: item for item in locations}
+    assert by_key["resource:content:知识卡片#甲/概述"].display_label == (
+        "知识卡片 › 甲 › 概述"
+    )
+    assert by_key["resource:content:知识卡片#乙/概述"].display_label == (
+        "知识卡片 › 乙 › 概述"
+    )
+
+
+def test_resource_location_catalog_ignores_headings_inside_code_fences() -> None:
+    markdown = (
+        "## 真小节\n\n"
+        + "这一节的正文足够长，用于满足小节文本的长度阈值。" * 12
+        + "\n\n```python\n# 这不是小节\ndef build():\n    return 1\n```\n\n"
+        + "## 另一个真小节\n\n"
+        + "另一节的正文同样足够长，用于满足长度阈值。" * 12
+        + "\n"
+    )
+
+    locations = AuditAgent._resource_location_catalog(
+        _knowledge_card_expert(markdown)
+    )
+
+    keys = {item.location_key for item in locations}
+    assert "resource:content:知识卡片#真小节" in keys
+    assert "resource:content:知识卡片#另一个真小节" in keys
+    assert not any("这不是小节" in key for key in keys)
+
+
+def test_resource_location_catalog_bounds_section_expansion() -> None:
+    markdown = "\n\n".join(
+        f"## 小节{index}\n\n" + "内容。" * 60 for index in range(60)
+    )
+
+    locations = AuditAgent._resource_location_catalog(
+        _knowledge_card_expert(markdown)
+    )
+
+    section_keys = [key for key in (i.location_key for i in locations) if "#" in key]
+    assert len(section_keys) == AuditAgent._CONTENT_SECTION_LIMIT
+    assert len(set(section_keys)) == len(section_keys)
+
+
+def test_resource_location_catalog_keeps_labels_within_contract_limits() -> None:
+    long_title = "很长的标题" * 40
+    markdown = f"## {long_title}\n\n" + "正文内容。" * 60
+
+    locations = AuditAgent._resource_location_catalog(
+        _knowledge_card_expert(markdown)
+    )
+
+    for location in locations:
+        assert len(location.location_key) <= 300
+        assert len(location.display_label) <= 300
+
+
+def test_resource_location_catalog_ignores_short_structured_content() -> None:
+    expert = _knowledge_card_expert("## 短\n\n很短。")
+
+    locations = AuditAgent._resource_location_catalog(expert)
+
+    assert {item.location_key for item in locations} == {
+        "resource:whole",
+        "resource:questions",
+        "resource:references",
+        "resource:target_kp_id",
+        "resource:estimated_minutes",
+        "resource:content:知识卡片",
+        "resource:content:学习提示",
+        "resource:content:练习资源",
+    }
+
+
+@pytest.mark.asyncio
+async def test_compiler_receives_markdown_section_locations() -> None:
+    """位置目录必须把正文小节交给编译器，否则它只能退回 whole_subject。"""
+
+    context = _resource_context()
+    context["dependency_outputs"]["expert"].payload = _knowledge_card_expert(
+        _INCIDENT_CARD_MARKDOWN
+    )
+    model = LocationCatalogCapturingAuditModel()
+
+    result = await AuditAgent(model).run(context)
+
+    catalog = {
+        item["location_key"]: item
+        for item in model.payload["payload"]["location_catalog"]
+    }
+    section = catalog["resource:content:知识卡片#运化水液"]
+    assert section["location_type"] == "section"
+    assert section["display_label"] == "知识卡片 › 运化水液"
+    # 编译器选中的小节位置必须原样落到结构化问题上，供返修指令使用。
+    issue = next(
+        item
+        for item in result.payload.structured_findings
+        if item.issue_type == "content_quality"
+    )
+    assert [item.location_key for item in issue.locations] == [
+        "resource:content:知识卡片#运化水液"
+    ]
+
+
 @pytest.mark.asyncio
 async def test_unrelated_persisted_task_is_not_an_audit_blocking_contract() -> None:
     context = _resource_context()
@@ -653,11 +897,12 @@ async def test_compiler_cannot_clear_blocking_flag_for_red_line_repair() -> None
 
 @pytest.mark.asyncio
 async def test_invalid_compiler_cannot_guess_factual_error_from_prose() -> None:
+    """编译器无法定位时不得把措辞猜成具体问题类型，只能返修兜底。"""
     result = await AuditAgent(DirectContradictionFallbackModel()).run(
         _resource_context()
     )
 
-    assert result.payload.decision == "needs_human_review"
+    assert result.payload.decision == "revise"
     assert {
         issue.issue_type for issue in result.payload.structured_findings
     } == {"unresolved"}
@@ -674,11 +919,12 @@ async def test_audit_compiler_transport_failure_is_retryable() -> None:
 
 @pytest.mark.asyncio
 async def test_invalid_compiler_cannot_guess_nonblocking_conflict_from_prose() -> None:
+    """编译器无法定位时不得把措辞猜成非阻断口径冲突，只能返修兜底。"""
     result = await AuditAgent(SourceScopeConflictFallbackModel()).run(
         _resource_context()
     )
 
-    assert result.payload.decision == "needs_human_review"
+    assert result.payload.decision == "revise"
     assert {
         issue.issue_type for issue in result.payload.structured_findings
     } == {"unresolved"}
@@ -746,17 +992,36 @@ async def test_negated_external_query_does_not_skip_time_gate() -> None:
 
 @pytest.mark.asyncio
 async def test_compiler_integrity_failure_blocks_without_semantic_fallback() -> None:
+    """完整性失败不得语义兜底：问题仍是 unresolved，且位置退回 whole_subject。"""
     result = await AuditAgent(RejectWithInventedCompilerLocationModel()).run(
         _resource_context()
     )
 
-    assert result.payload.decision == "needs_human_review"
+    assert result.payload.decision == "revise"
     assert {
         issue.issue_type for issue in result.payload.structured_findings
     } == {"unresolved"}
     issue = result.payload.structured_findings[0]
     assert issue.owner_step_id is None
     assert [item.location_key for item in issue.locations] == ["resource:whole"]
+
+
+@pytest.mark.asyncio
+async def test_pass_audit_with_uncompilable_advisories_is_not_blocking() -> None:
+    """pass + 非阻断建议 + 编译器无法定位时，不得升级成 unresolved 红线。
+
+    编译器在 pass 场景只用于落库统计（include_report=False）；把它自己的
+    协议失败当成“内容有问题”，会把一条可选建议变成阻断发布的人工复核。
+    """
+
+    result = await AuditAgent(PassWithUncompilableAdvisoriesModel()).run(
+        _resource_context()
+    )
+
+    assert result.payload.decision == "pass"
+    assert result.payload.structured_findings == []
+    assert len(result.payload.findings) == 3
+    assert all("非阻断建议" in finding for finding in result.payload.findings)
 
 
 @pytest.mark.asyncio
@@ -804,7 +1069,9 @@ async def test_invalid_plan_audit_protocol_is_not_treated_as_plan_approval() -> 
 
     result = await AuditAgent(InvalidPlanAuditModel()).run(_short_plan_context())
 
-    assert result.payload.decision == "needs_human_review"
+    # 协议失败不等于发布依据：仍不得自动发布，但产品约定只有 pass / revise，
+    # 因此转局部返修（重跑 Diagnosis）而不是停在等待人工。
+    assert result.payload.decision == "revise"
     assert "不得自动发布" in result.payload.findings[0]
     assert any(
         issue.issue_type == "unresolved" and issue.blocking
@@ -922,7 +1189,8 @@ async def test_plan_report_only_compiler_failure_cannot_publish():
 
     result = await AuditAgent(BrokenReportCompiler()).run(_short_plan_context())
     assert calls == ["audit_agent", "audit_findings_compiler", "audit_findings_compiler"]
-    assert result.payload.decision == "needs_human_review"
+    # 需要返修时编译器失败仍必须保守拦截（转返修，不得发布）。
+    assert result.payload.decision == "revise"
     assert any(item.issue_type == "unresolved" and item.blocking
                for item in result.payload.structured_findings)
 
@@ -936,7 +1204,8 @@ async def test_empty_nonpassing_plan_audit_does_not_become_approval():
                     "findings": [], "audit_report": ""}
 
     result = await AuditAgent(EmptyPlanModel()).run(_short_plan_context())
-    assert result.payload.decision == "needs_human_review"
+    # 非 pass 结论不得当成通过；产品约定只有 pass / revise，故转返修。
+    assert result.payload.decision == "revise"
     assert result.payload.medical_safety_approval is None
 
 
@@ -1120,12 +1389,13 @@ class RejectAuditModel:
 
 
 @pytest.mark.asyncio
-async def test_safety_violation_is_red_line_and_escalates_to_human_review() -> None:
+async def test_safety_violation_is_red_line_and_triggers_repair() -> None:
+    """安全越界是红线：内容不得发布，由责任内容节点重写。"""
     result = await AuditAgent(RedLineSafetyRevisionAuditModel()).run(
         _resource_context()
     )
 
-    assert result.payload.decision == "needs_human_review"
+    assert result.payload.decision == "revise"
     assert result.payload.structured_findings
     assert {
         issue.issue_type for issue in result.payload.structured_findings
@@ -1154,7 +1424,7 @@ async def test_model_pass_declaration_cannot_clear_red_line_blocking() -> None:
         _resource_context()
     )
 
-    assert result.payload.decision == "needs_human_review"
+    assert result.payload.decision == "revise"
     assert any(
         issue.issue_type == "safety_violation"
         for issue in result.payload.structured_findings
@@ -1162,10 +1432,11 @@ async def test_model_pass_declaration_cannot_clear_red_line_blocking() -> None:
 
 
 @pytest.mark.asyncio
-async def test_model_reject_is_preserved_even_without_system_red_line() -> None:
+async def test_model_reject_without_located_issue_falls_back_to_repair() -> None:
+    """reject 不再构成独立终态：没有可定位问题时也走返修兜底。"""
     result = await AuditAgent(RejectAuditModel()).run(_resource_context())
 
-    assert result.payload.decision == "reject"
+    assert result.payload.decision == "revise"
     assert result.payload.findings == ["内容整体偏离用户请求主题。"]
 
 

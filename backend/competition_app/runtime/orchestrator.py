@@ -15,7 +15,10 @@ from competition_app.contracts.plan_compilation import PlanCompilationError
 from competition_app.contracts.planning_request import PlanningFocusProtocolError
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.agent_communication import CognitiveGapAnalyzer
-from competition_app.runtime.local_repair import LocalRepairController
+from competition_app.runtime.local_repair import (
+    LocalRepairController,
+    publishable_after_bounded_repair,
+)
 from competition_app.runtime.trace import (
     CommunicationTrace,
     RepairTrace,
@@ -34,6 +37,8 @@ from competition_app.runtime.evolution_rules import EvolutionRuleRegistry
 
 
 class ExecutionResult(BaseModel):
+    # waiting_human_review 是历史值：产品约定只有 pass / revise 两个审核终态，
+    # 编排器已不再产生它，但持久化的旧运行状态仍需能被读回。
     status: Literal["success", "failed", "waiting_human_review", "interrupted"]
     outputs: dict[str, Any] = Field(default_factory=dict)
     trace: list[StepTrace] = Field(default_factory=list)
@@ -171,17 +176,14 @@ class Orchestrator:
                 self._raise_if_cancelled(context)
                 outputs[step_id] = result
                 decision = getattr(getattr(result, "payload", None), "decision", None)
-                if decision == "reject":
-                    return ExecutionResult(
-                        status="failed", outputs=outputs, trace=trace.items, tool_trace=trace.tool_items,
-                        communication_trace=trace.communication_items,
-                        repair_trace=repair_trace,
-                    )
-                # 人工复核不是直接对用户暴露审核报告的终点：只要审核
-                # 产出了可定位的问题，先复用同一套受控返修流程，再进行
-                # 一次审核。返修审核通过后才能进入发布；无法安全生成
-                # 返修计划时，_execute_local_repair 会返回人工复核状态。
-                if decision in {"revise", "needs_human_review"}:
+                # 审核结论只有 pass 与 revise 两个终态：只有 pass 能直接进入发布，
+                # 其余取值（含模型自行给出的 reject / needs_human_review，以及
+                # 没有形成结论）一律按“未通过”处理，走同一套受控局部返修。
+                # 受控返修最多一轮，返修后再审一次；仍不通过则发布返修后的内容
+                # 并把剩余问题记入失败案例库（见 _execute_local_repair）。
+                # 非审核步骤没有 decision，不参与该门禁。
+                is_audit_step = self.repair_controller._is_audit_step(steps[step_id])
+                if is_audit_step and decision != "pass":
                     emit_runtime_event(
                         "audit_revision_started",
                         audit_step_id=step_id,
@@ -217,24 +219,25 @@ class Orchestrator:
                             error_message=f"audit revision failed: {exc}",
                         )
                     if repair.outputs is None:
+                        # 返修计划无法构造：DAG 里没有可重跑的内容节点。这是系统
+                        # 结构故障而非内容结论，按失败上报，不再挂起等待人工。
                         emit_runtime_event(
                             "audit_revision_completed",
                             audit_step_id=step_id,
-                            status="needs_human_review",
+                            status="failed",
                         )
                         return ExecutionResult(
-                            status=(
-                                "failed"
-                                if repair.final_decision == "reject"
-                                else "waiting_human_review"
-                            ),
+                            status="failed",
                             outputs=outputs,
                             trace=trace.items,
                             tool_trace=trace.tool_items,
                             communication_trace=trace.communication_items,
                             repair_trace=repair_trace,
-                            error_type="AuditRevisionNeedsHumanReview",
-                            error_message="audit requested revision but revised output still requires review",
+                            error_type="RepairPlanUnavailable",
+                            error_message=(
+                                "no repairable content node was found for the "
+                                "audit findings"
+                            ),
                         )
                     emit_runtime_event(
                         "audit_revision_completed", audit_step_id=step_id, status="pass"
@@ -329,15 +332,17 @@ class Orchestrator:
         )
 
         if repair_plan.status == "needs_human_review":
+            # 返修计划无法构造：DAG 里没有可重跑的内容节点。这是系统结构故障，
+            # 不是内容结论，按失败上报而不是挂起等待人工。
             record.status = "stopped"
-            record.final_audit_decision = "needs_human_review"
+            record.final_audit_decision = "failed"
             emit_runtime_event(
                 "repair_stopped",
                 repair_id=record.repair_id,
                 trigger_step_id=audit_step_id,
-                status="needs_human_review",
+                status="failed",
             )
-            return RepairExecutionOutcome(None, "needs_human_review")
+            return RepairExecutionOutcome(None, "failed")
 
         record.status = "running"
         repaired_outputs = dict(outputs)
@@ -433,15 +438,22 @@ class Orchestrator:
             )
             return RepairExecutionOutcome(repaired_outputs, final_decision)
 
-        record.status = "stopped"
+        # 一轮受控返修已经跑过，返修链会重跑同一组节点，再次返修无法收敛。
+        # 按产品约定发布返修后的内容，剩余问题由失败案例库记录；不得停在等待
+        # 人工，也不得丢弃已生成的内容。发布侧的审核结论归一化为 pass，审核器
+        # 自己的结论（record.final_audit_decision）保持不变。
+        record.status = "completed"
         emit_runtime_event(
-            "repair_stopped",
+            "repair_completed",
             repair_id=record.repair_id,
             trigger_step_id=audit_step_id,
-            status=final_decision or "needs_human_review",
+            status=final_decision or "revise",
+        )
+        repaired_outputs[audit_step_id] = publishable_after_bounded_repair(
+            repaired_outputs[audit_step_id], final_decision
         )
         outputs.update(repaired_outputs)
-        return RepairExecutionOutcome(None, final_decision)
+        return RepairExecutionOutcome(repaired_outputs, final_decision)
 
     async def _run_step(
         self,

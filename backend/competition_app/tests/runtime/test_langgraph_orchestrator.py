@@ -803,10 +803,13 @@ async def test_langgraph_empty_modern_audit_findings_fail_closed() -> None:
 
     result = await LangGraphOrchestrator(registry).execute(plan, {})
 
-    assert result.status == "waiting_human_review"
-    assert expert.calls == 1
-    assert audit.calls == 1
-    assert result.repair_trace[0].status == "stopped"
+    # 审核给了非 pass 却没有可定位问题：兜底重跑内容节点后再次送审，而不是
+    # 停在等待人工。一轮受控返修后按产品约定发布，返修过程留在 repair_trace。
+    assert result.status == "success"
+    assert expert.calls == 2
+    assert audit.calls == 2
+    assert result.repair_trace[0].status == "completed"
+    assert result.repair_trace[0].issue_types == ["content_quality"]
 
 
 @pytest.mark.asyncio
