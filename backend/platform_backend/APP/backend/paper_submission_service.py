@@ -280,6 +280,28 @@ def resume_paper_timer(db: Session, learner_id: int, paper_id: str) -> dict[str,
     return get_owned_paper(db, learner_id, paper_id)
 
 
+def _learner_notices(paper: PaperInstanceRecord) -> dict[str, str]:
+    """卷面说明：难度与来源、题目来源、审核结论。
+
+    发布时写进 ``blueprint_json`` 的下划线子键，因为它不属于蓝图结构。这里
+    只读该子键，不把蓝图暴露给答题页。
+    """
+    try:
+        blueprint = json.loads(paper.blueprint_json or "{}")
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(blueprint, dict):
+        return {}
+    notices = blueprint.get("_learner_notices")
+    if not isinstance(notices, dict):
+        return {}
+    return {
+        str(key): str(value)
+        for key, value in notices.items()
+        if str(value or "").strip()
+    }
+
+
 def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, Any]:
     paper = _paper(db, learner_id, paper_id)
     timing = _timing(paper)
@@ -305,6 +327,7 @@ def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, An
         "title": paper.title,
         "status": paper.status,
         "timing": timing,
+        "learner_notices": _learner_notices(paper),
         "result": result,
         "total_score": total_score,
         "items": [{

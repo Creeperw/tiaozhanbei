@@ -298,3 +298,6 @@ evaluation_delivery/outputs/accountability_fault_online20/*
 !evaluation_delivery/outputs/accountability_fault_online20/accountability_fault_online20_final_20260811T092121Z_metrics.json
 # 评测判定通道密钥
 evaluation_delivery/eval.env
+
+# 本地备份文件
+*.bak-*
