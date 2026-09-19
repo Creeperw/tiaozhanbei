@@ -7,6 +7,7 @@ from typing import Any, Iterable
 
 from competition_app.contracts.execution import (
     DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+    PAPER_ASSEMBLY_STEP_TIMEOUT_SECONDS,
     ExecutionPlan,
     ExecutionStep,
     model_step_timeout_seconds,
@@ -99,6 +100,12 @@ def validate_smart_paper_constraints(constraints: Any) -> dict[str, Any]:
     ):
         raise ValueError("题目难度必须是 1 至 5")
 
+    # 逐题解析是独立的交付条件，只能由表单开关声明。它不在主题正文里识别：
+    # 主题正文是检索数据，不参与业务判定（见本函数 docstring）。
+    requires_explanation = constraints.get("requires_explanation", False)
+    if not isinstance(requires_explanation, bool):
+        raise ValueError("逐题解析要求必须是布尔值")
+
     paper_kind = str(constraints.get("paper_kind") or "special").strip()
     if paper_kind not in {"special", "adaptive"}:
         raise ValueError("智能组卷范围类型无效")
@@ -116,6 +123,7 @@ def validate_smart_paper_constraints(constraints: Any) -> dict[str, Any]:
         "answer_mode": answer_mode,
         "duration_minutes": duration,
         "difficulty": difficulty,
+        "requires_explanation": requires_explanation,
         "paper_kind": paper_kind,
         "topic": topic,
         "focus_topics": focus_topics,
@@ -175,7 +183,10 @@ def build_smart_paper_execution_plan(
             agent="paper_assembly_agent",
             action="assemble_exam_paper",
             depends_on=["paper_blueprint", "question_pool", "diagnosis"],
-            timeout_seconds=1800.0,
+            # 组卷要串行跑多批缺口生成，预算必须覆盖多批次累计耗时；
+            # 用 planner 动态计划里的同一个值，避免同一任务因入口不同
+            # 拿到不同预算。
+            timeout_seconds=PAPER_ASSEMBLY_STEP_TIMEOUT_SECONDS,
         ),
         ExecutionStep(
             step_id="audit",

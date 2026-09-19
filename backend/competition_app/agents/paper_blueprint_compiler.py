@@ -16,6 +16,10 @@ from competition_app.contracts.paper_blueprint_compilation import (
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
+from competition_app.services.smart_paper import (
+    SMART_PAPER_TYPE_ALIASES,
+    normalize_smart_paper_type,
+)
 
 
 _RESULT_ADAPTER = TypeAdapter(PaperBlueprintCompilerResult)
@@ -61,6 +65,13 @@ def _coerce_blueprint(raw: dict) -> dict:
             contract["units"] = [{"unit_key": "默认单元", "knowledge_module": "综合练习", "learning_objective": "巩固知识点", "retrieval_query": "综合练习", "required_question_count": 5}]
         if not isinstance(contract.get("field_anchors"), dict):
             contract["field_anchors"] = {}
+        if isinstance(contract.get("requires_explanation"), str):
+            # 模型可能把布尔字段写成文本；这里只归一化该字段的固定写法，
+            # 不对蓝图原稿做任何关键词判断。
+            contract["requires_explanation"] = (
+                contract["requires_explanation"].strip().lower()
+                in {"true", "1", "yes", "是", "需要", "必须"}
+            )
     return raw
 
 
@@ -154,6 +165,19 @@ class PaperBlueprintCompilerAgent:
                         "field_path": field_path,
                     }
                 )
+        if (
+            result.contract.requires_explanation
+            and "/requires_explanation" not in result.contract.field_anchors
+        ):
+            # 解析要求会直接改变组卷时可用候选的范围，因此它必须和题量、题型
+            # 一样是“原稿里写明的”而不是模型顺手补的：拿不到逐字引文就交回
+            # 返修，由蓝图原稿把交付条件写清楚。
+            issues.append(
+                {
+                    "code": "source_anchor_missing",
+                    "field_path": "/requires_explanation",
+                }
+            )
         for field_path, anchors in result.contract.field_anchors.items():
             if not anchors:
                 issues.append(
@@ -187,6 +211,17 @@ class PaperBlueprintCompilerAgent:
             verbatim_values.append(
                 ("/total_score", format(result.contract.total_score, "g"))
             )
+        if result.contract.required_question_count is not None:
+            verbatim_values.append(
+                (
+                    "/required_question_count",
+                    str(result.contract.required_question_count),
+                )
+            )
+        for question_type in result.contract.question_type_distribution or {}:
+            verbatim_values.append(
+                (f"/question_type_distribution/{question_type}", question_type)
+            )
         for index, unit in enumerate(result.contract.units):
             unit_path = f"/units/{index}"
             verbatim_values.extend(
@@ -217,31 +252,68 @@ class PaperBlueprintCompilerAgent:
                     (f"{unit_path}/target_difficulty", str(unit.target_difficulty))
                 )
         for field_path, value in verbatim_values:
-            if value and not PaperBlueprintCompilerAgent._source_contains(
+            if not value:
+                continue
+            if field_path.endswith("/question_type_preferences") or (
+                "/question_type_distribution/" in field_path
+            ):
+                if PaperBlueprintCompilerAgent._question_type_anchored(
+                    value,
+                    blueprint_document,
+                ):
+                    continue
+            elif PaperBlueprintCompilerAgent._source_contains(
                 blueprint_document,
                 value,
             ):
-                issues.append(
-                    {
-                        "code": "source_anchor_invalid",
-                        "field_path": field_path,
-                        "detail": value,
-                    }
-                )
+                continue
+            issues.append(
+                {
+                    "code": "source_anchor_invalid",
+                    "field_path": field_path,
+                    "detail": value,
+                }
+            )
         return issues
 
     @staticmethod
+    def _question_type_anchored(value: str, source: str) -> bool:
+        """Whether the source names this question type under any alias.
+
+        题型名是系统枚举，别名表是固定的客观映射：模型把原稿里的“单选题”
+        写成规范名“单项选择题”属于同一概念的用词差异，不构成新事实。无法
+        归一到已知枚举的值仍需退回逐字校验。
+        """
+
+        canonical = normalize_smart_paper_type(value)
+        if canonical is None:
+            return False
+        compact_source = re.sub(r"\s", "", source)
+        return any(
+            alias in compact_source
+            for alias, target in SMART_PAPER_TYPE_ALIASES.items()
+            if target == canonical
+        )
+
+    @staticmethod
     def _source_contains(source: str, value: str) -> bool:
-        """Accept formatting-only Markdown differences without accepting new facts."""
+        """Accept formatting-only differences without accepting new facts.
+
+        逐字锚点的目的是“编译器不得引入原稿没有的事实”，而不是要求模型和
+        原稿使用同一套标点。这里剔除全部空白、Markdown 标记和中英文标点后
+        再做子串比对；但数字必须整段命中，否则“10”会被“100”的前两位命中，
+        等于放行一个原稿并不存在的事实。
+        """
+        for number in re.findall(r"\d+", value):
+            if not re.search(rf"(?<!\d){re.escape(number)}(?!\d)", source):
+                return False
         if value in source:
             return True
 
         def canonical(text: str) -> str:
-            return re.sub(
-                r"[\s*_#>`~\-•:：;；,.，。、“”\"'()（）【】]+",
-                "",
-                text,
-            )
+            return re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "", text)
 
         normalized_value = canonical(value)
-        return bool(normalized_value) and normalized_value in canonical(source)
+        if not normalized_value:
+            return False
+        return normalized_value in canonical(source)

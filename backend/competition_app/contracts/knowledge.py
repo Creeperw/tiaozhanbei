@@ -50,9 +50,17 @@ class EvidencePack(ContractModel):
     evidence_pack_id: str
     query: str
     resolved_kp_ids: list[str] = Field(default_factory=list)
-    # kp_id -> 知识点名称（kp_lv3 优先，回退 kp_lv2/kp_id）。供主题锚点
-    # 判断使用：蓝图 knowledge_module 的主题词与这些名称匹配，避免依赖
-    # resolve_topic 对长查询的不稳定排序（首位可能被干扰知识点占据）。
+    # 题目桥接召回范围。``resolved_kp_ids`` 是证据用的高质量头部命中，只覆盖同
+    # 章节的一小部分知识点；题目桥接按知识点取题，用这么窄的集合会让整个单元的
+    # 候选池缺题（线上实测：某单元头部命中 10 个知识点、桥接只召回 4 道题，而
+    # 单元需要 40 道；同一次检索放宽到 200 个知识点后召回 297 道，其中 69 道的
+    # 主知识点在单元范围内）。本字段是同一次检索的宽召回结果，只用于扩大题目
+    # 桥接，不参与证据生成与学习状态写入。
+    bridge_kp_ids: list[str] = Field(default_factory=list)
+    # kp_id -> 知识点名称（kp_lv3 优先，回退 kp_lv2/kp_id）。仅供诊断与展示；
+    # 候选准入不得用它做文本比对：拿模型生成的 knowledge_module 去匹配知识点
+    # 名称属于对自然语言做模式匹配，不是可靠的业务判定（见
+    # KnowledgeBaseAgent._question_scope_status）。
     resolved_kp_names: dict[str, str] = Field(default_factory=dict)
     evidence_items: list[EvidenceItem] = Field(default_factory=list)
     retrieval_summary: str = ""

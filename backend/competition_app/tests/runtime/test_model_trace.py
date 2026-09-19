@@ -135,6 +135,42 @@ def test_model_trace_failure_keeps_only_bounded_transport_diagnostics() -> None:
     assert "secret" not in str(item.model_dump(mode="json"))
 
 
+def test_model_trace_keeps_bounded_business_validation_codes() -> None:
+    """业务校验码必须能从痕迹里读到，且只保留短机器标识。"""
+
+    recorder = ModelTraceRecorder()
+    index = recorder.begin("expert_agent", {"phase": "paper_gap_generation"})
+    error = RuntimeError("invalid structured output")
+    error.reason = "business_schema_invalid"
+    error.last_error_details = {
+        "business_validation_codes": [
+            "reference_answer_too_long",
+            "模型输出的题干包含不应落库的正文",
+            "x" * 200,
+            12345,
+        ],
+    }
+
+    recorder.fail(index, error)
+
+    item = recorder.items[0]
+    assert item.business_validation_codes == ["reference_answer_too_long"]
+
+
+def test_model_trace_omits_business_validation_codes_when_absent() -> None:
+    """没有校验码时不留空字段，避免把“无数据”读成“数据缺失”。"""
+
+    recorder = ModelTraceRecorder()
+    index = recorder.begin("expert_agent", {"phase": "paper_gap_generation"})
+    error = RuntimeError("invalid structured output")
+    error.reason = "business_schema_invalid"
+    error.last_error_details = {"business_validation_codes": []}
+
+    recorder.fail(index, error)
+
+    assert recorder.items[0].business_validation_codes is None
+
+
 def test_model_trace_failure_rejects_unbounded_diagnostic_values() -> None:
     recorder = ModelTraceRecorder()
     index = recorder.begin("planner_agent", {"topic": "教材证据"})

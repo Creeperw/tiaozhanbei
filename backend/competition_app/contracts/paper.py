@@ -58,6 +58,10 @@ class PaperBlueprint(ContractModel):
     required_total_question_count: int | None = Field(default=None, gt=0)
     required_question_type_distribution: dict[str, int] = Field(default_factory=dict)
     question_count_is_hard_constraint: bool = False
+    # 本轮是否要求逐题解析（“每题都要有详细解析”这类交付条件）。它由蓝图
+    # 原稿写明、编译器逐字锚定后带入，是这一交付条件的唯一结构化来源：
+    # 系统不猜用户原话，也不在组卷阶段用关键词重新判断。
+    requires_explanation: bool = False
     units: list[BlueprintUnit] = Field(min_length=1)
     assumptions: list[str] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)
@@ -67,6 +71,10 @@ class UnitQuestionCandidates(ContractModel):
     unit_id: str = Field(min_length=1)
     retrieval_query: str = Field(min_length=1)
     resolved_kp_ids: list[str] = Field(default_factory=list)
+    # 本单元的准入范围，由知识库智能体依据单元声明的范围判定，不是检索命中
+    # 列表：``resolved_kp_ids`` 是按知识点名称召回的结果，既含同名或泛化的
+    # 无关知识点，也漏掉同章节里未被命中的知识点，不能当范围边界用。
+    scope_kp_ids: list[str] = Field(default_factory=list)
     requested_limit: int = Field(gt=0)
     required_question_count: int = Field(gt=0)
     items: list[QuestionDetail] = Field(default_factory=list)
@@ -79,6 +87,10 @@ class UnitQuestionCandidates(ContractModel):
     unlabeled_official_count: int = Field(default=0, ge=0)
     web_reference_count: int = Field(default=0, ge=0)
     unmet_required_count: int = Field(default=0, ge=0)
+    # 候选不足时按缺口降级掺入、并最终进入候选池的题目数。这些题只有次要
+    # 桥接落在本单元范围内，主知识点在别的章节——多为学习者已经学过的内容。
+    # 系统不隐藏这件事：组卷说明会把它讲给学习者听。
+    borrowed_question_count: int = Field(default=0, ge=0)
     eligible_count: int = Field(default=0, ge=0)
     uncertain_count: int = Field(default=0, ge=0)
     rejected_count: int = Field(default=0, ge=0)
@@ -107,7 +119,11 @@ class PaperDifficultySourceSummary(ContractModel):
     total_questions: int = Field(default=0, ge=0)
     exact_difficulty_count: int = Field(default=0, ge=0)
     unlabeled_official_count: int = Field(default=0, ge=0)
+    # 检索到的网络参考材料条数。每条是一份检索证据，可能一道题都没带。
     web_reference_count: int = Field(default=0, ge=0)
+    # 真正进了卷面的网络检索题数。与上面的材料条数是两回事：材料只供出题
+    # 参考，这些题是学习者要做、要判分的题，必须分开报。
+    web_in_paper_count: int = Field(default=0, ge=0)
     generated_count: int = Field(default=0, ge=0)
     unmet_count: int = Field(default=0, ge=0)
     notice: str = ""
@@ -168,6 +184,10 @@ class ExamPaperDraft(ContractModel):
     coverage_summary: dict[str, object] = Field(default_factory=dict)
     unresolved_constraints: list[str] = Field(default_factory=list)
     difficulty_source_summary: PaperDifficultySourceSummary | None = None
+    # 题目来源说明：可用题目不足时系统是怎么补足的。面向学习者的系统文案，
+    # 由组卷阶段确定性生成，模型不得改写。空串表示本卷没有需要说明的补足
+    # 行为。
+    supply_notice: str = ""
     status: Literal["pending_review"] = "pending_review"
 
     def learner_questions(self) -> list[LearnerQuestionView]:

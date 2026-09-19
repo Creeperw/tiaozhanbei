@@ -54,6 +54,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
   const [answerMode, setAnswerMode] = useState('practice');
   const [duration, setDuration] = useState(60);
   const [difficultyFilter, setDifficultyFilter] = useState(null);
+  const [requiresExplanation, setRequiresExplanation] = useState(false);
   const [activePaperId, setActivePaperId] = useState(paperId);
   const [activeTaskItemId, setActiveTaskItemId] = useState(taskItemId);
   const [loading, setLoading] = useState(false);
@@ -216,6 +217,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
         difficulty: difficultyFilter,
         paperKind: kind === 'plus' ? 'adaptive' : 'special',
         focusTopics: kind === 'plus' ? topicRecommendations : [],
+        requiresExplanation,
         taskItemId: activeTaskItemId,
         onEvent: (event) => {
           if (event?.event === 'step_started') setRunStatus(`正在执行：${event.step_id}`);
@@ -333,6 +335,14 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
               ))}
             </div>
           </section>
+
+          <section aria-labelledby="paper-explanation-title">
+            <div><h3 id="paper-explanation-title" className="text-base font-semibold text-slate-950">5. 逐题解析 <span className="text-sm font-normal text-slate-400">（可选）</span></h3><p className="mt-1 text-[15px] leading-6 text-slate-500">开启后系统补的题必须自带解析；题库题只要有标准答案就能入卷，题库没带解析的题会在你首次作答时生成解析并保存。请在主题里只写范围，把解析要求交给这个开关表达。</p></div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button type="button" aria-pressed={!requiresExplanation} onClick={() => setRequiresExplanation(false)} disabled={loading} className={`rounded-xl border px-4 py-2 text-sm font-semibold transition duration-200 ${!requiresExplanation ? 'border-emerald-500 bg-emerald-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50'}`}>不需要</button>
+              <button type="button" aria-pressed={requiresExplanation} onClick={() => setRequiresExplanation(true)} disabled={loading} className={`rounded-xl border px-4 py-2 text-sm font-semibold transition duration-200 ${requiresExplanation ? 'border-emerald-500 bg-emerald-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50'}`}>每题附解析</button>
+            </div>
+          </section>
         </main>
 
         <aside className="border-t border-slate-200 bg-slate-50/70 p-5 xl:border-l xl:border-t-0" aria-label="组卷预览">
@@ -344,6 +354,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">题型</dt><dd className="font-medium text-slate-800">{selectedTypes.length || 0} 种</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">模式</dt><dd className="font-medium text-slate-800">{answerMode === 'test' ? `测试 · ${duration} 分钟` : '练习'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">难度</dt><dd className="font-medium text-slate-800">{difficultyFilter === null ? '全部' : `难度 ${difficultyFilter} 星`}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">解析</dt><dd className="font-medium text-slate-800">{requiresExplanation ? '每题附解析' : '不要求'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">发布门禁</dt><dd className="font-medium text-emerald-700">智能体审核</dd></div>
             </dl>
             <button type="button" onClick={generate} disabled={loading || !total || total > 50 || (kind === 'special' && !topic.trim())} className={`${sectionButton} mt-5 w-full border-emerald-700 bg-emerald-700 px-4 py-3 text-white shadow-[0_10px_24px_rgba(22,101,52,0.16)] hover:-translate-y-0.5 hover:bg-emerald-800`}>

@@ -137,7 +137,9 @@ describe('DashboardPage replacement learning workshop', () => {
     expect(await within(plan).findByText('86 小时')).toBeInTheDocument();
     expect(within(plan).getByText('今日建议学习 25 分钟')).toBeInTheDocument();
     expect(within(plan).getByText('下一个知识点：五行生克关系')).toBeInTheDocument();
-    expect(within(plan).getByText('50%')).toBeInTheDocument();
+    // 进度百分比来自单独的目录进度请求，加载完成前显示的是“进度待统计”。
+    // 这里必须用异步查询等待它到达，否则并行负载高时会随机取到占位文案。
+    expect(await within(plan).findByText('50%')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '教材学习列表' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '继续学习《中医学基础》' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '今日学习工作区' })).not.toBeInTheDocument();

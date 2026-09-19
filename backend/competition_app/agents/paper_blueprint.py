@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 from uuid import uuid4
@@ -16,9 +17,17 @@ from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
 from competition_app.services.smart_paper import stable_scope_digest
 
+logger = logging.getLogger(__name__)
+
 
 class PaperBlueprintAgent:
     """Expert stage one: design retrieval-ready blueprint units before retrieval."""
+
+    # 编译器未提取到整卷题量、且用户也没给出结构化题量时，单元的建议规模。
+    # 它只是检索与生成的起点，不是发布硬门槛（见
+    # ``question_count_is_hard_constraint``）。
+    _FALLBACK_UNCONSTRAINED_UNIT_QUESTION_COUNT = 10
+
 
     def __init__(
         self,
@@ -42,6 +51,9 @@ class PaperBlueprintAgent:
                 "本轮指代所承接的上一轮学习主题："
                 f"{conversation_scope['previous_user_request']}"
             )
+        # 整卷硬约束只从系统级约束通道读取，不从用户原话里用关键词猜：
+        # 自由文本的语义由蓝图模型负责，编译器负责把原稿里明写的约束逐字提取
+        # 回来（见下方 compiled 分支）。取不到时不设硬约束。
         explicit_distribution = self._explicit_question_type_distribution(context)
         explicit_count = (
             sum(explicit_distribution.values())
@@ -100,6 +112,26 @@ class PaperBlueprintAgent:
             )
             if compilation.result.status == "compiled":
                 contract = compilation.result.contract
+                # 整卷硬约束以蓝图原稿为准：它是本轮用户意图的唯一事实来源，
+                # 而且每条值都刚通过了逐字锚点校验。编译器没提取到就不设硬
+                # 约束，让蓝图自己的单元题数说话——取不到时保持 None，而不
+                # 是拿一个猜出来的近似值当发布门禁。
+                if contract.question_type_distribution:
+                    explicit_distribution = {
+                        str(question_type): int(count)
+                        for question_type, count in (
+                            contract.question_type_distribution.items()
+                        )
+                        if int(count) > 0
+                    }
+                explicit_count = (
+                    sum(explicit_distribution.values())
+                    if explicit_distribution
+                    else (
+                        contract.required_question_count
+                        or self._explicit_question_count(context)
+                    )
+                )
                 normalized = {
                     "title": contract.title,
                     "scope_summary": contract.scope_summary,
@@ -107,6 +139,7 @@ class PaperBlueprintAgent:
                     "total_score": contract.total_score,
                     "assumptions": contract.assumptions,
                     "acceptance_criteria": contract.acceptance_criteria,
+                    "requires_explanation": contract.requires_explanation,
                     "units": [
                         unit.model_dump(mode="python", exclude={"unit_key"})
                         for unit in contract.units
@@ -119,6 +152,25 @@ class PaperBlueprintAgent:
                 # difficulty constraints needed for a safe minimal blueprint.
                 # Discard the uncompiled prose and continue from only those
                 # explicit values; do not infer hidden plan content.
+                #
+                # 降级本身保留，但必须留下可查证据：编译器给出的 issues 只
+                # 存在于这一次调用的返回值里，不落库也不打日志，线上只能看到
+                # “试卷内容不对”而无法定位到是哪条锚点失配。
+                logger.warning(
+                    "paper blueprint compilation did not compile; "
+                    "falling back to explicit request constraints: "
+                    "status=%s source_digest=%s issues=%s",
+                    compilation.result.status,
+                    compilation.source_digest,
+                    [
+                        {
+                            "code": getattr(issue, "code", ""),
+                            "field_path": getattr(issue, "field_path", ""),
+                            "detail": getattr(issue, "detail", ""),
+                        }
+                        for issue in getattr(compilation.result, "issues", []) or []
+                    ],
+                )
                 normalized = self._fallback_blueprint_from_request(
                     context,
                     explicit_count=explicit_count,
@@ -129,15 +181,14 @@ class PaperBlueprintAgent:
                     ),
                 )
             normalized = self._normalize_blueprint(normalized, context)
-            user_request = str(context.get("user_request") or "")
             normalized["units"] = self._constrain_units_to_explicit_coverage(
                 normalized.get("units", []),
-                coverage_topics=self._explicit_coverage_topics(user_request),
+                coverage_topics=self._explicit_coverage_topics(context),
             )
             normalized["units"] = self._normalize_hard_count_units(
                 normalized.get("units", []),
                 explicit_count=explicit_count,
-                user_request=user_request,
+                has_explicit_distribution=bool(explicit_distribution),
             )
             normalized["units"] = self._normalize_question_type_mix(
                 normalized.get("units", []),
@@ -146,6 +197,7 @@ class PaperBlueprintAgent:
                     if explicit_distribution
                     else self._explicit_question_types(context)
                 ),
+                has_explicit_distribution=bool(explicit_distribution),
             )
             units = [
                 BlueprintUnit(
@@ -176,6 +228,7 @@ class PaperBlueprintAgent:
             question_count_is_hard_constraint=(
                 explicit_count is not None
             ),
+            requires_explanation=bool(normalized.get("requires_explanation", False)),
             units=units,
             assumptions=normalized.get("assumptions", []),
             acceptance_criteria=normalized.get("acceptance_criteria", []),
@@ -256,6 +309,10 @@ class PaperBlueprintAgent:
             )
         scope = "、".join(topics)
         mode_label = "测试" if constraints.get("answer_mode") == "test" else "练习"
+        # 解析交付项只来自表单的独立开关，不从主题正文推断：主题正文是检索
+        # 数据，可能只是引用题面或随口提到解析，把它当交付条件会静默改变可用
+        # 候选范围（无解析的正式题会被整批挡在卷外）。
+        requires_explanation = bool(constraints.get("requires_explanation", False))
         blueprint = PaperBlueprint(
             blueprint_id=(
                 f"BLUEPRINT_SMART_{stable_scope_digest(scope)}_{uuid4().hex[:12]}"
@@ -268,6 +325,7 @@ class PaperBlueprintAgent:
             required_total_question_count=required_total,
             required_question_type_distribution=distribution,
             question_count_is_hard_constraint=True,
+            requires_explanation=requires_explanation,
             units=units,
             assumptions=[
                 "本蓝图由系统根据训练工坊表单直接编译，未让模型改写题量、题型、范围或难度。"
@@ -276,7 +334,13 @@ class PaperBlueprintAgent:
                 f"最终题量必须为{required_total}题。",
                 "最终题型数量必须与用户提交的结构化分布完全一致。",
                 "题目范围不得超出结构化主题或学情推荐知识点。",
-                "审核未通过时不得发布正式试卷。",
+                *(["每题必须附解析。"] if requires_explanation else []),
+                # 发布门槛只卡「审核有没有形成语义结论」。审核有结论但指出问题
+                # 时试卷照常发布，问题必须写进卷面的「审核说明」，不得隐藏：
+                # 候选不足时组卷会在缺口上按降级策略补题，这类卷子长期带着
+                # 非阻塞问题，一律扣下会让学习者拿不到任何东西。
+                "试卷发布只要求内容审核形成语义结论（审核器输出符合协议）；"
+                "审核指出的问题必须在卷面「审核说明」中如实列出。",
             ],
         )
         return envelope(context, "paper_blueprint_agent", "paper_blueprint", blueprint)
@@ -326,36 +390,55 @@ class PaperBlueprintAgent:
         explicit_count: int | None,
         explicit_types: list[str],
     ) -> dict[str, Any]:
+        """编译器未能提取合同时的最小可用蓝图。
+
+        这里不得再用正则从用户原话里切主题或题量：切出来的片段会被当作标题
+        直接展示给用户（此前把用户原话前 300 字加“练习试卷”当成了试卷标题）。
+        只使用系统级约束通道里的结构化值；没有值就保持中性默认，并在假设里
+        明确告知这是系统建议而不是用户要求。
+        """
+
         request = str(context.get("user_request") or "").strip()
-        scope_match = re.search(
-            r"(?:请)?(?:围绕|针对|关于)\s*(.+?)\s*(?=生成|出一|出个|组卷|制作|编制)",
-            request,
-        )
-        scope = (
-            scope_match.group(1).strip(" ，,；;。")
-            if scope_match
-            else request[:300].strip()
-        ) or "用户指定主题"
-        count = explicit_count or 1
+        constraints = context.get("exam_constraints", {}) or {}
+        scope = str(constraints.get("topic") or "").strip()
+        retrieval_scope = scope or request[:300].strip() or "用户指定主题"
         difficulty = cls._explicit_difficulty(context)
+        assumptions = [
+            "系统未能从试卷蓝图原稿中提取到可校验的执行合同，"
+            "已改用用户当前消息中可结构化确认的约束继续组卷。"
+        ]
+        if explicit_count is None:
+            count = cls._FALLBACK_UNCONSTRAINED_UNIT_QUESTION_COUNT
+            assumptions.append(
+                f"用户未明确写出整卷题量，单元先按{count}题的建议规模组卷，"
+                "该题量不是发布硬门槛。"
+            )
+        else:
+            count = explicit_count
         return {
-            "title": f"{scope}练习试卷",
-            "scope_summary": scope,
+            "title": f"{scope}练习试卷" if scope else "",
+            "scope_summary": scope or request[:1000].strip(),
             "duration_minutes": None,
             "total_score": None,
-            "assumptions": [
-                "系统仅按用户当前消息中的明确主题、题量、题型和难度约束继续组卷。"
-            ],
+            "assumptions": assumptions,
             "acceptance_criteria": [
-                f"最终题量为{count}题。",
-                "题目范围只覆盖用户当前指定主题。",
+                *(
+                    [f"最终题量为{count}题。"]
+                    if explicit_count is not None
+                    else []
+                ),
+                "题目范围只覆盖用户当前请求指定的主题。",
                 "答案与解析必须通过审核后才能发布。",
             ],
+            # 降级路径不再从用户原话里猜交付条件：编译器没能把解析要求
+            # 逐字提取回来时，按“不强制逐题解析”继续，并在假设里如实告知，
+            # 而不是用关键词猜测后静默改变可用候选的范围。
+            "requires_explanation": False,
             "units": [
                 {
-                    "knowledge_module": scope,
-                    "learning_objective": f"完成{scope}的基础练习",
-                    "retrieval_query": scope,
+                    "knowledge_module": retrieval_scope,
+                    "learning_objective": f"完成{retrieval_scope}的基础练习",
+                    "retrieval_query": retrieval_scope,
                     "question_type_preferences": list(explicit_types),
                     "required_question_count": count,
                     "candidate_limit": cls._candidate_limit(count),
@@ -458,14 +541,13 @@ class PaperBlueprintAgent:
 
     @staticmethod
     def _explicit_question_count(context: dict[str, Any]) -> int | None:
-        request = str(context.get("user_request") or "")
-        match = re.search(
-            r"(?:包含|共|至少|不少于|生成|出)?\s*(\d+)\s*(?:个|道)?"
-            r"(?:[^，。；\n]{0,20})?题(?:目)?",
-            request,
-        )
-        if match and int(match.group(1)) > 0:
-            return int(match.group(1))
+        """用户明确写出的整卷题量，只能来自系统级约束通道。
+
+        此前这里用正则从用户原话里抓第一个“数字+题”，把“10 道单选题、3 道
+        多选题、2 道简答题”的总题量错读成 10（正确值是 15）。自由文本的语义
+        判定由模型负责，程序只消费结构化字段。
+        """
+
         constraints = context.get("exam_constraints", {}) or {}
         value = constraints.get("question_count")
         if isinstance(value, int) and value > 0:
@@ -478,15 +560,8 @@ class PaperBlueprintAgent:
 
     @staticmethod
     def _explicit_duration_minutes(context: dict[str, Any]) -> int | None:
-        request = str(context.get("user_request") or "")
-        patterns = (
-            r"(?:作答|答题|考试|测试|时长|限时|时间)[^，。；\n\d]{0,8}(\d+)\s*分钟",
-            r"(\d+)\s*分钟[^，。；\n]{0,8}(?:作答|答题|考试|测试|时长|限时)",
-        )
-        for pattern in patterns:
-            match = re.search(pattern, request)
-            if match and int(match.group(1)) > 0:
-                return int(match.group(1))
+        """用户明确写出的作答时长，只能来自系统级约束通道。"""
+
         constraints = context.get("exam_constraints", {}) or {}
         value = constraints.get("duration_minutes")
         if isinstance(value, int) and value > 0:
@@ -499,24 +574,12 @@ class PaperBlueprintAgent:
 
     @staticmethod
     def _explicit_question_types(context: dict[str, Any]) -> list[str]:
-        request = str(context.get("user_request") or "")
-        aliases = (
-            ("单项选择题", ("单项选择题", "单选题")),
-            ("多项选择题", ("多项选择题", "多选题")),
-            ("判断题", ("判断题",)),
-            ("填空题", ("填空题",)),
-            ("简答题", ("简答题", "问答题")),
-            ("案例分析题", ("案例分析题", "病例分析题", "临床案例题")),
-        )
-        found = [
-            canonical
-            for canonical, names in aliases
-            if any(name in request for name in names)
-        ]
-        if "选择题" in request and not found:
-            found = ["单项选择题", "多项选择题"]
-        if found:
-            return found
+        """用户明确写出的题型，只能来自系统级约束通道。
+
+        此前这里扫描用户原话里的题型别名，属于关键词匹配做业务判断。自由
+        文本里的题型要求由蓝图模型理解，并由编译器从原稿提取回结构化合同。
+        """
+
         constraints = context.get("exam_constraints", {}) or {}
         raw_types = constraints.get("question_types") or constraints.get("question_type")
         if isinstance(raw_types, str):
@@ -577,37 +640,21 @@ class PaperBlueprintAgent:
         return normalized
 
     @staticmethod
-    def _explicit_coverage_topics(user_request: str) -> list[str]:
-        """Extract the user's closed coverage list without inheriting stale constraints."""
-        match = re.search(
-            r"覆盖\s*(.+?)(?=；|;|。|\n|必须|要求|并提供|且提供|$)",
-            str(user_request or ""),
+    def _explicit_coverage_topics(context: dict[str, Any]) -> list[str]:
+        """用户明确写出的封闭覆盖清单，只能来自系统级约束通道。
+
+        此前这里用正则从用户原话里切“覆盖 A、B、C”，属于关键词匹配做业务
+        判断：句子结构稍有不同就会切错，而且切出来的清单会整体替换掉模型
+        产出的蓝图单元。自由文本的覆盖范围由蓝图模型负责。
+        """
+
+        constraints = context.get("exam_constraints", {}) or {}
+        topics = constraints.get("focus_topics") or constraints.get(
+            "coverage_topics"
         )
-        if not match:
-            return []
-        values = [
-            item.strip(" ，、和及与")
-            for item in re.split(r"[、，,]|(?:和|及|与)", match.group(1))
-            if item.strip(" ，、和及与")
-        ]
-        if len(values) < 2:
-            return []
-        named_anchor = next(
-            (
-                anchor
-                for anchor in re.findall(r"[\u4e00-\u9fff]{2,12}(?:汤|散|丸|饮|方)", values[0])
-                if anchor
-            ),
-            "",
-        )
-        topics: list[str] = []
-        for value in values:
-            topic = value
-            if named_anchor and named_anchor not in topic:
-                topic = f"{named_anchor}{topic}"
-            if topic not in topics:
-                topics.append(topic)
-        return topics
+        if isinstance(topics, str):
+            topics = [topics]
+        return [str(item).strip() for item in topics or [] if str(item).strip()]
 
     @staticmethod
     def _constrain_units_to_explicit_coverage(
@@ -657,12 +704,25 @@ class PaperBlueprintAgent:
 
     @staticmethod
     def _normalize_question_type_mix(
-        units: list[dict[str, Any]], *, explicit_types: list[str]
+        units: list[dict[str, Any]],
+        *,
+        explicit_types: list[str],
+        has_explicit_distribution: bool = False,
     ) -> list[dict[str, Any]]:
+        """把用户明确的题型要求摊到各单元。
+
+        只有“说了题型但没给分布”时才整体覆盖，此时每个单元都可以是这些题型。
+        若整卷分布本身是结构化的（例如 10 单选、3 多选、2 简答），蓝图模型已经
+        按题型把题数分到各单元，再整体覆盖会把正确分布抹平——组卷阶段据此检索
+        和生成，反而更难满足整卷题型门禁。
+        """
+
         normalized = [dict(unit) for unit in units]
         if not normalized:
             return normalized
         if explicit_types:
+            if has_explicit_distribution:
+                return normalized
             for unit in normalized:
                 unit["question_type_preferences"] = list(explicit_types)
             return normalized
@@ -803,20 +863,12 @@ class PaperBlueprintAgent:
 
     @staticmethod
     def _explicit_difficulty(context: dict[str, Any]) -> int | None:
-        """Extract the user's explicit numeric difficulty (1-5) if any.
+        """用户明确写出的数字难度（1-5），只能来自系统级约束通道。
 
-        仅接受用户明确写出的数字难度（阿拉伯或汉字数字均可）；
-        “简单/中等/困难”等模糊词或画像中的旧难度偏好一律不推断、不默认。
+        “简单/中等/困难”等模糊词或画像中的旧难度偏好一律不推断、不默认；
+        自由文本里的难度描述由蓝图模型按自己的技能规则处理。
         """
-        request = str(context.get("user_request") or "")
-        patterns = (
-            r"难度\s*([1-5一二三四五])\s*(?:级|星|档)?",
-            r"([1-5一二三四五])\s*(?:级|星)\s*难度",
-        )
-        for pattern in patterns:
-            match = re.search(pattern, request)
-            if match:
-                return PaperBlueprintAgent._chinese_digit(match.group(1))
+
         constraints = context.get("exam_constraints", {}) or {}
         for key in ("difficulty", "target_difficulty", "difficulty_level"):
             value = constraints.get(key)
@@ -965,6 +1017,7 @@ class PaperBlueprintAgent:
             ),
             "duration_minutes": duration,
             "total_score": total_score,
+            "requires_explanation": bool(raw.get("requires_explanation", False)),
             "units": normalized_units,
             "assumptions": assumptions,
             "acceptance_criteria": acceptance,
@@ -1022,34 +1075,98 @@ class PaperBlueprintAgent:
         return PaperBlueprintAgent._chinese_digit(match.group())
 
     @staticmethod
+    def _with_unit_question_count(
+        unit: dict[str, Any], required_question_count: int
+    ) -> dict[str, Any]:
+        """写回单元题数，并把检索容量提到足以覆盖它。"""
+
+        normalized = dict(unit)
+        required = max(1, required_question_count)
+        normalized["required_question_count"] = required
+        normalized["candidate_limit"] = min(
+            50,
+            max(
+                int(normalized.get("candidate_limit") or 1),
+                required + 2,
+                required * 2,
+            ),
+        )
+        return normalized
+
+    @staticmethod
+    def _scale_units_to_explicit_count(
+        units: list[dict[str, Any]],
+        explicit_count: int,
+        *,
+        weights: list[int] | None = None,
+    ) -> list[dict[str, Any]]:
+        """按权重把整卷题量分到各单元，合计严格等于整卷题量。
+
+        每个单元至少 1 题（``BlueprintUnit.required_question_count`` 要求正
+        整数），因此整卷题量小于单元数时无法逐单元分配：只保留前
+        ``explicit_count`` 个单元。宁可少一个单元，也不要留下一个永远无法
+        满足的题量矛盾——组卷把整卷题量和逐单元题量同时当硬约束，两者不等
+        时任何组卷结果都过不了门禁，学习者会一直看到“仍有未满足的硬约束”。
+
+        剩余题量按权重用最大余数法分配，权重缺省取各单元现有的题数，因此
+        “哪个单元更重”的形状被保留；权重相等时退化为平均分配。
+        """
+
+        if not units or explicit_count < 1:
+            return units
+        if len(units) > explicit_count:
+            logger.warning(
+                "blueprint declares more units than the requested question count; "
+                "keeping the leading units unit_count=%s explicit_count=%s",
+                len(units),
+                explicit_count,
+            )
+            units = units[:explicit_count]
+        if weights is None:
+            weights = [
+                max(1, int(unit.get("required_question_count") or 1))
+                for unit in units
+            ]
+        remaining = explicit_count - len(units)
+        total_weight = sum(weights) or len(weights)
+        quotas = [remaining * weight / total_weight for weight in weights]
+        shares = [int(quota) for quota in quotas]
+        order = sorted(
+            range(len(units)),
+            key=lambda index: (-(quotas[index] - shares[index]), index),
+        )
+        for index in order[: remaining - sum(shares)]:
+            shares[index] += 1
+        return [
+            PaperBlueprintAgent._with_unit_question_count(unit, 1 + shares[index])
+            for index, unit in enumerate(units)
+        ]
+
+    @staticmethod
     def _normalize_hard_count_units(
         units: list[dict[str, Any]],
         *,
         explicit_count: int | None,
-        user_request: str,
+        has_explicit_distribution: bool,
     ) -> list[dict[str, Any]]:
+        """把整卷题量落实成各单元题数，并保证单元合计等于整卷题量。
+
+        用户没有给出整卷题量时原样返回：单元题数就是模型的建议值，不是发布
+        硬门槛。给出整卷题量时，单元合计必须等于它，否则整卷题量硬约束与逐
+        单元题量硬约束永远无法同时满足，学习者会一直看到“仍有未满足的硬约
+        束”，而且换任何一份组卷结果都消除不掉。
+
+        分型数量存在时不做平均：蓝图模型已经按题型把题数分配到各单元，平均
+        会把正确分布改坏，因此改为按模型的相对比例缩放（见
+        ``_scale_units_to_explicit_count``），既保留分布形状又让合计对上。
+        """
+
         if not units or explicit_count is None:
             return units
-        unit_count = len(units)
-        base, remainder = divmod(explicit_count, unit_count)
-        choice_specialty = "选择题" in user_request
-        normalized: list[dict[str, Any]] = []
-        for index, source in enumerate(units):
-            unit = dict(source)
-            required = base + (1 if index < remainder else 0)
-            unit["required_question_count"] = max(1, required)
-            unit["candidate_limit"] = min(
-                50,
-                max(
-                    int(unit.get("candidate_limit") or 1),
-                    unit["required_question_count"] + 2,
-                    unit["required_question_count"] * 2,
-                ),
+        if has_explicit_distribution:
+            return PaperBlueprintAgent._scale_units_to_explicit_count(
+                units, explicit_count
             )
-            if choice_specialty:
-                unit["question_type_preferences"] = [
-                    "单项选择题",
-                    "多项选择题",
-                ]
-            normalized.append(unit)
-        return normalized
+        return PaperBlueprintAgent._scale_units_to_explicit_count(
+            units, explicit_count, weights=[1] * len(units)
+        )

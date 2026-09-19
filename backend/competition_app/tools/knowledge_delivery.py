@@ -48,6 +48,13 @@ from competition_app.services.document_parsing import parse_mineru
 _QUESTION_SEARCH_LOCK = threading.Lock()
 _LOGGER = logging.getLogger(__name__)
 
+# 一次知识点检索同时产出两种范围：证据只用头部命中，题目桥接用宽召回。
+# 证据不能按宽召回取（描述性查询下正确知识点常被同名/通用知识点挤出前 5 位）；
+# 桥接也不能只给头部命中（同章节里名字与查询字面不同的知识点永远进不了头部，
+# 线上实测某单元因此只召回 4 道题，而单元需要 40 道）。
+_EVIDENCE_KP_LIMIT = 10
+_KP_BRIDGE_RECALL_LIMIT = 200
+
 
 def _pipeline_failure(run_dir: Path, completed: Any, stage: str) -> RuntimeError:
     # Raw provider/child stderr may contain credentials, signed URLs or document text.
@@ -140,6 +147,55 @@ def _iter_jsonl(path: Path) -> Iterable[dict[str, Any]]:
                     yield row
 
 
+def _iter_json_array(path: Path, *, chunk_size: int = 1 << 20) -> Iterable[Any]:
+    """逐条迭代 JSON 数组文件，不把整个数组读进内存。
+
+    公共题库是 102 MB 的 JSON 数组。``json.loads`` 会把它整体解析成对象图，
+    实测峰值 769 MB、常驻 380 MB；服务进程本身已占 1.63 GB，而机器可用内存
+    只有约 1.3 GB。只建题干签名集合时用流式读取，峰值 60 MB、常驻 35 MB，
+    签名结果完全一致（92,041 条）。
+    """
+    decoder = json.JSONDecoder()
+    with path.open("r", encoding="utf-8-sig") as handle:
+        buffer = ""
+        while True:
+            chunk = handle.read(chunk_size)
+            if not chunk:
+                return
+            buffer += chunk
+            stripped = buffer.lstrip()
+            if not stripped:
+                buffer = ""
+                continue
+            if stripped[0] != "[":
+                raise ValueError(f"expected a JSON array: {path}")
+            buffer = stripped[1:]
+            break
+        while True:
+            buffer = buffer.lstrip()
+            while buffer.startswith(","):
+                buffer = buffer[1:].lstrip()
+            if buffer.startswith("]"):
+                return
+            if not buffer:
+                chunk = handle.read(chunk_size)
+                if not chunk:
+                    return
+                buffer = chunk
+                continue
+            try:
+                value, end = decoder.raw_decode(buffer)
+            except ValueError:
+                # 缓冲不足一条完整记录，继续读取后再试。
+                chunk = handle.read(chunk_size)
+                if not chunk:
+                    raise
+                buffer += chunk
+                continue
+            yield value
+            buffer = buffer[end:]
+
+
 def _normalize_match_text(text: str) -> str:
     """NFKC 全角→半角并移除空白与常见标点，用于知识点名/查询的宽容匹配。
 
@@ -153,19 +209,71 @@ def _normalize_match_text(text: str) -> str:
     ).lower()
 
 
+def _subseq_match(needle: str, haystack: str) -> tuple[float, int]:
+    """贪心子序列匹配：返回 (匹配比例, 匹配字符跨度)。
+
+    跨度是首个与末个匹配字符之间的距离 + 1。只要求“按序出现”不足以说明字段
+    真的出现在查询里：在长查询上，任何短字段的字符几乎都能按序找到，却可能
+    散落在整句各处（线上实测“寒温分治”的四个字分散在 75 字查询的不同位置，
+    仍按 4/4 匹配满）。调用方据跨度判断字符是否聚集。
+    """
+    if not needle or not haystack:
+        return 0.0, 0
+    matched = 0
+    first = -1
+    last = -1
+    for index, char in enumerate(haystack):
+        if matched < len(needle) and char == needle[matched]:
+            if first < 0:
+                first = index
+            last = index
+            matched += 1
+    if matched == 0:
+        return 0.0, 0
+    return matched / len(needle), last - first + 1
+
+
 def _subseq_ratio(needle: str, haystack: str) -> float:
     """needle 字符按序出现在 haystack 中的比例（贪心子序列）。
 
     用于字段与查询仅相差插入词/修饰词的情形，如 kp“肺脾肾在津液代谢中的作用”
     对查询“肺脾肾在津液代谢中的综合调节作用”。返回 0.0~1.0。
     """
-    if not needle or not haystack:
-        return 0.0
-    matched = 0
-    for char in haystack:
-        if matched < len(needle) and char == needle[matched]:
-            matched += 1
-    return matched / len(needle)
+    return _subseq_match(needle, haystack)[0]
+
+
+def _specificity_weight(document_frequency: int) -> float:
+    """知识点字段的特异性权重（逆文档频率的平滑形式）。
+
+    跨学科重复出现的目录式字段不是任何主题的判别特征：线上实测“治疗原则”
+    同时是 38 个不同学科的知识点名，长查询一旦含这四个字就会把它们全部拉成
+    同分并挤占名额。权重只由字段在知识点库中的实际分布决定，不依赖任何学科
+    的措辞，因此不是关键词表。只在一处出现的知识点名权重为 1.0，不受影响。
+    """
+    return 1.0 / (1.0 + math.log(max(1, document_frequency)))
+
+
+def _segment_coverage(field: str, segments: list[str]) -> float:
+    """命中字段与它所在主题片段的覆盖比例（0.0~1.0）。
+
+    查询按空白与标点切分成主题片段。字段若只占所在片段的一小部分，说明它是
+    偶然子串而不是该片段的主题：75 字整句里的“鉴别”“治疗”“阳病”全库各只有
+    一个知识点叫这个名字（逆文档频率无法降权），但它们只是被长句顺带含住。
+    反向也成立：片段是字段的一部分时说明查询给出的正是该知识点的前缀
+    （“表里先后” -> “表里先后治则”），按片段占比计分。
+
+    反向匹配只认三个字以上的片段。两个字的名词在中医术语里歧义过大，
+    “中风”在伤寒论指外感风邪、在金匮要略指内科中风病，反向扩展会把
+    “中风病”“心中风”“肠伤寒”这类同名异义的知识点一并拉进来，而这些
+    知识点并不覆盖查询里的其他片段。没有任何片段与字段互相包含时返回 0.0。
+    """
+    best = 0.0
+    for segment in segments:
+        if field in segment:
+            best = max(best, len(field) / len(segment))
+        elif len(segment) >= 3 and segment in field:
+            best = max(best, len(segment) / len(field))
+    return best
 
 
 def clean_book_name(book: str) -> str:
@@ -220,7 +328,9 @@ class DeliveryKnowledgeMapStore:
         self._web_questions_ready = False
         self.kps: dict[str, dict[str, Any]] = {}
         self.tree: dict[str, dict[str, list[dict[str, Any]]]] = {}
-        self._kp_search_entries_cache: list[tuple[dict[str, Any], str, list[str], set[str], str, list[str]]] | None = None
+        self._kp_search_entries_cache: list[tuple[dict[str, Any], str, list[str], set[str], str, list[str], int]] | None = None
+        # 字段名 -> 有多少个知识点叫这个名字（构建检索条目时一并统计）。
+        self._kp_field_frequency_cache: dict[str, int] = {}
         self._kp_chunk_name_cache: dict[str, int] = {}
         self._kp_group_identical_cache: dict[tuple[str, ...], bool] = {}
         self.questions_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -411,10 +521,11 @@ class DeliveryKnowledgeMapStore:
             ],
         }
 
-    def _kp_search_entries(self) -> list[tuple[dict[str, Any], str, list[str], set[str], str, list[str]]]:
+    def _kp_search_entries(self) -> list[tuple[dict[str, Any], str, list[str], set[str], str, list[str], int]]:
         self.ensure_hierarchy()
         if self._kp_search_entries_cache is None:
-            entries: list[tuple[dict[str, Any], str, list[str], set[str], str, list[str]]] = []
+            entries: list[tuple[dict[str, Any], str, list[str], set[str], str, list[str], int]] = []
+            field_frequency: dict[str, int] = defaultdict(int)
             for kp in self.kps.values():
                 fields = [kp.get("kp_lv3"), kp.get("other_name"), kp.get("kp_lv2"), kp.get("kp_lv1")]
                 text = re.sub(r"\s+", "", " ".join(str(value or "") for value in fields)).lower()
@@ -435,9 +546,29 @@ class DeliveryKnowledgeMapStore:
                         normed = _normalize_match_text(part)
                         if len(normed) >= 2:
                             norm_fields.append(normed)
-                entries.append((kp, text, normalized_fields, terms, _normalize_match_text(text), norm_fields))
+                # 自己的名字在 norm_fields 中的个数。norm_fields 按 fields 顺序
+                # 拼接（kp_lv3 -> other_name -> kp_lv2 -> kp_lv1），所以前 own_count
+                # 项恰好来自 kp_lv3；resolve_topic 的首词满分提升只认这一段（若
+                # 调整 fields 顺序，必须同步调整这里）。
+                own_count = sum(
+                    1
+                    for part in re.split(r"[；;、,]+", str(kp.get("kp_lv3") or ""))
+                    if len(_normalize_match_text(part)) >= 2
+                )
+                # 字段频次：同一知识点对同一字段只计一次，度量的是“多少个
+                # 知识点叫这个名字”，用于泛化目录词降权（见 _specificity_weight）。
+                for field in set(norm_fields):
+                    field_frequency[field] += 1
+                entries.append((kp, text, normalized_fields, terms, _normalize_match_text(text), norm_fields, own_count))
             self._kp_search_entries_cache = entries
+            self._kp_field_frequency_cache = dict(field_frequency)
         return self._kp_search_entries_cache
+
+    def _kp_field_frequency(self) -> dict[str, int]:
+        """字段名 -> 知识点个数；确保检索条目已构建后再读取。"""
+
+        self._kp_search_entries()
+        return self._kp_field_frequency_cache
 
     def _kp_chunk_name_score(self, kp: dict[str, Any]) -> int:
         """同名重复知识点择优：统计 kp 名称/别名在其绑定切片文本中的出现次数。
@@ -509,33 +640,61 @@ class DeliveryKnowledgeMapStore:
             if segment.strip() and segment.strip().split()
         }
         query_terms = set(re.findall(r"[\u4e00-\u9fff]{2,}|[a-z0-9_]{2,}", compact))
+        frequency = self._kp_field_frequency()
+        specificity = {
+            field: _specificity_weight(count) for field, count in frequency.items()
+        }
+        # 主题片段：查询按空白与标点切分后各自归一化（结构化切分，不解释词义）。
+        segments = [
+            _normalize_match_text(part)
+            for part in re.split(r"[\s；;。，,、（）()：:！!？?]+", query)
+        ]
+        segments = [part for part in segments if len(part) >= 2] or [compact_norm]
         ranked: list[tuple[float, dict[str, Any]]] = []
-        for kp, text, normalized_fields, terms, norm_text, norm_fields in self._kp_search_entries():
+        for kp, text, normalized_fields, terms, norm_text, norm_fields, own_count in self._kp_search_entries():
             exact = 1.0 if compact_norm and compact_norm in norm_text else 0.0
             # A model query commonly contains several entities plus qualifiers,
             # e.g. “四君子汤……理中丸……核心区别”. Resolve every named KP instead
             # of requiring the whole generated query to equal one catalog row.
-            named = max(
-                (
-                    (
-                        1.0 - primary_terms[field] * 0.001
-                        if field in primary_terms
-                        else 0.90 + min(0.08, len(field) * 0.01) - index * 0.01
+            # 命名字段的得分再乘两个判别因子：特异性（目录式字段如“治疗原则”
+            # 跨 33 个学科同名，不是判别特征）与片段覆盖率（长整句里的 2 字
+            # 碎片只是偶然子串，不占该片段的主题）。
+            named = 0.0
+            for index, field in enumerate(norm_fields):
+                if len(field) < 2:
+                    continue
+                coverage = _segment_coverage(field, segments)
+                if coverage <= 0:
+                    continue
+                # 首词满分提升只给知识点自己的名字（index < own_count）。别名与
+                # 上级章节/教材名往往是“书名”或学科名这类大颗粒概念：线上实测
+                # 检索词首词“伤寒论”命中《伤寒杂病论》等条目的别名，三个文献学
+                # 知识点并列 1.0000，把 108 道成书年代、版本流传的题按题目 ID
+                # 顺序灌满召回配额。别名仍照常参与召回，只是走下面的通用打分。
+                if field in primary_terms and index < own_count:
+                    candidate = 1.0 - primary_terms[field] * 0.001
+                else:
+                    candidate = (
+                        (0.90 + min(0.08, len(field) * 0.01) - index * 0.01)
+                        * specificity.get(field, 1.0)
+                        * coverage
                     )
-                    for index, field in enumerate(norm_fields)
-                    if len(field) >= 2 and field in compact_norm
-                ),
-                default=0.0,
-            )
+                named = max(named, candidate)
             # 子序列匹配：字段与查询仅相差插入词（如“肺脾肾…中的作用” vs
             # “肺脾肾…综合调节作用”）时，子串匹配失效；若字段按序基本完整
-            # 出现在查询中则给部分分。
+            # 出现在查询中则给部分分。匹配字符还必须聚集：只看比例时，任何与
+            # 查询共享首二字的字段都能在长查询里凑满匹配。
             subseq = 0.0
             for field in norm_fields:
-                if len(field) >= 4 and field[:2] in compact_norm:
-                    ratio = _subseq_ratio(field, compact_norm)
-                    if ratio >= 0.8:
-                        subseq = max(subseq, 0.80 + 0.15 * ratio)
+                if len(field) < 4 or field[:2] not in compact_norm:
+                    continue
+                ratio, span = _subseq_match(field, compact_norm)
+                if ratio < 0.8 or len(field) / max(1, span) < 0.6:
+                    continue
+                subseq = max(
+                    subseq,
+                    (0.80 + 0.15 * ratio) * specificity.get(field, 1.0),
+                )
             overlap = len(query_terms & terms) / max(1, len(query_terms))
             score = max(exact, named, subseq, overlap * 0.8)
             if score > 0:
@@ -618,6 +777,89 @@ class DeliveryKnowledgeMapStore:
         return self.paths.question_runtime / "web_ingested" / "questions.jsonl"
 
     @staticmethod
+    def web_answer_text(row: Any) -> str:
+        """网络题的标准答案文本；没有答案时返回空串。
+
+        答案字段是模型从网页原文里抽出来的，可能是字符串，也可能是列表
+        （多选题）；存量行还可能是别的类型。判定「有没有答案」必须把 ``[]``
+        与 ``""`` 都算作没有，否则空答案题会以「已入库」的身份进入学习者的
+        练习。
+
+        为什么需要这个判定：网络题抽取器的契约是「原文没答案时 answer 必须
+        为空，不得猜答案」，所以空答案是**合规输出**而不是脏数据；但一道没有
+        标准答案的题既不能判分也给不出解析，交付给学习者就是坏题。实测一批
+        59 道网络题里 54 道是空答案。
+        """
+
+        if not isinstance(row, dict):
+            return ""
+        value = row.get("answer")
+        if value is None or value == "":
+            value = row.get("答案")
+        if isinstance(value, (list, tuple)):
+            return " ".join(
+                str(part).strip() for part in value if str(part).strip()
+            )
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    def web_question_id(self, knowledge_point_name: str, stem: str) -> str:
+        """网络题的稳定题目标识：写入、读取、组卷三处共用同一口径。
+
+        同一道网络题在入库、读回、构造候选时必须得到同一个 ID。口径不统一
+        会造成静默失配：``register_web_questions`` 曾经只落盘题干与答案，而
+        ``KnowledgeBaseAgent._web_question_candidate`` 要求 ``question_id``
+        非空、否则返回 None——线上实测 25 道已入库的网络题因此在构造候选时
+        全部被丢弃（``built_candidates=0 none_candidates=25``），入库成功却
+        一道题都进不了卷。
+        """
+        key = self._normalized_learning_label(knowledge_point_name)
+        normalized_stem = str(stem or "").strip()
+        if not key or not normalized_stem:
+            return ""
+        digest = hashlib.sha1(
+            f"{key}|{normalized_stem}".encode("utf-8")
+        ).hexdigest()
+        return f"WEBQ_{digest[:16]}"
+
+    def web_questions_for(self, knowledge_point_name: str) -> list[dict[str, Any]]:
+        """已入库的网络题，按知识点名称归一化后取回（副本，调用方可改）。"""
+        self.ensure_web_questions()
+        key = self._normalized_learning_label(knowledge_point_name)
+        if not key:
+            return []
+        return [dict(row) for row in self.web_questions_by_kp.get(key, [])]
+
+    def ensure_public_stem_signatures(self) -> None:
+        """构建公共题库题干签名集合（入库去重用），不建题目索引。
+
+        ``ensure_questions`` 会把 93k 条题目按知识点建成索引并常驻（实测峰值
+        769 MB、常驻 +380 MB），而网络题入库只需要题干签名做重复判定。这里
+        流式读取题库、只保留签名，实测峰值 60 MB、常驻 +35 MB，签名集合与
+        ``ensure_questions`` 完全一致。
+        """
+        if self._public_stem_signatures:
+            return
+        with self._lock:
+            if self._public_stem_signatures:
+                return
+            path = self.paths.public_data / "01_question_bank" / "formatted_questions.json"
+            signatures: set[str] = set()
+            for row in _iter_json_array(path):
+                if not isinstance(row, dict):
+                    continue
+                signature = self._normalized_stem(
+                    row.get("question_content")
+                    or row.get("题目内容")
+                    or row.get("stem")
+                    or ""
+                )
+                if signature:
+                    signatures.add(signature)
+            self._public_stem_signatures = signatures
+
+    @staticmethod
     def _normalized_stem(stem: Any) -> str:
         """Normalize a question stem for duplicate detection."""
         return unicodedata.normalize(
@@ -642,8 +884,14 @@ class DeliveryKnowledgeMapStore:
                 key = self._normalized_learning_label(kp_name)
                 if not key:
                     continue
-                index[key].append(question)
                 stem = question.get("stem") or question.get("题干") or ""
+                entry = dict(question)
+                if not str(entry.get("question_id") or "").strip():
+                    # 历史行（以及绕过 register_web_questions 直接写入的行）可能
+                    # 没有题目标识。读取时按写入侧同一口径补算，否则整条记录会
+                    # 因为缺 ID 在构造候选时被静默丢弃。
+                    entry["question_id"] = self.web_question_id(kp_name, stem)
+                index[key].append(entry)
                 signature = self._normalized_stem(stem)
                 if signature:
                     signatures.add(signature)
@@ -664,7 +912,9 @@ class DeliveryKnowledgeMapStore:
         kp_name = str(knowledge_point_name or "").strip()
         if not kp_name or not questions:
             return 0
-        self.ensure_questions()
+        # 去重只需要公共题库的题干签名。用 ensure_questions() 会顺带把整个
+        # 题库建成索引并常驻，代价远大于收益（见 ensure_public_stem_signatures）。
+        self.ensure_public_stem_signatures()
         self.ensure_web_questions()
         with self._lock:
             key = self._normalized_learning_label(kp_name)
@@ -677,13 +927,22 @@ class DeliveryKnowledgeMapStore:
                 stem = question.get("stem") or question.get("题干") or ""
                 if not str(stem).strip():
                     continue
+                if not self.web_answer_text(question):
+                    # 兜底。入库侧已经挡住空答案，但存量 jsonl 与绕过入库侧的
+                    # 直接调用仍可能带来没有标准答案的题。
+                    continue
                 signature = self._normalized_stem(stem)
                 if not signature or signature in self._public_stem_signatures:
                     continue
                 if signature in self._web_stem_signatures:
                     continue
+                question_id = self.web_question_id(kp_name, stem)
+                if not question_id:
+                    continue
                 self._web_stem_signatures.add(signature)
-                deduplicated.append(dict(question))
+                # 题目标识必须落盘：读取侧要求 question_id 非空，只在内存里
+                # 补算会让重启后的行全部不可用。
+                deduplicated.append({**question, "question_id": question_id})
             if not deduplicated:
                 return 0
             self.web_question_runtime.parent.mkdir(parents=True, exist_ok=True)
@@ -725,7 +984,15 @@ class DeliveryKnowledgeMapStore:
         key = self._normalized_learning_label(name)
         if not key:
             return None
-        questions = self.web_questions_by_kp.get(key, [])
+        # 只算有标准答案的题：没有答案的题既不能判分也给不出解析。这里同时
+        # 决定了后面切片的基数与「题量够不够」的判定——若先按全量判定、再
+        # 从含空答案的列表里切片，取出的题会少而判定却认为够，实测会直接把
+        # 空答案题注册成学习者要做的练习。
+        questions = [
+            row
+            for row in self.web_questions_by_kp.get(key, [])
+            if self.web_answer_text(row)
+        ]
         if len(questions) < required_question_count:
             return None
         kp_id = f"WEB_{hashlib.sha1(key.encode('utf-8')).hexdigest()[:12]}"
@@ -734,9 +1001,7 @@ class DeliveryKnowledgeMapStore:
             stem = str(row.get("stem") or row.get("题干") or "").strip()
             if not stem:
                 continue
-            question_id = (
-                f"WEBQ_{hashlib.sha1(f'{key}|{stem}'.encode('utf-8')).hexdigest()[:16]}"
-            )
+            question_id = self.web_question_id(name, stem)
             normalized_questions.append(
                 {
                     "question_id": question_id,
@@ -766,6 +1031,7 @@ class DeliveryKnowledgeMapStore:
             "kp_id": kp_id,
             "knowledge_point_name": name,
             "questions": normalized_questions,
+            # 该知识点下有标准答案的网络题总数（不是本次交付的题数）。
             "question_count": len(questions),
             "video_count": 0,
         }
@@ -1342,16 +1608,17 @@ class KnowledgeDeliveryBackend:
         return await asyncio.to_thread(self._build_local_evidence_pack, query, limit)
 
     def _build_local_evidence_pack(self, query: str, limit: int) -> EvidencePack:
-        # 解析候选放宽到 10 个：描述性查询下正确知识点常被同名/通用知识点挤出
-        # 前 5 位（如“比较法”0.93 排在 8 个“同病异治”0.94 之后），证据条数仍由
-        # 外层 limit 截断，多解析的 kp 不会带来额外证据噪声。
-        matches = self.map.resolve_topic(query, limit=10)
+        # 检索一次、两种用途：证据取头部命中，题目桥接取全部召回。头部命中的
+        # 取舍标准是「适合做教材证据」（描述性查询下正确知识点常被同名/通用
+        # 知识点挤出前 5 位），而桥接的取舍标准是「覆盖单元范围」（同章节里名字
+        # 与查询字面不同的知识点进不了头部）。两者不能共用同一个截断。
+        matches = self.map.resolve_topic(query, limit=_KP_BRIDGE_RECALL_LIMIT)
         if not matches:
             raise LookupError(f"knowledge point could not be resolved for query: {query}")
         evidence: list[EvidenceItem] = []
         resolved: list[str] = []
         resolved_names: dict[str, str] = {}
-        for match in matches:
+        for match in matches[:_EVIDENCE_KP_LIMIT]:
             kp_id = str(match["kp_id"])
             detail = self.map.detail(
                 kp_id,
@@ -1420,6 +1687,9 @@ class KnowledgeDeliveryBackend:
             evidence_pack_id=f"EP_{uuid4().hex}",
             query=str(matches[0]["name"]),
             resolved_kp_ids=list(dict.fromkeys(resolved)),
+            bridge_kp_ids=list(
+                dict.fromkeys(str(match["kp_id"]) for match in matches)
+            ),
             resolved_kp_names=resolved_names,
             evidence_items=evidence[:limit],
             risk_notes=["仅用于中医药教学训练，不构成诊疗建议。"],

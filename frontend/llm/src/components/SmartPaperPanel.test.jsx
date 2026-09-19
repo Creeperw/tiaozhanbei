@@ -102,4 +102,55 @@ describe('SmartPaperPanel', () => {
       expect.objectContaining({ difficulty: 3, topic: '四君子汤组成' }),
     );
   });
+
+  it('lets the user require per-question explanations and passes it through', async () => {
+    startSmartPaperRun.mockResolvedValue({
+      paperId: 'P_GEN_2',
+      result: { status: 'success', task_type: 'paper_generation', ui_actions: [] },
+      error: '',
+      source: null,
+    });
+    loadPaper.mockResolvedValue({
+      paper: { paper_id: 'P_GEN_2', title: '解析试卷', status: 'published', duration_minutes: 30 },
+      error: '',
+    });
+    render(<SmartPaperPanel />);
+
+    expect(screen.getByRole('heading', { name: /逐题解析/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '不需要' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '每题附解析' })).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: '每题附解析' }));
+
+    expect(screen.getByRole('button', { name: '每题附解析' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '不需要' })).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.change(screen.getByLabelText('专项练主题'), { target: { value: '太阳病篇' } });
+    fireEvent.click(screen.getByRole('button', { name: /生成试卷/ }));
+
+    expect(startSmartPaperRun).toHaveBeenCalledWith(
+      expect.objectContaining({ requiresExplanation: true, topic: '太阳病篇' }),
+    );
+  });
+
+  it('defaults to not requiring explanations', async () => {
+    startSmartPaperRun.mockResolvedValue({
+      paperId: 'P_GEN_3',
+      result: { status: 'success', task_type: 'paper_generation', ui_actions: [] },
+      error: '',
+      source: null,
+    });
+    loadPaper.mockResolvedValue({
+      paper: { paper_id: 'P_GEN_3', title: '默认试卷', status: 'published', duration_minutes: 30 },
+      error: '',
+    });
+    render(<SmartPaperPanel />);
+
+    fireEvent.change(screen.getByLabelText('专项练主题'), { target: { value: '四君子汤组成' } });
+    fireEvent.click(screen.getByRole('button', { name: /生成试卷/ }));
+
+    expect(startSmartPaperRun).toHaveBeenCalledWith(
+      expect.objectContaining({ requiresExplanation: false }),
+    );
+  });
 });

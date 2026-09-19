@@ -530,6 +530,19 @@ async def test_valid_paper_is_not_released_when_audit_format_drifts() -> None:
     # 格式漂移等于没有形成审核结论，不得发布；转局部返修后重新审核。
     assert result.payload.decision == "revise"
     assert any("格式" in finding for finding in result.payload.findings)
+    # decision 只反映确定性硬门禁。发布侧必须能区分“审核判定不合格”与
+    # “审核没能完成”，否则返修后的 pass 归一化会把失效审核当成放行依据。
+    assert result.payload.semantic_verdict_available is False
+
+
+@pytest.mark.asyncio
+async def test_successful_semantic_audit_reports_a_usable_verdict() -> None:
+    """正常审核必须标记为“拿到了语义结论”，否则真结论会被当成审核失效。"""
+
+    result = await AuditAgent(PassingAuditModel()).run(_audit_context(2, required_count=2))
+
+    assert result.payload.decision == "pass"
+    assert result.payload.semantic_verdict_available is True
 
 
 @pytest.mark.asyncio
@@ -908,3 +921,26 @@ async def test_paper_audit_unit_local_drift_blocks_whole_paper_publication() -> 
     # 转局部返修（重跑装配节点）后重新审核，而不是停在等待人工。
     assert result.payload.decision == "revise"
     assert any("格式" in finding for finding in result.payload.findings)
+
+
+def test_paper_location_labels_use_question_numbers_not_internal_ids() -> None:
+    """位置标签是卷面上的说法：学习者只认题号，看不到也用不上内部 ID。
+
+    标签会随审核问题一起出现在卷面说明里（见 ``_paper_audit_notice``），
+    所以标签本身不能带题目 ID、单元 ID。
+    """
+
+    context = _audit_context(2, required_count=2)
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+
+    labels = {
+        location.location_key: location.display_label
+        for location in AuditAgent._paper_location_catalog(blueprint, paper)
+    }
+
+    assert labels["paper:question:Q1"] == "第1题"
+    assert labels["paper:answer:Q2"] == "第2题的答案"
+    assert labels["paper:explanation:Q1"] == "第1题的解析"
+    assert labels["paper:unit:U1"] == "第1个蓝图单元"
+    assert all("Q1" not in label and "U1" not in label for label in labels.values())

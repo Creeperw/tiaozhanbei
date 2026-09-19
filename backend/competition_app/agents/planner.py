@@ -11,6 +11,7 @@ from competition_app.contracts.planning_request import PlanningRequestScope
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.execution import (
     DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+    PAPER_ASSEMBLY_STEP_TIMEOUT_SECONDS,
     ExecutionPlan,
     ExecutionStep,
     model_step_timeout_seconds,
@@ -2072,7 +2073,10 @@ class PlannerAgent:
                         agent="paper_assembly_agent",
                         action="assemble_exam_paper",
                         depends_on=["paper_blueprint", "question_pool"],
-                        timeout_seconds=2400.0,
+                        # 组卷补题在一个步骤里串行跑多批缺口生成，每批都是一次
+                        # 完整的 provider 调用，预算必须覆盖多批次累计耗时；
+                        # 与 smart_paper 的固定计划共用同一个值。
+                        timeout_seconds=PAPER_ASSEMBLY_STEP_TIMEOUT_SECONDS,
                     ),
                     ExecutionStep(
                         step_id="audit",

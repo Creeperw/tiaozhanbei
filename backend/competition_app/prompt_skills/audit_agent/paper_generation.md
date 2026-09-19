@@ -1,6 +1,6 @@
 ---
 skill_id: audit.review_exam_paper_blueprint
-version: 1.4.0
+version: 1.5.0
 agent: audit_agent
 task_type: paper_generation
 ---
@@ -38,7 +38,7 @@ task_type: paper_generation
 
 ## 结构化问题分类
 
-- 题目明显偏离当前单元知识主题或学习目标：使用 `paper_blueprint_mismatch`，定位到对应 `paper:question:*`，并设 `blocking=true`。
+- 题目明显偏离当前单元知识主题或学习目标：使用 `paper_blueprint_mismatch`，定位到对应 `paper:question:*`，并设 `blocking=true`。偏离的题目多于 8 道时拆成多条问题分别列出，每条列出不超过 8 个题号；系统按题号汇总全部位置，被定位的题目会被替换。不得为了减少条目而省略题号，也不得用 `paper:unit:*` 代替具体题号：`paper:unit:*` 只表示整个单元层面的问题（如单元整体缺题），用它代替题号不会替换任何题目。
 - 题干或选项使题目无法成立、无法作答：使用 `paper_item_invalid`，定位到对应题目，并设 `blocking=true`。
 - 标准答案错误、答案与解析矛盾或解析不能支持答案：使用 `answer_or_explanation_invalid`，定位到对应答案或解析，并设 `blocking=true`。
 - 可定位的关键知识事实错误使用 `factual_error`；现实诊疗或安全风险使用 `safety_violation`，均设 `blocking=true`。
@@ -62,7 +62,7 @@ task_type: paper_generation
 
 - `decision`：取值仅限 `pass` / `revise` / `reject` / `needs_human_review`。
 - `findings`：问题列表，`pass` 时为空；每条先指位置再说明影响和修改要求。
-- `structured_findings`：结构化问题列表，`pass` 时为空数组。每项只能包含系统 schema 允许的 `issue_type`、自然语言 `message`、`blocking` 和 `location_keys`；`location_keys` 必须逐字选自输入中的 `allowed_location_keys`，不得自行构造位置。
+- `structured_findings`：结构化问题列表，`pass` 时为空数组。每项只能包含系统 schema 允许的 `issue_type`、自然语言 `message`、`blocking` 和 `location_keys`；`location_keys` 必须逐字选自输入中的 `allowed_location_keys`，不得自行构造位置。**每项的位置键不超过 8 个**，超出会被判为输出不符合协议并使整份审核作废；同类问题涉及更多题目时拆成多条，每条列出不超过 8 个题号，不得合并成一条超长记录，也不得因超限而丢弃题号。
 - `audit_report`：详细自然语言审核报告。
 - `contract_check`（可选）：仅用于审核留痕与追溯，不参与审核决定。
 

@@ -766,6 +766,13 @@ class ApplicationContainer:
                 supplement_max_rounds=settings.knowledge_supplement_max_rounds,
                 supplement_max_queries=settings.knowledge_supplement_max_queries,
                 supplement_query_max_length=settings.knowledge_supplement_query_max_length,
+                web_question_ingest=web_question_ingest,
+                web_backfill_max_knowledge_points=(
+                    settings.knowledge_web_backfill_max_knowledge_points
+                ),
+                web_backfill_timeout_seconds=(
+                    settings.knowledge_web_backfill_timeout_seconds
+                ),
             ),
         )
         registry.register(

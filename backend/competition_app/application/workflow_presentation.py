@@ -35,6 +35,44 @@ _RESOURCE_FIELD_LABELS = {
     "url": "链接",
 }
 
+# 失败原因码到学习者可见文案的唯一映射。
+#
+# 这里只放“原因码 → 一句可读中文”，不放任何内部异常、步骤名或 provider
+# 细节。HTTP 入口与会话持久化入口共用同一份：此前两边各有一张表，内容已经
+# 漂移——`audit_step_timeout` 只存在于会话消息表里，走 HTTP 失败路径的学习
+# 者看到的是通用兜底句，同一故障在两个入口显示不同文案。
+FAILURE_USER_MESSAGES: dict[str, str] = {
+    "knowledge_timeout": "知识检索超时，已保存当前会话，请稍后重试。",
+    "knowledge_step_failed": "知识检索未能完成，请稍后重试。",
+    "paper_blueprint_timeout": "试卷蓝图生成超时，请稍后重试。",
+    "model_timeout": "模型调用超时，请稍后重试。",
+    "model_invalid_output": "模型输出未能通过解析，请重新生成。",
+    "workflow_timeout": "本次处理超时，已保存当前会话，请稍后重试。",
+    "plan_compilation_failed": "学习规划未能通过结构化校验，请稍后重试。",
+    "audit_step_timeout": "内容审核超时，已保存当前会话，请稍后重试。",
+    "audit_step_failed": "内容审核未能完成，请稍后重试。",
+    "daily_task_publication_failed": "今日任务发布未能完成，请稍后重试。",
+    "paper_generation_failed": "试卷生成未能完成，请稍后重试。",
+    "persistence_failed": "结果保存失败，请稍后重试。",
+    "model_empty_response": "模型暂时没有返回内容，请再试一次。",
+    "model_transport_error": "模型连接暂时不稳定，请稍后重试。",
+    "exam_workspace_changed": (
+        "考试目标已切换，旧任务不能继续；"
+        "请在当前考试下重新发起该请求。"
+    ),
+}
+
+FAILURE_USER_MESSAGE_FALLBACK = "这次处理没有成功完成，请稍后重试。"
+
+
+def failure_user_message(error_code: object) -> str:
+    """把内部失败原因码翻译成学习者可读的一句话。"""
+
+    return FAILURE_USER_MESSAGES.get(
+        str(error_code or ""),
+        FAILURE_USER_MESSAGE_FALLBACK,
+    )
+
 
 def _plain(value: Any) -> Any:
     if isinstance(value, BaseModel):

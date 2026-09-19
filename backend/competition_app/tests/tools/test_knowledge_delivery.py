@@ -272,6 +272,115 @@ def test_topic_resolution_accepts_model_query_with_qualifiers(tmp_path: Path) ->
     assert [item["kp_id"] for item in matches[:2]] == ["KP_1", "KP_2"]
 
 
+def test_topic_resolution_does_not_lend_the_primary_term_boost_to_an_alias(
+    tmp_path: Path,
+) -> None:
+    """首词满分提升不得由别名借用。
+
+    线上实测：检索词首词“伤寒论”命中的是《伤寒杂病论》等文献学条目的
+    ``other_name``，这些知识点并列 1.0000，把 108 道成书年代、版本流传的题
+    按题目 ID 顺序灌满召回配额。别名照常参与召回，但只能走通用打分。
+    """
+    backend = build_backend(tmp_path)
+    backend.map.ensure_hierarchy()
+    backend.map.kps.update(
+        {
+            "KP_ALIAS": {
+                "kp_id": "KP_ALIAS",
+                "kp_lv1": "方剂学",
+                "kp_lv2": "方书源流",
+                "kp_lv3": "《太平惠民和剂局方》的成书与流传",
+                "other_name": "四君子汤",
+                "raw_content": [],
+            }
+        }
+    )
+
+    matches = backend.map.resolve_topic("四君子汤 组成")
+
+    scores = {item["kp_id"]: item["score"] for item in matches}
+    assert scores["KP_ALIAS"] < 1.0
+    assert scores["KP_1"] == pytest.approx(1.0)
+
+
+def test_topic_resolution_never_boosts_a_knowledge_point_without_own_name(
+    tmp_path: Path,
+) -> None:
+    """没有自己的名字（kp_lv3 为空）时不得获得满分提升。"""
+    backend = build_backend(tmp_path)
+    backend.map.ensure_hierarchy()
+    backend.map.kps.update(
+        {
+            "KP_NO_OWN": {
+                "kp_id": "KP_NO_OWN",
+                "kp_lv1": "方剂学",
+                "kp_lv2": "补益剂",
+                "kp_lv3": "",
+                "other_name": "四君子汤",
+                "raw_content": [],
+            }
+        }
+    )
+
+    matches = backend.map.resolve_topic("四君子汤 组成")
+
+    scores = {item["kp_id"]: item["score"] for item in matches}
+    assert scores["KP_NO_OWN"] < 1.0
+
+
+def test_topic_resolution_keeps_the_primary_term_boost_for_the_own_name(
+    tmp_path: Path,
+) -> None:
+    """自己的名字本身是书名时，首词提升照旧生效。"""
+    backend = build_backend(tmp_path)
+    backend.map.ensure_hierarchy()
+    backend.map.kps.update(
+        {
+            "KP_BOOK": {
+                "kp_id": "KP_BOOK",
+                "kp_lv1": "伤寒论选读",
+                "kp_lv2": "文献研究",
+                "kp_lv3": "伤寒论",
+                "raw_content": [],
+            }
+        }
+    )
+
+    matches = backend.map.resolve_topic("伤寒论 成书")
+
+    scores = {item["kp_id"]: item["score"] for item in matches}
+    assert scores["KP_BOOK"] == pytest.approx(1.0)
+
+
+def test_topic_resolution_prefers_the_topic_over_a_book_alias(tmp_path: Path) -> None:
+    """主题知识点不得被只借了书名的文献学条目压过。"""
+    backend = build_backend(tmp_path)
+    backend.map.ensure_hierarchy()
+    backend.map.kps.update(
+        {
+            "KP_TOPIC": {
+                "kp_id": "KP_TOPIC",
+                "kp_lv1": "伤寒论选读",
+                "kp_lv2": "太阳病",
+                "kp_lv3": "太阳病提纲",
+                "raw_content": [],
+            },
+            "KP_BOOK": {
+                "kp_id": "KP_BOOK",
+                "kp_lv1": "伤寒论选读",
+                "kp_lv2": "文献研究",
+                "kp_lv3": "《伤寒杂病论》的成书与流传",
+                "other_name": "伤寒论",
+                "raw_content": [],
+            },
+        }
+    )
+
+    order = [item["kp_id"] for item in backend.map.resolve_topic("伤寒论 太阳病 提纲")]
+
+    assert order.index("KP_TOPIC") < order.index("KP_BOOK")
+
+
 def test_trusted_video_resolver_returns_only_published_canonical_segment(tmp_path: Path) -> None:
     backend = build_backend(tmp_path)
 

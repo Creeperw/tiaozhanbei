@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 from typing import Any
 from uuid import uuid4
@@ -27,12 +28,21 @@ from competition_app.contracts.paper import (
     PaperFinalCoverageSummary,
     QuestionCandidatePool,
 )
+from competition_app.contracts.question_types import (
+    KNOWN_QUESTION_TYPES,
+    normalize_question_type,
+)
 from competition_app.contracts.paper_assembly_compilation import (
     PaperAssemblyCandidateCatalogSnapshot,
 )
 from competition_app.llm.base import ChatModel
+from competition_app.llm.openai_compatible import (
+    ModelResponseError,
+    is_operational_model_failure,
+)
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.schemas import (
+    PAPER_GAP_BATCH_SIZE,
     ExamAssemblyModelOutput,
     PaperAssemblySelectionModelOutput,
     PaperGapGenerationModelOutput,
@@ -40,8 +50,17 @@ from competition_app.llm.schemas import (
 from competition_app.llm.stub import StubChatModel
 
 
+logger = logging.getLogger(__name__)
+
+
 class PaperAssemblyAgent:
     """Expert stage two: select only retrieved candidates and assemble a whole paper."""
+
+    # 单次缺口生成的题目上限。与输出契约的 max_length、响应兜底解析的保留行
+    # 数同源（见 llm/schemas.PAPER_GAP_BATCH_SIZE），不能单独改这里。批次越小
+    # 越不容易被单条不合契约的内容整批拖垮（见 _generate_remaining_gap 的缩批
+    # 重试），但批次过小会让补满整卷所需的模型调用次数成倍增加。
+    _GAP_BATCH_SIZE = PAPER_GAP_BATCH_SIZE
 
     def __init__(
         self,
@@ -58,7 +77,7 @@ class PaperAssemblyAgent:
         blueprint = dependencies["paper_blueprint"].payload
         candidate_pool: QuestionCandidatePool = dependencies["question_pool"].payload
         skill = prompt_skill_registry.load("expert_agent", "paper_assembly")
-        require_explanation = self._request_requires_explanations(context)
+        require_explanation = self._blueprint_requires_explanations(blueprint)
         repair_instruction = dict(context.get("repair_instruction") or {})
         # Audit 拒绝并要求替换的题目，在返修组装中一律不可再选、不可被系统
         # fallback 补回、不可作为变式题生成依据：把配额缺口让给受限缺口生成
@@ -157,7 +176,7 @@ class PaperAssemblyAgent:
                 question, unit, require_explanation=require_explanation
             ):
                 system_constraints.append(
-                    f"候选题{selected.question_id}缺少标准答案或解析，"
+                    f"候选题{selected.question_id}缺少标准答案，"
                     "系统已跳过并由完整候选或原创题补足。"
                 )
                 continue
@@ -287,6 +306,7 @@ class PaperAssemblyAgent:
                 question,
                 unit,
                 require_explanation=require_explanation,
+                generated=True,
             ):
                 system_constraints.append(
                     "模型生成题的答案、选项或解析不满足当前题型要求，系统已丢弃。"
@@ -529,8 +549,32 @@ class PaperAssemblyAgent:
                     empty_reason=empty_reason,
                 )
                 return envelope(context, "expert_agent", "exam_paper_draft", empty_draft)
+        # 建议时长按题目的实际作答工作量估算，必须在题型名统一之前算：统一
+        # 之后卷面只剩系统写法，“案例分析题”这类题型会丢掉自己的作答时长
+        # 权重（见 _recommended_duration_minutes）。
+        duration_minutes = (
+            blueprint.duration_minutes
+            or self._recommended_duration_minutes(items)
+        )
+        # 入卷题目的题型名统一成系统写法：候选题沿用题库名（“单选题”“病例
+        # 分析/实践技能”），生成题沿用模型名（“单项选择题”），不统一会让同
+        # 一份试卷里出现两种写法，学习者会以为它们不是同一种题型。这里用的
+        # 是 _normalize_question_type 的等价表，与题型配额、审核比对同源：
+        # 卷面标注一旦与配额口径分叉，题目就会按一种题型计入配额、却按另一
+        # 种题型写进卷面，审核据此判定标注与蓝图要求不符而拒绝发布。
         items = [
-            item.model_copy(update={"sequence": sequence})
+            item.model_copy(
+                update={
+                    "sequence": sequence,
+                    "question": item.question.model_copy(
+                        update={
+                            "question_type": PaperAssemblyAgent._display_question_type(
+                                item.question.question_type
+                            )
+                        }
+                    ),
+                }
+            )
             for sequence, item in enumerate(items, start=1)
         ]
         if required_total and len(items) < required_total:
@@ -546,10 +590,6 @@ class PaperAssemblyAgent:
                         f"用户明确要求{question_type}{required_count}题，"
                         f"当前完成{actual_count}题。"
                     )
-        duration_minutes = (
-            blueprint.duration_minutes
-            or self._recommended_duration_minutes(items)
-        )
         difficulty_summary = self._build_difficulty_source_summary(
             blueprint=blueprint,
             items=items,
@@ -570,6 +610,7 @@ class PaperAssemblyAgent:
             instructions=self._build_learner_instructions(
                 len(items), duration_minutes,
                 [item.question.question_type for item in items],
+                duration_is_system_estimate=blueprint.duration_minutes is None,
             ),
             duration_minutes=duration_minutes,
             total_score=blueprint.total_score,
@@ -588,6 +629,7 @@ class PaperAssemblyAgent:
                 final_coverage=final_coverage,
             ),
             difficulty_source_summary=difficulty_summary,
+            supply_notice=self._build_supply_notice(candidate_pool=candidate_pool),
         )
         return envelope(context, "expert_agent", "exam_paper_draft", draft)
 
@@ -658,6 +700,35 @@ class PaperAssemblyAgent:
         return list(dict.fromkeys(unresolved))
 
     @classmethod
+    def _build_supply_notice(
+        cls,
+        *,
+        candidate_pool: QuestionCandidatePool,
+    ) -> str:
+        """题目来源说明：可用题目不足时系统是怎么补足题量的。
+
+        面向学习者的系统文案，只陈述系统实际做过的事。数据全部取自候选池的
+        结构化统计（``borrowed_question_count``），不解析单元告警文本。
+
+        要说明的重点是「按缺口掺入其他知识点的题目」：单元范围内的正式题不
+        够时，系统会从「主知识点落在别的章节、但有次要桥接命中本单元」的
+        候选里按缺口补入。这些题多来自已经学过的知识点，学习者需要知道卷面
+        上有一部分题并不属于本次指定的单元，否则只会看到卷子跑偏却看不到
+        原因。题量缺口本身由 ``difficulty_source_summary.notice`` 说明，这里
+        不重复。
+        """
+        borrowed = sum(
+            unit.borrowed_question_count for unit in candidate_pool.units
+        )
+        if borrowed <= 0:
+            return ""
+        return (
+            f"本次可用的单元内题目不足：本卷有{borrowed}道题来自其他知识点。"
+            "这些题的主知识点不在本次指定的单元范围内，多为已经学过的知识点，"
+            "系统按缺口数量补入，用于补足题量。"
+        )
+
+    @classmethod
     def _build_difficulty_source_summary(
         cls,
         *,
@@ -669,7 +740,8 @@ class PaperAssemblyAgent:
         """向用户透明说明入卷题的难度与来源构成。
 
         - 仅真实难度标注参与“精确难度”统计；未标注正式题单独计数。
-        - 网络参考题不直接入卷（仅支撑出题），单独计数并写入说明。
+        - 网络检索到的材料只作证据，本身不进卷；真的进了卷的网络题单独计数
+          并如实标注，不能让卷面把「有网络题入卷」说成「仅作参考」。
         - 生成的补充题没有真实难度标注，永不伪装为指定难度。
         """
         targets = {
@@ -698,9 +770,17 @@ class PaperAssemblyAgent:
             ):
                 exact += 1
         generated = sum(1 for item in items if item.question.origin == "generated")
+        # 检索到的网络参考材料条数。每条是一份检索证据（可能一道题都没带），
+        # 不是一道题；这些材料只供出题参考，本身不进卷面。
         web_reference = sum(
             len(unit.external_question_references)
             for unit in candidate_pool.units
+        )
+        # 真正进了卷面的网络检索题。它与上面的证据条数是两回事：证据只是
+        # 材料，这些题是学习者要做、要判分的题。此前卷面只报证据条数并断言
+        # 「不直接入卷」——一旦回填的网络题真的入了卷，这句话就在说谎。
+        web_in_paper = sum(
+            1 for item in items if item.question.source_tier == "web_reference"
         )
         unmet = (
             max(0, required_total - total)
@@ -721,7 +801,11 @@ class PaperAssemblyAgent:
             if unlabeled:
                 parts.append(f"正式题中未标注难度{unlabeled}道")
         if web_reference:
-            parts.append(f"检索到网络参考题{web_reference}条，仅用于支撑出题，不直接入卷")
+            parts.append(f"检索到网络参考材料{web_reference}条，供出题参考")
+        if web_in_paper:
+            parts.append(
+                f"这{total}题中有{web_in_paper}道来自网络检索材料，非正式题库原题"
+            )
         if unmet:
             parts.append(f"仍有{unmet}题缺口未满足")
         notice = "；".join(parts) + "。"
@@ -734,6 +818,7 @@ class PaperAssemblyAgent:
             exact_difficulty_count=exact,
             unlabeled_official_count=unlabeled,
             web_reference_count=web_reference,
+            web_in_paper_count=web_in_paper,
             generated_count=generated,
             unmet_count=unmet,
             notice=notice,
@@ -753,16 +838,27 @@ class PaperAssemblyAgent:
         unit: Any,
         *,
         require_explanation: bool = False,
+        generated: bool = False,
     ) -> bool:
         """候选完整性判定。
 
-        默认只要求标准答案，避免把大量无解析的正式题全部挡在卷外。用户明确
-        要求“答案解析/附解析”时，解析成为本轮硬交付条件：无解析候选不进入
-        最终卷面，缺口交给后续受控生成步骤补足，避免必然触发 Audit 返修。
+        标准答案是硬交付条件：没有标准答案的候选一律不进卷面。
+
+        ``require_explanation``（用户勾选“每题附解析”）只对系统生成的题生效：
+        模型本来就是题干、答案、解析一起生成，缺解析属于交付残缺，应当丢弃。
+        正式题库题不因缺少独立解析字段被丢弃 —— 题库 93,251 道题全部带标准
+        答案，但只有 6.1% 带 ``题目答案解析``（简答题仅 2.6%）。把“必须自带
+        解析字段”当作正式题门槛，可用正式题会被压缩到 6%，题量稍大的请求必然
+        退化成全量现场生成：2026-09-18 实测《伤寒论》太阳病篇 40 题简答题，
+        15 道正式候选全部因缺解析字段被丢弃，最终 40 题全部现场生成。
+
+        题库题缺失的解析由平台在首次作答时按题生成并回写（见
+        ``grading_application_service._attach_cached_explanation``），学习者在
+        作答后仍能看到解析，因此解析不构成正式题的入卷门槛。
         """
         if not question.reference_answer.strip():
             return False
-        if require_explanation and not (question.analysis or "").strip():
+        if require_explanation and generated and not (question.analysis or "").strip():
             return False
         if (
             cls._normalize_question_type(question.question_type) == "单项选择题"
@@ -826,9 +922,16 @@ class PaperAssemblyAgent:
         return matches == 1
 
     @staticmethod
-    def _request_requires_explanations(context: dict[str, Any]) -> bool:
-        request = "".join(str(context.get("user_request") or "").split())
-        return any(marker in request for marker in ("附答案解析", "答案解析", "附解析", "逐题解析"))
+    def _blueprint_requires_explanations(blueprint: Any) -> bool:
+        """本轮是否强制逐题解析。
+
+        交付条件由蓝图合同承载：蓝图原稿写明解析要求，编译器逐字锚定后
+        写入 ``requires_explanation``。组卷阶段只消费这个结构化字段，不再
+        对用户原话做关键词匹配——「每题都要有详细解析」这类自然语言表述
+        由读取原话的蓝图模型判断。
+        """
+
+        return bool(getattr(blueprint, "requires_explanation", False))
 
     @staticmethod
     def _selection_blueprint_view(blueprint: Any) -> dict[str, Any]:
@@ -1488,7 +1591,7 @@ class PaperAssemblyAgent:
                 payload.get("generation_summary"), maximum=1_000
             )
             or "系统受限缺口补题。",
-            generated_items=valid_rows[:5],
+            generated_items=valid_rows[:PAPER_GAP_BATCH_SIZE],
         )
 
     async def _generate_remaining_gap(
@@ -1514,6 +1617,16 @@ class PaperAssemblyAgent:
             for item in current_items
         }
         selected_by_type = self._count_question_types(current_items)
+        # 已经失败过的（单元，题型）目标：本轮不再重试。整卷题量要凑满必须
+        # 多次分批调用模型，任何一批都可能失败；若失败后仍反复选中同一个
+        # 目标，生成会卡在永远补不满的那一格上。每组目标最多失败一次，
+        # 因此循环仍然有界。
+        failed_targets: set[tuple[str, str | None]] = set()
+        # 失败后缩小的批次大小。一批 5 道题里任何一道不合契约（例如答案超过
+        # 长度上限）都会让整批作废；直接放弃这个目标会让用户点名要的主题在
+        # 试卷里彻底消失。因此失败时先把批次减半重试，缩到 1 道仍然失败才把
+        # 目标计入 failed_targets。每个目标最多缩小两次，循环仍然有界。
+        reduced_batches: dict[tuple[str, str | None], int] = {}
         while len(current_items) + len(generated_items) < required_total:
             target_type = next(
                 (
@@ -1533,13 +1646,22 @@ class PaperAssemblyAgent:
                         target_type, unit.question_type_preferences
                     )
                 )
+                and (unit.unit_id, target_type) not in failed_targets
             ]
             underfilled_units = [
                 unit
                 for unit in eligible_units
                 if selected_counts.get(unit.unit_id, 0) < unit.required_question_count
             ]
-            ranked_units = underfilled_units or eligible_units or list(blueprint.units)
+            ranked_units = underfilled_units or eligible_units or [
+                unit
+                for unit in blueprint.units
+                if (unit.unit_id, target_type) not in failed_targets
+            ]
+            if not ranked_units:
+                # 所有可选目标都已经失败过：带着现有题目返回，缺的题量由
+                # 审核阶段的确定性题量门禁如实报出。
+                break
             # Protect breadth before adding a second item to an already covered
             # unit, then prefer the largest remaining unit deficit.
             target_unit = max(
@@ -1557,7 +1679,13 @@ class PaperAssemblyAgent:
                 target_unit.required_question_count
                 - selected_counts.get(target_unit.unit_id, 0),
             )
-            batch_size = min(5, remaining_total, unit_gap)
+            batch_size = min(
+                reduced_batches.get(
+                    (target_unit.unit_id, target_type), self._GAP_BATCH_SIZE
+                ),
+                remaining_total,
+                unit_gap,
+            )
             if target_type is not None:
                 batch_size = min(
                     batch_size,
@@ -1610,10 +1738,34 @@ class PaperAssemblyAgent:
                 gap_context["_result_validator"] = (
                     lambda value: PaperGapGenerationModelOutput.model_validate(value)
                 )
-                raw = await self.chat_model.complete_json(
-                    "expert_agent",
-                    gap_context,
-                )
+                try:
+                    raw = await self.chat_model.complete_json(
+                        "expert_agent",
+                        gap_context,
+                    )
+                except ModelResponseError as error:
+                    # 一批缺口题生成失败，只能丢掉这一批，不能让整份试卷作废。
+                    # 此前这里直接抛出：前面十几批已经成功生成的题目和整卷蓝图
+                    # 一起被丢弃，学习者只看到一次彻底失败，重试也必然重现，因为
+                    # 失败的那一批没有任何容错。现在放弃这个（单元，题型）目标
+                    # 继续补其他单元；缺的题量由审核阶段的确定性题量门禁如实报出
+                    # 并进入既有的局部返修。运行性故障（限流、配额、模型不可用、
+                    # 传输失败）仍然原样上报：那不是内容问题，跳过批次只会把一个
+                    # provider 故障伪装成“试卷题量不足”。
+                    if is_operational_model_failure(error):
+                        raise
+                    logger.warning(
+                        "paper gap generation batch failed; "
+                        "retrying this target with a smaller batch "
+                        "unit=%s question_type=%s batch_size=%s "
+                        "reason=%s status_code=%s",
+                        target_unit.unit_id,
+                        target_type,
+                        batch_size,
+                        error.reason,
+                        error.status_code,
+                    )
+                    break
                 gap_output = self._normalize_gap_response(raw)
                 for generated in gap_output.generated_items[:batch_size]:
                     if target_unit.question_type_preferences and not self._matches_question_type(
@@ -1669,9 +1821,10 @@ class PaperAssemblyAgent:
                     if not self._question_solution_ok(
                         question,
                         target_unit,
-                        require_explanation=self._request_requires_explanations(
-                            context
+                        require_explanation=self._blueprint_requires_explanations(
+                            blueprint
                         ),
+                        generated=True,
                     ):
                         continue
                     generated_items.append(
@@ -1695,7 +1848,21 @@ class PaperAssemblyAgent:
                 if added >= batch_size:
                     break
             if added == 0:
-                break
+                # 这一批没有产出可用题目：先把批次减半再试一次，只有缩到 1 道
+                # 仍然失败才放弃这个目标，其余单元继续补齐。
+                key = (target_unit.unit_id, target_type)
+                if batch_size > 1:
+                    reduced_batches[key] = max(1, batch_size // 2)
+                    logger.warning(
+                        "paper gap generation produced no usable item; "
+                        "retrying the same target with a smaller batch "
+                        "unit=%s question_type=%s next_batch_size=%s",
+                        target_unit.unit_id,
+                        target_type,
+                        reduced_batches[key],
+                    )
+                else:
+                    failed_targets.add(key)
         return generated_items
 
     @staticmethod
@@ -1808,10 +1975,20 @@ class PaperAssemblyAgent:
         question_count: int,
         duration_minutes: int | None,
         question_types: list[str] | None = None,
+        *,
+        duration_is_system_estimate: bool = False,
     ) -> str:
-        duration = (
-            f"，建议作答时间{duration_minutes}分钟" if duration_minutes else ""
-        )
+        if duration_minutes and duration_is_system_estimate:
+            # 用户没有指定作答时长时，系统按题目工作量估算一个建议值；
+            # 必须说明来源，否则学习者会把它当成自己要求过或官方规定的时长。
+            duration = (
+                f"，建议作答时间{duration_minutes}分钟（系统按题目工作量估算，"
+                "不是硬性限时）"
+            )
+        elif duration_minutes:
+            duration = f"，建议作答时间{duration_minutes}分钟"
+        else:
+            duration = ""
         normalized_types = {
             PaperAssemblyAgent._normalize_question_type(value)
             for value in (question_types or [])
@@ -1845,22 +2022,40 @@ class PaperAssemblyAgent:
                 total += weights.get(cls._normalize_question_type(raw_type), 5.0)
         return max(5, int((total + 4.999) // 5) * 5)
 
+    @classmethod
+    def _display_question_type(cls, value: str) -> str:
+        """统一入卷题目的题型写法，与题型配额、审核比对共用同一张等价表。
+
+        这里刻意与 ``_normalize_question_type`` 同源。此前卷面另有一张只做
+        同义别名的表，题库里的“临床案例问答”“病例分析/实践技能”于是按
+        “简答题”计入配额、却按原名写进卷面，审核读到卷面标注与蓝图要求
+        （“简答题”）不符，整卷返修一轮后仍不发布。
+
+        代价是“案例分析题”一类题型在卷面上与“简答题”同名。作答时长不受
+        影响：``_recommended_duration_minutes`` 在题型名统一之前、按题目
+        实际形态估算。
+        """
+
+        return cls._normalize_question_type(str(value or ""))
+
     @staticmethod
     def _normalize_question_type(value: str) -> str:
-        normalized = value.strip().replace(" ", "").replace("_", "")
-        if "案例" in normalized or "病例" in normalized:
+        """题型写法归一化。词表在 ``contracts/question_types.py``。
+
+        必须与 ``knowledge_base_agent._normalize_question_type`` 同源：配额
+        按这边算、卷面按那边写的话，同一个题型会在两处得到不同名字，审核
+        读到卷面标注与蓝图要求不符，整卷返修。
+        """
+
+        canonical = normalize_question_type(value)
+        if canonical in KNOWN_QUESTION_TYPES:
+            return canonical
+        # 带前缀的案例题写法（如「中医案例分析」）词表枚举不到，按题目形态
+        # 归到简答题。这是本方法独有的兜底，只在词表未命中时生效。
+        compact = canonical.replace(" ", "").replace("_", "")
+        if "案例" in compact or "病例" in compact:
             return "简答题"
-        aliases = {
-            "单选题": "单项选择题",
-            "单项选择": "单项选择题",
-            "多选题": "多项选择题",
-            "多项选择": "多项选择题",
-            "选择题": "选择题",
-            "简答": "简答题",
-            "问答": "简答题",
-            "问答题": "简答题",
-        }
-        return aliases.get(normalized, normalized)
+        return canonical
 
     @classmethod
     def _matches_question_type(cls, actual: str, preferences: list[str]) -> bool:

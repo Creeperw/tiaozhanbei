@@ -1099,3 +1099,56 @@ def test_persist_memory_governance_forwards_auto_confirm_candidates() -> None:
     assert auto[0]["source_refs"][0]["ref_type"] == "conversation_message"
     assert auto[0]["source_refs"][0]["ref_id"] == "MSG_9"
     assert written[0]["candidates"] == []
+
+
+def test_failure_message_table_is_shared_by_http_and_conversation_paths() -> None:
+    """HTTP 入口与会话消息入口必须用同一份失败文案。
+
+    此前两处各存一张表，内容已经漂移：`audit_step_timeout` 只在会话消息表里
+    有文案，走 HTTP 失败路径的学习者看到的是通用兜底句，同一故障因入口不同
+    显示不同的话。
+    """
+
+    from competition_app.application.workflow_presentation import (
+        FAILURE_USER_MESSAGES,
+        failure_user_message,
+    )
+
+    assert (
+        PersonalizedReviewCardUseCase._FAILURE_USER_MESSAGES
+        is FAILURE_USER_MESSAGES
+    )
+    assert failure_user_message("audit_step_timeout") == (
+        "内容审核超时，已保存当前会话，请稍后重试。"
+    )
+    assert failure_user_message("audit_step_timeout") == (
+        PersonalizedReviewCardUseCase._FAILURE_USER_MESSAGES[
+            "audit_step_timeout"
+        ]
+    )
+    assert failure_user_message("unmapped_code") == (
+        "这次处理没有成功完成，请稍后重试。"
+    )
+
+
+def test_failure_messages_never_expose_internal_details() -> None:
+    """失败文案不得出现内部步骤名、provider、HTTP 或异常类名。"""
+
+    from competition_app.application.workflow_presentation import (
+        FAILURE_USER_MESSAGES,
+    )
+
+    forbidden = (
+        "agent",
+        "provider",
+        "http",
+        "step",
+        "traceback",
+        "exception",
+        "modelresponseerror",
+        "timeout",
+    )
+    for code, message in FAILURE_USER_MESSAGES.items():
+        lowered = message.lower()
+        for token in forbidden:
+            assert token not in lowered, f"{code} 泄露内部细节：{message}"

@@ -31,6 +31,15 @@ class CompiledPaperBlueprintContract(ContractModel):
     scope_summary: str = Field(min_length=1)
     duration_minutes: int | None = Field(default=None, gt=0)
     total_score: float | None = Field(default=None, gt=0)
+    # 整卷硬约束。它们驱动组卷阶段的确定性门禁（题量、题型分布是否满足），
+    # 所以必须结构化；未写明时为 None，由蓝图自己的单元题数说话，不得用
+    # 关键词从用户原话里猜一个近似值。
+    required_question_count: int | None = Field(default=None, gt=0, le=100)
+    question_type_distribution: dict[str, int] | None = None
+    # 交付条件：本轮是否要求逐题解析。为 True 时必须同时给出
+    # `/requires_explanation` 锚点，且引文逐字出现在蓝图原稿中，否则编译
+    # 判定为 needs_revision，避免把解析要求变成模型的一次自由发挥。
+    requires_explanation: bool = False
     units: list[CompiledBlueprintUnit] = Field(min_length=1, max_length=20)
     assumptions: list[str] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)

@@ -180,6 +180,87 @@ async def test_blueprint_compiler_rejects_difficulty_without_document_anchor() -
     )
 
 
+class ExplanationExtractingBlueprintCompilerModel(AnchoredBlueprintCompilerModel):
+    async def complete_json(self, role, payload, on_delta=None):
+        value = await super().complete_json(role, payload, on_delta)
+        value["contract"]["requires_explanation"] = True
+        value["contract"]["field_anchors"]["/requires_explanation"] = [
+            {"source_field": "blueprint_document", "source_quote": "逐题解析：需要"}
+        ]
+        return value
+
+
+class InventingExplanationCompilerModel(AnchoredBlueprintCompilerModel):
+    async def complete_json(self, role, payload, on_delta=None):
+        value = await super().complete_json(role, payload, on_delta)
+        # 原稿没有写解析交付条件，模型却把它置为 true 且不给锚点。
+        value["contract"]["requires_explanation"] = True
+        return value
+
+
+@pytest.mark.asyncio
+async def test_blueprint_compiler_keeps_explanation_off_when_document_is_silent() -> None:
+    envelope = await PaperBlueprintCompilerAgent(
+        AnchoredBlueprintCompilerModel()
+    ).compile(_CONTEXT, blueprint_document=_DOCUMENT)
+
+    assert envelope.result.status == "compiled"
+    assert envelope.result.contract.requires_explanation is False
+
+
+@pytest.mark.asyncio
+async def test_blueprint_compiler_accepts_anchored_explanation_delivery() -> None:
+    document = _DOCUMENT + "\n逐题解析：需要"
+    envelope = await PaperBlueprintCompilerAgent(
+        ExplanationExtractingBlueprintCompilerModel()
+    ).compile(_CONTEXT, blueprint_document=document)
+
+    assert envelope.result.status == "compiled"
+    assert envelope.result.contract.requires_explanation is True
+
+
+@pytest.mark.asyncio
+async def test_blueprint_compiler_rejects_explanation_without_document_anchor() -> None:
+    envelope = await PaperBlueprintCompilerAgent(
+        InventingExplanationCompilerModel()
+    ).compile(_CONTEXT, blueprint_document=_DOCUMENT)
+
+    assert envelope.result.status == "needs_revision"
+    assert any(
+        issue.field_path == "/requires_explanation"
+        and issue.code == "source_anchor_missing"
+        for issue in envelope.result.issues
+    )
+
+
+def test_blueprint_coerce_normalizes_textual_explanation_flag() -> None:
+    from competition_app.agents.paper_blueprint_compiler import _coerce_blueprint
+
+    def coerced_flag(raw: object) -> object:
+        return _coerce_blueprint(
+            {
+                "contract": {
+                    "title": "x",
+                    "scope_summary": "y",
+                    "requires_explanation": raw,
+                    "units": [
+                        {
+                            "unit_key": "u",
+                            "knowledge_module": "m",
+                            "learning_objective": "o",
+                            "retrieval_query": "q",
+                            "required_question_count": 1,
+                        }
+                    ],
+                }
+            }
+        )["contract"]["requires_explanation"]
+
+    assert coerced_flag("需要") is True
+    assert coerced_flag("不需要") is False
+    assert coerced_flag(True) is True
+
+
 def test_blueprint_coerce_normalizes_out_of_range_difficulty() -> None:
     from competition_app.agents.paper_blueprint_compiler import _coerce_blueprint
 

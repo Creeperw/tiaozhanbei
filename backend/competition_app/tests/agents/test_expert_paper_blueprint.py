@@ -166,16 +166,51 @@ def test_blueprint_compiler_miss_has_request_bound_fallback() -> None:
             "user_request": (
                 "请围绕《中医学基础》阴阳学说生成一份3题单选练习试卷，"
                 "难度2，并附答案解析。"
-            )
+            ),
+            "exam_constraints": {
+                "topic": "《中医学基础》阴阳学说",
+                "question_count": 3,
+                "question_types": ["单项选择题"],
+                "difficulty": 2,
+            },
         },
         explicit_count=3,
         explicit_types=["单项选择题"],
     )
 
+    assert fallback["title"] == "《中医学基础》阴阳学说练习试卷"
     assert fallback["scope_summary"] == "《中医学基础》阴阳学说"
     assert fallback["units"][0]["required_question_count"] == 3
     assert fallback["units"][0]["question_type_preferences"] == ["单项选择题"]
     assert fallback["units"][0]["target_difficulty"] == 2
+
+
+def test_blueprint_compiler_miss_never_slices_user_prose_into_title() -> None:
+    """降级蓝图不得把用户原话切片当成试卷标题或主题。"""
+
+    fallback = PaperBlueprintAgent._fallback_blueprint_from_request(
+        {
+            "user_request": (
+                "请给我一份全是填空题的试卷，至少25题，"
+                "覆盖四君子汤组成、功效主治和配伍意义。"
+            ),
+            "exam_constraints": {},
+        },
+        explicit_count=None,
+        explicit_types=[],
+    )
+
+    assert fallback["title"] == ""
+    assert fallback["units"][0]["required_question_count"] == (
+        PaperBlueprintAgent._FALLBACK_UNCONSTRAINED_UNIT_QUESTION_COUNT
+    )
+    assert any(
+        "不是发布硬门槛" in item for item in fallback["assumptions"]
+    )
+    assert fallback["acceptance_criteria"] == [
+        "题目范围只覆盖用户当前请求指定的主题。",
+        "答案与解析必须通过审核后才能发布。",
+    ]
 
 
 def test_blueprint_normalizes_loose_live_model_values_before_validation() -> None:
@@ -243,11 +278,30 @@ def test_blueprint_preserves_explicit_exam_duration() -> None:
         {
             "user_request": "请生成一份作答时间165分钟的测试卷",
             "available_minutes": 25,
-            "exam_constraints": {},
+            "exam_constraints": {"duration_minutes": 165},
         },
     )
 
     assert normalized["duration_minutes"] == 165
+
+
+def test_blueprint_does_not_infer_exam_duration_from_user_prose() -> None:
+    """用户原话里的时长是自由文本，硬约束只认结构化约束通道。"""
+
+    normalized = PaperBlueprintAgent._normalize_blueprint(
+        {"duration_minutes": 60, "units": []},
+        {
+            "user_request": "请生成一份作答时间165分钟的测试卷",
+            "available_minutes": 25,
+            "exam_constraints": {},
+        },
+    )
+
+    assert normalized["duration_minutes"] is None
+    assert any(
+        "正式时长按实际题目工作量计算" in item
+        for item in normalized["assumptions"]
+    )
 
 
 def test_blueprint_resolves_requested_stage_from_current_long_term_plan() -> None:
@@ -530,11 +584,21 @@ def test_blueprint_keeps_user_requested_choice_specialty() -> None:
 
 
 def test_explicit_coverage_excludes_stale_exam_constraint_topics() -> None:
-    request = (
-        "请给我一份全是填空题的试卷，至少25题，"
-        "覆盖四君子汤组成、功效主治和配伍意义；必须提供答案和解析。"
+    topics = PaperBlueprintAgent._explicit_coverage_topics(
+        {
+            "user_request": (
+                "请给我一份全是填空题的试卷，至少25题，"
+                "覆盖四君子汤组成、功效主治和配伍意义；必须提供答案和解析。"
+            ),
+            "exam_constraints": {
+                "focus_topics": [
+                    "四君子汤组成",
+                    "四君子汤功效主治",
+                    "四君子汤配伍意义",
+                ]
+            },
+        }
     )
-    topics = PaperBlueprintAgent._explicit_coverage_topics(request)
     units = PaperBlueprintAgent._constrain_units_to_explicit_coverage(
         [
             {"knowledge_module": "四君子汤组成", "retrieval_query": "四君子汤组成"},
@@ -550,26 +614,63 @@ def test_explicit_coverage_excludes_stale_exam_constraint_topics() -> None:
     assert all("相近方" not in unit["retrieval_query"] for unit in units)
 
 
+def test_explicit_coverage_ignores_prose_only_coverage_list() -> None:
+    """原话里的“覆盖 A、B、C”不再被切分，组卷范围不靠关键词切分决定。"""
+
+    topics = PaperBlueprintAgent._explicit_coverage_topics(
+        {
+            "user_request": (
+                "请给我一份全是填空题的试卷，至少25题，"
+                "覆盖四君子汤组成、功效主治和配伍意义；必须提供答案和解析。"
+            ),
+            "exam_constraints": {},
+        }
+    )
+
+    assert topics == []
+
+
 @pytest.mark.parametrize(
     ("context", "expected"),
     [
         ({"exam_constraints": {"question_count": 20}}, 20),
+        ({"exam_constraints": {"question_count": "25"}}, 25),
+        ({"exam_constraints": {"question_count": 0}}, None),
         (
             {
                 "user_request": "给我一份全是填空题的试卷，至少25题",
                 "exam_constraints": {"question_count": 4},
             },
-            25,
+            4,
         ),
-        ({"user_request": "请给我一份包含20个题目的选择题专项训练卷。"}, 20),
-        ({"user_request": "请生成20道单项选择题。"}, 20),
-        ({"user_request": "请出20道关于四君子汤的题。"}, 20),
-        ({"user_request": "请给我一份选择题专项训练卷。"}, None),
+        (
+            {
+                "user_request": "请给我一份包含20个题目的选择题专项训练卷。",
+                "exam_constraints": {},
+            },
+            None,
+        ),
+        (
+            {
+                "user_request": "请生成20道单项选择题。",
+                "exam_constraints": {},
+            },
+            None,
+        ),
+        (
+            {
+                "user_request": "请出20道关于四君子汤的题。",
+                "exam_constraints": {},
+            },
+            None,
+        ),
     ],
 )
 def test_blueprint_extracts_only_explicit_question_count(
     context: dict, expected: int | None
 ) -> None:
+    """整卷题量只认结构化约束通道，不从用户原话里抓“数字+题”。"""
+
     assert PaperBlueprintAgent._explicit_question_count(context) == expected
 
 
@@ -591,7 +692,7 @@ def test_blueprint_extracts_exact_structured_question_type_distribution() -> Non
     assert sum(distribution.values()) == 15
 
 
-def test_choice_specialty_distributes_explicit_twenty_across_blueprint_units() -> None:
+def test_explicit_count_is_spread_across_blueprint_units() -> None:
     units = PaperBlueprintAgent._normalize_hard_count_units(
         [
             {
@@ -612,36 +713,129 @@ def test_choice_specialty_distributes_explicit_twenty_across_blueprint_units() -
             },
         ],
         explicit_count=20,
-        user_request="请生成一份选择题专项训练卷，不少于20题。",
+        has_explicit_distribution=False,
     )
 
     assert sum(unit["required_question_count"] for unit in units) == 20
-    assert all(
-        unit["question_type_preferences"] == ["单项选择题", "多项选择题"]
-        for unit in units
-    )
     assert all(unit["candidate_limit"] > unit["required_question_count"] for unit in units)
+    # 题型偏好只由结构化题型要求决定，不再因为原话里出现“选择题”就被强设。
+    assert units[0]["question_type_preferences"] == ["简答题"]
+    assert units[1]["question_type_preferences"] == []
+
+
+def _count_units(counts: list[int]) -> list[dict]:
+    return [
+        {
+            "knowledge_module": f"单元{index}",
+            "learning_objective": f"掌握单元{index}",
+            "retrieval_query": f"单元{index}",
+            "question_type_preferences": ["简答题"],
+            "required_question_count": required,
+            "candidate_limit": 10,
+        }
+        for index, required in enumerate(counts, start=1)
+    ]
+
+
+def test_explicit_distribution_still_scales_unit_counts_to_the_exact_total() -> None:
+    """整卷题型分布存在时，单元题量合计也必须等于整卷题量。
+
+    线上场景（r2c 实测）：用户说“50 道简答题”，编译器把它编译成结构化分型
+    数量 {简答题: 50}，于是单元题量的归一化被整段跳过，蓝图模型自己写的 10
+    个单元合计 60 原样通过。整卷题量硬约束与逐单元题量硬约束从此永远无法同时
+    满足，学习者一直看到“仍有未满足的硬约束”，换任何一份组卷结果都消不掉。
+
+    缩放必须保留“哪个单元更重”的形状，不能平均分配。
+    """
+
+    units = PaperBlueprintAgent._normalize_hard_count_units(
+        _count_units([10, 5, 5, 5]),
+        explicit_count=10,
+        has_explicit_distribution=True,
+    )
+
+    assert [unit["required_question_count"] for unit in units] == [4, 2, 2, 2]
+    assert sum(unit["required_question_count"] for unit in units) == 10
+
+
+def test_unit_counts_are_scaled_up_when_the_model_underfills() -> None:
+    """模型给少了同样要对齐整卷题量，两个方向都不能留矛盾。"""
+
+    units = PaperBlueprintAgent._normalize_hard_count_units(
+        _count_units([1, 1, 1]),
+        explicit_count=20,
+        has_explicit_distribution=True,
+    )
+
+    assert [unit["required_question_count"] for unit in units] == [7, 7, 6]
+    assert sum(unit["required_question_count"] for unit in units) == 20
+
+
+def test_unit_count_above_the_requested_total_stays_satisfiable() -> None:
+    """整卷题量小于单元数时不得留下不可能满足的逐单元约束。
+
+    每个单元至少 1 题，4 个单元至少要 4 题；用户只要 2 题时只保留前 2 个单元。
+    宁可少一个单元，也不要让整份试卷永远过不了硬门禁。
+    """
+
+    units = PaperBlueprintAgent._normalize_hard_count_units(
+        _count_units([1, 1, 1, 1]),
+        explicit_count=2,
+        has_explicit_distribution=False,
+    )
+
+    assert [unit["required_question_count"] for unit in units] == [1, 1]
+
+
+def test_explicit_distribution_keeps_unit_level_question_type_mix() -> None:
+    """整卷题型分布是结构化时，不得被抹平为每单元同一组题型。"""
+
+    units = PaperBlueprintAgent._normalize_question_type_mix(
+        [
+            {"knowledge_module": "单选", "question_type_preferences": ["单项选择题"]},
+            {"knowledge_module": "多选", "question_type_preferences": ["多项选择题"]},
+            {"knowledge_module": "简答", "question_type_preferences": ["简答题"]},
+        ],
+        explicit_types=["单项选择题", "多项选择题", "简答题"],
+        has_explicit_distribution=True,
+    )
+
+    assert [unit["question_type_preferences"] for unit in units] == [
+        ["单项选择题"],
+        ["多项选择题"],
+        ["简答题"],
+    ]
 
 
 def test_explicit_difficulty_accepts_only_clear_numeric_requests() -> None:
     assert PaperBlueprintAgent._explicit_difficulty(
-        {"user_request": "请出5道难度3的题", "exam_constraints": {}}
+        {"exam_constraints": {"difficulty": 3}}
     ) == 3
     assert PaperBlueprintAgent._explicit_difficulty(
-        {"user_request": "来一套四星难度的卷子", "exam_constraints": {}}
+        {"exam_constraints": {"target_difficulty": "4"}}
     ) == 4
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"exam_constraints": {"difficulty_level": "五星"}}
+    ) == 5
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"exam_constraints": {"difficulty": 0}}
+    ) is None
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"exam_constraints": {"difficulty": True}}
+    ) is None
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"exam_constraints": {}}
+    ) is None
+    # 自由文本里的难度描述不再被正则提取，由蓝图模型负责理解。
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "请出5道难度3的题", "exam_constraints": {}}
+    ) is None
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "来一套四星难度的卷子", "exam_constraints": {}}
+    ) is None
     assert PaperBlueprintAgent._explicit_difficulty(
         {"user_request": "给我一套中等难度的卷子", "exam_constraints": {}}
     ) is None
-    assert PaperBlueprintAgent._explicit_difficulty(
-        {"user_request": "组一套卷", "exam_constraints": {"difficulty": 2}}
-    ) == 2
-    assert PaperBlueprintAgent._explicit_difficulty(
-        {"user_request": "组一套卷", "exam_constraints": {}}
-    ) is None
-    assert PaperBlueprintAgent._explicit_difficulty(
-        {"user_request": "组一套卷", "exam_constraints": {"difficulty": "5级"}}
-    ) == 5
 
 
 def test_blueprint_normalize_propagates_explicit_difficulty_to_all_units() -> None:
@@ -665,11 +859,33 @@ def test_blueprint_normalize_propagates_explicit_difficulty_to_all_units() -> No
                 },
             ],
         },
-        {"user_request": "出难度3的题", "exam_constraints": {}},
+        {"user_request": "出难度3的题", "exam_constraints": {"difficulty": 3}},
     )
 
     assert all(unit["target_difficulty"] == 3 for unit in normalized["units"])
     assert all(unit["difficulty_is_hard_constraint"] for unit in normalized["units"])
+
+
+def test_blueprint_normalize_does_not_infer_difficulty_from_user_prose() -> None:
+    normalized = PaperBlueprintAgent._normalize_blueprint(
+        {
+            "title": "难度卷",
+            "source_status": "practice_sample",
+            "scope_summary": "测试",
+            "units": [
+                {
+                    "knowledge_module": "单元一",
+                    "learning_objective": "目标",
+                    "retrieval_query": "四君子汤",
+                    "required_question_count": 2,
+                },
+            ],
+        },
+        {"user_request": "出难度3的题", "exam_constraints": {}},
+    )
+
+    assert normalized["units"][0]["target_difficulty"] is None
+    assert normalized["units"][0]["difficulty_is_hard_constraint"] is False
 
 
 def test_blueprint_normalize_keeps_unit_level_difficulty_over_context() -> None:
@@ -824,3 +1040,50 @@ async def test_structured_special_blueprint_never_lets_diagnosis_replace_topic()
 
     assert result.payload.scope_summary == "四君子汤"
     assert [unit.retrieval_query for unit in result.payload.units] == ["四君子汤"]
+
+
+@pytest.mark.asyncio
+async def test_structured_blueprint_takes_the_explanation_switch_from_the_form() -> None:
+    """解析交付条件只认表单开关，不认主题正文里的同义表述。"""
+
+    def build(topic: str, switch: bool) -> dict:
+        context = {
+            **paper_context(),
+            "step_id": "paper_blueprint",
+            "smart_paper_v2": True,
+            "exam_constraints": {
+                "question_count": 1,
+                "question_type_distribution": {"简答题": 1},
+                "answer_mode": "practice",
+                "paper_kind": "special",
+                "topic": topic,
+                "focus_topics": [],
+                "requires_explanation": switch,
+            },
+        }
+        context["dependency_outputs"] = {
+            "diagnosis": _smart_paper_diagnosis(
+                mastery=[
+                    {
+                        "kp_id": "KP_UNRELATED",
+                        "kp_name": "温病学",
+                        "mastery_score": 1,
+                        "requires_remediation": True,
+                    }
+                ]
+            )
+        }
+        return context
+
+    switched_on = await PaperBlueprintAgent().run(
+        build("太阳病篇", True)
+    )
+    assert switched_on.payload.requires_explanation is True
+    assert "每题必须附解析。" in switched_on.payload.acceptance_criteria
+
+    # 主题正文写着“每题均附详细解析”但开关未打开时，交付条件保持不要求。
+    prose_only = await PaperBlueprintAgent().run(
+        build("太阳病篇，每题均附详细解析", False)
+    )
+    assert prose_only.payload.requires_explanation is False
+    assert "每题必须附解析。" not in prose_only.payload.acceptance_criteria

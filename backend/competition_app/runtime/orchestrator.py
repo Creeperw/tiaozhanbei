@@ -477,6 +477,13 @@ class Orchestrator:
         )
         step_context = dict(root_context)
         step_context["step_id"] = step.step_id
+        # 工作流级的任务类型是系统元数据（由 Planner 判定后写入），但下面
+        # 会按步骤语义覆盖 step_context["task_type"]。覆盖后下游 Agent 就
+        # 看不到“本次整体在做什么”，只剩单步语义。把原值另存一份，供需要
+        # 区分“本步是交付物还是上游证据”的 Agent 使用。
+        step_context["workflow_task_type"] = str(
+            root_context.get("task_type") or ""
+        )
         if step.plan_scope is not None:
             step_context["plan_scope"] = step.plan_scope
             if step.agent == "diagnosis_agent":

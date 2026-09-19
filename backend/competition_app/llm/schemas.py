@@ -7,6 +7,16 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from competition_app.contracts.planning_request import PlanningRequestScope
 
+# 单次缺口生成的题目上限。它同时决定三件事，必须同源：专家智能体一次被要求
+# 写几道题、输出契约允许几项、响应兜底解析保留几行。此前三处各自写死 5，任一
+# 处漏改都会静默丢弃模型已经写对的题目。
+#
+# 提到 10 的依据（线上实测）：整卷 50 题在候选不足时需要补 31 题，批次 5 意味着
+# 至少 7 次完整的模型调用，2026-09-17 r2e 实测 9 批累计 2399.4s 撞上步骤预算
+# 整体失败；单批响应均值 4104 字符（5 题），提到 10 题约 8200 字符，仍在
+# provider 默认输出上限内。
+PAPER_GAP_BATCH_SIZE = 10
+
 
 class PlannerRouteSelectionOutput(BaseModel):
     """Minimal semantic classification contract for Planner stage one.
@@ -1142,6 +1152,83 @@ class KnowledgeRetrievalPlanModelOutput(StrictModelOutput):
     )
 
 
+class KnowledgePaperUnitRetrievalPlanModelOutput(StrictModelOutput):
+    """组卷蓝图单元的首轮检索计划。
+
+    蓝图单元给出的是**范围要求**（知识模块、学习目标、检索表达）。把它改写成
+    可检索的聚焦短语是知识库智能体的职责：系统只执行这里给出的查询，不替模型
+    决定查什么，也不改写蓝图的范围、题量、题型和难度。
+
+    契约只声明组卷路径真的能执行的两种检索（知识点证据、正式题库候选），
+    不声明联网来源——该路径没有外部检索工具，声明了也无法兑现。
+    """
+
+    kp_query: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=300,
+        description=(
+            "需要知识点或教材证据界定本单元范围时给出聚焦查询；不需要时为 null。"
+            "必须是短小聚焦的检索短语（2-6 个概念词，10-40 字），"
+            "不写成整句陈述或答案。"
+        ),
+    )
+    question_query: str = Field(
+        min_length=1,
+        max_length=300,
+        description=(
+            "本单元正式题库候选的聚焦检索语句。只表达要查哪个主题的题，"
+            "不写题型、题量、优先顺序等执行要求，也不写答案或解析。"
+        ),
+    )
+    retrieval_reason: str = Field(
+        min_length=1,
+        max_length=500,
+        description="说明这两条查询如何覆盖蓝图单元的范围。",
+    )
+
+
+class KnowledgePaperUnitScopeModelOutput(StrictModelOutput):
+    """组卷单元的主题范围判定。
+
+    蓝图单元的范围由三段自由文本声明（知识模块、学习目标、检索表达），
+    契约里没有结构化的范围字段。此前的准入边界取的是**检索命中的知识点
+    列表**，但那是召回结果而不是范围：它既含同名或泛化的无关知识点，也
+    漏掉同章节里没被检索短语命中的知识点。线上实测《伤寒论》太阳病篇单元
+    的命中列表（52 个知识点）里同时出现方剂学、金匮要略、中药药剂学的
+    知识点，却没有同书同章节的“太阳中风证”。用召回列表当范围边界会同时
+    误放无关题和误拒本单元题。
+
+    因此范围判定交回本智能体：系统给出候选题目实际桥接到的知识点目录
+    （教材 / 章节 / 知识点三级），由本智能体依据单元声明的范围判断哪些
+    属于本单元主题。判定看的是单元范围，不是词面匹配。
+    """
+
+    # 必填字段：空数组是「范围内没有知识点」这一有效结论的表达，字段缺失
+    # 则是模型没有给出结论。此前它带 default_factory=list，模型漏掉这个键
+    # 时校验静默通过、补成空数组，与「结论为空」无法区分（scope_reason 是
+    # 必填，所以整体校验仍然通过）。下游据此把空范围当成「判定缺失」并给
+    # 整个单元借题，线上实测 13 题里 10 题来自其他知识点。改为必填后，缺
+    # 失字段在契约层就是校验失败，由既有重试与兜底路径处理。
+    in_scope_kp_ids: list[str] = Field(
+        max_length=500,
+        description=(
+            "属于本单元主题的知识点 ID，必须逐字取自输入的知识点目录。"
+            "整个章节属于本单元时，列出该章节下的全部候选知识点 ID；"
+            "判定不了的不要列出。没有任何知识点属于本单元时返回空数组。"
+            "本字段必须出现；结论为空时给出空数组，不要省略。"
+        ),
+    )
+    scope_reason: str = Field(
+        min_length=1,
+        max_length=800,
+        description=(
+            "说明判定依据：哪些教材或章节属于本单元、哪些不属于，"
+            "以及边界情况（相邻章节、同名异义、跨教材同名知识点）的处理。"
+        ),
+    )
+
+
 class KnowledgeSupplementDecisionModelOutput(StrictModelOutput):
     """组卷检索后的有限补充检索决策。
 
@@ -1577,6 +1664,9 @@ class PaperBlueprintModelOutput(StrictModelOutput):
     scope_summary: str = Field(min_length=1, max_length=1_000)
     duration_minutes: int | None = Field(default=None, gt=0)
     total_score: float | None = Field(default=None, gt=0)
+    # 本轮是否要求逐题解析：由读取用户请求的蓝图模型判断，组卷阶段只消费
+    # 这个结构化结果，不对用户原话做关键词匹配。
+    requires_explanation: bool = False
     units: list[BlueprintUnitModelOutput] = Field(min_length=1, max_length=20)
     assumptions: list[str] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)
@@ -1650,7 +1740,10 @@ class SystemBoundGeneratedPaperItemModelOutput(StrictModelOutput):
     question_type: str = Field(min_length=1, max_length=100)
     stem: str = Field(min_length=1, max_length=2_000)
     options: list[str] = Field(default_factory=list, max_length=8)
-    reference_answer: str = Field(min_length=1, max_length=500)
+    # 参考答案上限与解析同级：简答题、病例分析题的规范答案本来就会写成分点
+    # 论述，500 字的上限会把整批 5 道题一起作废（schema 校验是全或无），
+    # 现场实测因此丢掉过整个蓝图单元。上限仍然存在，只是不再比题目本身更窄。
+    reference_answer: str = Field(min_length=1, max_length=2_000)
     analysis: str = Field(min_length=1, max_length=2_000)
     rationale: str = Field(min_length=1, max_length=500)
     evidence_nos: list[int] = Field(
@@ -1692,7 +1785,7 @@ class PaperGapGenerationModelOutput(StrictModelOutput):
     generation_summary: str = Field(min_length=1, max_length=1_000)
     generated_items: list[SystemBoundGeneratedPaperItemModelOutput] = Field(
         default_factory=list,
-        max_length=5,
+        max_length=PAPER_GAP_BATCH_SIZE,
     )
 
 

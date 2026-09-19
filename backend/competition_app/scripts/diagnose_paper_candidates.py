@@ -93,35 +93,27 @@ async def run():
     fixed_reasons = {}
     fixed_type = {}
 
-    # 模拟：放宽 analysis + 主题锚点（knowledge_module 匹配 resolved_kp_names）
+    # 模拟：放宽 analysis + 结构化 KP 集合（线上现行策略）
     anchor_stats = {"eligible": 0, "uncertain": 0, "rejected": 0}
     anchor_reasons = {}
     anchor_type = {}
 
-    # 真实证据包（含 resolved_kp_names），用于主题锚点模拟
+    # 真实证据包（含 resolved_kp_ids / resolved_kp_names）
     real_pack = await backend.build_local_evidence_pack(QUERY, limit=8)
     print(f"真实证据包 resolved_kp_ids: {real_pack.resolved_kp_ids}")
     print(f"真实证据包 resolved_kp_names: {real_pack.resolved_kp_names}")
 
-    # 用真实 _knowledge_module_anchor 提取锚点（模拟线上带括号后缀的 knowledge_module）
-    anchor_unit = FakeUnit()
-    anchor_unit.knowledge_module = "方剂学·补益剂·四君子汤（组成识记）"
-    anchor = KnowledgeBaseAgent._knowledge_module_anchor(anchor_unit)
-    print(f"knowledge_module='{anchor_unit.knowledge_module}' -> 锚点='{anchor}'")
-    anchored_kp_ids = {
-        kp_id
-        for kp_id, name in real_pack.resolved_kp_names.items()
-        if anchor in name or name in anchor
-    }
-    print(f"主题锚点 '{anchor}' 命中的 KP: {anchored_kp_ids}")
+    # 单元范围就是该单元检索解析出的完整结构化 KP 集合，不做任何文本比对。
+    anchored_kp_ids = set(real_pack.resolved_kp_ids)
+    print(f"单元结构化范围 KP: {sorted(anchored_kp_ids)}")
 
-    # 统计候选池里挂四君子汤 KP 的题（真实题库检索 vs 专家生成）
+    # 统计候选池里桥接到范围内 KP 的题（真实题库检索 vs 专家生成）
     anchored_questions = [
         item
         for item in items
         if {b.kp_id for b in item.bridges} & anchored_kp_ids
     ]
-    print(f"\n候选池中挂四君子汤 KP 的题: {len(anchored_questions)} 道")
+    print(f"\n候选池中桥接到范围内 KP 的题: {len(anchored_questions)} 道")
     anchored_type = {}
     for item in anchored_questions:
         key = f"{item.question_type}->{'generated' if item.question_id.startswith('generated') else 'retrieved'}"
@@ -163,7 +155,7 @@ async def run():
         fkey = f"{item.question_type}->{f_status}"
         fixed_type[fkey] = fixed_type.get(fkey, 0) + 1
 
-        # 模拟：放宽 analysis + 主题锚点（真实 resolved_kp_names）
+        # 模拟：放宽 analysis + 结构化 KP 集合
         anchor_item = relaxed_item
         a_candidate_kp_ids = {b.kp_id for b in anchor_item.bridges}
         if anchored_kp_ids and a_candidate_kp_ids:
@@ -173,17 +165,9 @@ async def run():
             else:
                 a_status = "rejected"
                 a_reason = "topic_entity_mismatch"
-        elif not a_candidate_kp_ids:
+        else:
             a_status = "uncertain"
             a_reason = "primary_kp_scope_unverified"
-        else:
-            # 锚点未命中任何 KP 时回退到首位
-            if a_candidate_kp_ids & {RESOLVED_KP_IDS[0]}:
-                a_status = "eligible"
-                a_reason = "topic_entity_match"
-            else:
-                a_status = "rejected"
-                a_reason = "topic_entity_mismatch"
         anchor_stats[a_status] += 1
         anchor_reasons[a_reason] = anchor_reasons.get(a_reason, 0) + 1
         akey = f"{item.question_type}->{a_status}"
@@ -244,7 +228,7 @@ async def run():
     print(f"拒绝原因: {fixed_reasons}")
     print(f"题型->状态: {fixed_type}")
 
-    print(f"\n=== 放宽 analysis + 主题锚点（knowledge_module 匹配 resolved_kp_names）===")
+    print(f"\n=== 放宽 analysis + 结构化 KP 集合（单元 resolved_kp_ids 全集）===")
     print(f"eligible={anchor_stats['eligible']} uncertain={anchor_stats['uncertain']} rejected={anchor_stats['rejected']}")
     print(f"拒绝原因: {anchor_reasons}")
     print(f"题型->状态: {anchor_type}")

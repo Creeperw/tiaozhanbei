@@ -12,11 +12,17 @@ export default defineConfig({
     setupFiles: './src/test/setup.js',
     include: [
       'src/pageIntent.test.js',
+      'src/smartPaperRunClient.test.js',
       'src/videoTaskEvidence.test.js',
       'src/urlRouting.test.js',
       'src/**/*.test.jsx',
     ],
     css: true,
+    // 默认 5s 在 2 核机器上跑满 90 个文件时会随机超时（实测 TextbookChapterLearning、
+    // PersonalizationPage、StudyNotesPanel 都有过），而这些用例本身只耗时几百毫秒，
+    // 属于并行争抢而非真实卡死。放宽到 20s，保留“真卡死仍会失败”的能力。
+    testTimeout: 20000,
+    hookTimeout: 20000,
   },
   build: {
     rollupOptions: {

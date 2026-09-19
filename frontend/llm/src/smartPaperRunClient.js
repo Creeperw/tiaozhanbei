@@ -41,6 +41,7 @@ export async function startSmartPaperRun({
   difficulty = null,
   paperKind = 'special',
   focusTopics = [],
+  requiresExplanation = false,
   onEvent,
   signal,
 }) {
@@ -79,6 +80,7 @@ export async function startSmartPaperRun({
           answer_mode: answerMode,
           duration_minutes: answerMode === 'test' ? durationMinutes : null,
           difficulty: Number.isInteger(difficulty) ? difficulty : null,
+          requires_explanation: Boolean(requiresExplanation),
           paper_kind: paperKind,
           topic: paperKind === 'special' ? topic.trim() : '',
           focus_topics: paperKind === 'adaptive'

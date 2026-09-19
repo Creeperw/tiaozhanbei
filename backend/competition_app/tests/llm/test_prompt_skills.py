@@ -37,6 +37,22 @@ def test_knowledge_explanation_audit_uses_canonical_non_blocking_pass_policy() -
     assert "全部关键项通过才 `pass`；可修正缺项使用 `revise`" not in audit.instructions
 
 
+def test_paper_audit_prompt_states_the_location_key_limit_and_split_rule() -> None:
+    """位置键上限与拆分写法必须写入 prompt。
+
+    线上实测：schema 允许每条问题最多 8 个位置键，但 prompt 只要求“逐字选自
+    allowed_location_keys”，未提上限；分类清单又要求“偏离主题的题目定位到
+    对应 paper:question:*”。40 题卷子里 31 道偏离主题时，模型把题号堆进一条
+    问题，被 maxItems=8 拒绝，整份审核作废、模型判定的问题全部丢失。
+    """
+    audit = prompt_skill_registry.load("audit_agent", "paper_generation")
+
+    assert audit.version == "1.5.0"
+    assert "不超过 8 个" in audit.instructions
+    assert "拆成多条" in audit.instructions
+    assert "不得用 `paper:unit:*` 代替具体题号" in audit.instructions
+
+
 def test_all_planner_skills_use_runtime_schema_as_single_source_of_truth() -> None:
     task_types = (
         "casual_conversation",

@@ -73,8 +73,10 @@ async def test_first_failure_survives_success_without_changing_requests(first, r
     assert attempts[0]["failure_reason"] == reason
     assert attempts[1] == {"attempt": 2, "status": "succeeded"}
     if reason == "business_schema_invalid":
+        # 数组下标保留原值：它是 schema 结构位置而非模型文本，抹成 ``*``
+        # 会让修复指令退化成“某一项有问题”，模型无法定位。
         assert attempts[0]["validation_issues"] == [
-            {"field_path": "/issues/*/source_anchors", "rule": "required"}
+            {"field_path": "/issues/0/source_anchors", "rule": "required"}
         ]
     assert "private" not in json.dumps(trace.response_diagnostics)
     assert trace.raw_input is None and trace.raw_output_text is None

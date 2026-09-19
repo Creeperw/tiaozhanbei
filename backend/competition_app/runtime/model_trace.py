@@ -44,6 +44,7 @@ class ModelCallTrace(BaseModel):
     error_retry_count: int | None = None
     error_transport_stage: str | None = None
     validation_issues: list[dict[str, Any]] | None = None
+    business_validation_codes: list[str] | None = None
     planning_validation_issues: list[dict[str, Any]] | None = None
     started_at_ms: int | None = None
     completed_at_ms: int | None = None
@@ -73,12 +74,18 @@ _SAFE_TRANSPORT_STAGES = frozenset(
 
 
 def _safe_diagnostic_token(value: Any, *, lowercase: bool = False) -> str | None:
-    """Keep only short machine-generated diagnostic tokens."""
+    """Keep only short machine-generated diagnostic tokens.
+
+    Tokens must be ASCII: ``str.isalnum()`` is true for CJK characters, so a
+    length check alone would let Chinese prose through and it would then be
+    persisted as if it were a machine code. Machine codes in this codebase are
+    always ASCII identifiers.
+    """
 
     text = str(value or "").strip()
     if lowercase:
         text = text.lower()
-    if not text or len(text) > 80:
+    if not text or len(text) > 80 or not text.isascii():
         return None
     if not all(character.isalnum() or character in "_- ." for character in text):
         return None
@@ -96,6 +103,28 @@ def _bounded_diagnostic_int(
     except (TypeError, ValueError):
         return None
     return parsed if minimum <= parsed <= maximum else None
+
+
+def _safe_business_validation_codes(value: Any) -> list[str] | None:
+    """Keep only bounded machine tokens produced by server-side validators.
+
+    These codes are written by trusted validation code, never by the model, but
+    they still cross a persistence boundary: keep the same short-token shape as
+    the other trace diagnostics so no free text can ride along.
+    """
+
+    if not isinstance(value, list):
+        return None
+    codes = [
+        token
+        for token in (
+            _safe_diagnostic_token(item, lowercase=True)
+            for item in value[:16]
+            if isinstance(item, str)
+        )
+        if token
+    ]
+    return codes or None
 
 
 class ModelTraceRecorder:
@@ -360,6 +389,13 @@ class ModelTraceRecorder:
                     (getattr(error, "last_error_details", None) or {}).get("validation_issues")
                     if isinstance(getattr(error, "last_error_details", None), dict) else None
                 ) or None,
+                "business_validation_codes": _safe_business_validation_codes(
+                    (getattr(error, "last_error_details", None) or {}).get(
+                        "business_validation_codes"
+                    )
+                    if isinstance(getattr(error, "last_error_details", None), dict)
+                    else None
+                ),
                 "queue_wait_ms": _bounded_diagnostic_int(
                     timing_details.get("queue_wait_ms"), maximum=86_400_000
                 ),

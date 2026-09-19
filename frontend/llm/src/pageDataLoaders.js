@@ -149,6 +149,10 @@ export const emptyPaper = {
   paper_id: '',
   title: '',
   status: '',
+  // 卷面说明：难度与来源、题目来源、审核结论。系统确定性生成，随试卷一起
+  // 发布；答题页必须把它们显示出来，否则学习者看到卷子上掺入了别的知识点
+  // 的题、或审核指出了问题，都无从得知。
+  learner_notices: {},
   items: [],
   timing: null,
 };

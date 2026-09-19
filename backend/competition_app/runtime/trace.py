@@ -64,6 +64,13 @@ class RepairTrace(BaseModel):
         default=None, min_length=64, max_length=64
     )
     preserved_outputs_unchanged: bool | None = None
+    # 这一轮返修是否真的改变了内容。比较抹掉重新生成的标识符与时间戳之后
+    # 的内容摘要：确定性节点（如试卷装配）会逐字复现原产物，此时
+    # ``after_digest`` 仍然会变（只换了新生成的 id），不能作为返修生效的
+    # 证据。``content_changed`` 为 False 表示这轮返修是空转，剩余问题与
+    # 返修前完全相同。
+    content_changed: bool | None = None
+    unchanged_step_ids: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

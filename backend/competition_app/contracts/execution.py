@@ -18,6 +18,14 @@ DEFAULT_MODEL_STEP_TIMEOUT_SECONDS = (
 )
 DEFAULT_GRAPH_TIMEOUT_SECONDS = 7200.0
 
+# 组卷补题在一个步骤里串行跑多批缺口生成，每批都是一次完整的 provider 调用。
+# 它的步骤预算必须覆盖多批次的累计耗时，不能只按“单次调用 + 清理余量”推导：
+# 2026-09-17 r2e 实测 9 批累计 2399.4s 撞上 2400s 步骤预算，50 题在最后几批
+# 整体失败。两条组卷入口（planner 的动态计划与 smart_paper 的固定计划）必须
+# 用同一个值，否则同一任务会因入口不同而拿到不同预算——smart_paper 走的是
+# “单次调用 + 清理余量”= 2100s，比 planner 少 300s。
+PAPER_ASSEMBLY_STEP_TIMEOUT_SECONDS = 2400.0
+
 
 def model_step_timeout_seconds(provider_timeout_seconds: float) -> float:
     """Return a step deadline with explicit cleanup headroom."""

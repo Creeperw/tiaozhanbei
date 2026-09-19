@@ -14,12 +14,288 @@ from competition_app.contracts.paper import (
     QuestionCandidatePool,
     UnitQuestionCandidates,
 )
+from competition_app.llm.openai_compatible import ModelResponseError
+from competition_app.llm.schemas import PAPER_GAP_BATCH_SIZE
 
 
 def test_paper_assembly_choice_type_aliases_exclude_non_choice_questions() -> None:
     assert PaperAssemblyAgent._matches_question_type("单项选择题", ["单选题"])
     assert PaperAssemblyAgent._matches_question_type("多项选择题", ["选择题"])
     assert not PaperAssemblyAgent._matches_question_type("简答题", ["选择题"])
+
+
+def test_paper_question_type_display_and_quota_share_one_equivalence_table() -> None:
+    """卷面题型标注必须与题型配额、审核比对同源。
+
+    题库把开放式作答题分成“简答题”“问答题”“临床案例问答”“病例分析/实践
+    技能”四类。它们若只在配额侧归一、卷面侧保留原名，题目就会按“简答题”
+    计入配额、却按原名写进卷面，审核读到标注与蓝图要求不符而拒绝发布。
+    """
+
+    for label in (
+        "单项选择题", "单选题", "单项选择",
+        "多项选择题", "多选题", "多项选择", "选择题",
+        "判断题", "填空题",
+        "简答题", "简答", "问答", "问答题",
+        "临床案例问答", "病例分析/实践技能", "病例分析题", "案例分析题",
+        "案例分析", "病例分析", "临床案例题",
+    ):
+        assert PaperAssemblyAgent._display_question_type(
+            label
+        ) == PaperAssemblyAgent._normalize_question_type(label), label
+    for label in (
+        "简答题", "简答", "问答", "问答题",
+        "临床案例问答", "病例分析/实践技能", "病例分析题", "案例分析题",
+        "案例分析", "病例分析", "临床案例题",
+    ):
+        assert PaperAssemblyAgent._display_question_type(label) == "简答题", label
+    for label, expected in (
+        ("单项选择题", "单项选择题"),
+        ("单选题", "单项选择题"),
+        ("多项选择题", "多项选择题"),
+        ("多选题", "多项选择题"),
+        ("判断题", "判断题"),
+        ("填空题", "填空题"),
+    ):
+        assert PaperAssemblyAgent._display_question_type(label) == expected, label
+
+
+def test_paper_assembly_separates_web_evidence_from_web_questions_in_paper() -> None:
+    """卷面必须分开报「检索到的材料条数」与「真正入卷的网络题数」。
+
+    线上失效现场（2026-09-18「太阳中风证练习试卷」）：卷面写着「检索到网络
+    参考题 8 条，仅用于支撑出题，不直接入卷」，而同一批 8 道题全部被准入与
+    题型过滤丢弃——卷面既不说明它们没进卷，也看不出被哪道闸门拦下。反过来，
+    一旦回填的网络题真的入了卷，「不直接入卷」这句话又会在说谎。两个数必须
+    分开报，且措辞不得断言入卷与否。
+    """
+
+    context = _assembly_context()
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    pool = context["dependency_outputs"]["question_pool"].payload
+    base = pool.units[0].items[0]
+    # 3 条检索证据（材料），其中只有 1 道题真的进了卷。
+    pool.units[0].external_question_references = [
+        EvidenceItem(
+            evidence_id=f"E_WEB_{index}",
+            source_id=f"web:q{index}",
+            content_summary="网络参考材料",
+            authority_level="web_question",
+            confidence=0.9,
+            bridge_layer="external",
+            source_url=f"https://example.test/q{index}",
+            resource_type="question",
+        )
+        for index in range(1, 4)
+    ]
+    items = [
+        ExamPaperItem(
+            sequence=1,
+            unit_id=pool.units[0].unit_id,
+            score=5,
+            question=base.model_copy(update={"source_tier": "web_reference"}),
+            selection_rationale="题库题量不足，由网络检索题补足。",
+        )
+    ]
+
+    summary = PaperAssemblyAgent._build_difficulty_source_summary(
+        blueprint=blueprint,
+        items=items,
+        candidate_pool=pool,
+        required_total=1,
+    )
+
+    assert summary.web_reference_count == 3
+    assert summary.web_in_paper_count == 1
+    assert "检索到网络参考材料3条" in summary.notice
+    assert "有1道来自网络检索材料" in summary.notice
+    # 措辞不得断言网络题是否入卷：入卷与否由 web_in_paper_count 如实给出。
+    assert "不直接入卷" not in summary.notice
+
+
+class _FormalPoolOnlyAssemblyModel:
+    """正式候选充足时组卷不应调用模型；一旦调用即视为用例失败。"""
+
+    async def complete_json(self, role, payload, on_delta=None):
+        raise AssertionError("正式候选充足时不得调用模型")
+
+
+def _single_unit_assembly_context(
+    *,
+    blueprint_types: dict[str, int],
+    unit_types: list[str],
+    candidate_types: list[str],
+) -> dict:
+    total = sum(blueprint_types.values())
+    context = _assembly_context()
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.required_total_question_count = total
+    blueprint.required_question_type_distribution = dict(blueprint_types)
+    blueprint.units[0].required_question_count = total
+    blueprint.units[0].question_type_preferences = list(unit_types)
+    pool = context["dependency_outputs"]["question_pool"].payload
+    base = pool.units[0].items[0]
+    pool.units[0].required_question_count = total
+    pool.units[0].items = [
+        base.model_copy(
+            update={
+                "question_id": f"C{index}",
+                "stem": f"太阳病候选题{index}",
+                "question_type": question_type,
+                "reference_answer": "头项强痛而恶寒",
+            }
+        )
+        for index, question_type in enumerate(candidate_types, start=1)
+    ]
+    return context
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_labels_bank_case_questions_as_the_required_type() -> None:
+    """题库里的案例题、问答题入卷后必须标成蓝图要求的“简答题”。"""
+
+    context = _single_unit_assembly_context(
+        blueprint_types={"简答题": 3},
+        unit_types=["简答题"],
+        candidate_types=["临床案例问答", "病例分析/实践技能", "问答题"],
+    )
+
+    result = await PaperAssemblyAgent(_FormalPoolOnlyAssemblyModel()).run(context)
+
+    assert [
+        item.question.question_type for item in result.payload.items
+    ] == ["简答题"] * 3
+    assert PaperAssemblyAgent._count_question_types(result.payload.items) == {
+        "简答题": 3
+    }
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_keeps_case_analysis_workload_after_type_unification() -> None:
+    """题型名统一后，案例分析题仍按案例题的作答时长估算。"""
+
+    context = _single_unit_assembly_context(
+        blueprint_types={"简答题": 2},
+        unit_types=["简答题"],
+        candidate_types=["病例分析/实践技能", "简答题"],
+    )
+
+    result = await PaperAssemblyAgent(_FormalPoolOnlyAssemblyModel()).run(context)
+
+    assert [
+        item.question.question_type for item in result.payload.items
+    ] == ["简答题"] * 2
+    # 案例题 15 分钟 + 简答题 8 分钟 = 23 分钟，向上取整到 25 分钟；若题型名
+    # 统一发生在时长估算之前，两题都会按简答题的 8 分钟计成 20 分钟。
+    assert result.payload.duration_minutes == 25
+
+
+class _ShortAnswerGapModel:
+    """按缺口生成带解析的简答题，用于验证解析要求下的受控补题。"""
+
+    def __init__(self) -> None:
+        self.gap_calls: list[dict] = []
+
+    async def complete_json(self, role, payload, on_delta=None):
+        business = payload["payload"]
+        if business.get("phase") == "paper_gap_generation":
+            self.gap_calls.append(business)
+            return {
+                "generated_items": [
+                    {
+                        "question_type": "简答题",
+                        "stem": f"太阳病篇补充简答题{len(self.gap_calls)}-{index}",
+                        "options": [],
+                        "reference_answer": "头项强痛而恶寒",
+                        "analysis": "考查太阳病提纲的脉证。",
+                        "selection_rationale": "候选池缺少带解析的简答题，原创补足。",
+                        "source_tier": "model_knowledge",
+                    }
+                    for index in range(1, int(business["gap_count"]) + 1)
+                ]
+            }
+        return {
+            "title": "太阳病篇简答题专项训练卷",
+            "instructions": "请作答。",
+            "selected_items": [],
+            "generated_items": [],
+            "coverage_summary": {},
+            "unresolved_constraints": [],
+        }
+
+
+def _context_with_analysis_free_candidates() -> dict:
+    context = _single_unit_assembly_context(
+        blueprint_types={"简答题": 2},
+        unit_types=["简答题"],
+        candidate_types=["简答题", "简答题"],
+    )
+    pool = context["dependency_outputs"]["question_pool"].payload
+    pool.units[0].items = [
+        item.model_copy(update={"analysis": ""}) for item in pool.units[0].items
+    ]
+    return context
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_keeps_bank_candidates_without_analysis_when_required() -> None:
+    """表单要求逐题解析时，正式候选不再因缺解析被丢弃（方案 A）。
+
+    2026-09-18 实测：太阳病篇 40 题简答题的 15 道正式候选全部因缺解析字段被
+    丢弃，最终 40 题全部现场生成。正式题缺失的解析由平台在首次作答时生成并
+    回写，因此正式题以标准答案入卷；候选充足时不需要任何模型调用。
+    """
+
+    context = _context_with_analysis_free_candidates()
+    context["dependency_outputs"]["paper_blueprint"].payload.requires_explanation = True
+
+    result = await PaperAssemblyAgent(_FormalPoolOnlyAssemblyModel()).run(context)
+
+    assert [item.question.question_id for item in result.payload.items] == ["C1", "C2"]
+    assert all(item.question.origin == "retrieved" for item in result.payload.items)
+    assert all(not item.question.analysis.strip() for item in result.payload.items)
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_keeps_candidates_without_analysis_when_not_required() -> None:
+    """未要求解析时，无解析的正式候选同样可入卷（上一条的对照）。"""
+
+    context = _context_with_analysis_free_candidates()
+
+    result = await PaperAssemblyAgent(_FormalPoolOnlyAssemblyModel()).run(context)
+
+    assert [item.question.question_id for item in result.payload.items] == ["C1", "C2"]
+    assert all(item.question.origin == "retrieved" for item in result.payload.items)
+    assert all(not item.question.analysis.strip() for item in result.payload.items)
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_fills_gap_with_generated_items_carrying_analysis() -> None:
+    """候选不足时，解析要求由受控补题承担：补题必须自带解析。"""
+
+    context = _single_unit_assembly_context(
+        blueprint_types={"简答题": 3},
+        unit_types=["简答题"],
+        candidate_types=["简答题"],
+    )
+    pool = context["dependency_outputs"]["question_pool"].payload
+    pool.units[0].items = [
+        item.model_copy(update={"analysis": ""}) for item in pool.units[0].items
+    ]
+    context["dependency_outputs"]["paper_blueprint"].payload.requires_explanation = True
+    model = _ShortAnswerGapModel()
+
+    result = await PaperAssemblyAgent(model).run(context)
+
+    origins = [item.question.origin for item in result.payload.items]
+    assert origins.count("retrieved") == 1
+    assert origins.count("generated") == 2
+    assert all(
+        item.question.analysis.strip()
+        for item in result.payload.items
+        if item.question.origin == "generated"
+    )
+    assert model.gap_calls
 
 
 def test_paper_instructions_use_actual_selected_question_count() -> None:
@@ -91,6 +367,32 @@ class _DifficultyUnit:
     difficulty_is_hard_constraint: bool = False
 
 
+def test_explanation_delivery_comes_from_the_blueprint_not_from_request_keywords() -> None:
+    context = _assembly_context()
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+
+    # 默认不强制逐题解析。
+    assert PaperAssemblyAgent._blueprint_requires_explanations(blueprint) is False
+
+    # 交付条件只认蓝图合同字段。
+    assert (
+        PaperAssemblyAgent._blueprint_requires_explanations(
+            blueprint.model_copy(update={"requires_explanation": True})
+        )
+        is True
+    )
+
+    # 用户原话里的“附答案解析”不再由组卷阶段用关键词判断：读取原话的蓝图
+    # 模型负责把它写成合同字段，组卷只消费合同。
+    context["user_request"] = "帮我出10道单选题，附答案解析。"
+    assert (
+        PaperAssemblyAgent._blueprint_requires_explanations(
+            context["dependency_outputs"]["paper_blueprint"].payload
+        )
+        is False
+    )
+
+
 def test_question_solution_ok_requires_answer_only_now() -> None:
     question = (
         _assembly_context()["dependency_outputs"]["question_pool"]
@@ -113,8 +415,18 @@ def test_question_solution_ok_requires_answer_only_now() -> None:
 
     unit_none = _DifficultyUnit()
     assert PaperAssemblyAgent._question_solution_ok(no_analysis, unit_none)
-    assert not PaperAssemblyAgent._question_solution_ok(
+    # 用户勾选“每题附解析”时，正式题仍按标准答案判定：题库 93,251 道题只有
+    # 6.1% 带独立解析字段（简答题 2.6%），把它当正式题门槛会把可用正式题塌缩
+    # 到 6%，题量稍大的请求必然退化成全量现场生成（方案 A）。
+    assert PaperAssemblyAgent._question_solution_ok(
         no_analysis, unit_none, require_explanation=True
+    )
+    # 解析要求只对系统生成的题生效：模型连解析一起生成，缺解析即交付残缺。
+    assert not PaperAssemblyAgent._question_solution_ok(
+        no_analysis, unit_none, require_explanation=True, generated=True
+    )
+    assert PaperAssemblyAgent._question_solution_ok(
+        no_analysis, unit_none, require_explanation=False, generated=True
     )
 
     # 无答案的题仍然不合格。
@@ -853,7 +1165,7 @@ async def test_paper_assembly_fills_twenty_choice_questions_in_small_batches() -
     assert all(item.question.reference_answer for item in result.payload.items)
     assert all(item.question.analysis for item in result.payload.items)
     assert len(model.gap_calls) >= 2
-    assert all(call["gap_count"] <= 5 for call in model.gap_calls)
+    assert all(call["gap_count"] <= PAPER_GAP_BATCH_SIZE for call in model.gap_calls)
 
 
 @pytest.mark.asyncio
@@ -881,7 +1193,7 @@ async def test_paper_assembly_generates_twenty_five_fill_blanks_when_pool_is_emp
     assert all(item.question.analysis for item in result.payload.items)
     assert all(call["paper_scope"] == blueprint.scope_summary for call in model.gap_calls)
     assert all(call["retrieval_query"] == blueprint.units[0].retrieval_query for call in model.gap_calls)
-    assert all(call["gap_count"] <= 5 for call in model.gap_calls)
+    assert all(call["gap_count"] <= PAPER_GAP_BATCH_SIZE for call in model.gap_calls)
 
 
 @pytest.mark.asyncio
@@ -1014,11 +1326,13 @@ async def test_paper_assembly_reports_difficulty_source_breakdown_transparently(
     assert summary.unlabeled_official_count == 1
     assert summary.generated_count == 1
     assert summary.web_reference_count == 1
+    # 证据里带了 1 条网络材料，但没有任何网络题真的进了卷，两个数必须分开。
+    assert summary.web_in_paper_count == 0
     assert summary.unmet_count == 0
     assert "难度3" in summary.notice
     assert "未标注难度的正式题1道" in summary.notice
     assert "系统生成的补充题1道" in summary.notice
-    assert "网络参考题1条" in summary.notice
+    assert "检索到网络参考材料1条" in summary.notice
     assert "不会将其伪装为指定难度" in summary.notice
 
 
@@ -1066,3 +1380,204 @@ async def test_final_coverage_is_recomputed_after_generated_gap_fill() -> None:
         mode="json"
     )
     assert paper.unresolved_constraints == []
+
+
+class _OneUnitGenerationFailsModel:
+    """缺口生成时指定模块每一批都失败，其余模块正常出题。"""
+
+    def __init__(self, *, reason: str, status_code: int | None = None) -> None:
+        self.reason = reason
+        self.status_code = status_code
+        self.failed_calls = 0
+        self.generated_calls = 0
+        self.generated_modules: list[str] = []
+
+    async def complete_json(self, role, payload, on_delta=None):
+        business = payload["payload"]
+        if business.get("phase") == "paper_gap_generation":
+            module = str(business["knowledge_module"])
+            if module == "故障模块":
+                self.failed_calls += 1
+                raise ModelResponseError(
+                    "Model returned invalid structured output "
+                    "after one repair attempt",
+                    reason=self.reason,
+                    status_code=self.status_code,
+                )
+            self.generated_calls += 1
+            self.generated_modules.append(module)
+            return {
+                "generation_summary": "系统受限缺口补题。",
+                "generated_items": [
+                    {
+                        "question_type": "简答题",
+                        "stem": f"{module}缺口题{self.generated_calls}-{index}",
+                        "options": [],
+                        "reference_answer": "参考答案",
+                        "analysis": "解析。",
+                        "rationale": "补足题量缺口。",
+                        "evidence_nos": [],
+                    }
+                    for index in range(1, int(business["gap_count"]) + 1)
+                ],
+            }
+        return {
+            "title": "缺口容错试卷",
+            "instructions": "请作答。",
+            "selected_items": [],
+            "generated_items": [],
+            "coverage_summary": {},
+            "unresolved_constraints": [],
+        }
+
+
+class _LargeBatchOnlyFailsModel:
+    """缺口批次大于 1 道时失败，缩到 1 道就正常出题。
+
+    线上真实形态：一次要 2-5 道简答题，其中一道参考答案超过长度上限，
+    schema 校验是全或无，整批作废；缩批后单条内容更容易全部合规。
+    """
+
+    def __init__(self) -> None:
+        self.large_batch_failures = 0
+        self.generated_calls = 0
+
+    async def complete_json(self, role, payload, on_delta=None):
+        business = payload["payload"]
+        if business.get("phase") == "paper_gap_generation":
+            if int(business["gap_count"]) > 1:
+                self.large_batch_failures += 1
+                raise ModelResponseError(
+                    "Model returned invalid structured output "
+                    "after one repair attempt",
+                    reason="business_schema_invalid",
+                )
+            self.generated_calls += 1
+            module = str(business["knowledge_module"])
+            return {
+                "generation_summary": "系统受限缺口补题。",
+                "generated_items": [
+                    {
+                        "question_type": "简答题",
+                        "stem": f"{module}缩批题{self.generated_calls}",
+                        "options": [],
+                        "reference_answer": "参考答案",
+                        "analysis": "解析。",
+                        "rationale": "补足题量缺口。",
+                        "evidence_nos": [],
+                    }
+                ],
+            }
+        return {
+            "title": "缺口容错试卷",
+            "instructions": "请作答。",
+            "selected_items": [],
+            "generated_items": [],
+            "coverage_summary": {},
+            "unresolved_constraints": [],
+        }
+
+
+def _two_unit_gap_context() -> dict:
+    """两个都缺题的蓝图单元，其中 U1 的模型产出始终不合格。"""
+
+    context = _assembly_context()
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    pool = context["dependency_outputs"]["question_pool"].payload
+    blueprint.required_total_question_count = 4
+    blueprint.question_count_is_hard_constraint = True
+    blueprint.units[0].knowledge_module = "故障模块"
+    blueprint.units[0].question_type_preferences = ["简答题"]
+    blueprint.units[0].required_question_count = 2
+    blueprint.units.append(
+        BlueprintUnit(
+            unit_id="U2",
+            sequence=2,
+            knowledge_module="正常模块",
+            learning_objective="完成测试",
+            retrieval_query="正常模块",
+            question_type_preferences=["简答题"],
+            required_question_count=2,
+        )
+    )
+    pool.units[0].items = []
+    pool.units[0].required_question_count = 2
+    pool.units.append(
+        UnitQuestionCandidates(
+            unit_id="U2",
+            retrieval_query="正常模块",
+            resolved_kp_ids=[],
+            requested_limit=10,
+            required_question_count=2,
+            items=[],
+        )
+    )
+    return context
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_skips_one_failed_batch_and_keeps_the_rest() -> None:
+    """单批缺口生成失败只丢这一批，其余单元照常补齐。
+
+    修复前 ``complete_json`` 的异常直接冒泡：前面已成功生成的批次与整卷蓝图
+    一起作废，学习者只看到一次彻底失败，且重试必然重现。缺的题量改由审核
+    阶段的确定性题量门禁如实报出，并进入既有的局部返修。
+
+    批次失败后必须缩批重试：一次要 2 道题时，任何一道不合契约都会让整批
+    作废，直接放弃这个目标会让学习者点名要的主题在试卷里彻底消失。缩到
+    1 道仍然失败才放弃，因此这里总共尝试 2 次（2 道 → 1 道），既不会整卷
+    作废，也不会无上限地卡在同一个目标上。
+    """
+
+    context = _two_unit_gap_context()
+    model = _OneUnitGenerationFailsModel(reason="business_schema_invalid")
+
+    result = await PaperAssemblyAgent(model).run(context)
+
+    paper = result.payload
+    assert len(paper.items) == 4
+    assert all(item.unit_id == "U2" for item in paper.items)
+    assert model.failed_calls == 2
+    assert model.generated_modules == ["正常模块", "正常模块", "正常模块"]
+    # 缺口必须被如实记录，供审核阶段报出。
+    assert paper.final_coverage_summary.missing_unit_counts == {"U1": 2}
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_recovers_a_unit_by_shrinking_the_failed_batch() -> None:
+    """缩批重试必须把整个单元救回来，而不是只少丢一批。
+
+    线上真实形态：一次要 2-5 道简答题，其中一道参考答案超过长度上限，
+    schema 校验是全或无，整批作废。缩到 1 道后单条内容更容易全部合规，
+    学习者点名要的主题因此仍然出现在试卷里。
+    """
+
+    context = _two_unit_gap_context()
+    model = _LargeBatchOnlyFailsModel()
+
+    result = await PaperAssemblyAgent(model).run(context)
+
+    paper = result.payload
+    # 两个单元各自第一次 2 道整批作废，缩到 1 道后逐题补齐，题一道都没丢。
+    assert model.large_batch_failures == 2
+    assert len(paper.items) == 4
+    assert sorted(item.unit_id for item in paper.items) == ["U1", "U1", "U2", "U2"]
+    assert paper.final_coverage_summary.missing_unit_counts == {}
+    assert paper.final_coverage_summary.hard_constraints_satisfied is True
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_still_reports_provider_outage_as_failure() -> None:
+    """provider 侧故障必须原样上报，不能被伪装成“试卷题量不足”。"""
+
+    context = _two_unit_gap_context()
+    model = _OneUnitGenerationFailsModel(
+        reason="quota_exhausted", status_code=429
+    )
+
+    with pytest.raises(ModelResponseError) as exc_info:
+        await PaperAssemblyAgent(model).run(context)
+
+    assert exc_info.value.reason == "quota_exhausted"
+    assert model.failed_calls == 1
+    assert model.generated_modules == []

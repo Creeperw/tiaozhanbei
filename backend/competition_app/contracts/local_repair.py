@@ -67,6 +67,13 @@ class RepairAction(ContractModel):
     preserve_question_ids: list[str] = Field(default_factory=list, max_length=200)
     repair_instruction: str = ""
     previous_output_digest: str | None = Field(default=None, min_length=64, max_length=64)
+    # 返修前该节点产物的内容摘要：抹掉每次运行都会重新生成的标识符与时间戳
+    # 之后再取摘要。用它判断这一轮返修是否真的改变了内容——装配这类确定性
+    # 节点会逐字复现原产物，只有 ``previous_output_digest`` 时无法区分
+    # “内容变了”与“只换了一个新生成的 id”。
+    previous_content_digest: str | None = Field(
+        default=None, min_length=64, max_length=64
+    )
 
 
 class LocalRepairPlan(ContractModel):

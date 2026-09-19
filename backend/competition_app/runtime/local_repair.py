@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
@@ -24,12 +25,36 @@ def publishable_after_bounded_repair(output: Any, decision: str | None) -> Any:
     converge, so the repaired content is released and the residual findings are
     demoted to non-blocking advice.
 
+    Blocking findings are the exception.  A repair round is an attempt, not a
+    guarantee: the content nodes may be deterministic (paper assembly selects
+    from a frozen candidate pool), so the rerun can reproduce the very content
+    the auditor rejected.  Rewriting ``decision`` to ``pass`` in that case
+    publishes content the auditor refused, and leaves the published payload
+    contradicting the audit's own verdict on the repair trace.  The paper
+    blueprint's own acceptance criteria state 「审核未通过时不得发布正式试卷」,
+    so a blocking finding keeps the verdict ``revise`` and the caller must not
+    publish.  ``unresolved`` (protocol failure, unlocatable compiler output) is
+    a red-line blocking type: an auditor that never produced a verdict is not
+    evidence that the content is safe.
+
     Only the publication-facing payload is normalized: the audit's own verdict
     is already recorded on the repair trace and reaches the failure library
     from there.  Outputs that are already publishable are returned unchanged.
     """
     payload = getattr(output, "payload", None)
     if decision == "pass" or not isinstance(payload, AuditResult):
+        return output
+    if not getattr(payload, "semantic_verdict_available", True):
+        # 审核模型输出不符合协议：这次审核没有形成语义结论，``decision``
+        # 只反映确定性硬门禁。审核器失效不构成内容安全的证据，不能据此
+        # 把内容当作“已通过审核”放行。
+        return output
+    blocking_findings = [
+        finding
+        for finding in (payload.structured_findings or [])
+        if bool(getattr(finding, "blocking", False))
+    ]
+    if blocking_findings:
         return output
     report = str(getattr(payload, "audit_report", "") or "").strip()
     if PUBLISHED_AFTER_REPAIR_NOTE not in report:
@@ -271,6 +296,7 @@ class LocalRepairController:
                     step_id, issues_by_step[step_id], audit_step_id=audit_step_id
                 ),
                 previous_output_digest=self._output_digest(outputs.get(step_id)),
+                previous_content_digest=self._content_digest(outputs.get(step_id)),
             )
             for step_id in selected_steps
         ]
@@ -370,6 +396,13 @@ class LocalRepairController:
     # Diagnosis。审核机制故障或问题缺少定位时用它整篇重新生成后再送审。
     _FALLBACK_TARGETS = ("expert", "paper_assembly", "diagnosis")
 
+    # 整卷级问题重新取题时必须一并重跑的上游节点。试卷装配是确定性选择：
+    # 候选身份绑定、题量配额和排序都由系统掌握，同一候选池必然产出同一份
+    # 试卷（除重新生成的 paper_draft_id 外每个字段都相同）。只重跑装配节点
+    # 的返修因此是恒等变换——线上实测返修前后 40 道题的题干逐字一致。要让
+    # 返修真的改变产物，必须让装配拿到一批新的候选。
+    _RETRIEVAL_UPSTREAM_STEPS = ("paper_blueprint", "question_pool")
+
     def _fallback_target(self, step_ids: frozenset[str]) -> str | None:
         return next(
             (
@@ -379,6 +412,23 @@ class LocalRepairController:
             ),
             None,
         )
+
+    def _whole_paper_chain(
+        self,
+        step_ids: frozenset[str],
+        audit_step_id: str,
+    ) -> tuple[str, ...]:
+        """整卷级问题的返修链：从取题开始重跑，再装配、再送审。
+
+        上游节点不存在时（例如只装配、不取题的旧 DAG）退回只重跑装配，
+        保持既有行为不变。
+        """
+        upstream = tuple(
+            step_id
+            for step_id in self._RETRIEVAL_UPSTREAM_STEPS
+            if step_id in step_ids
+        )
+        return (*upstream, "paper_assembly", audit_step_id)
 
     def _fallback_issue(self, plan: ExecutionPlan) -> RepairIssue | None:
         """Build one synthetic, locatable issue for the content-producing node.
@@ -421,6 +471,11 @@ class LocalRepairController:
             fallback = self._fallback_target(step_ids)
             if fallback is None:
                 return None
+            if issue_type == "unresolved" and fallback == "paper_assembly":
+                # 审核机制故障落在整卷上：这类问题没有可定位的单题，装配
+                # 节点重跑只会逐字复现原卷。必须重新取题，返修才有可能
+                # 真的改变产物。
+                return self._whole_paper_chain(step_ids, audit_step_id)
             return (fallback, audit_step_id)
         target = self._affected_target(issue)
         if target is None:
@@ -471,12 +526,7 @@ class LocalRepairController:
                 for location in issue.locations
             ):
                 return ("paper_assembly", audit_step_id)
-            return (
-                "paper_blueprint",
-                "question_pool",
-                "paper_assembly",
-                audit_step_id,
-            )
+            return self._whole_paper_chain(step_ids, audit_step_id)
         if issue_type in {
             "plan_quality",
             "plan_contract_invalid",
@@ -615,6 +665,36 @@ class LocalRepairController:
         except TypeError:
             raw = str(value)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    # 每次运行都会重新生成的标识与时间戳：完整 uuid、长十六进制串（``EP_``、
+    # ``PAPER_DRAFT_`` 之类的 id 都是 32 位十六进制）、ISO 时间。内容相同的
+    # 两次运行也会得到不同的值，比对前必须抹平。
+    _VOLATILE_VALUE_PATTERN = re.compile(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+        r"|[0-9a-f]{16,}"
+        r"|\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?"
+    )
+
+    @classmethod
+    def _content_digest(cls, value: Any) -> str | None:
+        """摘要产物内容，忽略每次运行都会重新生成的标识符与时间戳。
+
+        ``_output_digest`` 把 ``paper_draft_id`` 这类字段也算进去，所以即使
+        返修逐字复现了原产物，摘要依然会变——线上实测返修前后的 40 道题题干
+        完全一致，而 ``before_digest`` 与 ``after_digest`` 不同，差值只来自
+        重新生成的 ``paper_draft_id``。返修是否真的改变了内容必须能被判定，
+        否则“已完成返修”只是一个不成立的记录。
+        """
+        if value is None:
+            return None
+        if hasattr(value, "model_dump"):
+            value = value.model_dump(mode="json")
+        try:
+            raw = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+        except TypeError:
+            raw = str(value)
+        normalized = cls._VOLATILE_VALUE_PATTERN.sub("<volatile>", raw)
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _human_review_plan(

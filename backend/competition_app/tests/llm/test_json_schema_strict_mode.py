@@ -12,7 +12,7 @@ import json
 
 import httpx
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from competition_app.agents.planner import PlannerAgent
 from competition_app.llm.schemas import PlannerLearningPlanOutput
@@ -368,7 +368,113 @@ async def test_schema_fallback_still_rejects_business_invalid_json() -> None:
             "business_schema_invalid",
         ],
         "response_lengths": [13, 13],
+        # 业务 Agent 的契约失败也要留下“哪个字段没过哪条约束”。此前只有
+        # planner / compiler 收集，线上只剩一个粗码，无法定位。这里同时
+        # 锁住“只回填 schema 属性名与固定规则名、不含模型文本”。
+        "validation_issues": [
+            {"field_path": "/candidates", "rule": "required", "attempt": 1},
+            {"field_path": "/conflicts", "rule": "required", "attempt": 1},
+            {"field_path": "/candidates", "rule": "required", "attempt": 2},
+            {"field_path": "/conflicts", "rule": "required", "attempt": 2},
+        ],
     }
+
+
+class _GeneratedItem(BaseModel):
+    question_type: str = Field(min_length=1)
+    stem: str = Field(min_length=1, max_length=20)
+    reference_answer: str = Field(min_length=1, max_length=10)
+    analysis: str = Field(min_length=1, max_length=20)
+
+
+class _GeneratedItems(BaseModel):
+    generation_summary: str = Field(min_length=1)
+    generated_items: list[_GeneratedItem] = Field(default_factory=list)
+
+
+@pytest.mark.asyncio
+async def test_business_agent_contract_failure_keeps_field_level_evidence() -> None:
+    """业务 Agent 的 pydantic 契约失败必须能定位到具体字段。
+
+    组卷的缺口生成就是这样失败的：模型返回了合法 JSON，但某个字段超出
+    上限。修复前该角色的失败只留下 ``business_schema_invalid`` 一个粗码，
+    字段路径全部丢弃，线上无法判断到底是哪条约束没过。
+    """
+
+    over_long = "答" * 40
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "generation_summary": "补题",
+                                    "generated_items": [
+                                        {
+                                            "question_type": "简答题",
+                                            "stem": "太阳病提纲证是什么？",
+                                            "reference_answer": over_long,
+                                            "analysis": "太阳病提纲证。",
+                                        }
+                                    ],
+                                },
+                                ensure_ascii=False,
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="deepseek-v4-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelResponseError) as exc_info:
+        await client.complete_json(
+            "expert_agent",
+            {
+                "payload": {
+                    "phase": "paper_gap_generation",
+                    "output_schema": _GeneratedItems.model_json_schema(),
+                },
+                "_result_validator": _GeneratedItems.model_validate,
+            },
+        )
+
+    assert exc_info.value.reason == "business_schema_invalid"
+    issues = client.last_error_details["validation_issues"]
+    assert {
+        "field_path": "/generated_items/0/reference_answer",
+        "rule": "maxLength",
+        "limit": 10,
+        "attempt": 1,
+    } in issues
+    # 证据里不得出现模型正文。
+    assert over_long not in json.dumps(issues, ensure_ascii=False)
+
+    # 修复重试的提示词必须带上同一个字段级证据与 schema 声明的阈值，
+    # 否则第二次尝试只能靠猜，很容易原样超限。
+    assert len(requests) == 2
+    repair = json.loads(requests[1].content)["messages"][-1]["content"]
+    assert "Validation feedback:" in repair
+    assert "/generated_items/0/reference_answer" in repair
+    assert '"limit": 10' in repair
+    # 反馈段只能含服务端合同元数据，不得回填模型写的正文。
+    feedback = repair.split("Previous output (untrusted JSON string):")[0]
+    assert over_long not in feedback
+    assert "内容长度超过上限（10）" in feedback
+    # 但业务 Agent 必须能看到自己上一轮的输出，否则无法按字段定位修正。
+    assert "Previous output (untrusted JSON string):" in repair
 
 
 @pytest.mark.asyncio

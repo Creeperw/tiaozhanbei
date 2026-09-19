@@ -76,6 +76,45 @@ def test_validate_smart_paper_constraints_closes_question_type_contract() -> Non
         "简答题": 2,
     }
     assert result["question_count"] == 6
+    # 解析交付项缺省为不要求，只能由表单开关声明，不从主题正文推断。
+    assert result["requires_explanation"] is False
+
+
+def test_validate_smart_paper_constraints_accepts_the_explanation_switch() -> None:
+    result = validate_smart_paper_constraints(
+        {
+            "question_type_distribution": {"short_answer": 2},
+            "paper_kind": "special",
+            "topic": "太阳病篇",
+            "requires_explanation": True,
+        }
+    )
+
+    assert result["requires_explanation"] is True
+    # 主题正文里出现“解析”字样不得改变交付条件。
+    with_explanation_word = validate_smart_paper_constraints(
+        {
+            "question_type_distribution": {"short_answer": 2},
+            "paper_kind": "special",
+            "topic": "太阳病篇，每题均附详细解析",
+        }
+    )
+    assert with_explanation_word["requires_explanation"] is False
+
+
+@pytest.mark.parametrize("value", ["true", 1, 0, "是"])
+def test_validate_smart_paper_constraints_rejects_non_boolean_explanation(
+    value: object,
+) -> None:
+    with pytest.raises(ValueError, match="逐题解析要求必须是布尔值"):
+        validate_smart_paper_constraints(
+            {
+                "question_type_distribution": {"short_answer": 1},
+                "paper_kind": "special",
+                "topic": "太阳病篇",
+                "requires_explanation": value,
+            }
+        )
 
 
 @pytest.mark.parametrize("question_type", ["case_quiz", "案例分析题", "判断题"])

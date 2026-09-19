@@ -35,6 +35,10 @@ from competition_app.contracts.workshop import UiAction
 from competition_app.runtime.orchestrator import ExecutionResult, Orchestrator
 from competition_app.runtime.trace import CommunicationTrace, RepairTrace
 from competition_app.runtime.snapshot import SnapshotExporter, _sanitize
+from competition_app.application.workflow_presentation import (
+    FAILURE_USER_MESSAGES,
+    failure_user_message,
+)
 from competition_app.runtime.model_trace import ModelCallTrace, ModelTraceRecorder
 from competition_app.runtime.event_stream import (
     build_public_agent_output,
@@ -2864,28 +2868,10 @@ class PersonalizedReviewCardUseCase:
                 context_summary.model_dump(mode="json"),
             )
 
-    # 失败文案与 api/app.py 的 safe_failure_message 保持一致（避免把内部
-    # 异常详情直接展示给学习者）。
-    _FAILURE_USER_MESSAGES: dict[str, str] = {
-        "knowledge_timeout": "知识检索超时，已保存当前会话，请稍后重试。",
-        "knowledge_step_failed": "知识检索未能完成，请稍后重试。",
-        "paper_blueprint_timeout": "试卷蓝图生成超时，请稍后重试。",
-        "model_timeout": "模型调用超时，请稍后重试。",
-        "model_invalid_output": "模型输出未能通过解析，请重新生成。",
-        "workflow_timeout": "本次处理超时，已保存当前会话，请稍后重试。",
-        "plan_compilation_failed": "学习规划未能通过结构化校验，请稍后重试。",
-        "audit_step_timeout": "内容审核超时，已保存当前会话，请稍后重试。",
-        "audit_step_failed": "内容审核未能完成，请稍后重试。",
-        "daily_task_publication_failed": "今日任务发布未能完成，请稍后重试。",
-        "paper_generation_failed": "试卷生成未能完成，请稍后重试。",
-        "persistence_failed": "结果保存失败，请稍后重试。",
-        "model_empty_response": "模型暂时没有返回内容，请再试一次。",
-        "model_transport_error": "模型连接暂时不稳定，请稍后重试。",
-        "exam_workspace_changed": (
-            "考试目标已切换，旧任务不能继续；"
-            "请在当前考试下重新发起该请求。"
-        ),
-    }
+    # 失败文案的唯一来源在 workflow_presentation 里（避免把内部异常详情直接
+    # 展示给学习者）。这里保留类属性名是因为它同时被会话消息路径和测试引用；
+    # 内容不再各自维护，防止与 HTTP 入口的文案漂移。
+    _FAILURE_USER_MESSAGES: dict[str, str] = FAILURE_USER_MESSAGES
 
     def save_failure_message(
         self,
@@ -2909,9 +2895,7 @@ class PersonalizedReviewCardUseCase:
             )
         except Exception:
             return
-        content = self._FAILURE_USER_MESSAGES.get(
-            str(error_code or ""), "这次处理没有成功完成，请稍后重试。"
-        )
+        content = failure_user_message(error_code)
         # 幂等保护：同一会话若「最后一条消息」已是本次失败回执（execute
         # except 与 SSE failure 双路径可能先后触发），跳过避免重复追加。
         # 仅检查最后一条：重试（新 user 消息在最后）后再失败时必须追加
@@ -3283,6 +3267,15 @@ class PersonalizedReviewCardUseCase:
                         **(
                             {"validation_issues": item.validation_issues}
                             if item.validation_issues
+                            else {}
+                        ),
+                        **(
+                            {
+                                "business_validation_codes": (
+                                    item.business_validation_codes
+                                )
+                            }
+                            if item.business_validation_codes
                             else {}
                         ),
                         **(
@@ -4082,6 +4075,189 @@ class PersonalizedReviewCardUseCase:
             cancellation_check()
         return None
 
+    # 未通过审核时面向学习者展示的问题条数上限与单条长度上限：审核报告可能
+    # 有几十条，全量铺开只会淹没真正需要处理的那几处。
+    _UNAPPROVED_PAPER_REASON_LIMIT = 5
+    _UNAPPROVED_PAPER_REASON_CHARS = 220
+
+    @classmethod
+    def _paper_non_publication_reason(cls, *, audit: Any, empty_reason: str) -> str:
+        """试卷不该发布时面向学习者的说明；可以发布时返回空串。
+
+        只有两种情况阻止发布：
+
+        * 本卷没有内容（``empty_reason`` 非空）——发布空卷对学习者没有意义；
+        * 审核没有形成语义结论（``semantic_verdict_available`` 为假）——审核器
+          输出不符合协议，系统拿不到任何内容判断，不能把未经审核的试卷交出去。
+
+        审核有语义结论、但结论不是 pass 时**照常发布**，改由卷面的
+        ``_paper_audit_notice`` 如实说明这次审核指出的问题。原因：候选不足是
+        常态，组卷会在缺口上按降级策略补题（掺入其他知识点的题、生成补充题），
+        审核因此长期带着非阻塞问题；把这些卷子一律扣下，学习者拿不到任何东西，
+        也看不到系统究竟做了什么。发布 + 如实说明比不发布更有用。
+
+        结论全部取自结构化字段（``decision``、``semantic_verdict_available``），
+        不解析审核报告文案。
+        """
+        if empty_reason:
+            return (
+                "暂未找到与当前学习范围匹配的题目，本次没有生成试卷内容。"
+                f"（{empty_reason}）你可以换个知识点，或稍后再试。"
+            )
+        if not bool(getattr(audit, "semantic_verdict_available", True)):
+            # 审核模型输出不符合协议：这次审核没有形成语义结论，decision 只
+            # 反映确定性硬门禁。审核器失效不构成内容安全的证据。
+            return (
+                "本次没有发布试卷：内容审核没能完成（审核结果不符合约定格式），"
+                "系统不能把未经审核的内容交给你作答。"
+                "可以稍后重试，或换一个更具体的知识点。"
+            )
+        return ""
+
+    # 短于此长度的标识符不参与展示清理：短串（如两位题号）出现在正常中文
+    # 叙述里的概率不低，剔除它反而会改坏句子。
+    _INTERNAL_IDENTIFIER_MIN_CHARS = 6
+
+    @classmethod
+    def _paper_internal_identifiers(cls, paper: Any) -> tuple[str, ...]:
+        """试卷载荷中出现过的系统内部标识符，按长度倒序返回。
+
+        只收集系统自己写在试卷数据里的标识（题目 ID、试卷题目标识、题目版本
+        标识、蓝图单元 ID）——不猜模型会怎么写。按长度倒序是为了避免一个标识
+        是另一个的前缀时留下残渣。
+        """
+        if paper is None:
+            return ()
+        identifiers: set[str] = set()
+        for item in list(getattr(paper, "items", []) or []):
+            question = getattr(item, "question", None)
+            for value in (
+                getattr(question, "question_id", ""),
+                getattr(item, "paper_item_id", ""),
+                getattr(item, "question_version_id", ""),
+                getattr(item, "unit_id", ""),
+            ):
+                text = str(value or "").strip()
+                if len(text) >= cls._INTERNAL_IDENTIFIER_MIN_CHARS and " " not in text:
+                    identifiers.add(text)
+        return tuple(sorted(identifiers, key=len, reverse=True))
+
+    @classmethod
+    def _without_internal_identifiers(cls, text: str, identifiers: tuple[str, ...]) -> str:
+        """剔除卷面说明里的系统内部标识符，并整理剔除留下的机械残留。
+
+        审核模型在正文里引用题目 ID 是正常的（系统给它的位置键就是这些标识
+        符），但学习者只认题号；ID 出现在卷面上既没法对应回题目，也让人以为
+        自己在看系统日志。这里只做标识符删除与空括号/多余空白的整理，不对
+        正文语义做任何猜测或改写。
+        """
+        if not text or not identifiers:
+            return text
+        cleaned = text
+        for identifier in identifiers:
+            cleaned = re.sub(rf"[（(]\s*{re.escape(identifier)}\s*[)）]", "", cleaned)
+            cleaned = cleaned.replace(identifier, "")
+        cleaned = re.sub(r"[（(]\s*[）)]", "", cleaned)
+        cleaned = re.sub(r"[（(]\s*[，、,;；:：]+", "（", cleaned)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned)
+        cleaned = re.sub(r"\s+([，。；、：！？）)])", r"\1", cleaned)
+        return cleaned.strip()
+
+    @staticmethod
+    def _paper_finding_location_label(finding: Any) -> str:
+        """审核问题绑定的系统位置标签（如「第1题」）。
+
+        位置来自审核产物的结构化字段 ``locations``，不解析说明正文。仅有整卷级
+        位置（``paper:whole``）时返回空串：全卷说明里「当前试卷全文」不提供任何
+        额外信息，不值得占一行。
+        """
+        labels: list[str] = []
+        for location in list(getattr(finding, "locations", []) or []):
+            if str(getattr(location, "location_key", "") or "") == "paper:whole":
+                continue
+            label = str(getattr(location, "display_label", "") or "").strip()
+            if label and label not in labels:
+                labels.append(label)
+        return "、".join(labels[:3])
+
+    @classmethod
+    def _paper_audit_notice(cls, audit: Any, *, paper: Any = None) -> str:
+        """试卷已发布、但审核仍指出问题时的卷面说明；审核通过时返回空串。
+
+        内容取自结构化字段（``decision``、``structured_findings``、``findings``），
+        不解析审核报告文案。系统不隐藏已知问题：卷子照发，问题照说。
+
+        位置用系统自己的位置标签（题号）单独标出，说明正文里的系统内部标识符
+        在展示前剔除：模型引用它们是正常的，学习者没有途径把这些 ID 对应回题目。
+        """
+        if str(getattr(audit, "decision", "") or "") == "pass":
+            return ""
+        internal_ids = cls._paper_internal_identifiers(paper)
+        reasons: list[tuple[str, str]] = []
+        for finding in (getattr(audit, "structured_findings", None) or []):
+            if not bool(getattr(finding, "blocking", False)):
+                continue
+            message = cls._without_internal_identifiers(
+                str(getattr(finding, "message", "") or "").strip(), internal_ids
+            )
+            if message:
+                reasons.append((cls._paper_finding_location_label(finding), message))
+        if not reasons:
+            for finding in (getattr(audit, "findings", None) or []):
+                message = cls._without_internal_identifiers(str(finding).strip(), internal_ids)
+                if message:
+                    reasons.append(("", message))
+        if not reasons:
+            return ""
+        listed = [
+            (
+                f"· {label}\n  {reason[: cls._UNAPPROVED_PAPER_REASON_CHARS]}"
+                if label
+                else f"· {reason[: cls._UNAPPROVED_PAPER_REASON_CHARS]}"
+            )
+            for label, reason in reasons[: cls._UNAPPROVED_PAPER_REASON_LIMIT]
+        ]
+        lines = [
+            "内容审核对本次试卷提出了以下问题。试卷已按当前可用题目发布，"
+            "使用时请注意这些已知问题：",
+        ]
+        lines.extend(listed)
+        if len(reasons) > len(listed):
+            lines.append(f"· 另有 {len(reasons) - len(listed)} 条问题未在此列出。")
+        lines.append("完整审核报告已随本次记录保存。")
+        return "\n".join(lines)
+
+    @classmethod
+    def _paper_learner_notices(cls, *, paper: Any, audit: Any) -> dict[str, str]:
+        """随卷发布的系统说明：难度来源、题目来源、审核结论。
+
+        这些文案全部由系统确定性生成，是学习者判断「这份卷子能不能信、哪里
+        不可信」的唯一依据。此前它们只写进 ``ResourceDraft.content``，而答题
+        工作区的试卷详情接口返回的是题目快照，不含卷面说明——学习者在答题页
+        看不到任何说明，卷面跑偏（掺入了别的知识点的题）时也无从得知。
+        """
+        notices: dict[str, str] = {}
+        summary = getattr(paper, "difficulty_source_summary", None)
+        difficulty_notice = str(getattr(summary, "notice", "") or "").strip()
+        if difficulty_notice:
+            # Difficulty/source degradation is part of the learner-facing
+            # contract, not merely internal audit metadata.  Publishing the
+            # system-owned notice prevents generated gap questions or
+            # unlabeled formal questions from being mistaken for exact-level
+            # official-bank items.
+            notices["难度与来源说明"] = difficulty_notice
+        # 可用题目不足时系统是怎么补足的（按缺口掺入其他知识点的题目、现场
+        # 生成补充题）。学习者看到卷子上有一部分题不属于本次指定的单元，
+        # 必须能在卷面说明里找到原因。
+        supply_notice = str(getattr(paper, "supply_notice", "") or "").strip()
+        if supply_notice:
+            notices["题目来源说明"] = supply_notice
+        # 审核有语义结论但结论不是 pass 时试卷照发，问题在卷面上如实说明。
+        audit_notice = cls._paper_audit_notice(audit, paper=paper)
+        if audit_notice:
+            notices["审核说明"] = audit_notice
+        return notices
+
     def _publish_paper_blueprint(
         self,
         *,
@@ -4098,15 +4274,17 @@ class PersonalizedReviewCardUseCase:
         if callable(cancellation_check):
             cancellation_check()
         audit = execution.outputs["audit"].payload
-        if audit.decision != "pass":
-            raise RuntimeError(f"exam paper was not approved: {audit.decision}")
         paper = execution.outputs["paper_assembly"].payload
         blueprint = execution.outputs["paper_blueprint"].payload
         candidate_pool = execution.outputs["question_pool"].payload
         empty_reason = str(getattr(paper, "empty_reason", "") or "").strip()
-        if empty_reason:
-            # 空态占位卷：不发布到学习工坊、不创建资源版本，直接面向用户
-            # 给出可操作提示，避免前端展示“试卷生成未能完成”这类无信息量报错。
+        non_publication_reason = self._paper_non_publication_reason(
+            audit=audit, empty_reason=empty_reason
+        )
+        if non_publication_reason:
+            # 空态占位卷与审核未通过都不发布到学习工坊、不创建资源版本，直接
+            # 面向用户给出可操作提示，避免前端展示“试卷生成未能完成”这类
+            # 无信息量报错。
             _FAILURE_STEP_CONTEXT.set("snapshot")
             snapshot_path = self.snapshot_exporter.export(
                 case_id,
@@ -4120,6 +4298,7 @@ class PersonalizedReviewCardUseCase:
                     "exam_paper_draft": paper,
                     "audit": audit,
                     "empty_reason": empty_reason,
+                    "non_publication_reason": non_publication_reason,
                     "trace": execution.trace,
                     "tool_trace": execution.tool_trace,
                     "communication_trace": execution.communication_trace,
@@ -4130,10 +4309,7 @@ class PersonalizedReviewCardUseCase:
                 status="success",
                 execution_id=execution_id,
                 task_type=planner_output.payload.task_type,
-                direct_response=(
-                    "暂未找到与当前学习范围匹配的题目，本次没有生成试卷内容。"
-                    f"（{empty_reason}）你可以换个知识点，或稍后再试。"
-                ),
+                direct_response=non_publication_reason,
                 agent_outputs=agent_outputs,
                 audit=audit,
                 snapshot_path=snapshot_path,
@@ -4144,6 +4320,9 @@ class PersonalizedReviewCardUseCase:
         paper_publication: dict[str, Any] | None = None
         workshop_operation_id = f"WORKSHOP_PAPER_{execution_id}"
         workshop_publication_payload: dict[str, Any] | None = None
+        # 卷面说明只组装一次：它既要写进随卷发布的载荷（学习者在答题页据此
+        # 看到说明），也要写进 ResourceDraft 内容。
+        learner_notices = self._paper_learner_notices(paper=paper, audit=audit)
         if self.workshop_runtime is not None:
             self.data_permission_gateway.authorize(
                 agent="paper_assembly_agent",
@@ -4158,7 +4337,14 @@ class PersonalizedReviewCardUseCase:
                 "learner_id": request.learner_id,
                 "audit_result_id": audit.audit_result_id,
                 "publication": {
-                    "paper": paper.model_dump(mode="json"),
+                    "paper": {
+                        **paper.model_dump(mode="json"),
+                        # 试卷详情接口返回的是题目快照，不含 ResourceDraft
+                        # 内容。说明必须随试卷载荷一起送到答题工作区，否则
+                        # 学习者在答题页看不到任何关于题目来源与审核结论的
+                        # 说明。
+                        "learner_notices": learner_notices,
+                    },
                     "blueprint": blueprint.model_dump(mode="json"),
                     "evidence_pack": (
                     evidence_pack.model_dump(mode="json")
@@ -4172,14 +4358,8 @@ class PersonalizedReviewCardUseCase:
         paper_content: dict[str, Any] = {
             "试卷说明": paper.instructions,
             "试卷正文": [item.model_dump(mode="json") for item in paper.learner_questions()],
+            **learner_notices,
         }
-        if paper.difficulty_source_summary is not None:
-            # Difficulty/source degradation is part of the learner-facing
-            # contract, not merely internal audit metadata.  Publishing the
-            # system-owned notice prevents generated gap questions or
-            # unlabeled formal questions from being mistaken for exact-level
-            # official-bank items.
-            paper_content["难度与来源说明"] = paper.difficulty_source_summary.notice
         if publish_answers:
             paper_content["参考答案"] = [
                 {
@@ -4249,7 +4429,10 @@ class PersonalizedReviewCardUseCase:
                 target_service="resource_service",
                 target_entity_type="resource_version",
                 payload=resource_version.model_dump(mode="json"),
-                preconditions=["audit_pass"],
+                # 试卷不再要求审核结论为 pass：候选不足是常态，组卷会在缺口
+                # 上按降级策略补题，审核因此长期带着非阻塞问题。写库层仍保留
+                # ``audit_pass`` 门禁本身，供其他产物使用；这里不声明该前置
+                # 条件，审核问题改由卷面的「审核说明」如实告知学习者。
                 idempotency_key=(
                     f"{execution_id}:resource:{resource_version.resource_id}:"
                     f"v{resource_version.resource_version}"
@@ -4265,7 +4448,6 @@ class PersonalizedReviewCardUseCase:
                     target_service="workshop_service",
                     target_entity_type="paper",
                     payload=workshop_publication_payload,
-                    preconditions=["audit_pass"],
                     idempotency_key=f"{workshop_operation_id}:enqueue",
                 )
             )

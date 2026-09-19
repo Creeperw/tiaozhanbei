@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import PaperGenerationPanel, { PaperQuestionContent } from './PaperGenerationPanel';
@@ -22,6 +22,7 @@ describe('PaperGenerationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    window.localStorage.clear();
     loadPapers.mockResolvedValue({ papers: { items: [] }, error: '' });
   });
 
@@ -152,5 +153,93 @@ describe('PaperGenerationPanel', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '生成试卷' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '退出并保存' })).not.toBeInTheDocument();
+  });
+
+  it('shows the paper notices once on entry instead of pushing the first question down', async () => {
+    const paper = {
+      paper_id: 'PAPER_NOTICE',
+      title: '带说明的试卷',
+      status: 'published',
+      timing: { remaining_seconds: 600 },
+      learner_notices: {
+        题目来源说明: '本次可用的单元内题目不足：本卷有5道题来自其他知识点。',
+        审核说明: '内容审核对本次试卷提出了以下问题。\n· 题干表述不清',
+      },
+      items: [{ paper_item_id: 'I1', position: 1, question_type: 'single_choice', stem: '单选', options: ['A', 'B'], answer: '' }],
+    };
+    loadPaper.mockResolvedValue({ paper, error: '' });
+
+    render(<PaperGenerationPanel enabled paperId="PAPER_NOTICE" />);
+
+    const dialog = await screen.findByRole('dialog', { name: '开始答题前请阅读' });
+    expect(within(dialog).getByText('题目来源说明')).toBeInTheDocument();
+    expect(within(dialog).getByText('本次可用的单元内题目不足：本卷有5道题来自其他知识点。')).toBeInTheDocument();
+    expect(within(dialog).getByText('审核说明')).toBeInTheDocument();
+    expect(within(dialog).getByText(/内容审核对本次试卷提出了以下问题。/)).toBeInTheDocument();
+    // 说明不再占用答题区版面：题目前面没有说明区块，首屏就是第1题。
+    expect(screen.queryByRole('region', { name: '试卷说明' })).not.toBeInTheDocument();
+    expect(screen.getByText('单选')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '我已了解，开始答题' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('reopens the paper notices from the header button after the first entry', async () => {
+    const paper = {
+      paper_id: 'PAPER_REOPEN',
+      title: '可复看的试卷',
+      status: 'published',
+      timing: { remaining_seconds: 600 },
+      learner_notices: { 审核说明: '内容审核对本次试卷提出了以下问题。\n· 题干表述不清' },
+      items: [{ paper_item_id: 'I1', position: 1, question_type: 'single_choice', stem: '单选', options: ['A', 'B'], answer: '' }],
+    };
+    loadPaper.mockResolvedValue({ paper, error: '' });
+
+    render(<PaperGenerationPanel enabled paperId="PAPER_REOPEN" />);
+
+    const dialog = await screen.findByRole('dialog', { name: '开始答题前请阅读' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '关闭试卷说明' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '试卷说明' }));
+    expect(await screen.findByRole('dialog', { name: '开始答题前请阅读' })).toBeInTheDocument();
+  });
+
+  it('keeps the header button but does not pop up again for an already read paper', async () => {
+    window.localStorage.setItem('smart-paper-notice-seen:PAPER_READ', '1');
+    const paper = {
+      paper_id: 'PAPER_READ',
+      title: '已读说明的试卷',
+      status: 'published',
+      timing: { remaining_seconds: 600 },
+      learner_notices: { 审核说明: '内容审核对本次试卷提出了以下问题。\n· 题干表述不清' },
+      items: [{ paper_item_id: 'I1', position: 1, question_type: 'single_choice', stem: '单选', options: ['A', 'B'], answer: '' }],
+    };
+    loadPaper.mockResolvedValue({ paper, error: '' });
+
+    render(<PaperGenerationPanel enabled paperId="PAPER_READ" />);
+
+    expect(await screen.findByText('已读说明的试卷')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: '试卷说明' })).toBeInTheDocument());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('omits the notices dialog and its header button when the paper carries none', async () => {
+    const paper = {
+      paper_id: 'PAPER_PLAIN',
+      title: '无说明试卷',
+      status: 'published',
+      timing: { remaining_seconds: 600 },
+      learner_notices: {},
+      items: [{ paper_item_id: 'I1', position: 1, question_type: 'single_choice', stem: '单选', options: ['A', 'B'], answer: '' }],
+    };
+    loadPaper.mockResolvedValue({ paper, error: '' });
+
+    render(<PaperGenerationPanel enabled paperId="PAPER_PLAIN" />);
+
+    expect(await screen.findByText('无说明试卷')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '试卷说明' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '试卷说明' })).not.toBeInTheDocument();
   });
 });

@@ -4,7 +4,7 @@ import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, Sequence
 from collections import Counter
 from uuid import uuid4
 
@@ -18,13 +18,16 @@ from competition_app.contracts.knowledge import (
     EvidenceItem,
     EvidencePack,
     LearningFocusEvidence,
+    QuestionBridge,
     QuestionCandidateReference,
     QuestionDetail,
+    QuestionRetrievalMetadata,
     QuestionSearchDecision,
     QuestionSearchResult,
     RetrievalSummaryItem,
 )
 from competition_app.contracts.paper import QuestionCandidatePool, UnitQuestionCandidates
+from competition_app.contracts.question_types import normalize_question_type
 from competition_app.llm.base import ChatModel
 from competition_app.llm.openai_compatible import ModelResponseError
 from competition_app.llm.prompt_skills import prompt_skill_registry
@@ -32,6 +35,8 @@ from competition_app.llm.stub import StubChatModel
 from competition_app.llm.schemas import (
     KnowledgeModelOutput,
     KnowledgeExternalQuery,
+    KnowledgePaperUnitRetrievalPlanModelOutput,
+    KnowledgePaperUnitScopeModelOutput,
     KnowledgeRetrievalPlanModelOutput,
     KnowledgeSupplementDecisionModelOutput,
     validate_training_style_output,
@@ -69,6 +74,23 @@ class _DisabledRelevanceBatch:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class _UnitCandidatePool:
+    """单元候选池与准入分类，触发回填与最终建池共用的唯一口径。
+
+    ``pool`` 是真正进入候选池的题目（已按题型过滤并截到 ``candidate_limit``）；
+    ``scope`` 与 ``matching`` 是它逐级收窄前的形态，用于如实统计越界与题型
+    过滤各剔除了多少题。两处各算一套曾是线上网络题一道都进不了卷的原因。
+    """
+
+    pool: list[QuestionDetail]
+    matching: list[QuestionDetail]
+    scope: list[QuestionDetail]
+    eligible: list[QuestionDetail]
+    uncertain: list[QuestionDetail]
+    rejected: list[tuple[QuestionDetail, str]]
+    raw: list[QuestionDetail]
+
 
 class KnowledgeBaseAgent:
     # 模型判定证据不足时，允许补充检索的最多轮数与每轮查询数。
@@ -77,6 +99,12 @@ class KnowledgeBaseAgent:
     MAX_SUPPLEMENT_ROUNDS = 2
     MAX_SUPPLEMENT_QUERIES = 3
     PAPER_UNIT_CONCURRENCY = 3
+    # 候选不足时按知识点回填网络题的默认上限与超时。回填要花钱（Exa 检索 +
+    # LLM 清洗），所以每次只补最缺题的少数知识点。超时是**后台**灌题的预算，
+    # 不占用组卷时间：实测单次清洗 152～379 秒（要一次性输出全部题目与解析），
+    # 原先按 45 秒在组卷内等待，清洗必然被提前掐断、产出恒为 0。
+    WEB_BACKFILL_MAX_KNOWLEDGE_POINTS = 2
+    WEB_BACKFILL_TIMEOUT_SECONDS = 600
 
     def __init__(
         self,
@@ -87,9 +115,25 @@ class KnowledgeBaseAgent:
         supplement_max_rounds: int | None = None,
         supplement_max_queries: int | None = None,
         supplement_query_max_length: int | None = None,
+        web_question_ingest: Any | None = None,
+        web_backfill_max_knowledge_points: int | None = None,
+        web_backfill_timeout_seconds: int | None = None,
     ) -> None:
         self.retrieval_tool = retrieval_tool
         self.chat_model = chat_model or StubChatModel()
+        # 网络题回填服务（搜索→清洗→去重→入库）。未配置时组卷完全按原路径
+        # 走正式题库 + 现场生成，不会因此失败。
+        self.web_question_ingest = web_question_ingest
+        self.web_backfill_max_knowledge_points = (
+            web_backfill_max_knowledge_points
+            if web_backfill_max_knowledge_points is not None
+            else self.WEB_BACKFILL_MAX_KNOWLEDGE_POINTS
+        )
+        self.web_backfill_timeout_seconds = (
+            web_backfill_timeout_seconds
+            if web_backfill_timeout_seconds is not None
+            else self.WEB_BACKFILL_TIMEOUT_SECONDS
+        )
         self.question_relevance_service = (
             question_relevance_service or _DisabledQuestionRelevanceScorer()
         )
@@ -108,6 +152,10 @@ class KnowledgeBaseAgent:
             if supplement_query_max_length is not None
             else 200
         )
+        # 组卷单元的范围判定结果：目录签名 -> 知识点 ID 列表 / 判定依据。
+        # 同一单元的补充检索轮次会重复判定，目录没有新增知识点时直接复用。
+        self._unit_scope_cache: dict[tuple[str, ...], list[str]] = {}
+        self._unit_scope_reasons: dict[tuple[str, ...], str] = {}
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[EvidencePack]:
         if (
@@ -863,6 +911,76 @@ class KnowledgeBaseAgent:
             kp_ids.extend(extra_pack.resolved_kp_ids)
         return facts, items, kp_ids
 
+    async def _plan_paper_unit_retrieval(
+        self,
+        *,
+        context: dict[str, Any],
+        unit: Any,
+    ) -> KnowledgePaperUnitRetrievalPlanModelOutput | None:
+        """Let the knowledge agent turn one blueprint unit's scope into queries.
+
+        The blueprint carries a scope requirement (knowledge module, learning
+        objective, retrieval expression).  Using that expression verbatim as a
+        search query is what the retrieval layer measured as unusable: it is a
+        single instruction-style sentence, so BM25 tokenizes it into 37 distinct
+        terms (against 7 for a focused phrase), widens the candidate set from
+        3.2% to 30.9% of the bank, and drops top-10 topical relevance from 8/10
+        to 3/10.  The retrieval phrases therefore belong to this agent, which
+        already owns the retrieval decision (see the ``vector_retrieval`` skill).
+
+        Returns ``None`` when the model cannot answer, so the caller keeps the
+        blueprint expression instead of searching with something invented here.
+        """
+
+        try:
+            raw = await self.chat_model.complete_json(
+                "knowledge_base_agent",
+                build_model_context(
+                    context,
+                    target_agent="knowledge_base_agent",
+                    prompt_skill=prompt_skill_registry.load(
+                        "knowledge_base_agent", "vector_retrieval"
+                    ),
+                    payload={
+                        "phase": "plan_paper_unit_retrieval",
+                        "blueprint_unit": {
+                            "unit_id": str(unit.unit_id),
+                            "knowledge_module": str(unit.knowledge_module),
+                            "learning_objective": str(unit.learning_objective),
+                            "retrieval_requirement": str(unit.retrieval_query),
+                            "question_type_preferences": list(
+                                unit.question_type_preferences or []
+                            ),
+                            "required_question_count": int(
+                                unit.required_question_count
+                            ),
+                            "target_difficulty": getattr(
+                                unit, "target_difficulty", None
+                            ),
+                        },
+                        "output_schema": (
+                            KnowledgePaperUnitRetrievalPlanModelOutput
+                            .model_json_schema()
+                        ),
+                    },
+                    permission_note=(
+                        "蓝图单元给出的是范围要求，检索词由你撰写。"
+                        "只返回聚焦的检索短语：不写题型、题量、优先顺序等执行要求，"
+                        "不写答案、结论或完整陈述。"
+                        "不得生成题目、答案、证据、知识点ID或题目ID，"
+                        "不得改变蓝图的范围、题量、题型和难度约束。"
+                    ),
+                ),
+            )
+            if not isinstance(raw, dict):
+                return None
+            return KnowledgePaperUnitRetrievalPlanModelOutput.model_validate(raw)
+        except (ModelResponseError, RuntimeError, TimeoutError, TypeError, ValueError):
+            # 规划失败只影响"用哪条检索短语"，不影响本单元能否检索：
+            # 退回蓝图范围原文继续，比让整个单元归零更接近可用结果。
+            # CancelledError 继承自 BaseException，取消仍会正常传播。
+            return None
+
     async def _decide_paper_retrieval(
         self,
         *,
@@ -870,6 +988,7 @@ class KnowledgeBaseAgent:
         unit: Any,
         candidate_items: list[QuestionDetail],
         evidence_pack: EvidencePack,
+        scope_kp_ids: Sequence[str],
         used_queries: set[str],
         retrieval_round: int,
     ) -> KnowledgeSupplementDecisionModelOutput:
@@ -920,13 +1039,15 @@ class KnowledgeBaseAgent:
                         "retrieval_status": {
                             "candidate_count": candidate_count,
                             "eligible_count": sum(
-                                self._candidate_admission(item, unit, evidence_pack)[0]
-                                == "eligible"
+                                self._candidate_admission(
+                                    item, unit, scope_kp_ids
+                                )[0] == "eligible"
                                 for item in candidate_items
                             ),
                             "uncertain_count": sum(
-                                self._candidate_admission(item, unit, evidence_pack)[0]
-                                == "uncertain"
+                                self._candidate_admission(
+                                    item, unit, scope_kp_ids
+                                )[0] == "uncertain"
                                 for item in candidate_items
                             ),
                             "evidence_count": len(evidence_pack.evidence_items),
@@ -1032,10 +1153,31 @@ class KnowledgeBaseAgent:
         units: list[UnitQuestionCandidates] = []
         for unit in blueprint.units:
             warnings: list[str] = []
+            # 蓝图单元给的是范围要求；真正拿去检索的短语由本智能体撰写，
+            # 规划失败时才退回范围原文，避免用系统自造的查询掩盖失败。
+            question_query = unit.retrieval_query
+            kp_query = unit.retrieval_query
             try:
-                evidence_pack = await self._build_evidence_pack(
-                    unit.retrieval_query, context
+                unit_plan = await self._plan_paper_unit_retrieval(
+                    context=context, unit=unit
                 )
+                if unit_plan is None:
+                    warnings.append(
+                        "本单元检索计划暂不可用，已按蓝图范围原文检索。"
+                    )
+                else:
+                    question_query = unit_plan.question_query
+                    kp_query = unit_plan.kp_query or unit_plan.question_query
+                    emit_runtime_event(
+                        "paper_unit_retrieval_plan",
+                        agent="knowledge_base_agent",
+                        unit_id=unit.unit_id,
+                        retrieval_requirement=unit.retrieval_query,
+                        kp_query=unit_plan.kp_query,
+                        question_query=unit_plan.question_query,
+                        retrieval_reason=unit_plan.retrieval_reason,
+                    )
+                evidence_pack = await self._build_evidence_pack(kp_query, context)
                 retrieval_limit = min(
                     50,
                     max(
@@ -1046,33 +1188,59 @@ class KnowledgeBaseAgent:
                 )
                 target_difficulty = getattr(unit, "target_difficulty", None)
                 difficulty_requested = target_difficulty is not None
+                bridge_kp_ids = self._bridge_kp_ids(evidence_pack)
                 result = await self._search_question_candidates(
-                    unit.retrieval_query,
-                    evidence_pack.resolved_kp_ids,
+                    question_query,
+                    bridge_kp_ids,
                     context,
                     limit=retrieval_limit,
                     difficulty=target_difficulty if difficulty_requested else None,
                 )
                 result = await self._apply_question_relevance(result, unit)
-                eligible_items = self._eligible_unit_candidates(
-                    result.items, unit, evidence_pack
+                # 准入边界由知识库智能体依据单元声明的范围判定，不取检索命中
+                # 列表：命中列表是按知识点名称召回的，既含同名无关知识点，也
+                # 漏掉同章节里未被命中的知识点。
+                judged_scope_keys: set[tuple[str, ...]] = set()
+                scope_kp_ids, scope_failure = await self._resolve_unit_scope_kp_ids(
+                    context=context,
+                    unit=unit,
+                    items=result.items,
+                    evidence_pack=evidence_pack,
+                    judged_keys=judged_scope_keys,
+                )
+                if scope_failure:
+                    warnings.extend(
+                        self._scope_failure_notes(
+                            unit, scope_failure, scope_kp_ids
+                        )
+                    )
+                    emit_runtime_event(
+                        "paper_unit_scope_judgement_failed",
+                        agent="knowledge_base_agent",
+                        unit_id=unit.unit_id,
+                        knowledge_module=unit.knowledge_module,
+                        failure=scope_failure,
+                        fallback_kp_count=len(scope_kp_ids),
+                    )
+                admissible_items = self._admissible_unit_candidates(
+                    result.items, unit, scope_kp_ids
                 )
                 if (
                     difficulty_requested
-                    and len(eligible_items) < unit.required_question_count
+                    and len(admissible_items) < unit.required_question_count
                 ):
                     # 指定难度且精确难度正式题不足时，放宽到“未标注难度正式题”
                     # 补足候选池；其他难度的正式题仍不进入候选池（严格匹配，
                     # 不伪装指定难度）。
                     try:
                         relaxed_result = await self._search_question_candidates(
-                            unit.retrieval_query,
-                            evidence_pack.resolved_kp_ids,
+                            question_query,
+                            bridge_kp_ids,
                             context,
                             limit=retrieval_limit,
                         )
                         result = QuestionSearchResult(
-                            query=unit.retrieval_query,
+                            query=question_query,
                             resolved_kp_ids=list(dict.fromkeys(
                                 [*result.resolved_kp_ids, *relaxed_result.resolved_kp_ids]
                             )),
@@ -1094,19 +1262,33 @@ class KnowledgeBaseAgent:
                             "难度补足检索暂不可用："
                             f"{type(exc).__name__}；已保留首轮难度候选继续组卷。"
                         )
-                    eligible_items = self._eligible_unit_candidates(
-                        result.items, unit, evidence_pack
+                    scope_kp_ids, scope_failure = await self._resolve_unit_scope_kp_ids(
+                        context=context,
+                        unit=unit,
+                        items=result.items,
+                        evidence_pack=evidence_pack,
+                        judged_keys=judged_scope_keys,
+                    )
+                    if scope_failure:
+                        warnings.extend(
+                            self._scope_failure_notes(
+                                unit, scope_failure, scope_kp_ids
+                            )
+                        )
+                    admissible_items = self._admissible_unit_candidates(
+                        result.items, unit, scope_kp_ids
                     )
                 # The knowledge agent now owns the decision whether the
                 # evidence/candidate pool is sufficient. The backend remains
                 # the authority for limits, filtering and tool execution.
-                used_queries = {unit.retrieval_query}
+                used_queries = {question_query}
                 for decision_round in range(1, self.supplement_max_rounds + 2):
                     decision = await self._decide_paper_retrieval(
                         context=context,
                         unit=unit,
-                        candidate_items=eligible_items,
+                        candidate_items=admissible_items,
                         evidence_pack=evidence_pack,
+                        scope_kp_ids=scope_kp_ids,
                         used_queries=used_queries,
                         retrieval_round=decision_round,
                     )
@@ -1140,19 +1322,23 @@ class KnowledgeBaseAgent:
                             extra_pack = await self._build_evidence_pack(query_text, context)
                             extra_result = await self._search_question_candidates(
                                 query_text,
-                                extra_pack.resolved_kp_ids or evidence_pack.resolved_kp_ids,
+                                self._bridge_kp_ids(extra_pack),
                                 context,
                                 limit=retrieval_limit,
                             )
                             previous_count = len(result.items)
                             result = self._merge_question_search_results(
-                                result, extra_result, query=unit.retrieval_query
+                                result, extra_result, query=question_query
                             )
                             result = await self._apply_question_relevance(result, unit)
                             evidence_pack = evidence_pack.model_copy(update={
                                 "resolved_kp_ids": list(dict.fromkeys(
                                     [*evidence_pack.resolved_kp_ids, *extra_pack.resolved_kp_ids]
                                 )),
+                                "bridge_kp_ids": list(dict.fromkeys([
+                                    *evidence_pack.bridge_kp_ids,
+                                    *extra_pack.bridge_kp_ids,
+                                ])),
                                 "evidence_items": [
                                     *evidence_pack.evidence_items,
                                     *extra_pack.evidence_items,
@@ -1164,15 +1350,28 @@ class KnowledgeBaseAgent:
                                 f"补充检索‘{query_text}’暂不可用：{type(exc).__name__}；"
                                 "已保留首轮正式题库候选。"
                             )
-                    eligible_items = self._eligible_unit_candidates(
-                        result.items, unit, evidence_pack
+                    scope_kp_ids, scope_failure = await self._resolve_unit_scope_kp_ids(
+                        context=context,
+                        unit=unit,
+                        items=result.items,
+                        evidence_pack=evidence_pack,
+                        judged_keys=judged_scope_keys,
+                    )
+                    if scope_failure:
+                        warnings.extend(
+                            self._scope_failure_notes(
+                                unit, scope_failure, scope_kp_ids
+                            )
+                        )
+                    admissible_items = self._admissible_unit_candidates(
+                        result.items, unit, scope_kp_ids
                     )
                     if not added:
                         warnings.append("补充检索未产生新的正式候选，停止继续检索。")
                         break
                     warnings.append(
                         f"知识库智能体完成第{decision_round}轮补充检索，"
-                        f"当前符合约束候选{len(eligible_items)}道。"
+                        f"当前符合约束候选{len(admissible_items)}道。"
                     )
             except (LookupError, RuntimeError, TimeoutError, ValueError) as exc:
                 warnings.append(
@@ -1200,7 +1399,8 @@ class KnowledgeBaseAgent:
                     agent="knowledge_base_agent",
                     unit_id=unit.unit_id,
                     knowledge_module=unit.knowledge_module,
-                    query=unit.retrieval_query,
+                    query=question_query,
+                    retrieval_requirement=unit.retrieval_query,
                     required_count=unit.required_question_count,
                     candidate_count=0,
                     raw_candidate_count=0,
@@ -1212,69 +1412,104 @@ class KnowledgeBaseAgent:
                     status="insufficient",
                 )
                 continue
+            # 触发回填的判定与最终建池共用同一个口径，避免同一个 uncertain
+            # 在一处算可用、在另一处被丢弃。
+            unit_pool = self._unit_candidate_pool(
+                result.items,
+                unit,
+                scope_kp_ids,
+                target_difficulty=target_difficulty,
+                difficulty_requested=difficulty_requested,
+            )
+            if len(unit_pool.pool) < unit.required_question_count:
+                # 正式题库不够：按本单元范围内的知识点回填网络题。位置在补充
+                # 检索之后、构造最终候选池之前，新题与正式候选走同一套准入
+                # 判定与题型过滤，不享受任何特殊放行。
+                #
+                # 触发条件读池子的实际大小，不读「未被拒绝的候选数」：后者把
+                # 只在缺口内才掺入的 ``uncertain`` 也算作可用，会在 eligible
+                # 已经够全局题量、缺口为 0 时误判题量已够，于是回填一次都不
+                # 触发（线上实测 eligible 25 / uncertain 3 / 需要 20，池子其实
+                # 只有 18，最终 9 道靠现场生成）。
+                web_candidates, web_notes = await self._backfill_web_question_candidates(
+                    unit=unit,
+                    items=result.items,
+                    evidence_pack=evidence_pack,
+                    scope_kp_ids=scope_kp_ids,
+                    existing_ids={item.question_id for item in result.items},
+                )
+                warnings.extend(web_notes)
+                if web_candidates:
+                    # 网络题的“属于本单元”是检索时指定的，不是题目自带的
+                    # 结构化标注；过一道相关性判定，不让它绕开语义筛查。
+                    scored = await self._apply_question_relevance(
+                        QuestionSearchResult(
+                            query=question_query,
+                            resolved_kp_ids=list(scope_kp_ids),
+                            embedding_model=result.embedding_model,
+                            vector_index_path=result.vector_index_path,
+                            items=web_candidates,
+                            fusion_strategy=result.fusion_strategy,
+                            vector_degraded=result.vector_degraded,
+                        ),
+                        unit,
+                    )
+                    result = self._merge_question_search_results(
+                        result, scored, query=question_query
+                    )
+                    # 新题并入后按同一口径重算，与正式候选完全同等对待。
+                    unit_pool = self._unit_candidate_pool(
+                        result.items,
+                        unit,
+                        scope_kp_ids,
+                        target_difficulty=target_difficulty,
+                        difficulty_requested=difficulty_requested,
+                    )
+                    # ``accepted`` 只说明构造出几道候选，能否入池还取决于相关性
+                    # 判定、难度过滤、准入、缺口降级、题型过滤、候选上限。去向
+                    # 单独发一条事件，避免再次出现「accepted=8、入池 0」却查不出
+                    # 是哪道闸门拦下的情况。
+                    emit_runtime_event(
+                        "paper_unit_web_backfill_outcome",
+                        agent="knowledge_base_agent",
+                        unit_id=str(getattr(unit, "unit_id", "")),
+                        candidate_count=len(web_candidates),
+                        **self._web_backfill_outcome(
+                            web_candidates,
+                            unit,
+                            scope_kp_ids,
+                            unit_pool,
+                            target_difficulty=target_difficulty,
+                            difficulty_requested=difficulty_requested,
+                        ),
+                    )
             external_question_references = [
                 item
                 for item in evidence_pack.evidence_items
                 if item.resource_type == "question"
             ]
-            raw_candidates = []
-            unit_seen: set[str] = set()
-            for item in result.items:
-                if item.question_id in unit_seen:
-                    continue
-                unit_seen.add(item.question_id)
-                raw_candidates.append(item)
-            if difficulty_requested:
-                # 严格难度匹配：指定难度时只保留精确难度正式题与未标注难度正式题，
-                # 其他难度正式题不进入候选池（不伪装、不近似）。
-                raw_candidates = [
-                    item
-                    for item in raw_candidates
-                    if item.difficulty == target_difficulty or item.difficulty is None
-                ]
-                raw_candidates.sort(
-                    key=lambda item: item.difficulty != target_difficulty
-                )
-            admissions = [
-                (item, *self._candidate_admission(item, unit, evidence_pack))
-                for item in raw_candidates
-            ]
-            eligible_candidates = [
-                item for item, status, _ in admissions if status == "eligible"
-            ]
-            uncertain_candidates = [
-                item for item, status, _ in admissions if status == "uncertain"
-            ]
-            rejected_admissions = [
-                (item, reason)
-                for item, status, reason in admissions
-                if status == "rejected"
-            ]
-            # ``uncertain`` candidates lack the structured dimension needed to
-            # prove they belong to this blueprint unit. Keep them out of the
-            # normal Expert catalog; expose only the exact shortfall as an
-            # explicit retrieval fallback so the Expert remains the selector.
-            uncertain_fallback_count = max(
-                0,
-                unit.required_question_count - len(eligible_candidates),
-            )
-            scope_candidates = [
-                *eligible_candidates,
-                *uncertain_candidates[:uncertain_fallback_count],
-            ]
-            matching_candidates = [
-                item
-                for item in scope_candidates
-                if not unit.question_type_preferences
-                or self._matches_question_type(
-                    item.question_type, unit.question_type_preferences
-                )
-            ]
+            raw_candidates = unit_pool.raw
+            eligible_candidates = unit_pool.eligible
+            uncertain_candidates = unit_pool.uncertain
+            rejected_admissions = unit_pool.rejected
+            scope_candidates = unit_pool.scope
+            matching_candidates = unit_pool.matching
+            deduplicated = unit_pool.pool
             fallback_applied = False
-            if matching_candidates:
-                deduplicated = matching_candidates[: unit.candidate_limit]
-            else:
-                deduplicated = []
+            # 降级掺入的题：只有次要桥接落在本单元范围内、主知识点在别的章节。
+            # 它们按缺口数量进入候选池，是「可用题目不够」时系统实际借用的题，
+            # 数量要如实告诉学习者（组卷说明读这个字段）。池子由 eligible 与
+            # 按缺口掺入的 uncertain 构成，所以「池子里的 uncertain」就是实际
+            # 借用的题，不必在这里重算一遍缺口公式。
+            pool_ids = {item.question_id for item in deduplicated}
+            borrowed_ids = {
+                item.question_id
+                for item in uncertain_candidates
+                if item.question_id in pool_ids
+            }
+            borrowed_question_count = sum(
+                1 for item in deduplicated if item.question_id in borrowed_ids
+            )
             scope_filtered_count = len(raw_candidates) - len(scope_candidates)
             if scope_filtered_count:
                 warnings.append(
@@ -1302,6 +1537,7 @@ class KnowledgeBaseAgent:
                     unit_id=unit.unit_id,
                     retrieval_query=unit.retrieval_query,
                     resolved_kp_ids=result.resolved_kp_ids,
+                    scope_kp_ids=list(scope_kp_ids),
                     requested_limit=unit.candidate_limit,
                     required_question_count=unit.required_question_count,
                     items=deduplicated,
@@ -1331,6 +1567,7 @@ class KnowledgeBaseAgent:
                     unmet_required_count=max(
                         0, unit.required_question_count - len(deduplicated)
                     ),
+                    borrowed_question_count=borrowed_question_count,
                     eligible_count=len(eligible_candidates),
                     uncertain_count=len(uncertain_candidates),
                     rejected_count=len(rejected_admissions),
@@ -1362,7 +1599,8 @@ class KnowledgeBaseAgent:
                 agent="knowledge_base_agent",
                 unit_id=unit.unit_id,
                 knowledge_module=unit.knowledge_module,
-                query=unit.retrieval_query,
+                query=question_query,
+                retrieval_requirement=unit.retrieval_query,
                 required_count=unit.required_question_count,
                 candidate_count=len(deduplicated),
                 raw_candidate_count=len(raw_candidates),
@@ -1370,6 +1608,14 @@ class KnowledgeBaseAgent:
                 eligible_count=len(eligible_candidates),
                 uncertain_count=len(uncertain_candidates),
                 rejected_count=len(rejected_admissions),
+                borrowed_question_count=borrowed_question_count,
+                # 准入范围的长度与失败说明必须随事件一起出来：eligible/uncertain/
+                # rejected 三个计数只有在知道范围是多少的前提下才有诊断价值。
+                # 此前事件里没有这两项，线上出现 eligible=0/uncertain=50/rejected=0
+                # 时无法区分「范围为空」「范围非空但没有主知识点命中」与「判定不可用
+                # 退回了命中列表」，只能靠排除法反推。
+                scope_kp_count=len(scope_kp_ids),
+                scope_failure=scope_failure,
                 scope_filtered_out_count=scope_filtered_count,
                 channel_counts=dict(
                     Counter(
@@ -1419,24 +1665,19 @@ class KnowledgeBaseAgent:
 
     @staticmethod
     def _normalize_question_type(value: str) -> str:
-        normalized = value.strip().replace(" ", "")
-        aliases = {
-            "单选题": "单项选择题",
-            "单项选择": "单项选择题",
-            "多选题": "多项选择题",
-            "多项选择": "多项选择题",
-            "选择题": "选择题",
-            "简答": "简答题",
-            "问答": "简答题",
-            "问答题": "简答题",
-            "临床案例问答": "简答题",
-            "案例分析": "简答题",
-            "案例分析题": "简答题",
-            "病例分析": "简答题",
-            "病例分析题": "简答题",
-            "病例分析/实践技能": "简答题",
-        }
-        return aliases.get(normalized, normalized)
+        """题型写法归一化。词表在 ``contracts/question_types.py``，与组卷共用。
+
+        此前这里只有一张中文别名表：网络题按平台英文枚举写成
+        ``single_choice`` 时原样透传，``_matches_question_type`` 拿它跟
+        「单项选择题」比不相等，整批网络题被判成题型不一致丢弃——检索、
+        清洗、入库都做完了，一道也进不了候选池。词表另外认了模型自由输出
+        的英文枚举与中文同义写法。
+
+        词表不认识的值原样返回：调用方需要能分辨「已识别的题型」与
+        「不认识的写法」，兜底成默认题型会让未知写法混进卷面。
+        """
+
+        return normalize_question_type(value)
 
     @classmethod
     def _matches_question_type(cls, actual: str, preferences: list[str]) -> bool:
@@ -1447,15 +1688,22 @@ class KnowledgeBaseAgent:
         return actual_type in allowed
 
     @classmethod
-    def _eligible_unit_candidates(
+    def _admissible_unit_candidates(
         cls,
         items: list[QuestionDetail],
         unit: Any,
-        evidence_pack: EvidencePack,
+        scope_kp_ids: Sequence[str],
     ) -> list[QuestionDetail]:
+        """未被判为越界、且题型匹配的候选（``eligible`` + ``uncertain``）。
+
+        这不是候选池：``uncertain`` 只在 ``eligible`` 数量不足时才按缺口掺入
+        池中。需要知道「本单元实际能出多少题」时必须用 ``_unit_candidate_pool``。
+        把这两个口径混用正是线上缺陷：同一个 ``uncertain`` 在这里算可用、在
+        建池时被整批丢弃，触发条件因此误判题量已够而跳过网络题回填。
+        """
         admitted: list[QuestionDetail] = []
         for item in items:
-            status, _ = cls._candidate_admission(item, unit, evidence_pack)
+            status, _ = cls._candidate_admission(item, unit, scope_kp_ids)
             if status == "rejected":
                 continue
             if unit.question_type_preferences and not cls._matches_question_type(
@@ -1464,6 +1712,92 @@ class KnowledgeBaseAgent:
                 continue
             admitted.append(item)
         return admitted
+
+    @classmethod
+    def _unit_candidate_pool(
+        cls,
+        items: Sequence[QuestionDetail],
+        unit: Any,
+        scope_kp_ids: Sequence[str],
+        *,
+        target_difficulty: Any = None,
+        difficulty_requested: bool = False,
+    ) -> _UnitCandidatePool:
+        """按与最终建池完全相同的口径算出候选池和准入分类。
+
+        触发回填的判定与最终建池都读这里返回的 ``pool``，不再各算一套。
+
+        线上失效现场（2026-09-18，主题「太阳中风证」，需要 20 题）：该单元
+        ``eligible`` 25 道、``uncertain`` 3 道。旧触发条件用
+        ``_admissible_unit_candidates`` 的口径，题型过滤后看到 21 道，判定
+        「够了」而跳过网络题回填；而建池时
+        ``uncertain_fallback_count = max(0, 20-25) = 0``，3 道 ``uncertain``
+        被整批丢弃，池子实际只有 18 道，最终 20 题里 9 道靠现场生成，
+        ``paper_unit_web_backfill`` 事件一条都没有。
+
+        顺序与建池一致：先按题目 ID 去重，再按难度要求过滤并排序，然后做准入
+        判定，最后按「eligible 优先 + 按缺口降级掺入 uncertain + 题型过滤 +
+        截到 candidate_limit」构成候选池。
+        """
+        raw_candidates: list[QuestionDetail] = []
+        seen: set[str] = set()
+        for item in items:
+            if item.question_id in seen:
+                continue
+            seen.add(item.question_id)
+            raw_candidates.append(item)
+        if difficulty_requested:
+            # 严格难度匹配：指定难度时只保留精确难度正式题与未标注难度正式题，
+            # 其他难度正式题不进入候选池（不伪装、不近似）。
+            raw_candidates = [
+                item
+                for item in raw_candidates
+                if item.difficulty == target_difficulty or item.difficulty is None
+            ]
+            raw_candidates.sort(
+                key=lambda item: item.difficulty != target_difficulty
+            )
+        admissions = [
+            (item, *cls._candidate_admission(item, unit, scope_kp_ids))
+            for item in raw_candidates
+        ]
+        eligible = [item for item, status, _ in admissions if status == "eligible"]
+        uncertain = [
+            item for item, status, _ in admissions if status == "uncertain"
+        ]
+        rejected = [
+            (item, reason)
+            for item, status, reason in admissions
+            if status == "rejected"
+        ]
+        # ``uncertain`` candidates lack the structured dimension needed to
+        # prove they belong to this blueprint unit. Keep them out of the
+        # normal Expert catalog; expose only the exact shortfall as an
+        # explicit retrieval fallback so the Expert remains the selector.
+        uncertain_fallback_count = max(
+            0, unit.required_question_count - len(eligible)
+        )
+        scope_candidates = [
+            *eligible,
+            *uncertain[:uncertain_fallback_count],
+        ]
+        matching_candidates = [
+            item
+            for item in scope_candidates
+            if not unit.question_type_preferences
+            or cls._matches_question_type(
+                item.question_type, unit.question_type_preferences
+            )
+        ]
+        return _UnitCandidatePool(
+            pool=matching_candidates[: unit.candidate_limit],
+            matching=matching_candidates,
+            scope=scope_candidates,
+            eligible=eligible,
+            uncertain=uncertain,
+            rejected=rejected,
+            raw=raw_candidates,
+        )
 
     async def _apply_question_relevance(
         self,
@@ -1573,13 +1907,13 @@ class KnowledgeBaseAgent:
         cls,
         item: QuestionDetail,
         unit: Any,
-        evidence_pack: EvidencePack,
+        scope_kp_ids: Sequence[str],
     ) -> tuple[str, str]:
         if not cls._question_is_complete(item):
             return "rejected", "invalid_question_delivery"
         if item.retrieval.semantic_status == "rejected":
             return "rejected", "semantic_relevance_rejected"
-        scope_status = cls._question_scope_status(item, unit, evidence_pack)
+        scope_status = cls._question_scope_status(item, unit, scope_kp_ids)
         if scope_status == "rejected":
             return "rejected", "topic_entity_mismatch"
 
@@ -1605,11 +1939,17 @@ class KnowledgeBaseAgent:
 
     @classmethod
     def _question_is_complete(cls, item: QuestionDetail) -> bool:
-        """Apply deterministic delivery checks before Expert sees a candidate."""
+        """Apply deterministic delivery checks before Expert sees a candidate.
+
+        这里只判断题目本身是否可交付：题干、标准答案，以及选择题的选项与
+        答案是否自洽。是否要求逐题解析属于本轮交付条件，由蓝图合同
+        （``PaperBlueprint.requires_explanation``）在组卷阶段判定；本题库
+        绝大多数正式题没有解析字段，若在此处无条件要求解析，等于把可用题库
+        压缩到极少数带解析的题目上，任何题量稍大的请求都会退化成全量现场
+        生成。
+        """
 
         if not item.stem.strip() or not item.reference_answer.strip():
-            return False
-        if not (item.analysis or "").strip():
             return False
         question_type = cls._normalize_question_type(item.question_type)
         if question_type not in {"单项选择题", "多项选择题", "选择题"}:
@@ -1681,73 +2021,247 @@ class KnowledgeBaseAgent:
         cls,
         item: QuestionDetail,
         unit: Any,
-        evidence_pack: EvidencePack,
+        scope_kp_ids: Sequence[str],
     ) -> str:
-        """Check scope using structured retrieval bridges only.
+        """按结构化知识点标识判断候选是否属于本蓝图单元。
 
-        Text retrieved for a topic is evidence for ranking, not a business
-        classification signal. A unit candidate is therefore scoped by its
-        canonical KP bridge when the evidence pack resolved one. Broad
-        requests without a resolved KP retain the retrieval result for the
-        structured dimension gate to evaluate.
+        候选与单元都用知识点 ID 表达归属：候选带 ``bridges``（检索阶段建立
+        的 KP 桥接），单元带 ``scope_kp_ids``（由知识库智能体依据单元声明的
+        范围判定，见 ``_resolve_unit_scope_kp_ids``）。两者都是系统持有的
+        结构化标识，比较它们是集合运算，不涉及任何自然语言文本。
 
-        主题锚点：resolve_topic 对长查询（含排除类方对比说明）的排序不稳定，
-        首位可能被干扰知识点（如补中益气汤）占据，导致真正的主题知识点
-        （如四君子汤）被误判 off-topic。因此优先用蓝图 knowledge_module 的
-        主题词匹配 resolved_kp_names，命中即视为该主题下的合法知识点；
-        匹配不到时回退到 resolved_kp_ids 首位（保持原有语义）。
+        这里刻意**不**从 ``knowledge_module`` 提取主题词去比对知识点名称。
+        ``knowledge_module`` 是模型自由生成的章节式标签，拿它做子串或前缀
+        匹配属于对自然语言做模式匹配，不是可靠的业务判定。
+
+        边界不能用检索命中列表（``resolved_kp_ids``）：那是按知识点**名称**
+        召回的结果，同时有两类错误。线上实测《伤寒论》太阳病篇单元（09-18
+        04:43 运行）的命中列表含 52 个知识点，其中既有方剂学“下焦蓄血证”、
+        金匮要略“水气”、中药药剂学“鉴别”这类无关知识点（误放 2 道越界题），
+        又漏掉同书同章节的“太阳中风证”（误拒 2 道本单元题）。同一批候选、
+        同一证据包下按该列表放行 9 道，其中 2 道越界。
+
+        判定的粒度是**主知识点**：题目偏离单元时，它的主知识点落在别的教材
+        或章节。只看“任意一个桥接命中”会留下后门——一道中医学概论的题只要
+        顺带桥接到本单元某个知识点就会被放行。因此主知识点落在范围内才算
+        ``eligible``；只有次要桥接落在范围内属于证据不足，记为 ``uncertain``，
+        仅在正式候选不足时按缺口降级提供；完全落在范围外记为 ``rejected``。
+
+        范围判定不可用时（模型不可用且无历史判定）返回 ``uncertain``：既不
+        放行也不拒绝，避免用一次失败的判定清空整个单元。
+
+        范围**为空**与范围**不可用**是两回事：为空是判定成立的结论（候选目录
+        内没有本单元的知识点），此时本单元的候选全部越界，按 ``rejected``
+        处理；只有判定本身不可用才返回 ``uncertain``。
         """
         candidate_kp_ids = {bridge.kp_id for bridge in item.bridges}
         if not candidate_kp_ids:
             return "uncertain"
-        if not evidence_pack.resolved_kp_ids:
-            return "uncertain"
-
-        anchor = cls._knowledge_module_anchor(unit)
-        if anchor:
-            anchored_kp_ids = {
-                kp_id
-                for kp_id, name in evidence_pack.resolved_kp_names.items()
-                if anchor in name or name in anchor
-            }
-            if anchored_kp_ids:
-                if anchored_kp_ids.intersection(candidate_kp_ids):
-                    return "eligible"
-                return "rejected"
-
-        primary_kp_ids = set(evidence_pack.resolved_kp_ids[:1])
-        if primary_kp_ids.intersection(candidate_kp_ids):
+        scope = {str(kp_id) for kp_id in scope_kp_ids}
+        if not scope:
+            # 空范围的含义是「判定成立，且结论为：候选目录里没有任何知识点
+            # 属于本单元」，不是「判定缺失」。两者处置相反：前者说明本单元
+            # 的候选全部越界，后者说明无从判断。此前把它当 uncertain，等于
+            # 让 50 道越界候选全部进入降级借题池，按缺口填满整份配额——线上
+            # 实测 13 题里 10 题来自其他知识点。
+            return "rejected"
+        if cls._primary_bridge_kp_ids(item).intersection(scope):
             return "eligible"
+        if candidate_kp_ids.intersection(scope):
+            return "uncertain"
         return "rejected"
 
     @staticmethod
-    def _knowledge_module_anchor(unit: Any) -> str:
-        """从蓝图 knowledge_module 提取主题锚点词。
+    def _primary_bridge_kp_ids(item: QuestionDetail) -> set[str]:
+        """候选题目主知识点的 ID 集合。
 
-        knowledge_module 形如“方剂学·补益剂·四君子汤”或
-        “方剂学·补益剂·四君子汤（组成识记）”，取最后一个“·”分隔段，
-        再去掉括号后缀（如“（组成识记）”）得到主题词“四君子汤”。
-        返回空串表示无法提取锚点。
+        题库行用 ``relation="primary"`` 标注主知识点；少数来源只填了 ``rank``。
+        两种约定都认，取不到任何桥接时返回空集。
         """
-        raw = str(getattr(unit, "knowledge_module", "") or "").strip()
-        if not raw:
-            return ""
-        segment = raw.split("·")[-1].strip()
-        if not segment:
-            return ""
-        # 去掉括号后缀：如“四君子汤（组成识记）” -> “四君子汤”。
-        segment = re.sub(r"[（(].*?[)）]\s*$", "", segment).strip()
-        if not segment:
-            return ""
-        # 主题词不应是纯维度描述（如“组成”“配伍”“功效主治”），
-        # 否则无法作为知识点锚点。
-        dimension_only = re.fullmatch(
-            r"(组成|配伍|功效|主治|功效主治|方解|应用|鉴别|加减|用法|禁忌|其他)",
-            segment,
+        primary = {
+            str(bridge.kp_id)
+            for bridge in item.bridges
+            if str(getattr(bridge, "relation", "") or "") == "primary"
+        }
+        if primary:
+            return primary
+        ranked = sorted(
+            item.bridges,
+            key=lambda bridge: int(getattr(bridge, "rank", 0) or 0),
         )
-        if dimension_only:
-            return ""
-        return segment
+        return {str(ranked[0].kp_id)} if ranked else set()
+
+    @classmethod
+    def _unit_scope_catalog(
+        cls, items: Sequence[QuestionDetail]
+    ) -> list[dict[str, str]]:
+        """候选题目实际桥接到的知识点目录（教材/章节/知识点三级）。
+
+        目录只覆盖候选自己桥接到的知识点：准入是候选桥接集合与范围的交集
+        运算，因此不在任何候选桥接里的知识点不可能影响准入结果，不需要交给
+        模型判定，也不必为它扩大目录。
+        """
+        catalog: dict[str, dict[str, str]] = {}
+        for item in items:
+            bridge_ids = {str(bridge.kp_id) for bridge in item.bridges}
+            if not bridge_ids:
+                continue
+            names: dict[str, dict[str, Any]] = {}
+            for entry in item.source_metadata.get("knowledge_points") or []:
+                if not isinstance(entry, dict):
+                    continue
+                kp = entry.get("kp")
+                if not isinstance(kp, dict):
+                    continue
+                kp_id = str(kp.get("kp_id") or "")
+                if kp_id:
+                    names[kp_id] = kp
+            for kp_id in bridge_ids:
+                if kp_id in catalog:
+                    continue
+                kp = names.get(kp_id) or {}
+                catalog[kp_id] = {
+                    "kp_id": kp_id,
+                    "kp_lv1": str(kp.get("kp_lv1") or "").strip(),
+                    "kp_lv2": str(kp.get("kp_lv2") or "").strip(),
+                    "kp_lv3": str(kp.get("kp_lv3") or "").strip(),
+                }
+        return [catalog[kp_id] for kp_id in sorted(catalog)]
+
+    async def _resolve_unit_scope_kp_ids(
+        self,
+        *,
+        context: dict[str, Any],
+        unit: Any,
+        items: Sequence[QuestionDetail],
+        evidence_pack: EvidencePack,
+        judged_keys: set[tuple[str, ...]],
+    ) -> tuple[list[str], str]:
+        """让知识库智能体判定本单元的准入范围。
+
+        范围是语义判断：蓝图单元只有三段自由文本声明，契约里没有结构化的
+        范围字段，系统也不允许用关键词或子串去比对知识点名称。因此把候选
+        桥接到的知识点目录交给本智能体判定，判定结果就是准入边界。
+
+        ``judged_keys`` 记录已经判定过的目录签名：目录没有新增知识点时直接
+        复用上次结果，补充检索轮次不会重复调用模型。
+
+        返回 ``(准入范围, 失败说明)``。判定成功时失败说明为空串。判定不可用
+        时退回检索命中列表（此前行为），并返回非空说明交给调用方写进单元告警
+        与运行事件——静默退回会让本单元悄悄用回旧的命中列表边界，产出的试卷
+        与修复前完全一样，却没有任何地方记录这件事，线上只能靠人工看题发现。
+
+        判定失败会重试一次：这条调用的输入只有单元声明与候选知识点目录（约
+        6 KB），重试成本远低于退回命中列表带来的主题污染。传输层自身已对
+        空响应与 JSON 结构做过一次修复尝试，网络超时不在其重试范围内。
+        """
+        catalog = self._unit_scope_catalog(items)
+        if not catalog:
+            return [], ""
+        signature = tuple(entry["kp_id"] for entry in catalog)
+        if signature in judged_keys:
+            return self._unit_scope_cache.get(signature, []), ""
+        model_context = build_model_context(
+            context,
+            target_agent="knowledge_base_agent",
+            prompt_skill=prompt_skill_registry.load(
+                "knowledge_base_agent", "paper_unit_scope"
+            ),
+            payload={
+                "phase": "decide_paper_unit_scope",
+                "blueprint_unit": {
+                    "unit_id": str(unit.unit_id),
+                    "knowledge_module": str(unit.knowledge_module),
+                    "learning_objective": str(unit.learning_objective),
+                    "retrieval_requirement": str(unit.retrieval_query),
+                },
+                "knowledge_point_catalog": catalog,
+                "output_schema": (
+                    KnowledgePaperUnitScopeModelOutput.model_json_schema()
+                ),
+            },
+            permission_note=(
+                "只判定哪些知识点属于本单元主题范围；不判断题目质量、"
+                "难度、题型和题量，不生成题目、答案或证据，不改变蓝图范围。"
+            ),
+        )
+        judged: KnowledgePaperUnitScopeModelOutput | None = None
+        failure = ""
+        for _ in range(2):
+            try:
+                raw = await self.chat_model.complete_json(
+                    "knowledge_base_agent", model_context
+                )
+                if not isinstance(raw, dict):
+                    raise ValueError("scope judgement is not a JSON object")
+                judged = KnowledgePaperUnitScopeModelOutput.model_validate(raw)
+                break
+            except (
+                ModelResponseError,
+                ValidationError,
+                RuntimeError,
+                TimeoutError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                # 判定不可用只影响本单元的准入精度，不影响本单元能否检索：
+                # 退回检索命中列表继续，比让整个单元归零更接近可用结果。
+                # CancelledError 继承自 BaseException，取消仍会正常传播。
+                judged = None
+                failure = f"{type(exc).__name__}: {exc}"
+        if judged is None:
+            return list(evidence_pack.resolved_kp_ids), failure
+        known = {entry["kp_id"] for entry in catalog}
+        reported = list(dict.fromkeys(judged.in_scope_kp_ids))
+        scope = [kp_id for kp_id in reported if kp_id in known]
+        if reported and not scope:
+            # 模型给出了知识点，但一个都不在候选目录内——判定与目录对不上，
+            # 不是「本单元没有知识点」。此前这种返回会被静默过滤成空范围，
+            # 且失败说明为空串，下游按「结论为空」继续走（线上即为此形态），
+            # 与「判定不可用」的处置方向完全不同。按判定不可用处理，退回命中
+            # 列表并如实说明，让本单元至少还有一条可用边界。
+            self._unit_scope_reasons[signature] = judged.scope_reason
+            return list(evidence_pack.resolved_kp_ids), (
+                f"范围判定给出的{len(reported)}个知识点都不在候选知识点目录内"
+            )
+        judged_keys.add(signature)
+        self._unit_scope_cache[signature] = scope
+        self._unit_scope_reasons[signature] = judged.scope_reason
+        if not scope:
+            # 判定成立但结论为空：目录里的知识点没有一个属于本单元。这是
+            # 有效结论，不是「判定不可用」，但同样不能静默——调用方要据此
+            # 如实说明本单元没有任何候选通过准入，而不是拿着空范围继续，
+            # 更不能把它理解成「退回命中列表」。
+            return [], "范围判定结论为空：候选目录内的知识点均不属于本单元"
+        return scope, ""
+
+
+    @staticmethod
+    def _scope_failure_notes(
+        unit: Any, scope_failure: str, scope_kp_ids: Sequence[str]
+    ) -> list[str]:
+        """准入范围判定异常的单元告警。
+
+        判定异常有两种完全不同的处置，告警必须与之一致，不能共用一句话：
+        范围非空说明判定不可用后退回了检索命中列表，范围为空说明本单元没有
+        任何候选通过准入。此前两种情形共用「已退回命中列表」的措辞，空范围
+        时这句话与事实相反，线上因此看不到真实原因，也看不出题量缺口是怎么
+        来的。
+        """
+        if not scope_failure:
+            return []
+        if scope_kp_ids:
+            return [
+                f"{unit.knowledge_module}的准入范围判定不可用"
+                f"（{scope_failure}），已退回按知识点名称召回的命中列表"
+                f"（{len(scope_kp_ids)}个知识点）作边界；"
+                "本单元可能混入同名但不同教材或章节的题目。"
+            ]
+        return [
+            f"{unit.knowledge_module}的准入范围判定结论为空"
+            f"（{scope_failure}）；没有被判定属于本单元的候选题，"
+            "题量缺口改由现场生成补齐。"
+        ]
 
     @staticmethod
     def _fallback_kp_query(user_request: str) -> str:
@@ -1863,6 +2377,363 @@ class KnowledgeBaseAgent:
                     resource_type=item.resource_type, source_label=item.title,
                 ))
         return items
+
+    @staticmethod
+    def _bridge_kp_ids(evidence_pack: EvidencePack) -> list[str]:
+        """题目桥接用的知识点范围。
+
+        取证据包的宽召回 ``bridge_kp_ids``；未携带该字段时退回按名称召回的
+        头部命中 ``resolved_kp_ids``。
+
+        桥接按知识点取题，范围必须覆盖单元本身，而不只是「最适合做教材证据
+        的头部命中」。线上实测：同一单元头部 10 个知识点只召回 4 道题，而单元
+        需要 40 道；同一次检索放宽到 200 个知识点后召回 297 道，其中 69 道的
+        主知识点在单元范围内。
+
+        证据包与准入范围判定仍使用窄的 ``resolved_kp_ids``：命中列表是按名称
+        召回的宽集合，既含同名无关知识点、又漏掉同章节未命中的知识点，不能
+        既当召回范围又当范围边界。
+        """
+        return list(evidence_pack.bridge_kp_ids or evidence_pack.resolved_kp_ids)
+
+    @staticmethod
+    def _emit_web_backfill_skipped(unit: Any, *, reason: str, **extra: Any) -> None:
+        """网络题回填没有执行时如实发事件。
+
+        此前四个前置条件都直接 ``return [], []``：不写告警、不发事件，线上
+        无法区分「本单元没有缺口」「回填被跳过」和「目标取不到名称」。实测
+        一次完整组卷里 ``paper_unit_web_backfill`` 出现 0 次，只能靠排除法
+        反推空范围，既慢又不可复现。跳过原因必须进运行事件。
+        """
+        emit_runtime_event(
+            "paper_unit_web_backfill",
+            agent="knowledge_base_agent",
+            unit_id=str(getattr(unit, "unit_id", "")),
+            knowledge_point_id="",
+            knowledge_point_name="",
+            available=0,
+            accepted=0,
+            scheduled=0,
+            target_source="",
+            skipped=reason,
+            **extra,
+        )
+
+    async def _backfill_web_question_candidates(
+        self,
+        *,
+        unit: Any,
+        items: Sequence[QuestionDetail],
+        evidence_pack: EvidencePack,
+        scope_kp_ids: Sequence[str],
+        existing_ids: set[str],
+    ) -> tuple[list[QuestionDetail], list[str]]:
+        """正式候选不足时，按单元内的知识点补充网络题。
+
+        背景：正式题库里有一部分知识点根本挂不到题（全库 73,777 个知识点中
+        47,272 个没有任何题目链接），单元需要的题量只能靠现场生成。同时组卷
+        时已经搜到过网络练习题材料，但它们只被当作证据（截 2 条、每条 600
+        字），从未进入候选池。
+
+        本方法**只读已入库的网络题**，同时把一个后台灌题任务投出去：网络检索
+        + LLM 清洗实测要 152～379 秒，而组卷只有分钟级预算，在组卷内等待必然
+        提前掐断清洗（这正是此功能上线后一道题都没进过卷的直接原因）。因此
+        本次组卷只用已经入库的题，新灌的题从下一次组卷起可用，并在返回的
+        说明里如实告知。
+
+        回填对象是**本单元准入范围内的知识点**，按本轮候选数量从少到多取前
+        ``max_knowledge_points`` 个：候选最少的那些知识点正是题库挂不到题的
+        地方。范围取自模型判定过的 ``scope_kp_ids``，回填不会越过单元边界。
+
+        构造出的题目与其他候选同形，之后走同一套准入判定、题型过滤与缺口
+        降级逻辑，不享受任何特殊放行。两点必须说清楚：
+
+        * 知识点绑定是**推导的**：题目按知识点名搜来，桥接就绑到该知识点。
+          正式题库的绑定是结构化标注，网络题没有这个保证，所以用
+          ``source_tier="web_reference"`` 如实标注来源，卷面也会告诉学习者
+          哪些题是网络参考题。
+        * 难度不推断：网络题没有真实难度标注，``difficulty`` 保持 None，
+          不会冒充指定难度。
+
+        回填目标正常情况下取本单元准入范围内的知识点；范围判定结论为空时退
+        回到单元主题按名称召回的知识点，并把目标来源标注在运行事件里。跳过
+        回填的每一种原因都会发出 ``paper_unit_web_backfill`` 事件。
+        """
+        ingest = self.web_question_ingest
+        if ingest is None:
+            self._emit_web_backfill_skipped(unit, reason="ingest_unavailable")
+            return [], []
+        delivery = getattr(self.retrieval_tool, "delivery_backend", None)
+        if delivery is None:
+            self._emit_web_backfill_skipped(unit, reason="delivery_unavailable")
+            return [], []
+        scope = [str(kp_id) for kp_id in dict.fromkeys(scope_kp_ids) if str(kp_id)]
+        target_source = "unit_scope"
+        if not scope:
+            # 范围判定结论为空：本轮候选全部被判越界，单元内没有任何知识点
+            # 通过准入。回填恰恰是为「本单元正式题库没有题」准备的，不能静默
+            # 跳过。目标改用单元自身按名称召回的命中知识点——它是检索系统对
+            # 单元主题给出的结构化结果，不是对自然语言的模式匹配——并在事件
+            # 里标注目标来源，避免看起来像「本单元不需要回填」。
+            scope = [
+                str(kp_id)
+                for kp_id in dict.fromkeys(evidence_pack.resolved_kp_ids)
+                if str(kp_id)
+            ]
+            target_source = "recall_fallback"
+        if not scope:
+            self._emit_web_backfill_skipped(unit, reason="empty_scope")
+            return [], [
+                f"{unit.knowledge_module}既没有通过准入的知识点，单元主题也没有"
+                "召回任何知识点，本轮未补充网络题。"
+            ]
+        # 名称来源要合并两处：证据包的宽召回名称表覆盖没有候选的知识点，
+        # 候选自带的目录只覆盖已经召回到题的知识点。范围判定失败时范围会退回
+        # 命中列表，其中包含完全没有候选的知识点，只看候选目录会漏掉它们。
+        names = {
+            **self._unit_scope_kp_names(items),
+            **{
+                str(kp_id): str(name).strip()
+                for kp_id, name in (evidence_pack.resolved_kp_names or {}).items()
+                if str(kp_id).strip() and str(name).strip()
+            },
+        }
+        # 候选最少的知识点优先：它们正是题库挂不到题的位置。
+        counts: Counter[str] = Counter()
+        for item in items:
+            for kp_id in {str(bridge.kp_id) for bridge in item.bridges}:
+                counts[kp_id] += 1
+        ranked = sorted(scope, key=lambda kp_id: (counts[kp_id], kp_id))
+        targets = [kp_id for kp_id in ranked if names.get(kp_id)][
+            : self.web_backfill_max_knowledge_points
+        ]
+        if not targets:
+            self._emit_web_backfill_skipped(
+                unit,
+                reason="no_named_target",
+                target_source=target_source,
+                scope_count=len(scope),
+                named_count=sum(1 for kp_id in scope if names.get(kp_id)),
+            )
+            return [], [
+                f"{unit.knowledge_module}的{len(scope)}个回填知识点都没有可用的"
+                "知识点名称，无法据此检索网络题，本轮未补充网络题。"
+            ]
+        question_types = [
+            str(value).strip()
+            for value in (getattr(unit, "question_type_preferences", None) or [])
+            if str(value).strip()
+        ]
+        notes: list[str] = []
+        collected: list[QuestionDetail] = []
+        for kp_id in targets:
+            name = names[kp_id]
+            try:
+                rows = ingest.web_questions_for(name)
+                scheduled = ingest.schedule_backfill(
+                    name,
+                    question_types=question_types,
+                    timeout_seconds=self.web_backfill_timeout_seconds,
+                )
+            except Exception as exc:  # noqa: BLE001 - 回填失败不能影响组卷
+                notes.append(
+                    f"网络题回填「{name}」暂不可用：{type(exc).__name__}；"
+                    "已保留现有正式候选。"
+                )
+                continue
+            added = 0
+            for row in rows:
+                candidate = self._web_question_candidate(
+                    row, kp_id=kp_id, knowledge_point_name=name
+                )
+                if candidate is None or candidate.question_id in existing_ids:
+                    continue
+                existing_ids.add(candidate.question_id)
+                collected.append(candidate)
+                added += 1
+            # ``available`` 是该知识点已入库的网络题条数，``accepted`` 是本次
+            # 由它们构造出的候选数——两个数都不代表最终入卷。候选之后还要过
+            # 相关性判定与准入等闸门，去向由
+            # ``paper_unit_web_backfill_outcome`` 事件给出。
+            emit_runtime_event(
+                "paper_unit_web_backfill",
+                agent="knowledge_base_agent",
+                unit_id=str(getattr(unit, "unit_id", "")),
+                knowledge_point_id=kp_id,
+                knowledge_point_name=name,
+                available=len(rows),
+                accepted=added,
+                scheduled=scheduled,
+                target_source=target_source,
+                skipped="",
+            )
+            if added:
+                notes.append(
+                    f"「{name}」题库题量不足，已从网络检索补充{added}道参考题候选；"
+                    "这些题会与其他候选一起过同一套准入判定。"
+                )
+            elif scheduled:
+                notes.append(
+                    f"「{name}」题库题量不足，已在后台检索网络参考题；"
+                    "本次组卷先按现有候选继续，网络题从下一次组卷起可用。"
+                )
+        return collected, notes
+
+    @classmethod
+    def _web_backfill_outcome(
+        cls,
+        web_candidates: Sequence[QuestionDetail],
+        unit: Any,
+        scope_kp_ids: Sequence[str],
+        unit_pool: _UnitCandidatePool,
+        *,
+        target_difficulty: Any = None,
+        difficulty_requested: bool = False,
+    ) -> dict[str, int]:
+        """网络题候选走完全部闸门后的去向，逐类计数。
+
+        ``paper_unit_web_backfill`` 的 ``accepted`` 只说明「从已入库题里构造出
+        了几道候选」。同一批题之后还要过相关性判定、难度过滤、准入判定、缺口
+        降级、题型过滤、候选上限六道闸门。线上失效现场里 ``accepted=8``、最终
+        入池 0 道，事件完全看不出被哪一道拦下，只能离线重放才定位到「准入拒绝
+        4 道 + 题型不一致 4 道」。这里把去向如实记下来，下一次同类故障不必再
+        重放。
+
+        计数按闸门顺序短路：一道题只计入它撞上的第一道闸门，各项之和等于
+        ``candidate_count``。
+        """
+
+        pooled_ids = {item.question_id for item in unit_pool.pool}
+        raw_ids = {item.question_id for item in unit_pool.raw}
+        scope_ids = {item.question_id for item in unit_pool.scope}
+        matching_ids = {item.question_id for item in unit_pool.matching}
+        outcome: Counter[str] = Counter()
+        for item in web_candidates:
+            if item.question_id in pooled_ids:
+                outcome["pooled"] += 1
+                continue
+            if item.question_id not in raw_ids:
+                # 相关性判定认为它不属于本单元，连准入都没走到。
+                outcome["dropped_by_relevance"] += 1
+                continue
+            if difficulty_requested and not (
+                item.difficulty == target_difficulty or item.difficulty is None
+            ):
+                outcome["difficulty_filtered"] += 1
+                continue
+            status, reason = cls._candidate_admission(item, unit, scope_kp_ids)
+            if status == "rejected":
+                outcome[f"admission_{reason or 'unknown'}"] += 1
+                continue
+            if item.question_id not in scope_ids:
+                # 准入通过但没进范围集合：只可能是 ``uncertain`` 而缺口已被
+                # ``eligible`` 填满，本轮不需要降级掺入。
+                outcome["uncertain_beyond_gap"] += 1
+                continue
+            if item.question_id not in matching_ids:
+                outcome["question_type_mismatch"] += 1
+                continue
+            # 全部过滤都通过却没进池：被单元候选上限截断。
+            outcome["truncated_by_limit"] += 1
+        return dict(outcome)
+
+    @classmethod
+    def _unit_scope_kp_names(cls, items: Sequence[QuestionDetail]) -> dict[str, str]:
+        """候选桥接到的知识点 ID -> 名称（取叶子层名称）。
+
+        名称来自题目自带的 ``source_metadata.knowledge_points``，是检索阶段
+        回填的结构化目录字段，不解析题干文本。
+        """
+        names: dict[str, str] = {}
+        for item in items:
+            for entry in item.source_metadata.get("knowledge_points") or []:
+                if not isinstance(entry, dict):
+                    continue
+                kp = entry.get("kp")
+                if not isinstance(kp, dict):
+                    continue
+                kp_id = str(kp.get("kp_id") or "").strip()
+                if not kp_id or kp_id in names:
+                    continue
+                name = str(
+                    kp.get("kp_lv3") or kp.get("kp_lv2") or ""
+                ).strip()
+                if name:
+                    names[kp_id] = name
+        return names
+
+    @classmethod
+    def _web_question_candidate(
+        cls,
+        row: dict[str, Any],
+        *,
+        kp_id: str,
+        knowledge_point_name: str,
+    ) -> QuestionDetail | None:
+        """把一条已入库的网络题转成与其他候选同形的 ``QuestionDetail``。
+
+        题目标识用入库时算好的稳定 ``question_id``，同一道网络题在不同轮次
+        组卷里得到同一个 ID，不会因重复检索而重复入卷。
+        """
+        if not isinstance(row, dict):
+            return None
+        question_id = str(row.get("question_id") or "").strip()
+        stem = str(row.get("stem") or row.get("题干") or "").strip()
+        if not question_id or not stem:
+            return None
+        options = row.get("options") or []
+        if isinstance(options, dict):
+            options = list(options.values())
+        if not isinstance(options, list):
+            options = []
+        question_type = str(
+            row.get("question_type") or row.get("题型") or "未分类"
+        ).strip()
+        urls = [str(url) for url in (row.get("source_urls") or []) if str(url)]
+        return QuestionDetail(
+            question_id=question_id,
+            question_type=question_type,
+            stem=stem,
+            reference_answer=str(row.get("answer") or row.get("答案") or ""),
+            analysis=str(row.get("analysis") or row.get("解析") or "") or None,
+            options=[str(option) for option in options],
+            origin="retrieved",
+            source_tier="web_reference",
+            # 网络题没有真实难度标注，保持 None，绝不推断默认值。
+            difficulty=None,
+            tags=[],
+            source_metadata={
+                "knowledge_points": [
+                    {
+                        "kp": {
+                            "kp_id": kp_id,
+                            "kp_lv1": "",
+                            "kp_lv2": "",
+                            "kp_lv3": knowledge_point_name,
+                        }
+                    }
+                ],
+                "source_urls": urls,
+                "source_ref": str(row.get("source_ref") or ""),
+            },
+            bridges=[
+                QuestionBridge(
+                    kp_id=kp_id,
+                    bridge_layer="similarity",
+                    relation="primary",
+                    confidence=1.0,
+                    rank=1,
+                    evidence_chunk_uid="",
+                    match_method="web_search_query",
+                )
+            ],
+            retrieval=QuestionRetrievalMetadata(
+                channels=["bridge"],
+                channel_scores={"bridge": 1.0},
+                fusion_score=1.0,
+                channel_ranks={"bridge": 1},
+            ),
+        )
 
     async def _search_question_candidates(
         self,

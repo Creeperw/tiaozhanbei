@@ -378,6 +378,12 @@ class Settings:
     knowledge_supplement_query_max_length: int = 200
     knowledge_retrieval_exa_limit: int = 3
     knowledge_retrieval_textbook_limit: int = 5
+    # 组卷候选不足时按知识点回填网络题的上限与超时。回填要花钱（Exa 检索 +
+    # LLM 清洗）且串行等待，所以每次只补最缺题的少数知识点。
+    knowledge_web_backfill_max_knowledge_points: int = 2
+    # 后台灌题预算。实测单次清洗 152～379 秒（一次性输出全部题目与解析），
+    # 且不占用组卷时间，所以给足余量。
+    knowledge_web_backfill_timeout_seconds: int = 600
     question_fusion_strategy: Literal["legacy_max", "rrf_v1"] = "rrf_v1"
     question_rrf_k: int = 60
     question_rerank_mode: Literal["disabled", "shadow", "sort", "gate"] = "disabled"
@@ -710,6 +716,12 @@ class Settings:
             ),
             knowledge_retrieval_textbook_limit=_parse_int(
                 values, "KNOWLEDGE_RETRIEVAL_TEXTBOOK_LIMIT", 5, minimum=1
+            ),
+            knowledge_web_backfill_max_knowledge_points=_parse_int(
+                values, "KNOWLEDGE_WEB_BACKFILL_MAX_KNOWLEDGE_POINTS", 2, minimum=0
+            ),
+            knowledge_web_backfill_timeout_seconds=_parse_int(
+                values, "KNOWLEDGE_WEB_BACKFILL_TIMEOUT_SECONDS", 600, minimum=5
             ),
             question_fusion_strategy=cast(
                 Literal["legacy_max", "rrf_v1"],

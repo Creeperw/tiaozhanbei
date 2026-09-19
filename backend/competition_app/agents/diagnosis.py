@@ -1714,15 +1714,16 @@ class DiagnosisAgent:
             "diagnosis_agent", "learner_data_query"
         )
         try:
-            if context.get("smart_paper_v2") is True:
-                # The dedicated workshop form has already fixed the overall
-                # task as paper generation.  Diagnosis still performs its real
-                # read-only learner-data tool calls above, but its downstream
-                # handoff must summarize those facts rather than interpret the
-                # whole paper request as an instruction to author/publish a
-                # paper.  A deterministic evidence summary also removes one
-                # unnecessary model call from this latency-sensitive path and
-                # cannot be prompt-injected by the topic text.
+            if self._is_paper_generation_evidence_step(context):
+                # 组卷链路里的 Diagnosis 只负责把只读证据交给下游，不是交付
+                # 物本身。两个入口都必须走确定性摘要：
+                #   - 学习工坊表单入口（smart_paper_v2）
+                #   - 智能问答入口（工作流 task_type 为 paper_generation）
+                # 否则模型会把整份“请出试卷”的用户请求读成“要我去写试卷”，
+                # 而 learner_data_query 技能明文禁止生成题目，于是输出
+                # “当前环节我不能直接为你生成试卷”这类越界文案，既污染蓝图
+                # 上下文，又让用户看到自相矛盾的阶段产出。确定性摘要同时省掉
+                # 一次模型调用，并且不会被主题文本提示注入。
                 answer = self._learner_data_fallback(
                     query_kind,
                     window_days,
@@ -2069,6 +2070,22 @@ class DiagnosisAgent:
             if daily_task
             else None,
         }
+
+    @staticmethod
+    def _is_paper_generation_evidence_step(context: dict[str, Any]) -> bool:
+        """Whether this Diagnosis run only supplies evidence to a paper chain.
+
+        Two server-owned signals are accepted, both system metadata rather
+        than anything inferred from user prose:
+
+        - ``smart_paper_v2``: set only by the dedicated workshop endpoint.
+        - ``workflow_task_type``: the whole-run task type the Planner decided
+          before the orchestrator rewrote this step's own ``task_type``.
+        """
+
+        if context.get("smart_paper_v2") is True:
+            return True
+        return str(context.get("workflow_task_type") or "") == "paper_generation"
 
     @staticmethod
     def _learner_data_fallback(

@@ -48,6 +48,11 @@ class AuditResult(ContractModel):
     parent_subject_digest: str | None = Field(default=None, min_length=64, max_length=64)
     plan_scope: Literal["long_term", "short_term", "daily_task"] | None = None
     medical_safety_approval: dict[str, object] | None = None
+    # 本次审核是否真的拿到了一次可用的语义审核结论。模型输出不符合协议时，
+    # 审核器只能退回确定性硬门禁：``decision`` 反映的是硬门禁结果，不是语义
+    # 审核结论。发布侧不得把这种内容当作“已通过审核”放行——审核器失效不构成
+    # 内容安全的证据。
+    semantic_verdict_available: bool = True
 
 
 class ResourceVersion(ContractModel):

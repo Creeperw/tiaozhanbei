@@ -875,6 +875,58 @@ class StubChatModel:
                 )
         if role == "knowledge_base_agent":
             phase = str(business_payload.get("phase", "process_retrieved_content"))
+            if phase == "plan_paper_unit_retrieval":
+                # 组卷单元：蓝图给的是范围要求，检索短语由本智能体撰写。
+                unit = business_payload.get("blueprint_unit") or {}
+                requirement = " ".join(
+                    str(unit.get("retrieval_requirement", "")).split()
+                )
+                module = " ".join(str(unit.get("knowledge_module", "")).split())
+                query = module or requirement or "测试主题"
+                return self._emit({
+                    "kp_query": query[:300],
+                    "question_query": query[:300],
+                    "retrieval_reason": "按蓝图单元范围生成聚焦检索短语。",
+                }, on_delta)
+            if phase == "decide_paper_unit_scope":
+                # 组卷单元范围判定。离线行为：目录项带教材/章节/知识点名称时，
+                # 名称与单元声明有共同词项才算属于本单元；目录项三级名称全空
+                # （测试夹具只给知识点 ID）时无从判断，不作排除依据。
+                # 生产环境由模型按单元声明的范围判定，不用这里的字面重合。
+                unit = business_payload.get("blueprint_unit") or {}
+                declared = " ".join(
+                    str(unit.get(name, ""))
+                    for name in (
+                        "knowledge_module", "learning_objective",
+                        "retrieval_requirement",
+                    )
+                )
+                declared_terms = set(
+                    re.findall(r"[\u4e00-\u9fff]{2,}|[a-z0-9_]{2,}", declared)
+                )
+                in_scope: list[str] = []
+                for entry in business_payload.get("knowledge_point_catalog") or []:
+                    if not isinstance(entry, dict):
+                        continue
+                    kp_id = str(entry.get("kp_id") or "")
+                    if not kp_id:
+                        continue
+                    names = [
+                        str(entry.get(name) or "")
+                        for name in ("kp_lv1", "kp_lv2", "kp_lv3")
+                    ]
+                    if not any(names):
+                        in_scope.append(kp_id)
+                        continue
+                    terms = set(re.findall(
+                        r"[\u4e00-\u9fff]{2,}|[a-z0-9_]{2,}", " ".join(names)
+                    ))
+                    if declared_terms & terms:
+                        in_scope.append(kp_id)
+                return self._emit({
+                    "in_scope_kp_ids": in_scope,
+                    "scope_reason": "离线 stub：按目录名称与单元声明的字面重合判定。",
+                }, on_delta)
             if phase == "plan_retrieval":
                 request_text = str(business_payload.get("user_request", ""))
                 # Exact offline scenario, not production routing or a semantic classifier.

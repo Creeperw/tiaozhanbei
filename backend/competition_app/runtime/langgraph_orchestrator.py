@@ -865,6 +865,30 @@ class LangGraphOrchestrator(Orchestrator):
             record.preserved_outputs_unchanged = (
                 record.preserved_before_digest == record.preserved_after_digest
             )
+            # 返修是否真的改变了内容：确定性节点（试卷装配按固定规则从冻结
+            # 候选池里选题）会逐字复现原产物，此时 after_digest 仍然会变，
+            # 差值只来自重新生成的 paper_draft_id。抹掉这类标识符后再比对，
+            # 才能把“返修生效”和“返修空转”区分开。
+            rerun_step_ids = [
+                item.step_id
+                for item in repair_plan.actions
+                if item.step_id != audit_step_id
+            ]
+            record.unchanged_step_ids = [
+                item.step_id
+                for item in repair_plan.actions
+                if item.step_id != audit_step_id
+                and item.previous_content_digest is not None
+                and item.previous_content_digest
+                == self.repair_controller._content_digest(
+                    outputs.get(item.step_id)
+                )
+            ]
+            if rerun_step_ids:
+                record.content_changed = any(
+                    step_id not in record.unchanged_step_ids
+                    for step_id in rerun_step_ids
+                )
             if decision == "pass":
                 record.status = "completed"
                 progress["status"] = "completed"

@@ -20,7 +20,10 @@ from competition_app.contracts.agent_context import build_model_context
 from competition_app.services.planning_metrics import planning_model_context
 from competition_app.contracts.resource import AuditResult
 from competition_app.llm.base import ChatModel
-from competition_app.llm.openai_compatible import ModelResponseError
+from competition_app.llm.openai_compatible import (
+    ModelResponseError,
+    is_operational_model_failure,
+)
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
 from competition_app.llm.schemas import AuditModelOutput, PlanAuditModelOutput
@@ -85,16 +88,6 @@ PAPER_ACTIONABLE_ISSUE_TYPES = frozenset(
 # 同时保证整卷时延接近单单元耗时而非单元数倍。
 _AUDIT_UNIT_CONCURRENCY = 3
 
-_OPERATIONAL_MODEL_FAILURE_REASONS = frozenset(
-    {
-        "rate_limited",
-        "quota_exhausted",
-        "model_unavailable",
-        "transient_provider_error",
-        "transport_error",
-    }
-)
-
 
 class AuditAgent:
     def __init__(
@@ -120,12 +113,12 @@ class AuditAgent:
         A provider outage means that no audit conclusion was produced at all.
         Converting it to a terminal review state both mislabels an operational
         failure and makes every transient outage require a human decision.
+
+        The reason set lives next to ``ModelResponseError`` because paper
+        assembly needs the same split to decide whether a failed generation
+        batch may be skipped.
         """
-        return (
-            error.reason in _OPERATIONAL_MODEL_FAILURE_REASONS
-            or error.status_code == 429
-            or (error.status_code is not None and error.status_code >= 500)
-        )
+        return is_operational_model_failure(error)
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[AuditResult]:
         question_explanation_request = bool(
@@ -1831,6 +1824,10 @@ class AuditAgent:
                 else []
             ),
             verified_claim_ids=[],
+            # 审核模型输出不符合协议时，上面的 decision 只反映确定性硬门禁。
+            # 把这件事记成结构化字段，发布侧才能区分“审核判定不合格”与
+            # “审核没能完成”，而不是靠读报告里的文案去猜。
+            semantic_verdict_available=not audit_format_drifted,
         )
         return envelope(context, "audit_agent", "audit_result", result)
 
@@ -2258,6 +2255,13 @@ class AuditAgent:
 
     @staticmethod
     def _paper_location_catalog(blueprint: Any, paper: Any) -> list[AuditLocation]:
+        """试卷审核可用的位置目录。
+
+        ``location_key`` 是系统内部定位键（含题目/单元 ID，编译期按它校验），
+        而 ``display_label`` 是位置在卷面上的说法。学习者只认题号，看不到也
+        用不上内部 ID，所以标签一律用题号/单元序号表述，不把 ID 带进任何
+        面向学习者的文案。
+        """
         locations = [
             AuditLocation(
                 location_key="paper:whole",
@@ -2266,36 +2270,38 @@ class AuditAgent:
                 display_label="当前试卷全文",
             )
         ]
-        for unit in list(getattr(blueprint, "units", []) or [])[:30]:
+        for index, unit in enumerate(list(getattr(blueprint, "units", []) or [])[:30], start=1):
+            unit_sequence = getattr(unit, "sequence", None) or index
             locations.append(
                 AuditLocation(
                     location_key=f"paper:unit:{unit.unit_id}",
                     subject_type="exam_paper",
                     location_type="unit",
-                    display_label=f"蓝图单元{unit.unit_id}",
+                    display_label=f"第{unit_sequence}个蓝图单元",
                 )
             )
-        for item in list(getattr(paper, "items", []) or [])[:100]:
+        for index, item in enumerate(list(getattr(paper, "items", []) or [])[:100], start=1):
             question_id = str(item.question.question_id)
+            sequence = getattr(item, "sequence", None) or index
             locations.extend(
                 [
                     AuditLocation(
                         location_key=f"paper:question:{question_id}",
                         subject_type="exam_paper",
                         location_type="question",
-                        display_label=f"试卷题目{question_id}",
+                        display_label=f"第{sequence}题",
                     ),
                     AuditLocation(
                         location_key=f"paper:answer:{question_id}",
                         subject_type="exam_paper",
                         location_type="answer_key",
-                        display_label=f"题目{question_id}的答案",
+                        display_label=f"第{sequence}题的答案",
                     ),
                     AuditLocation(
                         location_key=f"paper:explanation:{question_id}",
                         subject_type="exam_paper",
                         location_type="explanation",
-                        display_label=f"题目{question_id}的解析",
+                        display_label=f"第{sequence}题的解析",
                     ),
                 ]
             )

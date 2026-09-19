@@ -66,7 +66,10 @@ def payload():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind,rule", [
-    ("missing", "required"), ("enum", "anyOf"), ("quote", "current_message_quote"),
+    # ``plan_scope`` 的 schema 是 anyOf（枚举分支 | null）。没有 discriminator
+    # 时曾经只报 ``anyOf``——“不符合契约允许的任一分支”，模型无法据此修正，
+    # 第二轮只能靠猜。现在下钻到失败分支，报出真正违反的 ``enum`` 约束。
+    ("missing", "required"), ("enum", "enum"), ("quote", "current_message_quote"),
     ("extra", "additionalProperties"),
     ("syntax", "invalid_json"),
 ])

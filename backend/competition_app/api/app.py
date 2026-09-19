@@ -28,6 +28,7 @@ from competition_app.application.personalized_review_card import (
     ReviewCardRequest,
     WorkflowResumeRequest,
 )
+from competition_app.application.workflow_presentation import failure_user_message
 from competition_app.runtime.event_stream import (
     bind_recording_sink,
     project_public_business_text,
@@ -1698,29 +1699,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return state
 
     def safe_failure_message(error_code: object) -> str:
-        messages = {
-            "knowledge_timeout": "知识检索超时，已保存当前会话，请稍后重试。",
-            "knowledge_step_failed": "知识检索未能完成，请稍后重试。",
-            "paper_blueprint_timeout": "试卷蓝图生成超时，请稍后重试。",
-            "model_timeout": "模型调用超时，请稍后重试。",
-            "model_invalid_output": "模型输出未能通过解析，请重新生成。",
-            "workflow_timeout": "本次处理超时，已保存当前会话，请稍后重试。",
-            "plan_compilation_failed": "学习规划未能通过结构化校验，请稍后重试。",
-            "audit_step_failed": "内容审核未能完成，请稍后重试。",
-            "daily_task_publication_failed": "今日任务发布未能完成，请稍后重试。",
-            "paper_generation_failed": "试卷生成未能完成，请稍后重试。",
-            "persistence_failed": "结果保存失败，请稍后重试。",
-            "model_empty_response": "模型暂时没有返回内容，请再试一次。",
-            "model_transport_error": "模型连接暂时不稳定，请稍后重试。",
-            "exam_workspace_changed": (
-                "考试目标已切换，旧任务不能继续；"
-                "请在当前考试下重新发起该请求。"
-            ),
-        }
-        return messages.get(
-            str(error_code or ""),
-            "这次处理没有成功完成，请稍后重试。",
-        )
+        # 文案表只有一份，放在 application 层供 HTTP 入口与会话消息共用；
+        # 之前两处各存一份并已经漂移（audit_step_timeout 只在会话消息里有
+        # 文案），同一个故障会因入口不同而显示不同的话。
+        return failure_user_message(error_code)
 
     def safe_run_status(state: dict[str, Any]) -> dict[str, Any]:
         result = state.get("result")

@@ -54,8 +54,14 @@ describe('StudyNotesPanel', () => {
     api.createNote.mockResolvedValue({ note: { note_id: 'N2' } });
     render(<StudyNotesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: '新建笔记' }));
-    fireEvent.change(screen.getByLabelText('笔记标题'), { target: { value: '补气方辨析' } });
+    // “新建笔记”从一开始就渲染，但在笔记本加载完成前是禁用的：此时点击会被
+    // 浏览器丢弃，编辑器不会打开。必须先等到它可用再点，否则后续同步查询会在
+    // 机器负载高时随机超时。
+    const newNoteButton = await screen.findByRole('button', { name: '新建笔记' });
+    await waitFor(() => expect(newNoteButton).toBeEnabled());
+    fireEvent.click(newNoteButton);
+
+    fireEvent.change(await screen.findByLabelText('笔记标题'), { target: { value: '补气方辨析' } });
     fireEvent.change(screen.getByLabelText('笔记内容'), { target: { value: '# 补气方\\n四君子汤是基础方。' } });
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
 

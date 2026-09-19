@@ -10,6 +10,7 @@ import {
   Download,
   FileText,
   Grid3X3,
+  Info,
   Loader2,
   PanelRightClose,
   PanelRightOpen,
@@ -32,6 +33,27 @@ const questionTypes = [
   ['case_quiz', '案例题'],
 ];
 const paperStorageKey = 'training-paper-id';
+// 卷面说明只在学习者第一次打开某份试卷时自动展开一次。记录按试卷 ID 存放，
+// 换一份卷子会重新提示；同一份卷子重进时收进题头的说明按钮，不再占用作答区。
+const paperNoticeSeenPrefix = 'smart-paper-notice-seen:';
+const readPaperNoticeSeen = (paperId) => {
+  if (!paperId) return false;
+  try {
+    return window.localStorage.getItem(`${paperNoticeSeenPrefix}${paperId}`) === '1';
+  } catch {
+    // 隐私模式等场景下 localStorage 不可用：退化成“每次进卷都提示一次”，
+    // 说明本身仍然可读，不影响答题。
+    return false;
+  }
+};
+const markPaperNoticeSeen = (paperId) => {
+  if (!paperId) return;
+  try {
+    window.localStorage.setItem(`${paperNoticeSeenPrefix}${paperId}`, '1');
+  } catch {
+    /* 记录失败不影响关闭弹层 */
+  }
+};
 const optionText = (option, index) => {
   if (typeof option === 'string') return option;
   const key = option?.key || option?.option_id || option?.id || String.fromCharCode(65 + index);
@@ -110,6 +132,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
   const [markedPositions, setMarkedPositions] = useState([]);
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState(false);
 
   const questionCount = useMemo(
     () => Object.values(distribution).reduce((total, count) => total + count, 0),
@@ -127,6 +150,37 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
   const hasActivePaper = Boolean(activePaperId);
   const allAnswered = Boolean(paper?.items?.length) && paper.items.every((item) => answers[item.paper_item_id]?.trim());
   const groupedItems = useMemo(() => groupPaperItems(paper?.items || []), [paper?.items]);
+  // 卷面说明：难度与来源、题目来源、审核结论。由服务端确定性生成并随试卷
+  // 发布，这里只负责显示。这些说明是学习者判断「这份卷子能不能信、哪里不
+  // 可信」的依据，必须留在试卷里，但不该压在题目前面占掉首屏——统一收进
+  // 「试卷说明」弹层：进卷时自动展开一次，之后由题头的说明按钮重新打开。
+  const learnerNotices = useMemo(() => {
+    const notices = paper?.learner_notices;
+    if (!notices || typeof notices !== 'object' || Array.isArray(notices)) return [];
+    return Object.entries(notices)
+      .map(([title, text]) => [String(title), String(text ?? '').trim()])
+      .filter(([, text]) => text);
+  }, [paper?.learner_notices]);
+  // 难度构成明细读的 difficulty_source_summary 字段试卷详情接口并不返回，
+  // 所以一直没有渲染；有值时与卷面说明放在同一个弹层里，不再单独占版面。
+  const difficultyBreakdown = useMemo(() => {
+    const summary = paper?.difficulty_source_summary;
+    if (!summary || typeof summary !== 'object') return [];
+    const rows = [
+      ['exact_difficulty_count', `符合指定难度（${summary.target_difficulty}星）的正式题`],
+      ['unlabeled_official_count', '未标注难度的正式题（补充）'],
+      // 这两行必须分开：前者是学习者真的要做的题，后者只是检索到的材料，
+      // 合成一行会让「一道网络题都没入卷」看起来像「已经有网络题入卷」。
+      ['web_in_paper_count', '来自网络检索的题（非正式题库原题）'],
+      ['web_reference_count', '检索到的网络参考材料（供出题参考）'],
+      ['generated_count', '系统生成补充题（无真实难度标注）'],
+      ['unmet_count', '未能满足的指定难度数量'],
+    ];
+    return rows
+      .map(([key, label]) => [label, Number(summary[key] || 0)])
+      .filter(([, count]) => count > 0);
+  }, [paper?.difficulty_source_summary]);
+  const noticeSectionCount = learnerNotices.length + (difficultyBreakdown.length ? 1 : 0);
   const currentItem = paper?.items?.[Math.max(0, Math.min((paper?.items?.length || 1) - 1, position - 1))] || null;
   const currentResult = currentItem
     ? submitted?.items?.find((entry) => entry.paper_item_id === currentItem.paper_item_id)
@@ -181,6 +235,24 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     }, 1000);
     return () => window.clearInterval(timer);
   }, [timerActive]);
+
+  // 进卷时自动展开一次卷面说明：这份卷子有没有已知问题、题目从哪来，学习者
+  // 在开始作答之前就该看到。看过之后收进题头按钮，不再自动弹出。
+  useEffect(() => {
+    if (!activePaperId || noticeSectionCount === 0) return;
+    if (readPaperNoticeSeen(activePaperId)) return;
+    markPaperNoticeSeen(activePaperId);
+    setNoticeOpen(true);
+  }, [activePaperId, noticeSectionCount]);
+
+  useEffect(() => {
+    if (!noticeOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setNoticeOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [noticeOpen]);
 
   const setCount = (key, value) => {
     const count = Math.max(0, Math.min(50, Number.parseInt(value, 10) || 0));
@@ -508,6 +580,9 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
             {!paperSubmitted && !timeExpired && <button type="button" onClick={toggleTimer} disabled={loading} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
               {timerPaused ? <Play size={16} /> : <Pause size={16} />}<span className="hidden sm:inline">{timerPaused ? '继续计时' : '暂停计时'}</span>
             </button>}
+            {noticeSectionCount > 0 && <button type="button" aria-label="试卷说明" aria-expanded={noticeOpen} onClick={() => setNoticeOpen(true)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
+              <Info size={16} /><span className="hidden sm:inline">试卷说明</span>
+            </button>}
             <button type="button" aria-label={answerCardOpen ? '收起答题卡' : '展开答题卡'} aria-expanded={answerCardOpen} aria-controls="smart-paper-answer-card" onClick={() => setAnswerCardOpen(!answerCardOpen)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
               {answerCardOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}<span className="hidden sm:inline">答题卡</span>
             </button>
@@ -538,30 +613,42 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         {!paperSubmitted && timerPaused && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm leading-6 text-amber-800">计时已暂停，答案保留在当前页面。继续作答时请恢复计时。</p>}
         {!paperSubmitted && timeExpired && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm leading-6 text-amber-800">答题时间已结束，答案已锁定，请按当前答案交卷。</p>}
 
-        {paper?.difficulty_source_summary && (
-          <section className="border-b border-slate-200 bg-slate-50 px-5 py-4" aria-label="题目来源与难度说明">
-            <div className="mx-auto max-w-3xl space-y-2 text-sm leading-6 text-slate-700">
-              <p className="font-medium text-slate-900">题目来源与难度说明</p>
-              <ul className="list-inside list-disc space-y-1">
-                {Number(paper.difficulty_source_summary.exact_difficulty_count || 0) > 0 && (
-                  <li>符合指定难度（{paper.difficulty_source_summary.target_difficulty}星）的正式题：<strong>{paper.difficulty_source_summary.exact_difficulty_count}</strong> 题</li>
+        {noticeOpen && noticeSectionCount > 0 && (
+          <div
+            className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 sm:items-center"
+            onMouseDown={(event) => { if (event.target === event.currentTarget) setNoticeOpen(false); }}
+          >
+            <div role="dialog" aria-modal="true" aria-labelledby="smart-paper-notice-title" className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl">
+              <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+                <div className="min-w-0">
+                  <h3 id="smart-paper-notice-title" className="text-base font-semibold text-slate-950">开始答题前请阅读</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">这份试卷的题目来源、难度与审核结论。关闭后可随时用题头的「试卷说明」重新打开。</p>
+                </div>
+                <button type="button" aria-label="关闭试卷说明" onClick={() => setNoticeOpen(false)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition hover:border-emerald-400 hover:text-emerald-800"><X size={17} /></button>
+              </header>
+              <div className="max-h-[70vh] space-y-4 overflow-y-auto overscroll-contain px-5 py-4 text-sm leading-6 text-slate-700">
+                {learnerNotices.map(([title, text]) => (
+                  <section key={title}>
+                    <p className="font-medium text-slate-800">{title}</p>
+                    <p className="mt-0.5 whitespace-pre-line text-slate-600">{text}</p>
+                  </section>
+                ))}
+                {difficultyBreakdown.length > 0 && (
+                  <section>
+                    <p className="font-medium text-slate-800">难度构成</p>
+                    <ul className="mt-0.5 list-inside list-disc space-y-1 text-slate-600">
+                      {difficultyBreakdown.map(([label, count]) => (
+                        <li key={label}>{label}：<strong className="font-semibold text-slate-800">{count}</strong> 题</li>
+                      ))}
+                    </ul>
+                  </section>
                 )}
-                {Number(paper.difficulty_source_summary.unlabeled_official_count || 0) > 0 && (
-                  <li>未标注难度的正式题（补充）：<strong>{paper.difficulty_source_summary.unlabeled_official_count}</strong> 题</li>
-                )}
-                {Number(paper.difficulty_source_summary.web_reference_count || 0) > 0 && (
-                  <li>网络参考题（补充）：<strong>{paper.difficulty_source_summary.web_reference_count}</strong> 题</li>
-                )}
-                {Number(paper.difficulty_source_summary.generated_count || 0) > 0 && (
-                  <li>系统生成补充题（无真实难度标注）：<strong>{paper.difficulty_source_summary.generated_count}</strong> 题</li>
-                )}
-                {Number(paper.difficulty_source_summary.unmet_count || 0) > 0 && (
-                  <li>未能满足的指定难度数量：<strong>{paper.difficulty_source_summary.unmet_count}</strong> 题</li>
-                )}
-              </ul>
-              {paper.difficulty_source_summary.notice && <p className="text-slate-500">{paper.difficulty_source_summary.notice}</p>}
+              </div>
+              <footer className="flex justify-end border-t border-slate-200 px-5 py-4">
+                <button type="button" onClick={() => setNoticeOpen(false)} className={`${paperButton} border-slate-900 bg-slate-900 text-white hover:bg-slate-800`}>我已了解，开始答题</button>
+              </footer>
             </div>
-          </section>
+          </div>
         )}
 
         <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
