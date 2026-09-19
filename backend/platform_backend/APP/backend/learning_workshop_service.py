@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import timedelta
 from typing import Any
 from uuid import uuid4
@@ -17,6 +18,9 @@ from APP.backend.database import (
 )
 from APP.backend.knowledge_point_identity_service import resolve_agent_knowledge_point
 from APP.backend.time_utils import utc_now
+
+
+logger = logging.getLogger(__name__)
 
 
 WORKSHOP_MODULES = [
@@ -124,6 +128,22 @@ def get_knowledge_card(db: Session, *, user_id: int, card_id: str) -> dict[str, 
     return serialize_knowledge_card(row, include_bundle=True) if row is not None else None
 
 
+def _learner_notices_payload(paper: dict[str, Any]) -> dict[str, str]:
+    """从试卷载荷里取出面向学习者的卷面说明。
+
+    说明由组卷侧确定性生成（难度与来源说明、题目来源说明、审核说明），随
+    ``paper`` 载荷一起送达。这里只做形状与空值校验，不改写文案。
+    """
+    notices = paper.get("learner_notices")
+    if not isinstance(notices, dict):
+        return {}
+    return {
+        str(key): str(value)
+        for key, value in notices.items()
+        if str(value or "").strip()
+    }
+
+
 def publish_agent_paper(
     db: Session,
     *,
@@ -167,6 +187,11 @@ def publish_agent_paper(
     if existing is not None:
         return {"paper_id": existing.paper_id, "status": existing.status}
 
+    # 卷面说明（难度与来源、题目来源、审核结论）随试卷载荷一起送达，但它不是
+    # 蓝图内容。存进同一列的下划线子键，答题页从试卷详情接口读出后显示给学习
+    # 者——看不到这些说明，学习者就无法判断卷子为什么掺入了别的知识点的题、
+    # 内容审核又指出了什么。
+    learner_notices = _learner_notices_payload(paper)
     paper_id = f"PAPER_{uuid4().hex}"
     duration = max(1, min(24 * 60, int(paper.get("duration_minutes") or 60)))
     paper_items = list(paper.get("items") or []) if snapshots is None else [{} for _ in snapshots]
@@ -181,7 +206,12 @@ def publish_agent_paper(
             title=str(paper.get("title") or "训练试卷")[:200],
             status="published",
             duration_minutes=duration,
-            blueprint_json=json.dumps(blueprint, ensure_ascii=False),
+            blueprint_json=json.dumps(
+                {**blueprint, "_learner_notices": learner_notices}
+                if learner_notices
+                else blueprint,
+                ensure_ascii=False,
+            ),
             evidence_pack_json=json.dumps(evidence_pack, ensure_ascii=False),
         )
     )
@@ -203,6 +233,12 @@ def publish_agent_paper(
                 standard_difficulty=None,
                 max_score_snapshot=item_score,
             ))
+    # 知识点准入统计：未准入的知识点不会进入掌握度与复习闭环。整卷被拒时
+    # 学习者做完题却看不到任何个人数据变化，且此前没有任何日志可循——这里把
+    # 结果汇总成一条日志，让静默失效至少留下痕迹。
+    kp_total = 0
+    kp_admitted = 0
+    kp_rejected_samples: list[str] = []
     for position, (item, item_score) in enumerate(zip(paper_items, item_scores), start=1):
         if snapshots is not None:
             break
@@ -246,6 +282,12 @@ def publish_agent_paper(
                     "name": name or kp_id,
                 })
         canonical_kp_ids = list(dict.fromkeys(canonical_kp_ids))
+        kp_total += len(kp_ids)
+        kp_admitted += len(canonical_kp_ids)
+        if len(canonical_kp_ids) < len(kp_ids) and len(kp_rejected_samples) < 5:
+            kp_rejected_samples.extend(
+                kp_ids[: 5 - len(kp_rejected_samples)]
+            )
         question_id = str(question.get("question_id") or f"AGENT_Q_{uuid4().hex}")
         paper_item = PaperItemRecord(
                 paper_item_id=f"PI_{uuid4().hex}",
@@ -280,6 +322,26 @@ def publish_agent_paper(
         if not _bound_paper_matches_snapshots(db, paper_instance, snapshots):
             raise ValueError("bound paper does not match frozen daily task questions")
     db.commit()
+    if kp_total and not kp_admitted:
+        logger.error(
+            "试卷 %s 的知识点全部未准入（0/%d）：掌握度与复习闭环不会更新。"
+            "被拒样本 %s；请检查 knowledge_points 是否已同步知识图谱。",
+            paper_id,
+            kp_total,
+            kp_rejected_samples,
+        )
+    elif kp_total and kp_admitted < kp_total:
+        logger.warning(
+            "试卷 %s 有知识点未准入：%d/%d 通过，被拒样本 %s。",
+            paper_id,
+            kp_admitted,
+            kp_total,
+            kp_rejected_samples,
+        )
+    elif kp_total:
+        logger.info(
+            "试卷 %s 知识点准入：%d/%d 通过。", paper_id, kp_admitted, kp_total
+        )
     return {"paper_id": paper_id, "status": "published", "duration_minutes": duration}
 
 
