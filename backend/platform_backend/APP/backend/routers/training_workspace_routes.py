@@ -296,8 +296,12 @@ def _mistake_attempt(db: Session, mistake: MistakeRecord, user_id: int) -> dict[
         ).one_or_none()
         if item is None:
             continue
-        grading = db.query(GradingResultRecord).filter_by(
-            attempt_item_id=attempt_item_id,
+        grading = db.query(GradingResultRecord).filter(
+            GradingResultRecord.attempt_item_id == attempt_item_id,
+            # 生成变式时会往这张表落一条 ``audited_variation_candidate`` 记录，
+            # 它同时充当审计表的复合外键锚点，但没有分数也不属于这次作答。
+            # 不排除它，「得分」就会被那条空记录顶掉，显示成「未记录」。
+            GradingResultRecord.status != "audited_variation_candidate",
         ).order_by(GradingResultRecord.id.desc()).first()
         return {
             "student_answer": item.submitted_answer,

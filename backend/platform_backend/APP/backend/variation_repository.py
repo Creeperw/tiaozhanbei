@@ -29,6 +29,22 @@ class PublishedVariation:
     status: str
 
 
+def _options_snapshot(raw) -> tuple[str, ...]:
+    """把落库的选项快照读回字符串元组；历史行可能为空或非法 JSON。"""
+
+    if not raw:
+        return ()
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError):
+        return ()
+    if not isinstance(value, list):
+        return ()
+    return tuple(
+        str(item).strip() for item in value if str(item or "").strip()
+    )
+
+
 @dataclass(frozen=True)
 class LearnerQuestionVersion:
     question_version_id: str
@@ -37,6 +53,8 @@ class LearnerQuestionVersion:
     kp_ids: tuple[str, ...]
     question_type: str
     source_kind: str
+    # 选项快照。选择题必须带着它才能展示选项并按标号判分。
+    options: tuple[str, ...] = ()
 
 
 class VariationRepository:
@@ -81,6 +99,7 @@ class VariationRepository:
         stem: str = "",
         question_type: str = "single_choice",
         kp_ids: tuple[str, ...] = (),
+        options: tuple[str, ...] = (),
         status: str = "published",
         scope: str = "user",
     ):
@@ -118,6 +137,7 @@ class VariationRepository:
                             stem=stem,
                             question_type=question_type,
                             kp_ids=kp_ids,
+                            options=options,
                             status=status,
                             scope=scope,
                         )
@@ -170,6 +190,7 @@ class VariationRepository:
         stem,
         question_type,
         kp_ids,
+        options,
         status,
         scope,
     ):
@@ -265,6 +286,7 @@ class VariationRepository:
                 question_version_id=question_version_id,
                 standard_answer=standard_answer,
                 rubric_json=json.dumps(rubric, ensure_ascii=False),
+                options_json=json.dumps(list(options), ensure_ascii=False),
             ))
             session.add(VariationQuestionVersionRecord(
                 variation_set_id=variation_set_id,
@@ -320,6 +342,7 @@ class VariationRepository:
     def _project(session, versions):
         ids = [version.question_version_id for version in versions]
         kp_ids = {}
+        options = {}
         if ids:
             for version_id, kp_id in session.query(
                 QuestionKPLinkRecord.question_version_id,
@@ -329,6 +352,13 @@ class VariationRepository:
                 QuestionKPLinkRecord.status == "active",
             ).order_by(QuestionKPLinkRecord.kp_id.asc()).all():
                 kp_ids.setdefault(version_id, []).append(kp_id)
+            for version_id, raw in session.query(
+                VariationRubricRecord.question_version_id,
+                VariationRubricRecord.options_json,
+            ).filter(
+                VariationRubricRecord.question_version_id.in_(ids),
+            ).all():
+                options[version_id] = _options_snapshot(raw)
         return tuple(LearnerQuestionVersion(
             question_version_id=version.question_version_id,
             question_id=version.question_id,
@@ -336,4 +366,5 @@ class VariationRepository:
             kp_ids=tuple(kp_ids.get(version.question_version_id, ())),
             question_type=version.question_type,
             source_kind=version.source_kind,
+            options=tuple(options.get(version.question_version_id, ())),
         ) for version in versions)

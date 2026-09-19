@@ -6,6 +6,25 @@ import { loadMistakes, submitMistakeAnswerContext, submitTrainingWorkspaceTask }
 
 const requestId = () => createRequestId('variation');
 
+// 判分侧按选项标号比对作答，所以提交的答案必须是标号（如 "A"），不是选项原文。
+const optionParts = (option) => {
+  const text = String(option || '').trim();
+  const matched = /^([A-Ha-h])\s*[.、．:：)）]?\s*(.*)$/.exec(text);
+  if (matched && matched[2]) {
+    return { value: matched[1].toUpperCase(), content: matched[2] };
+  }
+  return { value: '', content: text };
+};
+
+const isChoiceQuestion = (questionType) => (
+  ['single_choice', '单选题', '单项选择题', 'multiple_choice', '多选题', '多项选择题']
+    .includes(String(questionType || ''))
+);
+
+const isMultipleChoiceQuestion = (questionType) => (
+  ['multiple_choice', '多选题', '多项选择题'].includes(String(questionType || ''))
+);
+
 export default function MistakeVariationPanel({ enabled }) {
   const [mistakes, setMistakes] = useState([]);
   const [total, setTotal] = useState(0);
@@ -132,6 +151,21 @@ export default function MistakeVariationPanel({ enabled }) {
 
   const selected = questions.find((item) => item.question_version_id === selectedQuestion);
   const grading = result?.artifact?.content?.grading?.grading || {};
+  const selectedOptions = Array.isArray(selected?.options) ? selected.options : [];
+  const showOptions = selectedOptions.length > 0 && isChoiceQuestion(selected?.question_type);
+  const isMultiple = isMultipleChoiceQuestion(selected?.question_type);
+  const selectedValues = String(answer || '').split(',').map((item) => item.trim()).filter(Boolean);
+  const selectOption = (value) => {
+    if (!value) return;
+    if (!isMultiple) {
+      setAnswer(value);
+      return;
+    }
+    const next = selectedValues.includes(value)
+      ? selectedValues.filter((item) => item !== value)
+      : [...selectedValues, value].sort();
+    setAnswer(next.join(','));
+  };
   return (
     <div className="mt-5 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -225,9 +259,34 @@ export default function MistakeVariationPanel({ enabled }) {
       {selected && <div className="space-y-3 border-t border-slate-200 pt-4">
         <p className="text-sm font-semibold leading-6 text-slate-900">{selected.stem}</p>
         <p className="text-xs leading-5 text-slate-500">知识点：{selected.kp_names?.join('、') || '已关联，名称待同步'}</p>
-        <label className="block text-sm font-medium text-slate-700">你的答案
-          <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} disabled={loading} className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />
-        </label>
+        {showOptions ? (
+          <div className="space-y-2" role="group" aria-label="变式题选项">
+            {selectedOptions.map((option, index) => {
+              const { value, content } = optionParts(option);
+              const key = value || `option-${index}`;
+              const checked = selectedValues.includes(value);
+              return (
+                <label key={key} className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-sm transition ${checked ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+                  <input
+                    type={isMultiple ? 'checkbox' : 'radio'}
+                    name={selected.question_version_id}
+                    checked={checked}
+                    disabled={loading}
+                    onChange={() => selectOption(value)}
+                  />
+                  <span className="leading-6 text-slate-800">
+                    {value ? <strong className="mr-1.5 text-slate-900">{value}.</strong> : null}
+                    {content}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <label className="block text-sm font-medium text-slate-700">你的答案
+            <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} disabled={loading} className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />
+          </label>
+        )}
         <button type="button" onClick={grade} disabled={loading || !answer.trim()} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">提交批改</button>
       </div>}
       {result && <div className="border-l-2 border-emerald-300 pl-3 text-sm leading-6 text-slate-700"><p>得分：{grading.score} / {grading.max_score}</p><p>{grading.feedback || grading.error_reason || '批改已完成。'}</p></div>}

@@ -980,6 +980,9 @@ class VariationRubricRecord(Base):
     )
     standard_answer = Column(Text, nullable=False)
     rubric_json = Column(Text, nullable=False, default="{}")
+    # 变式题的选择项快照。与 standard_answer 放在一起，因为选项决定标准答案
+    # 如何被解析（"B" 必须能映射到某个具体选项文本），两者共同构成判分依据。
+    options_json = Column(Text, nullable=False, default="[]")
     created_at = Column(DateTime, default=utc_now)
 
 
@@ -3271,9 +3274,38 @@ def _ensure_paper_item_snapshot_column(bind):
         )
 
 
+def _ensure_variation_options_column(bind):
+    """给已存在的 variation_rubrics 补 options_json。
+
+    变式题在补列之前只保存题干和标准答案，没有选项快照；选择题因此无法把
+    "B" 映射回具体选项文本，判分永远为 0。历史行保持空数组，读取端按
+    「无选项」处理即可。
+    """
+
+    inspector = inspect(bind)
+    if "variation_rubrics" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("variation_rubrics")}
+    if "options_json" in columns:
+        return
+    definition = (
+        "TEXT NULL"
+        if bind.dialect.name == "mysql"
+        else "TEXT NOT NULL DEFAULT '[]'"
+    )
+    with bind.begin() as connection:
+        _add_column_if_missing_after_race(
+            connection,
+            "variation_rubrics",
+            "options_json",
+            f"ALTER TABLE variation_rubrics ADD COLUMN options_json {definition}",
+        )
+
+
 def _ensure_learning_workshop_schema(bind):
     """Create the card library and apply additive paper-session columns."""
 
+    _ensure_variation_options_column(bind)
     KnowledgeCardRecord.__table__.create(bind=bind, checkfirst=True)
     inspector = inspect(bind)
     options_definition = (
@@ -3529,6 +3561,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 ],
             )
             _ensure_paper_item_snapshot_column(bind)
+            _ensure_variation_options_column(bind)
             _ensure_learning_governance_tables(bind)
             _ensure_knowledge_identity_tables(bind)
             _ensure_core_learning_contract_tables(bind)

@@ -253,7 +253,7 @@ class MistakeVariationServiceTests(unittest.TestCase):
         self.assertNotIn("原题秘密答案", serialized)
         self.assertEqual(
             set(result["questions"][0]),
-            {"question_version_id", "question_id", "stem", "question_type", "kp_ids", "kp_names", "source_kind"},
+            {"question_version_id", "question_id", "stem", "question_type", "options", "kp_ids", "kp_names", "source_kind"},
         )
         self.assertTrue(all(
             audits[variation.audit_id].decision == "pass"

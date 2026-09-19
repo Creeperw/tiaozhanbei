@@ -841,8 +841,9 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
             payload = {"status": "success", "run_id": "RUN_1", "steps": [], "final": {
                 "artifact": {"artifact_type": "question_variation", "title": "变式", "source_id": "QV_VARIATION", "content": {
                     "stem": "安全变式题干", "question_type": "single_choice", "difficulty": 2, "kp_ids": ["KP_1"],
+                    "options": ["A. 甲证", "B. 乙证"],
                     "source_mistake_id": 91, "source_question_version_id": "QV_SOURCE",
-                    "answer": "SENTINEL_ANSWER", "analysis": "SENTINEL_ANALYSIS",
+                    "answer": "B", "analysis": "SENTINEL_ANALYSIS",
                     "nested": {"reference_answer": "SENTINEL_REFERENCE"},
                 }},
                 "evidence_pack": {"pack_id": "EP_1", "source_scope": "mistake_variation", "source_id": "QV_SOURCE", "resolved_kp_ids": ["KP_1"], "items": []},
@@ -857,6 +858,7 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "completed")
         self.assertEqual(selected[0].stem, "安全变式题干")
+        self.assertEqual(selected[0].options, ("A. 甲证", "B. 乙证"))
         self.assertEqual(selected[0].kp_ids, ("KP_1",))
         self.assertEqual(variation.audit_id, current_audit.audit_id)
         self.assertEqual(current_audit.source_artifact_id, "QV_VARIATION")

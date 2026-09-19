@@ -49,6 +49,10 @@ from APP.backend.system_data_service import rebuild_system_data
 from APP.backend.variation_repository import VariationRepository
 
 
+# 错题变式生成器版本。变式生成逻辑发生不兼容变化时递增，
+# 使确定性 task_id 失效，历史产物不会被复用（见 _variation_task_id）。
+VARIATION_GENERATOR_VERSION = "variation-v2"
+
 TRAINING_TASK_QUESTION_ID_MAX_LENGTH = 120
 TRAINING_TASK_MAX_JSON_BYTES = 64 * 1024
 TRAINING_TASK_MAX_DEPTH = 6
@@ -433,6 +437,9 @@ def _authorized_variation_inputs(db: Session, user_id: int, inputs: dict[str, An
 
 def _variation_task_id(user_id: int, source: dict[str, Any], request: dict[str, Any]) -> str:
     semantics = {
+        # 生成器版本参与缓存键：变式生成逻辑发生不兼容变化时必须递增，
+        # 否则旧产物会被确定性 task_id 命中并永久复用，用户永远看不到新效果。
+        "generator_version": VARIATION_GENERATOR_VERSION,
         "owner_user_id": user_id,
         "source_mistake_id": source["mistake_id"],
         "source_question_version_id": source["source_question_version_id"],

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import json
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -9,10 +10,12 @@ from sqlalchemy.orm import Session
 from APP.backend.agent_orchestrator_service import run_agent_orchestration
 from APP.backend.database import (
     AuditResultRecord,
+    DailyTaskQuestionSnapshotRecord,
     GradingResultRecord,
     LearningAttemptItemRecord,
     LearningAttemptRecord,
     MistakeRecord,
+    PaperItemRecord,
     QuestionKPLinkRecord,
     QuestionVersionRecord,
     VariationQuestionVersionRecord,
@@ -57,6 +60,10 @@ class _SourceSnapshot:
     source_audit_status: str
     source_audit_decision: str
     source_audit_generation: int
+    # 源题选项快照与知识点中文名：变式命题要沿用同样的选项结构，
+    # 提示词里也要用名称而不是内部编号。
+    source_options: tuple[str, ...] = ()
+    source_kp_names: tuple[str, ...] = ()
 
     def orchestration_inputs(self) -> dict[str, Any]:
         return {
@@ -67,6 +74,8 @@ class _SourceSnapshot:
             "source_answer": self.source_answer,
             "source_analysis": self.source_analysis,
             "source_question_type": self.source_question_type,
+            "source_options": list(self.source_options),
+            "source_kp_names": list(self.source_kp_names),
             "kp_ids": list(self.kp_ids),
             "attempt_item_id": self.attempt_item_id,
         }
@@ -93,8 +102,13 @@ def _source(db: Session, user_id: int, mistake_id: int) -> _SourceSnapshot:
     if row is None:
         raise MistakeVariationNotFound("mistake was not found")
     mistake, question, attempt_item = row
+    # 生成变式时会在 grading_result_records 里落一条 ``audited_variation_candidate``
+    # 行（它同时充当 AuditResultRecord 的复合外键锚点）。那条记录没有分数，
+    # 也不属于这次作答，必须排除，否则「源题的批改/审核」会被变式自己的审计
+    # 记录顶掉：错题得分显示不出来，变式之间还会互相引用彼此的审计。
     grading = db.query(GradingResultRecord).filter(
         GradingResultRecord.attempt_item_id == attempt_item.attempt_item_id,
+        GradingResultRecord.status != "audited_variation_candidate",
     ).order_by(GradingResultRecord.id.desc()).first()
     if grading is None:
         raise MistakeVariationNotFound("mistake was not found")
@@ -108,6 +122,7 @@ def _source(db: Session, user_id: int, mistake_id: int) -> _SourceSnapshot:
     ).all())
     if audit is None or audit.status != "completed" or audit.decision != "pass" or not kp_ids:
         raise MistakeVariationNotFound("mistake was not found")
+    kp_names = tuple(_kp_names(db, kp_ids))
     return _SourceSnapshot(
         mistake_id=mistake.id,
         user_id=user_id,
@@ -126,6 +141,47 @@ def _source(db: Session, user_id: int, mistake_id: int) -> _SourceSnapshot:
         source_audit_status=audit.status,
         source_audit_decision=audit.decision,
         source_audit_generation=grading.audit_generation,
+        source_options=_source_options(db, question.question_version_id),
+        source_kp_names=kp_names,
+    )
+
+
+def _source_options(db: Session, question_version_id: str) -> tuple[str, ...]:
+    """读源题的选项快照。
+
+    question_version_records 本身不存选项，题干所在的两处快照才带选项：
+    组卷落在 paper_items，每日任务落在 daily_task_question_snapshots。
+    按时间倒序取最近一条，保证学生看到的是当时作答的那一版选项。
+    """
+
+    rows = [
+        db.query(PaperItemRecord.options_snapshot_json).filter(
+            PaperItemRecord.question_version_id == question_version_id,
+        ).order_by(PaperItemRecord.id.desc()).limit(1).scalar(),
+        db.query(DailyTaskQuestionSnapshotRecord.options_snapshot_json).filter(
+            DailyTaskQuestionSnapshotRecord.question_version_id == question_version_id,
+        ).order_by(DailyTaskQuestionSnapshotRecord.id.desc()).limit(1).scalar(),
+    ]
+    for raw in rows:
+        options = _options_snapshot(raw)
+        if options:
+            return options
+    return ()
+
+
+def _options_snapshot(raw: Any) -> tuple[str, ...]:
+    """把落库的选项快照读回字符串元组；历史行可能为空或非法 JSON。"""
+
+    if not raw:
+        return ()
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError):
+        return ()
+    if not isinstance(value, list):
+        return ()
+    return tuple(
+        str(item).strip() for item in value if str(item or "").strip()
     )
 
 
@@ -135,6 +191,7 @@ def _question_projection(question) -> dict[str, Any]:
         "question_id": question.question_id,
         "stem": question.stem,
         "question_type": question.question_type,
+        "options": list(question.options),
         "kp_ids": list(question.kp_ids),
         "source_kind": question.source_kind,
     }
@@ -205,6 +262,9 @@ def _owned_questions(db: Session, user_id: int):
             QuestionKPLinkRecord.question_version_id == version.question_version_id,
             QuestionKPLinkRecord.status == "active",
         ).order_by(QuestionKPLinkRecord.kp_id).all())
+        authority = db.query(VariationRubricRecord.options_json).filter(
+            VariationRubricRecord.question_version_id == version.question_version_id,
+        ).scalar()
         projected.append(LearnerQuestionVersion(
             question_version_id=version.question_version_id,
             question_id=version.question_id,
@@ -212,6 +272,7 @@ def _owned_questions(db: Session, user_id: int):
             question_type=version.question_type,
             kp_ids=kp_ids,
             source_kind=version.source_kind,
+            options=_options_snapshot(authority),
         ))
     return projected
 
@@ -248,6 +309,7 @@ def _grade_variation(
     ).one_or_none()
     if authority is None:
         raise MistakeVariationNotFound("variation was not found")
+    options = list(question.options) or _options_snapshot(authority.options_json)
     task_id = request_id
     command = from_workspace_request(
         user_id,
@@ -255,9 +317,14 @@ def _grade_variation(
             "task_id": task_id,
             "inputs": {
                 **_question_projection(question),
+                "options": options,
                 "student_answer": answer.get("student_answer", ""),
                 "standard_answer": authority.standard_answer,
                 "knowledge_points": list(question.kp_ids),
+                # 判分侧会按这个字段给出「本题考查……」的知识点名称。只传
+                # knowledge_points（内部编号）会被当成名称过滤掉，反馈里就会
+                # 出现「知识点名称暂未匹配」，与界面同时显示的名称自相矛盾。
+                "knowledge_point_names": _kp_names(db, question.kp_ids),
             },
         },
         profile={},
@@ -340,6 +407,7 @@ def apply_mistake_variations(
                         stem=content["stem"],
                         question_type=content["question_type"],
                         kp_ids=tuple(content["kp_ids"]),
+                        options=tuple(content.get("options") or ()),
                     )
                 else:
                     published = target(**content)
@@ -397,6 +465,7 @@ def apply_mistake_variations(
                 "question_id": content.get("question_id", ""),
                 "stem": content["stem"],
                 "question_type": content["question_type"],
+                "options": list(content.get("options") or []),
                 "kp_ids": list(content["kp_ids"]),
                 "kp_names": _kp_names(db, list(content["kp_ids"])),
                 "source_kind": "variation",

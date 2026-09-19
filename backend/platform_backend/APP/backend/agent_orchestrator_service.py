@@ -29,6 +29,10 @@ class OrchestrationTaskContext(BaseModel):
     source_answer: str = Field(default="", max_length=8000)
     source_analysis: str = Field(default="", max_length=12000)
     source_question_type: str = Field(default="single_choice", max_length=50)
+    # 源题选项快照：选择题的变式必须沿用同样的选项结构，判分也要靠标号对应。
+    source_options: list[str] = Field(default_factory=list, max_length=20)
+    # 知识点中文名。提示词里用名称而不是内部编号，模型才可能围绕正确范围命题。
+    source_kp_names: list[str] = Field(default_factory=list, max_length=100)
 
     @field_validator("correlation_id")
     @classmethod
@@ -517,7 +521,9 @@ def _tool_kwargs(
                 "source_answer": request.task_context.source_answer,
                 "source_analysis": request.task_context.source_analysis,
                 "source_question_type": request.task_context.source_question_type,
+                "source_options": list(request.task_context.source_options),
                 "kp_ids": list(request.task_context.kp_ids),
+                "kp_names": list(request.task_context.source_kp_names),
             },
         }
     if tool_name == "grade_submission":

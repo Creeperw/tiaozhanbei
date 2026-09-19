@@ -573,6 +573,155 @@ class ExpertAgentServiceTests(unittest.TestCase):
         executor_material = calls[0][1][-1]["content"]
         self.assertNotIn("温中散寒", executor_material)
 
+    def _variation_request(self, **overrides):
+        request = {
+            "mistake_id": 91,
+            "source_question_version_id": "QV_SOURCE",
+            "source_question_id": "Q_SOURCE",
+            "source_stem": "下列符合阴阳对立制约关系的是",
+            "source_answer": "B",
+            "source_analysis": "寒者热之体现阴阳对立制约。",
+            "source_question_type": "single_choice",
+            "source_options": ["A. 寒极生热", "B. 寒者热之", "C. 阴损及阳"],
+            "kp_ids": ["KP_ZH_001", "KP_FJ_001"],
+            "kp_names": ["阴阳学说", "四君子汤"],
+        }
+        request.update(overrides)
+        return request
+
+    def _generate_variation(self, service, payload):
+        class FakeClient:
+            def __init__(self, role):
+                self.role = role
+
+            def chat(self, messages, **kwargs):
+                return json.dumps(payload, ensure_ascii=False)
+
+        with patch.object(
+            service,
+            "build_llm_client",
+            side_effect=lambda role: FakeClient(role),
+        ):
+            return service.generate_question_variation(
+                learner_context=self._learner_context(),
+                evidence_pack=self._evidence_pack(),
+                request=self._variation_request(),
+            )
+
+    def test_question_variation_is_generated_by_the_model_with_options(self):
+        service = self._service()
+
+        artifact = self._generate_variation(service, {
+            "stem": "患者畏寒肢冷、下利清谷，治当温中散寒，此治法体现的阴阳关系是",
+            "question_type": "single_choice",
+            "options": ["A. 阴阳互根", "B. 阴阳对立制约", "C. 阴阳消长"],
+            "answer": "B",
+            "analysis": "寒证用热药，体现寒热相互制约。",
+        })
+
+        self.assertEqual(artifact.artifact_type, "question_variation")
+        self.assertNotEqual(artifact.content["stem"], "下列符合阴阳对立制约关系的是")
+        self.assertNotIn("换一种学习情境", artifact.content["stem"])
+        self.assertEqual(
+            artifact.content["options"],
+            ["A. 阴阳互根", "B. 阴阳对立制约", "C. 阴阳消长"],
+        )
+        self.assertEqual(artifact.content["answer"], "B")
+        self.assertEqual(artifact.content["kp_ids"], ["KP_ZH_001", "KP_FJ_001"])
+
+    def test_question_variation_prompt_carries_source_options_and_kp_names(self):
+        service = self._service()
+        captured = {}
+
+        class FakeClient:
+            def chat(self, messages, **kwargs):
+                captured["messages"] = messages
+                return json.dumps({
+                    "stem": "新的情境题干",
+                    "question_type": "single_choice",
+                    "options": ["A. 甲", "B. 乙"],
+                    "answer": "A",
+                    "analysis": "解析",
+                }, ensure_ascii=False)
+
+        with patch.object(
+            service, "build_llm_client", side_effect=lambda role: FakeClient(),
+        ):
+            service.generate_question_variation(
+                learner_context=self._learner_context(),
+                evidence_pack=self._evidence_pack(),
+                request=self._variation_request(),
+            )
+
+        material = json.loads(captured["messages"][-1]["content"])
+        self.assertEqual(material["source_options"], ["A. 寒极生热", "B. 寒者热之", "C. 阴损及阳"])
+        self.assertEqual(material["knowledge_points"], ["阴阳学说", "四君子汤"])
+
+    def test_question_variation_rejects_an_unchanged_source_stem(self):
+        service = self._service()
+
+        with self.assertRaises(ValueError):
+            self._generate_variation(service, {
+                "stem": "下列符合阴阳对立制约关系的是",
+                "question_type": "single_choice",
+                "options": ["A. 寒极生热", "B. 寒者热之"],
+                "answer": "B",
+                "analysis": "照抄原题。",
+            })
+
+    def test_question_variation_rejects_missing_options_for_choice_questions(self):
+        service = self._service()
+
+        with self.assertRaises(ValueError):
+            self._generate_variation(service, {
+                "stem": "全新的题干",
+                "question_type": "single_choice",
+                "options": [],
+                "answer": "B",
+                "analysis": "没有选项就无法判分。",
+            })
+
+    def test_question_variation_rejects_an_answer_outside_the_options(self):
+        service = self._service()
+
+        with self.assertRaises(ValueError):
+            self._generate_variation(service, {
+                "stem": "全新的题干",
+                "question_type": "single_choice",
+                "options": ["A. 甲", "B. 乙"],
+                "answer": "D",
+                "analysis": "答案不在选项里。",
+            })
+
+    def test_question_variation_normalizes_option_shapes_and_answer_text(self):
+        service = self._service()
+
+        artifact = self._generate_variation(service, {
+            "stem": "全新的题干",
+            "question_type": "single_choice",
+            "options": {"A": "阴阳互根", "B": "阴阳对立制约"},
+            "answer": "阴阳对立制约",
+            "analysis": "模型有时会直接返回选项原文。",
+        })
+
+        self.assertEqual(
+            artifact.content["options"], ["A. 阴阳互根", "B. 阴阳对立制约"],
+        )
+        self.assertEqual(artifact.content["answer"], "B")
+
+    def test_question_variation_keeps_free_text_answers_for_non_choice_questions(self):
+        service = self._service()
+
+        artifact = self._generate_variation(service, {
+            "stem": "请论述四君子汤的配伍意义",
+            "question_type": "short_answer",
+            "answer": "益气健脾，兼以和中。",
+            "analysis": "从君臣佐使角度说明。",
+        })
+
+        self.assertEqual(artifact.content["options"], [])
+        self.assertEqual(artifact.content["answer"], "益气健脾，兼以和中。")
+
 
 if __name__ == "__main__":
     unittest.main()
