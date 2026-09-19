@@ -232,14 +232,14 @@ class RAGService:
         return name
 
     def _paths_for_scope(self, scope: str = "public", user_id: int | None = None) -> tuple[str, str]:
-        if scope == "personal":
-            if not user_id:
-                raise ValueError("Personal knowledge scope requires user_id")
-            data_dir = os.path.join(Config.USER_DATA_ROOT, str(user_id))
-            index_dir = os.path.join(Config.USER_INDEX_ROOT, str(user_id))
-        else:
-            data_dir = Config.PUBLIC_DATA_SOURCE_PATH
-            index_dir = Config.PUBLIC_INDEX_DIR
+        if scope != "personal":
+            # 公共资产只读，目录由导入脚本提供。服务端按默认值造空目录会让路径
+            # 配置错误伪装成"知识库本来就是空的"，因此这里不创建、只返回路径。
+            return Config.PUBLIC_DATA_SOURCE_PATH, Config.PUBLIC_INDEX_DIR
+        if not user_id:
+            raise ValueError("Personal knowledge scope requires user_id")
+        data_dir = os.path.join(Config.USER_DATA_ROOT, str(user_id))
+        index_dir = os.path.join(Config.USER_INDEX_ROOT, str(user_id))
         os.makedirs(data_dir, exist_ok=True)
         os.makedirs(index_dir, exist_ok=True)
         return data_dir, index_dir
@@ -431,6 +431,22 @@ class RAGService:
         active_question_collection = (
             active_question_index_name(index_dir) if scope == "public" else None
         )
+        # 目录可能整体缺失（资产未部署、或路径解析落到默认值）。按空目录处理，
+        # 并把缺失路径写进日志，避免配置错误只在界面上表现为"知识库是空的"。
+        if not os.path.isdir(data_dir):
+            logger.warning("知识库源文件目录不存在：%s", data_dir)
+        if not os.path.isdir(index_dir):
+            logger.warning("向量库目录不存在：%s", index_dir)
+        data_entries = (
+            sorted(Path(data_dir).iterdir(), key=lambda item: item.name)
+            if os.path.isdir(data_dir)
+            else []
+        )
+        index_entries = (
+            sorted(Path(index_dir).iterdir(), key=lambda item: item.name)
+            if os.path.isdir(index_dir)
+            else []
+        )
         documents = [
             {
                 "name": path.name,
@@ -438,7 +454,7 @@ class RAGService:
                 "bytes": path.stat().st_size,
                 "kind": "document",
             }
-            for path in sorted(Path(data_dir).iterdir(), key=lambda item: item.name)
+            for path in data_entries
             if path.is_file() and not path.name.startswith(".")
         ]
         datasets = [
@@ -448,12 +464,12 @@ class RAGService:
                 "kind": "dataset",
                 "available": True,
             }
-            for path in sorted(Path(data_dir).iterdir(), key=lambda item: item.name)
+            for path in data_entries
             if path.is_dir() and not path.name.startswith(".")
         ]
         db_map = self._db_map_for_scope(scope, user_id)
         indexes = []
-        for path in sorted(Path(index_dir).iterdir(), key=lambda item: item.name):
+        for path in index_entries:
             if not path.is_dir() or path.name.startswith("."):
                 continue
             manifest_path = path / "index_manifest.json"

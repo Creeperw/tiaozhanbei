@@ -494,6 +494,85 @@ class KnowledgeCatalogAndRagStatusTests(unittest.TestCase):
         self.assertIs(service.dbs["题库"], old_database)
         self.assertNotIn("题库-v2", service.dbs)
 
+    def test_public_scope_never_creates_missing_asset_directories(self):
+        """公共资产只读：路径不存在时不得凭空造出空目录。"""
+
+        from APP.backend.rag_core import RAGService
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            missing_data = root / "assets" / "data"
+            missing_indexes = root / "assets" / "vectors" / "public" / "indexes"
+
+            class Config:
+                PUBLIC_DATA_SOURCE_PATH = str(missing_data)
+                PUBLIC_INDEX_DIR = str(missing_indexes)
+                USER_DATA_ROOT = str(root / "runtime" / "data")
+                USER_INDEX_ROOT = str(root / "runtime" / "indexes")
+
+            service = object.__new__(RAGService)
+            with patch("APP.backend.rag_core.Config", Config):
+                data_dir, index_dir = service._paths_for_scope("public")
+
+            self.assertEqual(data_dir, str(missing_data))
+            self.assertEqual(index_dir, str(missing_indexes))
+            self.assertFalse(missing_data.exists())
+            self.assertFalse(missing_indexes.exists())
+            # 父目录同样不得被顺手创建。
+            self.assertFalse((root / "assets").exists())
+
+    def test_personal_scope_creates_its_own_runtime_directories(self):
+        """个人知识库目录属于运行时状态，仍应自动创建。"""
+
+        from APP.backend.rag_core import RAGService
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            class Config:
+                PUBLIC_DATA_SOURCE_PATH = str(root / "assets" / "data")
+                PUBLIC_INDEX_DIR = str(root / "assets" / "indexes")
+                USER_DATA_ROOT = str(root / "runtime" / "data")
+                USER_INDEX_ROOT = str(root / "runtime" / "indexes")
+
+            service = object.__new__(RAGService)
+            with patch("APP.backend.rag_core.Config", Config):
+                data_dir, index_dir = service._paths_for_scope("personal", 7)
+
+            self.assertTrue(Path(data_dir).is_dir())
+            self.assertTrue(Path(index_dir).is_dir())
+            self.assertEqual(Path(data_dir), root / "runtime" / "data" / "7")
+            self.assertEqual(Path(index_dir), root / "runtime" / "indexes" / "7")
+
+    def test_catalog_degrades_to_empty_when_public_directories_are_absent(self):
+        """公共目录缺失时按空目录返回，而不是抛异常或凭空创建。"""
+
+        from APP.backend.rag_core import RAGService
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            class Config:
+                PUBLIC_DATA_SOURCE_PATH = str(root / "assets" / "data")
+                PUBLIC_INDEX_DIR = str(root / "assets" / "indexes")
+                USER_DATA_ROOT = str(root / "runtime" / "data")
+                USER_INDEX_ROOT = str(root / "runtime" / "indexes")
+                EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"
+
+            service = object.__new__(RAGService)
+            service.dbs = {}
+            service.user_dbs = {}
+            service._metadata_count_cache = {}
+            service.embedding_state = "unavailable"
+            service.embedding_error = "embedding runtime unavailable"
+            with patch("APP.backend.rag_core.Config", Config):
+                catalog = service.get_catalog(scope="public")
+
+            self.assertEqual(catalog["documents"], [])
+            self.assertEqual(catalog["datasets"], [])
+            self.assertEqual(catalog["indexes"], [])
+            self.assertFalse((root / "assets").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
