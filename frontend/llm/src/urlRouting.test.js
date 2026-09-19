@@ -40,10 +40,10 @@ describe('intentToPath', () => {
     expect(intentToPath({ page: 'assistant', params: {} })).toBe('/assistant');
     expect(intentToPath({ page: 'knowledge', params: {} })).toBe('/knowledge');
     expect(intentToPath({ page: 'settings', params: {} })).toBe('/settings');
+    expect(intentToPath({ page: 'admin-feedback', params: {} })).toBe('/admin-feedback');
   });
 
   it('returns null for unmappable intents', () => {
-    expect(intentToPath({ page: 'admin-feedback', params: {} })).toBeNull();
     expect(intentToPath({ page: 'qualification-route', params: {} })).toBeNull();
   });
 });
@@ -86,6 +86,7 @@ describe('pathToIntent', () => {
     expect(pathToIntent('/knowledge')).toEqual({ page: 'knowledge', params: {} });
     expect(pathToIntent('/settings')).toEqual({ page: 'settings', params: {} });
     expect(pathToIntent('/resources')).toEqual({ page: 'practice', params: {} });
+    expect(pathToIntent('/admin-feedback')).toEqual({ page: 'admin-feedback', params: {} });
   });
 
   it('returns null for unknown paths', () => {

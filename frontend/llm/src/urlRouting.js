@@ -51,6 +51,10 @@ const PAGE_SLUGS = {
   settings: '/settings',
   'training-workshop': '/practice',
   practice: '/resources',
+  // 管理入口是导航里的顶层落点，必须有 URL：缺这条映射时 intentToPath 返回
+  // null，pushState 被跳过，刷新或打开收藏链接会回落到 sessionStorage 里
+  // 上一次的页面，用户看到的是别的页面而不是管理入口。
+  'admin-feedback': '/admin-feedback',
 };
 
 // ── 反向：路径段 → 页面 ──

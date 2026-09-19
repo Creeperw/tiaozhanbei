@@ -153,6 +153,10 @@ SPA_PAGE_PREFIXES = (
     "/settings",
     "/resources",
     "/dashboard",
+    # 管理入口是导航里的顶层落点。缺这一项时，已登录用户靠 catch-all 末尾的
+    # 兜底仍能拿到 index.html，但未登录（或会话过期）访问该地址会拿到 401
+    # JSON 而不是前端登录引导页。
+    "/admin-feedback",
 )
 
 # Persist collaboration events needed by the GitHub-main assistant UI, while
