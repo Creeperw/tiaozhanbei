@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Callable
 
 from pydantic import BaseModel
@@ -20,9 +21,27 @@ from APP.backend.expert_agent_service import (
     generate_question_variation,
     grade_submission,
 )
+from APP.backend.health_llm import is_model_unavailable_error
 from APP.backend.knowledge_agent_service import build_evidence_pack
 from APP.backend.learning_plan_service import generate_learning_plan
 from APP.backend.memory_agent_service import build_learner_context_brief
+
+
+logger = logging.getLogger(__name__)
+
+
+def _tool_failure_code(tool_name: str, exc: Exception) -> str:
+    """把工具抛出的异常归类成稳定的失败码。
+
+    - ``model_unavailable``：上游模型限流/超时/网关故障，属临时故障，可提示稍后重试；
+    - ``invalid_model_output``：模型已响应但内容不合预期，属内容问题；
+    - ``tool_execution_failed``：其余未归类的工具内部故障。
+    """
+    if is_model_unavailable_error(exc):
+        return f"model_unavailable:{tool_name}"
+    if isinstance(exc, ValueError):
+        return f"invalid_model_output:{tool_name}"
+    return f"tool_execution_failed:{tool_name}"
 
 
 class ToolInvocationResult(BaseModel):
@@ -124,7 +143,10 @@ class ToolRuntime:
 
         try:
             result = definition.handler(**kwargs)
-        except Exception:
+        except Exception as exc:
+            logger.exception(
+                "tool %s failed (agent=%s)", tool_name, agent_name
+            )
             return ToolInvocationResult(
                 tool_name=tool_name,
                 agent_name=agent_name,
@@ -132,7 +154,7 @@ class ToolRuntime:
                 result=None,
                 input_summary=input_summary,
                 output_summary="tool execution failed",
-                error=f"tool_execution_failed:{tool_name}",
+                error=_tool_failure_code(tool_name, exc),
             )
 
         try:

@@ -598,6 +598,61 @@ class TrainingOrchestrationAdapterTests(unittest.TestCase):
         self.assertEqual(result["audit"]["reason"], "缺少可引用的正式训练证据，请先导入知识点和教学资源。")
         self.assertEqual(result["artifact"]["content"], {})
 
+    def test_model_outage_reports_retryable_reason_instead_of_gate_codes(self):
+        payload = {
+            "status": "failed",
+            "run_id": "run_offline",
+            "steps": [
+                {
+                    "step_id": "step_variation",
+                    "agent_name": "expert_agent",
+                    "action": "generate_variation",
+                    "status": "failed",
+                    "input_summary": "mistake_id=174",
+                    "output_summary": "tool execution failed",
+                    "error": "model_unavailable:generate_question_variation",
+                }
+            ],
+            "final": {},
+        }
+
+        result = execute_training_orchestration(
+            db=object(),
+            value=self.make_input("mistake_variation"),
+            runner=lambda **kwargs: payload,
+        )
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["audit"]["reason"], "模型服务暂时不可用，本次任务未能完成，请稍后重试。")
+        self.assertNotIn("orchestration_success", result["audit"]["reason"])
+
+    def test_rejected_model_output_reports_readable_reason(self):
+        payload = {
+            "status": "failed",
+            "run_id": "run_rejected",
+            "steps": [
+                {
+                    "step_id": "step_variation",
+                    "agent_name": "expert_agent",
+                    "action": "generate_variation",
+                    "status": "failed",
+                    "input_summary": "mistake_id=174",
+                    "output_summary": "tool execution failed",
+                    "error": "invalid_model_output:generate_question_variation",
+                }
+            ],
+            "final": {},
+        }
+
+        result = execute_training_orchestration(
+            db=object(),
+            value=self.make_input("mistake_variation"),
+            runner=lambda **kwargs: payload,
+        )
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["audit"]["reason"], "模型返回的内容不符合要求，本次任务未能完成，请重试。")
+
     def test_malformed_audit_source_ids_fails_closed(self):
         malformed_values = [1, True, "ART_sensitive", {"id": "ART_sensitive"}, ["ART_sensitive", 1, " "]]
 
@@ -714,7 +769,8 @@ class TrainingVariationAdapterTests(unittest.TestCase):
             task_type="mistake_variation",
             title="错题变式",
             query="生成变式",
-            inputs={"mistake_id": 9, "attempt_item_id": "ITEM_1", "source_question_version_id": "QV_1", "audit_id": "AUD_1"},
+            inputs={"mistake_id": 9, "attempt_item_id": "ITEM_1", "source_question_version_id": "QV_1", "audit_id": "AUD_1",
+                    "source_stem": "四君子汤主治何证？", "source_question_type": "single_choice"},
             options={},
         )
 
@@ -730,13 +786,14 @@ class TrainingVariationAdapterTests(unittest.TestCase):
                     "title": "变式",
                     "source_id": "VAR_1",
                     "content": {
-                        "stem": "换一种情境：四君子汤对应何证？",
+                        "stem": "患者食少便溏、面色萎白、舌淡脉虚，宜选何方？",
                         "question_type": "single_choice",
                         "difficulty": 2,
+                        "options": ["A. 脾胃气虚证", "B. 肝肾阴虚证", "C. 心血瘀阻证"],
                         "kp_ids": ["KP_FJ_001"],
                         "source_mistake_id": 9,
                         "source_question_version_id": "QV_1",
-                        "answer": "脾胃气虚证",
+                        "answer": "A",
                         "analysis": "四君子汤用于脾胃气虚证。",
                     },
                 },
@@ -786,7 +843,11 @@ class TrainingVariationAdapterTests(unittest.TestCase):
         publisher.assert_called_once()
         kwargs = publisher.call_args.kwargs
         self.assertEqual(kwargs["owner_user_id"], 7)
-        self.assertEqual(kwargs["standard_answer"], "脾胃气虚证")
+        self.assertEqual(kwargs["standard_answer"], "A")
+        self.assertEqual(
+            kwargs["options"],
+            ["A. 脾胃气虚证", "B. 肝肾阴虚证", "C. 心血瘀阻证"],
+        )
         self.assertNotIn("answer", result["artifact"]["content"])
 
     def test_passed_variation_without_authoritative_answer_is_not_published(self):
@@ -865,9 +926,10 @@ class TrainingVariationAdapterTests(unittest.TestCase):
             "status": "success", "run_id": "run-current", "steps": [],
             "final": {
                 "artifact": {"artifact_type": "question_variation", "title": "变式", "source_id": "VAR_CURRENT", "content": {
-                    "stem": "安全题干", "question_type": "single_choice", "difficulty": 2,
+                    "stem": "新的安全题干", "question_type": "single_choice", "difficulty": 2,
+                    "options": ["A. 甲证", "B. 乙证"],
                     "kp_ids": ["KP_1"], "source_mistake_id": 9,
-                    "source_question_version_id": "QV_1", "answer": "SENTINEL_ANSWER",
+                    "source_question_version_id": "QV_1", "answer": "B",
                     "analysis": "SENTINEL_ANALYSIS",
                 }},
                 "evidence_pack": {"pack_id": "EP", "source_scope": "mistake_variation", "source_id": "QV_1", "resolved_kp_ids": ["KP_1"], "items": []},
@@ -883,7 +945,7 @@ class TrainingVariationAdapterTests(unittest.TestCase):
                 result = execute_training_orchestration(db=db, value=self._value(), runner=lambda **_: payload, variation_publisher=publisher)
                 current = db.query(database.AuditResultRecord).one()
                 audited_candidate = db.query(database.GradingResultRecord).one()
-                self.assertIn("SENTINEL_ANSWER", audited_candidate.payload_json)
+                self.assertIn("B", audited_candidate.payload_json)
                 self.assertIn("SENTINEL_ANALYSIS", audited_candidate.payload_json)
                 self.assertNotEqual(current.audit_id, "AUD_1")
                 self.assertEqual(publisher.call_args.kwargs["audit_id"], current.audit_id)
@@ -891,7 +953,7 @@ class TrainingVariationAdapterTests(unittest.TestCase):
                 self.assertNotIn("SENTINEL_ANSWER", serialized)
                 self.assertNotIn("SENTINEL_ANALYSIS", serialized)
                 self.assertEqual(
-                    publisher.call_args.kwargs["standard_answer"], "SENTINEL_ANSWER"
+                    publisher.call_args.kwargs["standard_answer"], "B"
                 )
         finally:
             engine.dispose()

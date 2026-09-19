@@ -1,11 +1,94 @@
+import functools
+import inspect
 import json
 import re
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 import httpx
 
 from APP.backend.config import LLM_TIMEOUT_SECONDS
 from competition_app.llm.upload_provider import new_upload_session, upload_provider_headers
+
+
+# 上游返回这些状态码时按“模型服务不可用”处理：限流、网关过载、上游故障。
+_UNAVAILABLE_STATUS_CODES = frozenset(
+    {408, 425, 429, 500, 502, 503, 504, 521, 522, 523, 524, 529, 530}
+)
+
+
+class ModelUnavailableError(httpx.HTTPError):
+    """上游模型服务不可用：限流、超时、连接失败或网关错误。
+
+    与“模型已响应但内容不合规”区分开：前者属于临时故障，应提示用户稍后重试；
+    后者属于内容问题。上层据此给出可读提示，而不是把内部错误码抛给用户。
+
+    继承 ``httpx.HTTPError`` 是为了让既有的“上游网关故障 → 502”判断保持不变。
+    """
+
+    def __init__(self, message: str, *, status_code: Optional[int] = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def is_model_unavailable_error(exc: BaseException) -> bool:
+    """判断异常是否代表“上游模型服务不可用”。
+
+    同时覆盖已翻译的领域异常和尚未翻译的传输层异常，
+    便于调用方在不需要改变异常类型的前提下分类失败原因。
+    """
+    if isinstance(exc, ModelUnavailableError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in _UNAVAILABLE_STATUS_CODES
+    return isinstance(exc, (httpx.TimeoutException, httpx.TransportError))
+
+
+def _as_model_unavailable(exc: Exception) -> Optional[ModelUnavailableError]:
+    """把“带明确响应的上游不可用”翻译成 ModelUnavailableError。
+
+    只处理 ``HTTPStatusError``：这类失败已经收到上游响应，语义明确；
+    连接失败与超时保留原类型，避免破坏调用方基于 httpx 异常类型做的重试。
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        if status in _UNAVAILABLE_STATUS_CODES:
+            return ModelUnavailableError(
+                f"model service returned HTTP {status}", status_code=status
+            )
+    return None
+
+
+def _guarded_stream(source: Iterator[str]) -> Iterator[str]:
+    try:
+        yield from source
+    except Exception as exc:  # noqa: BLE001 - 无法归类时原样抛出
+        translated = _as_model_unavailable(exc)
+        if translated is None:
+            raise
+        raise translated from exc
+
+
+def _model_service_guard(method: Callable[..., Any]) -> Callable[..., Any]:
+    """把“模型服务不可用”从 httpx 异常翻译成领域异常。
+
+    同时覆盖普通调用与流式调用：流式调用在迭代期间才真正发请求，
+    因此返回生成器时还要再包一层。
+    """
+
+    @functools.wraps(method)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            result = method(*args, **kwargs)
+        except Exception as exc:  # noqa: BLE001 - 无法归类时原样抛出
+            translated = _as_model_unavailable(exc)
+            if translated is None:
+                raise
+            raise translated from exc
+        if inspect.isgenerator(result):
+            return _guarded_stream(result)
+        return result
+
+    return wrapper
 
 
 # ---------------------------------------------------------------------------
@@ -181,11 +264,13 @@ class LLMClient:
         message = self.chat_message(messages, temperature=temperature, max_tokens=max_tokens, extra_body=extra_body)
         return message.get("content") or ""
 
+    @_model_service_guard
     def chat_message(self, messages: List[Dict[str, Any]], temperature: float = 0.2, max_tokens: int = 2048, extra_body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         if self._is_api():
             return self._api_chat(messages, temperature, max_tokens, extra_body)
         return self._local_chat(messages, temperature, max_tokens, extra_body)
 
+    @_model_service_guard
     def chat_stream(self, messages: List[Dict[str, Any]], temperature: float = 0.2, max_tokens: int = 2048, extra_body: Optional[Dict[str, Any]] = None) -> Iterator[str]:
         if self._is_api():
             yield from self._api_stream(messages, temperature, max_tokens, extra_body)

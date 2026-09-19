@@ -1,5 +1,8 @@
 import unittest
 
+import httpx
+
+from APP.backend.health_llm import ModelUnavailableError
 from APP.backend.tool_runtime import ToolDefinition, ToolRuntime, build_default_tool_runtime
 
 
@@ -70,6 +73,63 @@ class ToolRuntimeTests(unittest.TestCase):
         self.assertEqual(result.status, "failed")
         self.assertEqual(result.error, "tool_execution_failed:broken_tool")
         self.assertNotIn("secret stack detail", result.output_summary)
+
+    def test_execute_classifies_model_outage_as_retryable_failure(self):
+        runtime = ToolRuntime()
+
+        def offline(**kwargs):
+            raise ModelUnavailableError("model service returned HTTP 429", status_code=429)
+
+        runtime.register(
+            ToolDefinition(
+                name="variation_tool",
+                allowed_agents=frozenset({"expert_agent"}),
+                handler=offline,
+            )
+        )
+
+        result = runtime.execute("variation_tool", "expert_agent")
+
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.error, "model_unavailable:variation_tool")
+
+    def test_execute_classifies_connection_failure_as_retryable(self):
+        runtime = ToolRuntime()
+
+        def offline(**kwargs):
+            raise httpx.ConnectError("connection refused")
+
+        runtime.register(
+            ToolDefinition(
+                name="variation_tool",
+                allowed_agents=frozenset({"expert_agent"}),
+                handler=offline,
+            )
+        )
+
+        result = runtime.execute("variation_tool", "expert_agent")
+
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.error, "model_unavailable:variation_tool")
+
+    def test_execute_classifies_rejected_model_output(self):
+        runtime = ToolRuntime()
+
+        def rejected(**kwargs):
+            raise ValueError("variation generator returned an empty stem")
+
+        runtime.register(
+            ToolDefinition(
+                name="variation_tool",
+                allowed_agents=frozenset({"expert_agent"}),
+                handler=rejected,
+            )
+        )
+
+        result = runtime.execute("variation_tool", "expert_agent")
+
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.error, "invalid_model_output:variation_tool")
 
     def test_execute_shapes_input_summary_failures_without_leaking_details(self):
         runtime = ToolRuntime()

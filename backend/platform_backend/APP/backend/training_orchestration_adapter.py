@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import logging
 import math
+import re
 from typing import Any, Callable
 from uuid import uuid5, NAMESPACE_URL
 
@@ -17,6 +19,17 @@ from APP.backend.agent_orchestrator_service import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+# 步骤失败码白名单：只接受 ``namespace:identifier`` 形式的结构化码，
+# 避免把 runner 的自由文本带进后续处理与对外提示。
+_STEP_ERROR_CODE_RE = re.compile(r"^[a-z][a-z0-9_]{0,40}:[A-Za-z0-9_]{1,80}$")
+
+
+def _step_error_code(value: Any) -> str:
+    text = _safe_string(value)
+    return text if _STEP_ERROR_CODE_RE.match(text) else ""
+
 OrchestrationRunner = Callable[..., dict[str, Any]]
 VariationPublisher = Callable[..., Any]
 
@@ -26,6 +39,12 @@ OUTPUT_BY_TASK_TYPE = {
     "paper_generation": "paper",
     "mistake_variation": "question_variation",
 }
+
+# 需要选项才可能判分的题型。变式发布前必须确认这类题目带了可用选项。
+_CHOICE_QUESTION_TYPES = frozenset({
+    "single_choice", "multiple_choice",
+    "单选题", "单项选择题", "多选题", "多项选择题",
+})
 
 
 @dataclass(frozen=True)
@@ -66,6 +85,8 @@ def build_orchestration_request(value: TrainingOrchestrationInput) -> Orchestrat
             source_answer=_safe_string(value.inputs.get("source_answer")),
             source_analysis=_safe_string(value.inputs.get("source_analysis")),
             source_question_type=_safe_string(value.inputs.get("source_question_type")) or "single_choice",
+            source_options=_safe_string_list(value.inputs.get("source_options")),
+            source_kp_names=_safe_string_list(value.inputs.get("source_kp_names")),
         ),
     )
 
@@ -141,12 +162,44 @@ def _project_audit(value: Any) -> dict[str, Any]:
     }
 
 
+def _variation_text_key(value: Any) -> str:
+    """题干比对键：只留实义字符，用来判断变式是否真的换了一题。"""
+
+    return "".join(
+        char for char in str(value or "").lower() if char.isalnum()
+    )
+
+
+def _variation_options_valid(
+    content: dict[str, Any], standard_answer: str,
+) -> bool:
+    """选择题变式必须带可用选项，且标准答案能落到某个选项标号上。
+
+    选项缺失或答案不是标号时，判分侧无法把学生作答映射回选项，得分永远
+    为 0；这种变式不能发布。
+    """
+
+    question_type = _safe_string(content.get("question_type")) or "single_choice"
+    if question_type not in _CHOICE_QUESTION_TYPES:
+        return True
+    options = _safe_string_list(content.get("options"))
+    if len(options) < 2:
+        return False
+    letters = {
+        option.lstrip()[:1].upper() for option in options if option.lstrip()
+    }
+    if not letters or any(letter not in "ABCDEFGH" for letter in letters):
+        return False
+    return _safe_string(standard_answer).upper() in letters
+
+
 def _project_variation_content(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
     return {
         "stem": _safe_string(value.get("stem")),
         "question_type": _safe_string(value.get("question_type")) or "single_choice",
+        "options": _safe_string_list(value.get("options")),
         "kp_ids": _safe_string_list(value.get("kp_ids")),
         "source_mistake_id": value.get("source_mistake_id"),
         "source_question_version_id": _safe_string(value.get("source_question_version_id")),
@@ -214,6 +267,7 @@ def _normalize_orchestration_payload(value: Any) -> dict[str, Any]:
                 "agent_name": _safe_string(raw_step.get("agent_name")),
                 "action": _safe_string(raw_step.get("action")),
                 "status": _safe_string(raw_step.get("status")),
+                "error_code": _step_error_code(raw_step.get("error")),
             }
         )
     final = value.get("final")
@@ -380,12 +434,33 @@ def _trace(
     return trace
 
 
-def _publication_failure_reason(audit: dict[str, Any], failed_checks: list[str]) -> str:
+def _publication_failure_reason(
+    audit: dict[str, Any],
+    failed_checks: list[str],
+    step_error: str = "",
+) -> str:
+    """把发布门禁的失败项翻译成用户能看懂的提示。
+
+    ``step_error`` 来自失败步骤的结构化失败码（见 tool_runtime._tool_failure_code）。
+    """
+    if step_error.startswith("model_unavailable:"):
+        return "模型服务暂时不可用，本次任务未能完成，请稍后重试。"
+    if step_error.startswith("invalid_model_output:"):
+        return "模型返回的内容不符合要求，本次任务未能完成，请重试。"
     audit_reason = _safe_string(audit.get("reason"))
     if audit_reason.startswith("missing_evidence_ids:"):
         return "缺少可引用的正式训练证据，请先导入知识点和教学资源。"
     if _safe_string(audit.get("decision")).lower() in {"reject", "revise"}:
         return "audit 未通过，无法发布训练资料。"
+    readable = {
+        "variation_stem_differs": "生成的变式与原题题干一致，没有换题。",
+        "variation_options": "生成的变式缺少可用选项，或标准答案无法对应到选项，请重试。",
+        "variation_standard_answer": "生成的变式没有给出标准答案。",
+        "variation_analysis": "生成的变式没有给出解析。",
+    }
+    for check in failed_checks:
+        if check in readable:
+            return readable[check]
     return f"未通过发布门禁：{', '.join(failed_checks)}"
 
 
@@ -406,6 +481,7 @@ def execute_training_orchestration(
             runtime=runtime,
         )
     except Exception:
+        logger.exception("orchestration runner raised for task %s", value.task_id)
         orchestration = {"status": "failed", "final": {}}
     orchestration = _normalize_orchestration_payload(orchestration)
     final = orchestration["final"]
@@ -419,7 +495,15 @@ def execute_training_orchestration(
     evidence = final.get("evidence_pack") if isinstance(final.get("evidence_pack"), dict) else {}
     audit = final.get("audit") if isinstance(final.get("audit"), dict) else {}
     expected_type = OUTPUT_BY_TASK_TYPE[value.task_type]
-    failed_step = any(
+    failed_step_error = next(
+        (
+            _safe_string(step.get("error_code"))
+            for step in orchestration.get("steps") or []
+            if isinstance(step, dict) and step.get("status") == "failed"
+        ),
+        "",
+    )
+    failed_step = bool(failed_step_error) or any(
         isinstance(step, dict) and step.get("status") == "failed"
         for step in orchestration.get("steps") or []
     )
@@ -445,6 +529,12 @@ def execute_training_orchestration(
             "source_version": content.get("source_question_version_id") == value.inputs.get("source_question_version_id"),
             "kp_ids": bool(_safe_string_list(content.get("kp_ids"))),
             "stem": _nonempty_string(content.get("stem")),
+            "stem_differs": bool(_variation_text_key(content.get("stem")))
+            and _variation_text_key(content.get("stem"))
+            != _variation_text_key(value.inputs.get("source_stem")),
+            "options": _variation_options_valid(
+                content, _safe_string(authoritative_variation.get("answer"))
+            ),
             "standard_answer": _nonempty_string(authoritative_variation.get("answer")),
             "analysis": _nonempty_string(authoritative_variation.get("analysis")),
             "attempt_item_id": _nonempty_string(value.inputs.get("attempt_item_id")),
@@ -459,6 +549,7 @@ def execute_training_orchestration(
                 "source_question_id": _safe_string(content.get("source_question_id")),
                 "stem": _safe_string(content.get("stem")),
                 "question_type": _safe_string(content.get("question_type")) or "single_choice",
+                "options": _safe_string_list(content.get("options")),
                 "kp_ids": _safe_string_list(content.get("kp_ids")),
                 "artifact_source_id": _safe_string(candidate.get("source_id")),
                 "standard_answer": _safe_string(authoritative_variation.get("answer")),
@@ -506,7 +597,7 @@ def execute_training_orchestration(
     reason = (
         "编排成功且审核通过，已发布培训资料。"
         if published
-        else _publication_failure_reason(audit, failed_checks)
+        else _publication_failure_reason(audit, failed_checks, failed_step_error)
     )
     artifact = (
         {
