@@ -114,6 +114,9 @@ class KnowledgeRoutesBehaviorTests(unittest.TestCase):
             def _safe_filename(self, filename):
                 return Path(filename).name
 
+            def require_embedding(self):
+                return None
+
             def delete_file(self, *args, **kwargs):
                 return None
 
@@ -146,6 +149,58 @@ class KnowledgeRoutesBehaviorTests(unittest.TestCase):
             self.assertEqual(payload["files"], ["tcm-formulas.mineru.md"])
             self.assertIn("益气健脾", (Path(directory) / "tcm-formulas.mineru.md").read_text(encoding="utf-8"))
             self.assertEqual(fake_rag.rebuilds, [("personal", 1)])
+
+    def test_upload_reports_service_unavailable_without_writing_files(self):
+        from APP.backend.rag_core import RAGUnavailableError
+        from APP.backend.routers import knowledge_routes
+
+        class UnavailableRag:
+            is_processing = False
+
+            def __init__(self, root):
+                self.root = root
+
+            def require_embedding(self):
+                raise RAGUnavailableError(
+                    state="misconfigured",
+                    message="EMBEDDING_MODEL_PATH is required",
+                )
+
+            def _paths_for_scope(self, scope, user_id):
+                return str(self.root), str(self.root / "index")
+
+            def _safe_filename(self, filename):
+                return Path(filename).name
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(knowledge_routes, "rag_service", UnavailableRag(root)):
+                response = self.client.post(
+                    "/knowledge/upload?scope=personal",
+                    files={"files": ("tcm-formulas.md", b"# \u56db\u541b\u5b50\u6c64", "text/markdown")},
+                )
+
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.json()["code"], "misconfigured")
+            self.assertIn("EMBEDDING_MODEL_PATH", response.json()["detail"])
+            self.assertEqual(list(root.iterdir()), [])
+
+    def test_rebuild_reports_service_unavailable_when_embedding_is_down(self):
+        from APP.backend.rag_core import RAGUnavailableError
+        from APP.backend.routers import knowledge_routes
+
+        class UnavailableRag:
+            is_processing = False
+
+            def require_embedding(self):
+                raise RAGUnavailableError(state="disabled", message="Embedding \u5df2\u7981\u7528")
+
+        with patch.object(knowledge_routes, "rag_service", UnavailableRag()):
+            response = self.client.post("/knowledge/rebuild?scope=personal")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["code"], "disabled")
+        self.assertIn("已禁用", response.json()["detail"])
 
 
 if __name__ == "__main__":

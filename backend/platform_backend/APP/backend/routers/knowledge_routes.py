@@ -32,6 +32,18 @@ question_pdf_ingestion_service_factory = PdfQuestionIngestionService
 question_ingestion_task_service_factory = QuestionIngestionTaskService
 mineru_pdf_parser_factory = MinerUPdfParser
 
+
+def require_embedding_available():
+    """索引构建的前置条件；不满足时返回 503，而不是让调用方静默成功。"""
+
+    try:
+        rag_service.require_embedding()
+    except RAGUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"state": exc.state, "message": exc.message},
+        ) from exc
+
 class SearchRequest(BaseModel):
     query: str
     top_k: int = 5
@@ -141,6 +153,8 @@ async def upload_files(
 ):
     if scope == "public" and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admin can upload public knowledge")
+    # 索引构建的前置条件先于写入磁盘校验，避免文件落盘后无法向量化而静默丢失。
+    require_embedding_available()
     data_dir, _ = rag_service._paths_for_scope(scope, current_user.id if scope == "personal" else None)
     os.makedirs(data_dir, exist_ok=True)
     uploaded_names = []
@@ -226,6 +240,7 @@ def trigger_rebuild(
         raise HTTPException(status_code=403, detail="Only admin can rebuild public knowledge")
     if rag_service.is_processing:
         return {"message": "正在处理中，请稍后"}
+    require_embedding_available()
     rag_service.rebuild_index(scope=scope, user_id=current_user.id if scope == "personal" else None)
     return {"message": "开始扫描和构建", "scope": scope}
 
@@ -247,6 +262,8 @@ def align_points(req: AlignKnowledgeRequest, current_user: UserModel = Depends(g
 def ingest_knowledge_document(req: DocumentIngestRequest, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     if req.scope == "public" and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admin can ingest public knowledge")
+    # 入库会写入知识源文件，无法向量化时必须在写入前失败，避免留下无索引的孤儿文档。
+    require_embedding_available()
     result = ingest_document(
         db,
         file_path=req.file_path,

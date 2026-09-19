@@ -10,6 +10,7 @@ from pathlib import Path
 from collections import defaultdict
 
 from APP.backend.rag_text import Config, TextSplitter, VectorDatabase, iter_single_file
+from APP.backend.rag_disk import DiskVectorDatabase
 from APP.backend.config import EMBEDDING_MODE
 from APP.backend.question_index_v2_service import (
     DEFAULT_QUESTION_COLLECTION,
@@ -174,6 +175,7 @@ class RAGService:
         self._active_question_collection = None
         self._question_reload_lock = threading.RLock()
         self._metadata_count_cache = {}
+        self.index_load_errors = {}
         # 禁用模式：不加载 Embedding 模型，检索/构建直接返回空。
         if EMBEDDING_MODE != "enabled":
             logger.info("Embedding/RAG 已禁用（EMBEDDING_MODE != enabled），跳过模型加载")
@@ -282,9 +284,24 @@ class RAGService:
                 idx_path = os.path.join(db_dir, "index.faiss")
                 meta_path = os.path.join(db_dir, "metadata.jsonl")
                 if os.path.exists(idx_path):
-                    db_map[filename] = VectorDatabase(idx_path, meta_path)
+                    database = self._open_readonly_db(filename, idx_path, meta_path)
+                    if database is not None:
+                        db_map[filename] = database
         if scope == "public" and active_question_collection in db_map:
             self._active_question_collection = active_question_collection
+
+    def _open_readonly_db(self, name: str, index_path: str, metadata_path: str):
+        """有界内存地打开一个向量库；单个库损坏不应拖垮整个服务。"""
+
+        try:
+            return DiskVectorDatabase(index_path, metadata_path)
+        except Exception as exc:
+            errors = getattr(self, "index_load_errors", None)
+            if errors is None:
+                errors = self.index_load_errors = {}
+            errors[name] = str(exc)
+            logger.warning("跳过不可用的向量库 %s: %s", name, exc)
+            return None
 
     def ensure_active_question_db(self) -> str:
         """Hot-swap the in-memory question DB after an atomic pointer change."""
@@ -308,7 +325,7 @@ class RAGService:
                 return active
             target = Path(Config.PUBLIC_INDEX_DIR) / active
             try:
-                candidate = VectorDatabase(
+                candidate = DiskVectorDatabase(
                     str(target / "index.faiss"),
                     str(target / "metadata.jsonl"),
                 )
@@ -372,6 +389,7 @@ class RAGService:
             "embedding_state": self.embedding_state,
             "embedding_error": self.embedding_error,
             "question_index_error": getattr(self, "question_index_error", None),
+            "index_load_errors": dict(getattr(self, "index_load_errors", None) or {}),
             "is_processing": self.is_processing,
             "status": self.current_status,
             "progress": self.current_progress
@@ -561,8 +579,24 @@ class RAGService:
         all_results.sort(key=lambda x: x['score'], reverse=True)
         return all_results[:top_k]
 
+    def require_embedding(self):
+        """校验索引构建的前置条件；不满足时抛出可转为 HTTP 错误的异常。"""
+
+        if self.model is not None:
+            return
+        if self.embedding_state == "disabled":
+            raise RAGUnavailableError(
+                state="disabled",
+                message="Embedding 已禁用（EMBEDDING_MODE != enabled），无法构建索引",
+            )
+        raise RAGUnavailableError(
+            state=self.embedding_state or "unavailable",
+            message=self.embedding_error or "Embedding 运行环境不可用，无法构建索引",
+        )
+
     def rebuild_index(self, scope: str = "public", user_id: int | None = None):
         if self.is_processing: return
+        self.require_embedding()
         thread = threading.Thread(target=self._process_build, args=(scope, user_id))
         thread.start()
 
@@ -570,7 +604,13 @@ class RAGService:
         self.is_processing = True
         self.current_progress = 0
         if self.model is None:
-            self.current_status = "Embedding 已禁用，无法构建索引"
+            if self.embedding_state == "disabled":
+                self.current_status = "Embedding 已禁用，无法构建索引"
+            else:
+                self.current_status = (
+                    "Embedding 不可用，无法构建索引："
+                    f"{self.embedding_error or self.embedding_state}"
+                )
             self.is_processing = False
             return
         try:
