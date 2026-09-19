@@ -7,6 +7,25 @@ import tempfile
 import unittest
 
 
+def restore_modules(module_names, original_modules):
+    """还原模块缓存与父包属性。
+
+    重新导入会创建新的模块对象并挂到父包上；若只还原 sys.modules，父包属性会
+    继续指向那个孤儿对象，此后 patch("APP.backend.config.X") 打在旧对象上，而
+    业务代码 from APP.backend.config import X 读的是新对象，补丁静默失效。
+    """
+    for name in module_names:
+        sys.modules.pop(name, None)
+    for name, module in original_modules.items():
+        if module is None:
+            continue
+        sys.modules[name] = module
+        parent_name, _, child = name.rpartition(".")
+        parent = sys.modules.get(parent_name)
+        if parent is not None:
+            setattr(parent, child, module)
+
+
 class SyntheticUserUsageImportTests(unittest.TestCase):
     def setUp(self):
         self.dataset_path = (
@@ -87,11 +106,7 @@ class SyntheticUserUsageImportTests(unittest.TestCase):
                     os.environ.pop(name, None)
                 else:
                     os.environ[name] = value
-            for name in module_names:
-                sys.modules.pop(name, None)
-            for name, module in original_modules.items():
-                if module is not None:
-                    sys.modules[name] = module
+            restore_modules(module_names, original_modules)
 
 
 if __name__ == "__main__":
