@@ -410,7 +410,7 @@ describe('AppShell', () => {
             message: '你的每日学习任务已自动更新，请查看今日安排。',
             status: 'unread',
             source: { type: 'daily_task', id: '' },
-            action: { type: 'navigate', page: 'learning_path' },
+            action: { type: 'navigate', page: 'learning-path' },
             created_at: '2026-07-24T08:00:00Z',
             delivered_at: '2026-07-24T08:00:00Z',
             read_at: null,
@@ -430,7 +430,49 @@ describe('AppShell', () => {
     const item = await screen.findByText('今日学习任务已更新');
     await user.click(item);
 
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'learning_path', params: { notificationId: 'NOTIF_DAILY' } });
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: { notificationId: 'NOTIF_DAILY' } });
     expect(patchCalls).toEqual([expect.stringContaining('/v1/notifications/NOTIF_DAILY')]);
+  });
+
+  it('falls back to the notification centre for a retired destination page', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const path = String(url);
+      if (path.endsWith('/v1/notifications?status=unread&limit=6')) {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
+          unread_count: 1,
+          items: [{
+            notification_id: 'NOTIF_LEGACY',
+            category: 'daily_task',
+            severity: 'info',
+            title: '今日学习任务已更新',
+            message: '你的每日学习任务已自动更新，请查看今日安排。',
+            status: 'unread',
+            source: { type: 'daily_task', id: '' },
+            // 历史数据里的下划线写法：外壳并不认识这个页面键，
+            // 直接跳转会被归一化成首页，用户看到的是「点了没反应」。
+            action: { type: 'navigate', page: 'learning_path' },
+            created_at: '2026-07-24T08:00:00Z',
+            delivered_at: '2026-07-24T08:00:00Z',
+            read_at: null,
+          }],
+        }) });
+      }
+      if (path.includes('/v1/notifications/') && options.method === 'PATCH') {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'read' }) });
+      }
+      return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({}) });
+    }));
+    renderShell({ onNavigate });
+
+    const bell = (await screen.findAllByRole('button', { name: '通知，1 条未读' }))[0];
+    await user.click(bell);
+    const item = await screen.findByText('今日学习任务已更新');
+    await user.click(item);
+
+    const destination = onNavigate.mock.calls.at(-1)[0];
+    expect(destination.page).toBe('settings');
+    expect(destination.params.notificationId).toBe('NOTIF_LEGACY');
   });
 });

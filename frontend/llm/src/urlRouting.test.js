@@ -43,6 +43,13 @@ describe('intentToPath', () => {
     expect(intentToPath({ page: 'admin-feedback', params: {} })).toBe('/admin-feedback');
   });
 
+  it('maps capability detail and learning-path tasks to their own paths', () => {
+    expect(intentToPath({ page: 'capability-detail', params: { capability: 'multi-agent' } }))
+      .toBe('/capabilities/multi-agent');
+    expect(intentToPath({ page: 'capability-detail', params: {} })).toBe('/capabilities');
+    expect(intentToPath({ page: 'learning-path-tasks', params: {} })).toBe('/learning-path/tasks');
+  });
+
   it('returns null for unmappable intents', () => {
     expect(intentToPath({ page: 'qualification-route', params: {} })).toBeNull();
   });
@@ -89,6 +96,19 @@ describe('pathToIntent', () => {
     expect(pathToIntent('/admin-feedback')).toEqual({ page: 'admin-feedback', params: {} });
   });
 
+  it('maps /capabilities/<key> to capability detail', () => {
+    expect(pathToIntent('/capabilities/multi-agent')).toEqual({
+      page: 'capability-detail',
+      params: { capability: 'multi-agent' },
+    });
+    expect(pathToIntent('/capabilities')).toEqual({ page: 'capability-detail', params: {} });
+  });
+
+  it('maps /learning-path/tasks without shadowing /learning-path', () => {
+    expect(pathToIntent('/learning-path/tasks')).toEqual({ page: 'learning-path-tasks', params: {} });
+    expect(pathToIntent('/learning-path')).toEqual({ page: 'learning-path', params: {} });
+  });
+
   it('returns null for unknown paths', () => {
     expect(pathToIntent('/no-such-page')).toBeNull();
     expect(pathToIntent('/practice')).not.toBeNull();
@@ -103,6 +123,8 @@ describe('round-trip', () => {
       { page: 'training-workshop', params: {} },
       { page: 'personalization', params: { view: 'memory' } },
       { page: 'dashboard', params: {} },
+      { page: 'capability-detail', params: { capability: 'multi-agent' } },
+      { page: 'learning-path-tasks', params: {} },
     ];
     for (const intent of intents) {
       const path = intentToPath(intent);

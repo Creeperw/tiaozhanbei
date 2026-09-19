@@ -655,8 +655,11 @@ export default function AppShell({ currentUser, currentPage, currentIntent = nul
     const view = item ? notificationView(item) : 'governance';
     // Notifications may carry an explicit destination (e.g. the daily-task
     // refresh navigates to the learning path); fall back to the settings
-    // notification centre when no page is advertised.
-    const actionPage = item?.action?.type === 'navigate' ? item.action.page : null;
+    // notification centre when no page is advertised. 页面键必须是当前外壳
+    // 真正能渲染的页面：历史通知里存在已废弃的键，直接跳转会被归一化成首页，
+    // 用户看到的就是「点了通知什么也没发生」，不如退到通知中心。
+    const advertisedPage = item?.action?.type === 'navigate' ? item.action.page : null;
+    const actionPage = shell.allowedPages?.has(advertisedPage) ? advertisedPage : null;
     if (item?.notification_id) {
       setNotificationItems((current) => current.filter((entry) => entry.notification_id !== item.notification_id));
       setUnreadNotifications((current) => Math.max(0, current - 1));

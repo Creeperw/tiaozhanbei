@@ -1654,7 +1654,7 @@ class BackendHandoffRuntime:
                 severity="info",
                 source_type="daily_task",
                 source_id="",
-                action={"type": "navigate", "page": "learning_path"},
+                action={"type": "navigate", "page": "learning-path"},
             )
             db.commit()
             return governance.serialize_notification(row) if row is not None else None
@@ -1696,7 +1696,7 @@ class BackendHandoffRuntime:
                 severity="info",
                 source_type="learning_intervention",
                 source_id=str(intervention_id or ""),
-                action={"type": "navigate", "page": "learning_path"},
+                action={"type": "navigate", "page": "learning-path"},
             )
             db.commit()
             return governance.serialize_notification(row) if row is not None else None
@@ -1740,14 +1740,14 @@ class BackendHandoffRuntime:
                 severity="info",
                 source_type="plan_review",
                 source_id=str(review_id or ""),
-                action={"type": "navigate", "page": "learning_path"},
+                action={"type": "navigate", "page": "learning-path"},
             )
             if row is not None:
                 row.title = "规划调整已完成"
                 row.message = message
                 row.severity = "info"
                 row.action_json = json.dumps(
-                    {"type": "navigate", "page": "learning_path"},
+                    {"type": "navigate", "page": "learning-path"},
                     ensure_ascii=False,
                 )
                 if row.status not in {"read", "dismissed"}:
@@ -1800,14 +1800,14 @@ class BackendHandoffRuntime:
                 severity=severity,
                 source_type="plan_review",
                 source_id=str(review_id or ""),
-                action={"type": "navigate", "page": "learning_path"},
+                action={"type": "navigate", "page": "learning-path"},
             )
             if row is not None:
                 row.title = title
                 row.message = message
                 row.severity = severity
                 row.action_json = json.dumps(
-                    {"type": "navigate", "page": "learning_path"},
+                    {"type": "navigate", "page": "learning-path"},
                     ensure_ascii=False,
                 )
                 if row.status not in {"read", "dismissed"}:

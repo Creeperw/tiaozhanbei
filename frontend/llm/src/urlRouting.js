@@ -57,6 +57,12 @@ const PAGE_SLUGS = {
   'admin-feedback': '/admin-feedback',
 };
 
+// 带子路径的页面。它们不能放进 PAGE_SLUGS（那张表只支持单段路径），
+// 但同样必须有 URL：缺映射时 intentToPath 返回 null，pushState 被跳过，
+// 刷新后页面由 sessionStorage 决定，用户看到的会是上一次的页面。
+const CAPABILITY_ROOT_PATH = '/capabilities';
+const LEARNING_PATH_TASKS_PATH = '/learning-path/tasks';
+
 // ── 反向：路径段 → 页面 ──
 const SLUG_TO_PAGE = Object.fromEntries(
   Object.entries(PAGE_SLUGS).map(([page, path]) => [path.slice(1), page]),
@@ -88,6 +94,14 @@ export function intentToPath(intent) {
     const slug = PERSONALIZATION_VIEW_SLUGS[params.view || 'reports'];
     return slug === 'reports' ? '/personalization' : `/personalization/${slug}`;
   }
+
+  // 平台核心能力详情：/capabilities/<capabilityKey>
+  if (page === 'capability-detail') {
+    return params.capability ? `${CAPABILITY_ROOT_PATH}/${params.capability}` : CAPABILITY_ROOT_PATH;
+  }
+
+  // 学习与复习任务：/learning-path/tasks
+  if (page === 'learning-path-tasks') return LEARNING_PATH_TASKS_PATH;
 
   // 顶层页面
   if (PAGE_SLUGS[page]) return PAGE_SLUGS[page];
@@ -123,6 +137,20 @@ export function pathToIntent(pathname) {
   if (segments[0] === 'personalization') {
     const view = PERSONALIZATION_SLUG_TO_VIEW[segments[1]] || 'reports';
     return { page: 'personalization', params: { view } };
+  }
+
+  // /capabilities/<capabilityKey>：平台核心能力详情
+  if (segments[0] === 'capabilities') {
+    return {
+      page: 'capability-detail',
+      params: segments[1] ? { capability: segments[1] } : {},
+    };
+  }
+
+  // /learning-path/tasks：学习与复习任务。必须排在单段页面表之前，
+  // 否则会被 /learning-path 抢先匹配成学习路径页。
+  if (segments[0] === 'learning-path' && segments[1] === 'tasks') {
+    return { page: 'learning-path-tasks', params: {} };
   }
 
   // 顶层单段页面

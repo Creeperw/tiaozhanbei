@@ -54,6 +54,16 @@ describe('startSmartPaperRun', () => {
     expect(payload.answer).not.toContain('解析');
   });
 
+  it('marks the run as a system task so it stays out of the chat history', async () => {
+    streamWorkflowTurn.mockResolvedValue(completedOutcome('PAPER_SYS'));
+
+    await startSmartPaperRun({ topic: '太阳病篇', distribution: { single_choice: 3 } });
+
+    const payload = streamWorkflowTurn.mock.calls[0][0];
+    // 组卷是产品内置向导，不是用户对话：后端据此把它排除在 AI 助手历史之外。
+    expect(payload.conversationSurface).toBe('system_task');
+  });
+
   it('defaults the explanation requirement to false', async () => {
     streamWorkflowTurn.mockResolvedValue(completedOutcome('PAPER_2'));
 

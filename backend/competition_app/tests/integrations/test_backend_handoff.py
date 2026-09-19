@@ -234,7 +234,7 @@ def test_daily_task_refreshed_notification_is_deduplicated_per_day():
     assert kwargs["title"] == "今日学习任务已更新"
     assert kwargs["dedupe_key"] == "daily-task-refreshed:2026-07-24"
     assert "今日围绕《方剂学》补气剂学习。" in kwargs["message"]
-    assert kwargs["action"] == {"type": "navigate", "page": "learning_path"}
+    assert kwargs["action"] == {"type": "navigate", "page": "learning-path"}
     assert calls[-1] == "closed"
 
 

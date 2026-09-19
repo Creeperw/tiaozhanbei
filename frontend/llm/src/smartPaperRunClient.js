@@ -73,6 +73,10 @@ export async function startSmartPaperRun({
         ? { availableMinutes: durationMinutes }
         : {}),
       currentPage: { path: '/practice/smart-paper', product_surface: 'smart_paper' },
+      // 组卷是产品内置向导，不是用户发起的对话。用系统自有枚举标记，
+      // 后端据此把它排除在 AI 助手历史之外（只影响侧栏可见性，不影响消息留存）。
+      // 与 personalizedPathPlanner 的用法一致，用户自由文本不参与判定。
+      conversationSurface: 'system_task',
       examConstraints: {
           question_count: questionCount,
           question_types: Object.keys(activeDistribution).map(type => typeLabels[type] || type),

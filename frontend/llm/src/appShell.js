@@ -68,6 +68,10 @@ export function getAppShellConfig({ currentUser, currentPage, selectedSessionId 
   return {
     defaultPage: 'dashboard',
     currentPage: normalizedPage,
+    // 通知里的 action.page 必须先经过这张白名单再跳转：后端历史数据里存在
+    // 已废弃的页面键（例如下划线写法的 learning_path），直接跳转会被归一化成
+    // 首页，表现为「点了通知没反应」。调用方据此决定是否回退到通知中心。
+    allowedPages,
     shellMode,
     selectedSessionId,
     knowledgeView,

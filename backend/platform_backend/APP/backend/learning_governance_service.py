@@ -989,7 +989,7 @@ def build_resource_match_report(
             ),
             "difficulty_evidence": difficulty_evidence,
             "source": row.source or "unknown",
-            "action": {"type": "navigate", "page": "workshop", "params": {"question_id": row.question_id}},
+            "action": {"type": "navigate", "page": "training-workshop", "params": {"question_id": row.question_id}},
         })
     available_minutes = int(task.get("estimated_minutes") or 30) if isinstance(task, dict) else 30
     matches = []
@@ -1670,7 +1670,7 @@ def record_plan_progression_event(
         source_id=event_id,
         action={
             "type": "navigate",
-            "page": "learning_path",
+            "page": "learning-path",
             "params": {"stage": next_stage or stage or 1},
         },
     )
