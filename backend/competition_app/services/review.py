@@ -457,16 +457,21 @@ class ReviewService:
             ),
         )
 
-    def next_dispatch_entry(self, learner_id: str) -> ReviewQueueEntry | None:
-        queue = self.get_queue(learner_id)
-        return next(
-            (
-                item
-                for item in queue.entries
-                if item.is_due and (item.task is None or item.resource is None)
-            ),
-            None,
-        )
+    def dispatch_candidates(self, learner_id: str) -> list[ReviewQueueEntry]:
+        """Return every due entry that still lacks a materialized task/resource.
+
+        Dispatch must iterate this list rather than take its first element: a
+        single knowledge point whose resource generation fails would otherwise
+        pin the queue forever and starve every entry behind it. Callers decide
+        their own budget and skip policy.
+        """
+
+        queue = self.get_queue(learner_id, limit=200)
+        return [
+            item
+            for item in queue.entries
+            if item.is_due and (item.task is None or item.resource is None)
+        ]
 
     def list_active_deliveries(self, learner_id: str) -> list[ReviewDelivery]:
         """Return the learner's actionable review tasks (pending/bound/overdue).

@@ -640,7 +640,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     workflow_tasks_by_thread: dict[str, asyncio.Task] = {}
     workflow_worker_loops: dict[str, tuple[asyncio.AbstractEventLoop, asyncio.Task]] = {}
     workflow_worker_loops_lock = threading.Lock()
-    review_push_locks: dict[str, asyncio.Lock] = {}
     review_push_states: dict[str, dict[str, Any]] = {}
     plan_replan_tasks: set[asyncio.Task] = set()
     d1_v5_evolution_sandbox: D1V5EvolutionSandboxService | None = None
@@ -1257,113 +1256,39 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         *,
         available_minutes: int,
     ) -> dict[str, Any]:
-        """Publish one missing due-review resource without duplicating bound tasks."""
+        """Publish one missing due-review resource on explicit request.
 
-        lock = review_push_locks.setdefault(learner_id, asyncio.Lock())
-        async with lock:
-            queue = container.review_service.get_queue(learner_id, limit=200)
-            candidates = [
-                item
-                for item in queue.entries
-                if item.is_due and (item.task is None or item.resource is None)
-            ]
-            kp_names: dict[str, str] = {}
-            if (
-                candidates
-                and backend_handoff is not None
-                and hasattr(backend_handoff, "load_review_dashboard")
-            ):
-                try:
-                    dashboard = await asyncio.to_thread(
-                        backend_handoff.load_review_dashboard,
-                        learner_id,
-                        history_limit=1,
-                    )
-                    for collection in ("mastery", "review_states"):
-                        for item in dashboard.get(collection) or []:
-                            kp_id = str(item.get("kp_id") or "").strip()
-                            kp_name = str(item.get("kp_name") or "").strip()
-                            if kp_id and kp_name and kp_name != kp_id:
-                                kp_names[kp_id] = kp_name
-                except Exception:
-                    kp_names = {}
+        Delegates to the queue-level dispatcher so the endpoint, the background
+        queue read, and the agent tool all share one candidate-selection and
+        failure policy. Only one resource is materialized here because this
+        response carries a single review-card payload back to the caller.
+        """
 
-            def dispatch_topic(candidate: Any) -> str:
-                unit = candidate.memory_unit
-                topic = str(unit.prompt_abstract or "").strip()
-                for suffix in ("个性化复习卡", "个性化练习", "复习卡片", "复习卡"):
-                    if topic.endswith(suffix):
-                        topic = topic[:-len(suffix)].strip()
-                if topic in {
-                    "",
-                    "知识点名称待补充",
-                    "待补充知识点",
-                    "知识点待确认",
-                }:
-                    topic = ""
-                if not topic:
-                    topic = kp_names.get(str(unit.kp_id), "")
-                if not topic and re.search(r"[\u4e00-\u9fff]{2,}", str(unit.kp_id)):
-                    topic = str(unit.kp_id).strip()
-                return topic
-
-            entry = next(
-                (item for item in candidates if dispatch_topic(item)),
-                None,
-            )
-            if entry is None:
-                return {
-                    "status": "empty",
-                    "message": (
-                        "当前没有等待资源的到期复习知识点。"
-                        if not candidates
-                        else "到期知识点缺少可解析名称，已跳过自动资源生成。"
-                    ),
-                }
-            unit = entry.memory_unit
-            topic = dispatch_topic(entry)
-            result = await container.review_card_use_case.execute(
-                ReviewCardRequest(
-                    learner_id=learner_id,
-                    user_request=(
-                        "请为以下已到期知识点生成一张可立即学习的复习卡："
-                        f"{topic}"
-                    ),
-                    available_minutes=available_minutes,
-                    system_operation="due_review_dispatch",
-                    user_knowledge_state=[
-                        {
-                            "user_id": learner_id,
-                            "kp_id": unit.kp_id,
-                            "knowledge_mastery": unit.mastery_score / 100,
-                            "answer_accuracy": unit.mastery_score / 100,
-                            "forgetting_coefficient": unit.lambda_per_day,
-                            "kp_review_status": "到期",
-                            "calculated_at": (
-                                unit.source_calculated_at
-                                or unit.last_review_at
-                                or unit.created_at
-                            ),
-                        }
-                    ],
-                )
-            )
-            if getattr(result, "status", None) == "interrupted":
-                raise HTTPException(
-                    status_code=409,
-                    detail="到期资源生成意外进入追问状态",
-                )
-            payload = (
-                result.model_dump(mode="json")
-                if hasattr(result, "model_dump")
-                else result
-            )
+        dispatcher = container.due_review_dispatcher
+        if dispatcher is None:
+            return {"status": "empty", "message": "当前环境未启用到期复习自动派发。"}
+        outcome = await dispatcher.run(
+            learner_id,
+            available_minutes=available_minutes,
+            max_materialize=1,
+        )
+        materialized = outcome.get("materialized") or []
+        if materialized:
             return {
                 "status": "pushed",
-                "kp_id": unit.kp_id,
-                "review_task_id": entry.task.review_task_id if entry.task else None,
-                "result": payload,
+                "kp_id": materialized[0]["kp_id"],
+                "result": materialized[0]["result"],
             }
+        if outcome.get("interrupted"):
+            raise HTTPException(
+                status_code=409,
+                detail="到期资源生成意外进入追问状态",
+            )
+        return {
+            "status": "empty",
+            "message": outcome.get("message")
+            or "到期知识点缺少可解析名称，已跳过自动资源生成。",
+        }
 
     def schedule_due_review_resource(
         learner_id: str,
@@ -7085,6 +7010,24 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             "thread_id": thread_id,
         }
 
+    def _request_due_review_dispatch(learner_id: str, queue: Any) -> None:
+        """Queue-level trigger: serving the review queue drives materialization.
+
+        Reading the queue is the only signal plain UI browsing produces. Before
+        this existed, due-review resources were only generated when the agent
+        tool ``get_review_status`` happened to be called, so a learner who only
+        used the interface never got a single review resource. Non-blocking and
+        self-throttling: the dispatcher owns the running guard, the minimum run
+        interval and the per-knowledge-point failure cooldown.
+        """
+
+        dispatcher = container.due_review_dispatcher
+        if dispatcher is None:
+            return
+        if int(getattr(queue, "awaiting_resource_count", 0) or 0) <= 0:
+            return
+        dispatcher.request(learner_id)
+
     @app.get("/api/v1/learners/{learner_id}/review-queue")
     async def get_review_queue(learner_id: str, request: Request, limit: int = 50):
         require_owner(request, learner_id)
@@ -7096,7 +7039,9 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                 learner_id=learner_id,
                 attempts=behavior.get("question_attempt", []),
             )
-        return container.review_service.get_queue(learner_id, limit=limit)
+        queue = container.review_service.get_queue(learner_id, limit=limit)
+        _request_due_review_dispatch(learner_id, queue)
+        return queue
 
     @app.get("/api/v1/review-queue")
     async def get_current_user_review_queue(
@@ -7116,7 +7061,9 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                 learner_id=user.user_id,
                 attempts=behavior.get("question_attempt", []),
             )
-        return container.review_service.get_queue(user.user_id, limit=limit)
+        queue = container.review_service.get_queue(user.user_id, limit=limit)
+        _request_due_review_dispatch(user.user_id, queue)
+        return queue
 
     @app.get("/api/v1/review-dashboard")
     async def get_review_dashboard(
@@ -7151,6 +7098,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                 history_limit=history_limit,
             )
         queue = container.review_service.get_queue(user.user_id, limit=limit)
+        _request_due_review_dispatch(user.user_id, queue)
         mastery = list(details.get("mastery") or [])
         scores = [
             float(item["mastery_score"])

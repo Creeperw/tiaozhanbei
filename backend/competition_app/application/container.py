@@ -20,6 +20,10 @@ from competition_app.agents.knowledge_base import KnowledgeBaseAgent
 from competition_app.agents.learning_plan_service import LearningPlanServiceAdapter
 from competition_app.agents.memory import MemoryAgent
 from competition_app.services.memory_retrieval import MemoryRetrievalService
+from competition_app.services.review_dispatch import (
+    DueReviewDispatcher,
+    dashboard_kp_name_loader,
+)
 from competition_app.agents.planner import PlannerAgent
 from competition_app.agents.paper_blueprint import PaperBlueprintAgent
 from competition_app.agents.paper_assembly import PaperAssemblyAgent
@@ -278,6 +282,7 @@ class ApplicationContainer:
     debug_trace_manager: DebugTraceManager | None = None
     auth_cookie_secure: bool = False
     backend_handoff_runtime: BackendHandoffRuntime | None = None
+    due_review_dispatcher: DueReviewDispatcher | None = None
     frontend_dist_root: Path | None = None
     default_route_repository: DefaultRouteRepository | None = None
     textbook_route_repository: TextbookRouteRepository | None = None
@@ -840,112 +845,17 @@ class ApplicationContainer:
             learning_progress_handler = backend_handoff_runtime.load_learning_statistics
             review_status_handler = backend_handoff_runtime.load_review_dashboard
 
-        # 到期复习自动调度：当智能体（或前端）查询复习状态发现存在“已到期但
-        # 还没有任务/资源”的知识点时，在独立线程中触发 due_review_dispatch
-        # 快速路径（diagnosis 无模型 + scheduler 确定性算法 + expert 生成复习
-        # 卡并绑定资源），让“安排”真实落库，而不是只在回复里口头提及。
-        # 触发条件是查询行为本身（review_status），掌握度快照
-        # （get_mastery_snapshot）复用同一 handler，但不得触发资源生成。
-        # 与 app.py 的 schedule_due_review_resource 一致，使用事件循环内
-        # create_task：后台任务可继承当前 Context（SSE sink），且避免
-        # 新线程 + 新事件循环导致的 ContextVar 丢失。
-        _due_review_dispatch_guard = threading.Lock()
-        _due_review_dispatch_running: set[str] = set()
-        _due_review_dispatch_tasks: set[asyncio.Task] = set()
-
-        def _spawn_due_review_dispatch(learner_id: str) -> None:
-            with _due_review_dispatch_guard:
-                if learner_id in _due_review_dispatch_running:
-                    return
-                _due_review_dispatch_running.add(learner_id)
-
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                with _due_review_dispatch_guard:
-                    _due_review_dispatch_running.discard(learner_id)
-                return
-
-            async def _tracked() -> None:
-                try:
-                    await _run_due_review_dispatch(learner_id)
-                finally:
-                    with _due_review_dispatch_guard:
-                        _due_review_dispatch_running.discard(learner_id)
-                    _due_review_dispatch_tasks.discard(asyncio.current_task())
-
-            task = loop.create_task(_tracked())
-            _due_review_dispatch_tasks.add(task)
-
-        async def _run_due_review_dispatch(learner_id: str) -> None:
-            from competition_app.application.personalized_review_card import (
-                ReviewCardRequest,
-            )
-
-            try:
-                queue = review_service.get_queue(learner_id, limit=200)
-            except Exception:
-                return
-            entry = next(
-                (
-                    item
-                    for item in queue.entries
-                    if item.is_due
-                    and (item.task is None or item.resource is None)
-                ),
-                None,
-            )
-            if entry is None:
-                return
-            unit = entry.memory_unit
-            topic = str(unit.prompt_abstract or "").strip()
-            for suffix in ("个性化复习卡", "个性化练习", "复习卡片", "复习卡"):
-                if topic.endswith(suffix):
-                    topic = topic[: -len(suffix)].strip()
-            if topic in {"", "知识点名称待补充", "待补充知识点", "知识点待确认"}:
-                topic = str(unit.kp_id)
-            if not topic:
-                return
-            try:
-                await review_card_use_case.execute(
-                    ReviewCardRequest(
-                        learner_id=learner_id,
-                        user_request=(
-                            "请为以下已到期知识点生成一张可立即学习的复习卡："
-                            f"{topic}"
-                        ),
-                        available_minutes=15,
-                        system_operation="due_review_dispatch",
-                        user_knowledge_state=[
-                            {
-                                "user_id": learner_id,
-                                "kp_id": unit.kp_id,
-                                "knowledge_mastery": float(
-                                    (unit.mastery_score or 0.0) / 100
-                                ),
-                                "answer_accuracy": float(
-                                    (unit.mastery_score or 0.0) / 100
-                                ),
-                                "forgetting_coefficient": float(
-                                    unit.lambda_per_day or 0.08
-                                ),
-                                "kp_review_status": "到期",
-                                "calculated_at": (
-                                    unit.source_calculated_at
-                                    or unit.last_review_at
-                                    or unit.created_at
-                                ),
-                            }
-                        ],
-                    )
-                )
-            except Exception:
-                # 后台生成失败不阻断查询本身；下次查询会再次尝试。
-                pass
+        # 到期复习自动调度（队列级后台任务）：只要复习队列被读取，就请求一次
+        # 有界的资源物化。派发逻辑集中在 ``DueReviewDispatcher``：它遍历候选
+        # 而不是只取队首、按知识点记失败冷却、并把失败写进日志，因此单个知识点
+        # 生成失败不会再钉死整条队列。这里只负责“何时请求”。
+        # 事件循环内 create_task：后台任务可继承当前 Context（SSE sink），且
+        # 避免新线程 + 新事件循环导致的 ContextVar 丢失。
+        due_review_dispatcher: DueReviewDispatcher | None = None
 
         if backend_handoff_runtime is not None:
             # 包装 get_review_status 专用 handler：查询后若存在“到期且无任务”
-            # 的知识点，后台触发一次快速调度（get_mastery_snapshot 共用
+            # 的知识点，请求一次队列级后台派发（get_mastery_snapshot 共用
             # load_review_dashboard，但通过此包装只对复习状态查询生效——容器
             # 内两个工具注册同一个 handler，需按工具名区分）。
             async def _review_status_with_dispatch(
@@ -959,11 +869,14 @@ class ApplicationContainer:
                     history_limit=history_limit,
                 )
                 due_queue = dashboard.get("due_queue") or []
-                if any(
-                    item.get("is_due") and not item.get("has_task")
-                    for item in due_queue
+                if (
+                    due_review_dispatcher is not None
+                    and any(
+                        item.get("is_due") and not item.get("has_task")
+                        for item in due_queue
+                    )
                 ):
-                    _spawn_due_review_dispatch(external_user_id)
+                    due_review_dispatcher.request(external_user_id)
                 return dashboard
 
             review_status_handler_with_dispatch = _review_status_with_dispatch
@@ -1599,6 +1512,19 @@ class ApplicationContainer:
                 failure_signature_service=failure_signature_service,
                 debug_trace_manager=debug_trace_manager,
             )
+        # 队列级派发器：服务层持有唯一的到期复习物化实现，容器/HTTP/智能体
+        # 工具只负责在读取队列时请求一次，不再各自维护一套候选选择逻辑。
+        due_review_dispatcher = DueReviewDispatcher(
+            review_service=review_service,
+            review_card_use_case=review_card_use_case,
+            kp_name_loader=(
+                dashboard_kp_name_loader(
+                    backend_handoff_runtime.load_review_dashboard
+                )
+                if backend_handoff_runtime is not None
+                else None
+            ),
+        )
         accountability_evaluation_service = None
         if settings.accountability_evaluation_enabled:
             token = str(settings.accountability_evaluation_token or "")
@@ -1729,6 +1655,7 @@ class ApplicationContainer:
             debug_trace_manager=debug_trace_manager,
             auth_cookie_secure=settings.auth_cookie_secure,
             backend_handoff_runtime=backend_handoff_runtime,
+            due_review_dispatcher=due_review_dispatcher,
             frontend_dist_root=settings.frontend_dist_root,
             default_route_repository=default_route_repository,
             textbook_route_repository=textbook_route_repository,
