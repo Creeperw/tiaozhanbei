@@ -241,7 +241,7 @@ def search_test(req: SearchRequest, current_user: UserModel = Depends(get_curren
 
 @router.post("/points/align")
 def align_points(req: AlignKnowledgeRequest, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    return align_knowledge_points(db, req.text, user_id=current_user.id)
+    return align_knowledge_points(db, req.text)
 
 @router.post("/ingest")
 def ingest_knowledge_document(req: DocumentIngestRequest, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):

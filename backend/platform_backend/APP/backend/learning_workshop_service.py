@@ -262,7 +262,7 @@ def publish_agent_paper(
             if str(value).strip()
         ]
         canonical_kp_ids = []
-        pending_candidates = []
+        rejected: list[str] = []
         for index, kp_id in enumerate(kp_ids):
             name = str(kp_name_hints.get(kp_id) or "").strip()
             if not name and tags:
@@ -271,23 +271,17 @@ def publish_agent_paper(
                 db,
                 source_kp_id=kp_id,
                 name=name or kp_id,
-                user_id=user_id,
             )
             if resolution.admitted:
                 canonical_kp_ids.append(str(resolution.canonical_kp_id))
-            elif resolution.candidate_id:
-                pending_candidates.append({
-                    "source_kp_id": kp_id,
-                    "candidate_id": resolution.candidate_id,
-                    "name": name or kp_id,
-                })
+            else:
+                rejected.append(f"{kp_id}（{name or kp_id}）")
         canonical_kp_ids = list(dict.fromkeys(canonical_kp_ids))
         kp_total += len(kp_ids)
         kp_admitted += len(canonical_kp_ids)
-        if len(canonical_kp_ids) < len(kp_ids) and len(kp_rejected_samples) < 5:
-            kp_rejected_samples.extend(
-                kp_ids[: 5 - len(kp_rejected_samples)]
-            )
+        # 未准入样本带上名称：候选队列已拆除，这条日志是它们的唯一记录。
+        if rejected and len(kp_rejected_samples) < 5:
+            kp_rejected_samples.extend(rejected[: 5 - len(kp_rejected_samples)])
         question_id = str(question.get("question_id") or f"AGENT_Q_{uuid4().hex}")
         paper_item = PaperItemRecord(
                 paper_item_id=f"PI_{uuid4().hex}",
@@ -301,10 +295,7 @@ def publish_agent_paper(
                 standard_answer_snapshot=str(question.get("reference_answer") or ""),
                 kp_snapshot_json=json.dumps(canonical_kp_ids, ensure_ascii=False),
                 evidence_refs_json=json.dumps(
-                    {
-                        "source_kp_ids": kp_ids,
-                        "pending_knowledge_points": pending_candidates,
-                    },
+                    {"source_kp_ids": kp_ids},
                     ensure_ascii=False,
                 ),
                 source_kind="agent_audited",

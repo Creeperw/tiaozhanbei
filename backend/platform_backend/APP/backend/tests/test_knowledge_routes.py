@@ -78,15 +78,16 @@ class KnowledgeRoutesBehaviorTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
 
-    def test_align_uses_current_user_for_candidate_owner(self):
+    def test_align_reports_unmatched_text_without_persisting_a_candidate(self):
         response = self.client.post("/knowledge/points/align", json={"text": "尚未建库的专题"})
 
         self.assertEqual(response.status_code, 200)
-        candidate_id = response.json()["candidate_kp_ids"][0]
+        self.assertEqual(len(response.json()["candidate_kp_ids"]), 1)
         db = self.Session()
         try:
-            candidate = db.query(database.CandidateKnowledgePoint).filter_by(candidate_id=candidate_id).one()
-            self.assertEqual(candidate.created_by_user_id, 1)
+            self.assertEqual(
+                db.query(database.CandidateKnowledgePoint).count(), 0
+            )
         finally:
             db.close()
 

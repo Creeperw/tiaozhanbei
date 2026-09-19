@@ -318,7 +318,6 @@ def verify_recent_admission(db, *, days: int = 7, max_ids: int = 0) -> int:
                     db,
                     source_kp_id=kp_id,
                     name=name or kp_id,
-                    user_id=None,
                 )
             except Exception as exc:  # noqa: BLE001 - 体检要报告异常而不是中断
                 rejected.append((kp_id, f"判定异常：{exc}"))

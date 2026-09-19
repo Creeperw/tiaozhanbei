@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import json
+import logging
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -10,11 +10,13 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from APP.backend.database import (
-    CandidateKnowledgePoint,
     KnowledgePoint,
     KnowledgePointCanonicalMap,
 )
 from APP.backend.time_utils import utc_now
+
+
+logger = logging.getLogger(__name__)
 
 
 ACTIVE_MAPPING_STATUS = "active"
@@ -35,7 +37,6 @@ class KnowledgePointResolution:
     status: str
     decision_basis: str
     confidence: float
-    candidate_id: str | None = None
 
     @property
     def admitted(self) -> bool:
@@ -168,44 +169,6 @@ def authoritative_rows_by_canonical(
     return selected
 
 
-def _candidate_id(source_kp_id: str, normalized_name: str) -> str:
-    digest = hashlib.sha256(
-        f"agent-paper:{source_kp_id}:{normalized_name}".encode("utf-8")
-    ).hexdigest()[:20].upper()
-    return f"CAND_KP_{digest}"
-
-
-def _ensure_candidate(
-    db: Session,
-    *,
-    source_kp_id: str,
-    name: str,
-    user_id: int | None,
-    evidence: dict[str, Any],
-) -> CandidateKnowledgePoint:
-    normalized_name = normalize_knowledge_point_label(name)
-    candidate_id = _candidate_id(source_kp_id, normalized_name)
-    candidate = (
-        db.query(CandidateKnowledgePoint)
-        .filter_by(candidate_id=candidate_id)
-        .one_or_none()
-    )
-    if candidate is None:
-        candidate = CandidateKnowledgePoint(
-            candidate_id=candidate_id,
-            name=str(name or source_kp_id)[:200],
-            source_text=str(name or source_kp_id),
-            status="pending",
-            created_by_user_id=user_id,
-            evidence_json=json.dumps(evidence, ensure_ascii=False),
-        )
-        db.add(candidate)
-    else:
-        candidate.evidence_json = json.dumps(evidence, ensure_ascii=False)
-        candidate.updated_at = utc_now()
-    return candidate
-
-
 def _persist_mapping(
     db: Session,
     *,
@@ -243,12 +206,11 @@ def resolve_agent_knowledge_point(
     *,
     source_kp_id: str,
     name: str,
-    user_id: int | None,
 ) -> KnowledgePointResolution:
     """Resolve an agent bridge using IDs or strict, provenance-scoped equality.
 
-    An unseen free-form label never creates an active knowledge point. It is
-    persisted as a pending candidate and therefore cannot enter mastery state.
+    An unseen free-form label never creates an active knowledge point: the
+    resolution comes back as ``pending`` and cannot enter mastery state.
     """
 
     normalized_id = str(source_kp_id or "").strip()
@@ -343,19 +305,14 @@ def resolve_agent_knowledge_point(
             1.0,
         )
 
-    evidence = {
-        "source_kp_id": normalized_id,
-        "name": str(name or ""),
-        "normalized_label": normalized_name,
-        "source": AGENT_PAPER_SOURCE,
-        "reason": "no_strict_authoritative_or_same_provenance_match",
-    }
-    candidate = _ensure_candidate(
-        db,
-        source_kp_id=normalized_id,
-        name=name,
-        user_id=user_id,
-        evidence=evidence,
+    # 认不出的知识点只记日志，不再落库。原先会写进 candidate_knowledge_points
+    # 等待人工审核，但那张表没有任何审核入口，只能单向堆积；而且判定依据的名称
+    # 来自上游智能体，实测并不可靠（同一个 id 会被贴上多个互不相关的名称），
+    # 攒下来的记录也无法用于审核。这里保留状态与原因，由调用方汇总上报。
+    logger.warning(
+        "知识点 %s 未准入：知识库中不存在该 id，名称 %r 也未匹配到任何正式来源。",
+        normalized_id,
+        str(name or ""),
     )
     return KnowledgePointResolution(
         normalized_id,
@@ -363,7 +320,6 @@ def resolve_agent_knowledge_point(
         "pending",
         "candidate_review_required",
         0.0,
-        str(candidate.candidate_id),
     )
 
 

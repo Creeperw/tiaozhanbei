@@ -90,7 +90,6 @@ class KnowledgePointIdentityServiceTests(unittest.TestCase):
             self.db,
             source_kp_id="KP_NEW",
             name="四君子汤配伍意义",
-            user_id=1,
         )
 
         self.assertTrue(resolution.admitted)
@@ -99,19 +98,18 @@ class KnowledgePointIdentityServiceTests(unittest.TestCase):
         self.assertEqual(mapping.source_kp_id, "KP_NEW")
         self.assertEqual(mapping.canonical_kp_id, "KP_OLD")
 
-    def test_unknown_agent_concept_stays_pending_and_is_not_activated(self):
+    def test_unknown_agent_concept_stays_pending_and_creates_no_candidate(self):
         resolution = resolve_agent_knowledge_point(
             self.db,
             source_kp_id="MODEL_KP_9",
             name="一个未经审核的新概念",
-            user_id=1,
         )
 
         self.assertFalse(resolution.admitted)
         self.assertEqual(resolution.status, "pending")
-        self.assertIsNotNone(resolution.candidate_id)
-        candidate = self.db.query(database.CandidateKnowledgePoint).one()
-        self.assertEqual(candidate.status, "pending")
+        self.assertEqual(
+            self.db.query(database.CandidateKnowledgePoint).count(), 0
+        )
         self.assertEqual(self.db.query(database.KnowledgePoint).count(), 0)
         self.assertEqual(self.db.query(database.KnowledgePointCanonicalMap).count(), 0)
 

@@ -84,20 +84,20 @@ class KnowledgeAgentServiceTests(unittest.TestCase):
         finally:
             db.close()
 
-    def test_creates_candidate_when_no_knowledge_point_matches(self):
+    def test_reports_unmatched_text_without_persisting_a_candidate(self):
         from APP.backend.knowledge_agent_service import align_knowledge_points
 
         db = self.Session()
         try:
             self._seed(db)
 
-            result = align_knowledge_points(db, "请补充一个尚未建库的舌诊训练专题", user_id=1)
+            result = align_knowledge_points(db, "请补充一个尚未建库的舌诊训练专题")
 
             self.assertEqual(result["label_status"], "pending_review")
             self.assertEqual(len(result["candidate_kp_ids"]), 1)
-            candidate = db.query(database.CandidateKnowledgePoint).filter_by(candidate_id=result["candidate_kp_ids"][0]).one()
-            self.assertEqual(candidate.status, "pending")
-            self.assertEqual(candidate.created_by_user_id, 1)
+            self.assertEqual(
+                db.query(database.CandidateKnowledgePoint).count(), 0
+            )
         finally:
             db.close()
 

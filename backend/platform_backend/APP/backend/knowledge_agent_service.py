@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 from typing import Any, Callable
 
@@ -10,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from APP.backend.agent_contracts import EvidenceItem, EvidencePack, LearnerContextBrief
 from APP.backend.database import (
-    CandidateKnowledgePoint,
     KnowledgePoint,
     MistakeRecord,
     QuestionBankItem,
@@ -20,6 +20,9 @@ from APP.backend.deep_training_service import align_knowledge_points as align_cu
 from APP.backend.knowledge_atlas_service import AtlasUnavailableError, atlas_service
 from APP.backend.question_index_search_service import question_index_search_service
 from APP.backend.rag_core import RAGUnavailableError, rag_service
+
+
+logger = logging.getLogger(__name__)
 
 
 def _text(value: Any) -> str:
@@ -36,11 +39,6 @@ def _json_list(value: str | None) -> list[Any]:
     return loaded if isinstance(loaded, list) else []
 
 
-def _stable_candidate_id(text: str) -> str:
-    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8].upper()
-    return f"CAND_KP_{digest}"
-
-
 def _knowledge_point_payloads(db: Session) -> list[dict[str, Any]]:
     rows = db.query(KnowledgePoint).filter(KnowledgePoint.status == "active").order_by(KnowledgePoint.id.asc()).all()
     return [
@@ -53,21 +51,17 @@ def _knowledge_point_payloads(db: Session) -> list[dict[str, Any]]:
     ]
 
 
-def align_knowledge_points(db: Session, text: str, user_id: int | None = None) -> dict[str, Any]:
+def align_knowledge_points(db: Session, text: str) -> dict[str, Any]:
     result = align_current_knowledge_points(text=text, knowledge_points=_knowledge_point_payloads(db))
     if result.get("candidate_kp_ids"):
-        candidate_id = result["candidate_kp_ids"][0]
-        existing = db.query(CandidateKnowledgePoint).filter(CandidateKnowledgePoint.candidate_id == candidate_id).first()
-        if existing is None:
-            candidate = CandidateKnowledgePoint(
-                candidate_id=candidate_id,
-                name=_text(text)[:200],
-                source_text=_text(text),
-                created_by_user_id=user_id,
-                evidence_json=json.dumps(result.get("evidence", []), ensure_ascii=False),
-            )
-            db.add(candidate)
-            db.commit()
+        # 对齐不上的知识点只记日志，不再落库：原先写进 candidate_knowledge_points
+        # 等人工审核，但那张表没有任何审核入口，只能单向堆积。候选 id 照原样返回
+        # 给调用方，接口形状不变。
+        logger.warning(
+            "知识点对齐未命中：%r 未匹配到知识库中的知识点，候选 %s。",
+            _text(text)[:120],
+            result["candidate_kp_ids"],
+        )
     return result
 
 
@@ -286,7 +280,7 @@ def build_evidence_pack(
     rag_search: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> EvidencePack:
     user_id = int(learner_context.learner_id) if str(learner_context.learner_id).isdigit() else None
-    alignment = align_knowledge_points(db, query, user_id=user_id)
+    alignment = align_knowledge_points(db, query)
     query_kp_ids = list(alignment.get("resolved_kp_ids", []))
     scoped_kp_ids = list(dict.fromkeys(
         value.strip()

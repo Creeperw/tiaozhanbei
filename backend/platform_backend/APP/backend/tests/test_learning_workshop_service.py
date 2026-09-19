@@ -181,7 +181,7 @@ class LearningWorkshopServiceTests(unittest.TestCase):
                 paper_id=published["paper_id"]
             ).one()
             self.assertEqual(item.kp_snapshot_json, "[]")
-            self.assertEqual(db.query(database.CandidateKnowledgePoint).count(), 1)
+            self.assertEqual(db.query(database.CandidateKnowledgePoint).count(), 0)
             self.assertEqual(db.query(database.KnowledgePoint).count(), 0)
             self.assertEqual(
                 db.query(database.QuestionKPLinkRecord).filter_by(
