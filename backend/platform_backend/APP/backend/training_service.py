@@ -27,6 +27,26 @@ def _first_focus(profile: dict[str, Any], memories: list[dict[str, Any]]) -> str
     return memory_text or "中医基础知识巩固"
 
 
+TOPIC_NAMED_POINT_LIMIT = 5
+
+
+def topic_point_text(names: list[Any]) -> str:
+    """拼接学情文案里的知识点名称串。
+
+    只列举有限个知识点：上游偶发把整个单元的宽召回集合当成题目知识点传入
+    （线上实测单题 420 个），逐个罗列会在「本题考查……」里写出数千字，且其中
+    多数名称与本题无关。超出上限时列举前若干个并给出总数。
+    """
+
+    ordered = list(dict.fromkeys(_text(item) for item in names if _text(item)))
+    if not ordered:
+        return ""
+    if len(ordered) <= TOPIC_NAMED_POINT_LIMIT:
+        return "、".join(ordered)
+    head = "、".join(ordered[:TOPIC_NAMED_POINT_LIMIT])
+    return f"{head}等 {len(ordered)} 个知识点"
+
+
 def _classify_error(submission: dict[str, Any]) -> str:
     text = "；".join([
         _text(submission.get("stem")),
@@ -156,7 +176,7 @@ def _objective_grading_payload(submission: dict[str, Any], options: list[Any] | 
             _text(item) for item in submission.get("knowledge_points", [])
             if _text(item) and re.search(r"[\u4e00-\u9fff]", _text(item))
         ))
-    point_text = "、".join(kp_names)
+    point_text = topic_point_text(kp_names)
     if question_type in {"multiple_choice", "多选题", "多项选择题"}:
         selected = _choice_tokens_mapped(student_answer, options)
         correct = _choice_tokens_mapped(standard_answer, options)
@@ -252,7 +272,7 @@ def _grade_submission_payload(
     is_correct, score = _score_answer(student_answer, standard_answer)
     error_type = "已掌握" if is_correct else _classify_error(submission)
     focus = _first_focus(profile, memories)
-    point_text = "、".join(knowledge_point_names) or "当前知识点"
+    point_text = topic_point_text(knowledge_point_names) or "当前知识点"
 
     analysis = (
         f"本题考查{point_text}。你的答案为“{student_answer or '未作答'}”，"
@@ -313,7 +333,7 @@ def grade_practice_submission(
 
     knowledge_points = [_text(item) for item in submission.get("knowledge_points", []) if _text(item)]
     knowledge_point_names = [_text(item) for item in submission.get("knowledge_point_names", []) if _text(item)]
-    point_text = "、".join(knowledge_point_names) or "当前知识点"
+    point_text = topic_point_text(knowledge_point_names) or "当前知识点"
     learner_context = LearnerContextBrief(
             learner_id="practice-learner",
             learner_group=_text(profile.get("constitution"), "普通学习者"),

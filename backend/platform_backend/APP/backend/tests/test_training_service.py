@@ -47,6 +47,53 @@ class TrainingServicePhase4Tests(unittest.TestCase):
         self.assertEqual(payload["agent_trace"][0]["agent"], "planner_agent")
         self.assertEqual(payload["agent_trace"][-1]["agent"], "memory_agent")
 
+    def test_topic_note_keeps_normal_knowledge_point_lists_verbatim(self):
+        service = self._service()
+        payload = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-normal",
+                "question_type": "single_choice",
+                "stem": "阴阳学说单选题",
+                "student_answer": "A",
+                "standard_answer": "A",
+                "options": ["A. 甲", "B. 乙"],
+                "knowledge_point_names": ["阴阳属性", "精与气的阴阳属性", "脏腑阴阳"],
+            },
+        )
+
+        self.assertIn(
+            "本题考查阴阳属性、精与气的阴阳属性、脏腑阴阳。",
+            payload["grading"]["analysis"],
+        )
+
+    def test_topic_note_summarizes_oversized_knowledge_point_set(self):
+        """上游偶发把整个单元的宽召回集合当成题目知识点（线上单题 420 个）。
+
+        学情文案只列举有限个名称并给出总数，避免写出数千字。
+        """
+
+        service = self._service()
+        payload = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-wide-recall",
+                "question_type": "single_choice",
+                "stem": "阴阳学说单选题",
+                "student_answer": "D",
+                "standard_answer": "D",
+                "options": ["A. 心", "B. 肺", "C. 脾", "D. 肝"],
+                "knowledge_point_names": [f"知识点{i:03d}" for i in range(420)],
+            },
+        )
+
+        analysis = payload["grading"]["analysis"]
+        self.assertIn("等 420 个知识点", analysis)
+        self.assertEqual(analysis.count("知识点"), 6)
+        self.assertLess(len(analysis), 160)
+
     def test_multiple_choice_with_any_wrong_option_scores_zero(self):
         service = self._service()
         payload = service.grade_practice_submission(

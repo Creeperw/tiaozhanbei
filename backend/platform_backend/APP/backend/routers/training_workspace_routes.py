@@ -39,6 +39,7 @@ from APP.backend.mistake_context_service import (
     mistake_context_required,
     record_mistake_context,
 )
+from APP.backend.training_service import topic_point_text
 from APP.backend.paper_submission_service import PaperSubmissionInvalid, PaperSubmissionNotFound, get_owned_paper, pause_paper_timer, resume_paper_timer, save_paper_answers, submit_paper
 from APP.backend.section_exam_service import (
     SectionExamError,
@@ -352,7 +353,7 @@ def _mistake_payload(
     summary = str(mistake.summary or "")
     if summary.startswith("本题考查") and "。" in summary:
         _, remainder = summary.split("。", 1)
-        readable = "、".join(kp_names) if kp_names else "知识点名称待补充"
+        readable = topic_point_text(kp_names) or "知识点名称待补充"
         summary = f"本题考查{readable}。{remainder}"
     return {
         "mistake_id": mistake.id,
