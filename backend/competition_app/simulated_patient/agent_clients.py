@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 # 远程模型是推理模型，推理内容与正文共享 max_tokens 预算。预算过小时上游仍返回
 # HTTP 200，但 stop_reason=max_tokens：正文被截断（批改 JSON 解析失败、患者回复为空），
-# 调用方只能看到空结果。以下预算按“推理 + 完整正文/JSON”实测取值。
-GRADING_MAX_TOKENS = 4000
+# 调用方只能看到空结果。批改提示词含完整评分结构示例，输出较长，需留足预算。
+GRADING_MAX_TOKENS = 8000
 PATIENT_REPLY_MAX_TOKENS = 1200
 HELP_MAX_TOKENS = 1500
 SAMPLE_CHARS_FOR_LOG = 200

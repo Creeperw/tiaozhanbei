@@ -15,11 +15,12 @@ logger = logging.getLogger(__name__)
 
 # 远程模型是推理模型，推理内容与正文共享 max_tokens 预算。预算过小会出现
 # stop_reason=max_tokens：响应体被截断，JSON 解析失败，批改与解析会静默降级。
-# 以下预算按“推理 + 完整 JSON 正文”实测取值，不要下调到 1000 附近。
-GRADING_MAX_TOKENS = 4000
-GRADING_AUDIT_MAX_TOKENS = 3000
-EXPLANATION_MAX_TOKENS = 4000
-VARIATION_MAX_TOKENS = 4000
+# 实测：主观题批改在同一输入下 4000 仍偶发截断（判分要写 dimension_scores 与
+# feedback），8000 稳定 end_turn。以下预算按“推理 + 完整 JSON 正文”取值。
+GRADING_MAX_TOKENS = 8000
+GRADING_AUDIT_MAX_TOKENS = 4000
+EXPLANATION_MAX_TOKENS = 6000
+VARIATION_MAX_TOKENS = 6000
 
 
 def _text(value: Any, default: str = "") -> str:

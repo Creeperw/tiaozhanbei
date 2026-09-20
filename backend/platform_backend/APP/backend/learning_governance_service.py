@@ -25,7 +25,7 @@ from APP.backend.health_utils import describe_model_failure
 logger = logging.getLogger(__name__)
 
 # 决策结果是 JSON（含推理）：预算过小时响应体被截断、解析失败，会静默回退规则模板。
-GOVERNANCE_DECISION_MAX_TOKENS = 3000
+GOVERNANCE_DECISION_MAX_TOKENS = 4000
 from APP.backend.database import (
     KnowledgeCardRecord,
     KnowledgeMasteryState,
