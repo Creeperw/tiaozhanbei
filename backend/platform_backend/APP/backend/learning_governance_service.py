@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import math
 import re
 from collections import Counter
@@ -19,6 +20,12 @@ from APP.backend import (
     learning_statistics_service,
     system_data_service,
 )
+from APP.backend.health_utils import describe_model_failure
+
+logger = logging.getLogger(__name__)
+
+# 决策结果是 JSON（含推理）：预算过小时响应体被截断、解析失败，会静默回退规则模板。
+GOVERNANCE_DECISION_MAX_TOKENS = 3000
 from APP.backend.database import (
     KnowledgeCardRecord,
     KnowledgeMasteryState,
@@ -234,14 +241,18 @@ def _llm_decide_adjustment(snapshot: dict[str, Any]) -> dict[str, Any] | None:
                 {"role": "user", "content": _build_agent_user_prompt(snapshot)},
             ],
             temperature=0.2,
-            max_tokens=800,
+            max_tokens=GOVERNANCE_DECISION_MAX_TOKENS,
             extra_body={"response_format": {"type": "json_object"}},
         )
         return _normalize_agent_decision(
             extract_json_object(raw_text),
             rule_candidate=snapshot.get("rule_candidate"),
         )
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 - 回退规则模板必须留下可检索的证据
+        logger.warning(
+            "governance agent decision failed, falling back to rule template: %s",
+            describe_model_failure(exc),
+        )
         return None
 
 

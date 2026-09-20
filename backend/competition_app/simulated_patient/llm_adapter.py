@@ -77,7 +77,27 @@ class ProjectLLMProvider(LLMProvider):
                 )
                 resp.raise_for_status()
                 body = resp.json()
-                return body["choices"][0]["message"]["content"]
+                choice = (body.get("choices") or [{}])[0]
+                finish_reason = choice.get("finish_reason")
+                content = (choice.get("message") or {}).get("content")
+                # 预算用尽时上游仍返回 200，但正文被截断（批改 JSON 会变成半截）。
+                # 不记这条日志就只剩“解析失败”，无法与模型自身出错区分。
+                if str(finish_reason or "") in {"length", "max_tokens"}:
+                    logger.warning(
+                        "simulated-patient LLM output truncated by token budget "
+                        "(model=%s, max_tokens=%s, finish_reason=%s)",
+                        self._model,
+                        max_tokens,
+                        finish_reason,
+                    )
+                if not content:
+                    logger.warning(
+                        "simulated-patient LLM returned empty content "
+                        "(model=%s, finish_reason=%s)",
+                        self._model,
+                        finish_reason,
+                    )
+                return content
         except Exception:
             # 保留返回 None 的契约，但必须留下日志：静默吞掉异常会让上层把
             # “调用失败”当成“模型没有输出”，进而回退到与提问无关的兜底文案。

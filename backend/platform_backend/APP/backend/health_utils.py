@@ -2,6 +2,19 @@ import json
 import re
 from typing import Any, Dict, List, Tuple
 
+
+def describe_model_failure(exc: BaseException) -> str:
+    """把上游模型调用失败压成一行可诊断文本（不含密钥），供日志使用。"""
+    detail = f"{type(exc).__name__}: {exc}"
+    response = getattr(exc, "response", None)
+    if response is not None:
+        try:
+            body = (response.text or "")[:200]
+        except Exception:  # pragma: no cover - 响应体不可读时只保留状态码
+            body = ""
+        detail = f"{detail} | HTTP {getattr(response, 'status_code', '?')} | {body}"
+    return detail
+
 def strip_end_tokens(text: str) -> str:
     return (text or "").replace("<|im_end|>", "").strip()
 

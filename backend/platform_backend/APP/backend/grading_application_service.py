@@ -256,6 +256,9 @@ def _is_usable_question_explanation(value: Any) -> bool:
         "请到错题变式中补充",
         "回答正确。",
         "回答错误。",
+        # 旧的解析生成失败时会写入这段模板文字，它不含任何题目信息，
+        # 一旦被当作有效缓存，就会被复制到更多题目上，必须永久阻断。
+        "不能只凭单个关键词作答",
     )
     return not any(marker in text for marker in legacy_grading_markers)
 

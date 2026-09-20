@@ -7,11 +7,22 @@ Agent 调用层 - 定义所有 Agent 的接口，提供测试环境实现
 """
 
 import json
+import logging
 import uuid
 from typing import Dict, List, Optional
 from abc import ABC, abstractmethod
 
 from .prompts import PROMPTS
+
+logger = logging.getLogger(__name__)
+
+# 远程模型是推理模型，推理内容与正文共享 max_tokens 预算。预算过小时上游仍返回
+# HTTP 200，但 stop_reason=max_tokens：正文被截断（批改 JSON 解析失败、患者回复为空），
+# 调用方只能看到空结果。以下预算按“推理 + 完整正文/JSON”实测取值。
+GRADING_MAX_TOKENS = 4000
+PATIENT_REPLY_MAX_TOKENS = 1200
+HELP_MAX_TOKENS = 1500
+SAMPLE_CHARS_FOR_LOG = 200
 
 
 # ==================== Agent 接口定义 ====================
@@ -251,19 +262,39 @@ class TestExpertAgent(ExpertAgent):
         response = self.llm_provider.chat(
             [{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=2500
+            max_tokens=GRADING_MAX_TOKENS
         )
         
+        unavailable = not response
+        expert_output: Dict = {}
         try:
             expert_output = json.loads(response) if response else {}
-        except:
+        except (TypeError, ValueError) as exc:
+            # 响应被截断或不是 JSON 时必须留痕，否则后续会当成一次 0 分批改。
+            logger.warning(
+                "simulated patient grading returned unparsable JSON: %s: %s | 响应前%s字: %r",
+                type(exc).__name__, exc, SAMPLE_CHARS_FOR_LOG,
+                str(response or "")[:SAMPLE_CHARS_FOR_LOG],
+            )
             expert_output = {}
-        
-        # 提取评分信息
-        payload = expert_output.get('payload', {})
-        content = payload.get('content', {})
+            unavailable = True
+
+        payload = expert_output.get('payload', {}) if isinstance(expert_output, dict) else {}
+        content = payload.get('content', {}) if isinstance(payload, dict) else {}
+        if not isinstance(content, dict) or not content:
+            # 模型没有给出可用的评分内容。不能把这种情况当成 0 分：
+            # 那会把“批改失败”写成“学员答错”，并永久写入错题与统计。
+            if not unavailable:
+                logger.warning(
+                    "simulated patient grading payload is empty: top_level_keys=%s",
+                    sorted(expert_output.keys()) if isinstance(expert_output, dict)
+                    else type(expert_output).__name__,
+                )
+            unavailable = True
+            content = {}
         
         return {
+            "grading_available": not unavailable,
             "score": content.get('score', 0),
             "score_breakdown": content.get('score_breakdown', {}),
             "correct_answer": content.get('correct_answer', {}),
@@ -441,7 +472,7 @@ class TestExpertAgent(ExpertAgent):
             {"role": "user", "content": user_prompt}
         ]
         
-        response = self.llm_provider.chat(full_messages, temperature=0.7, max_tokens=200)
+        response = self.llm_provider.chat(full_messages, temperature=0.7, max_tokens=PATIENT_REPLY_MAX_TOKENS)
         
         if response:
             return response
@@ -464,7 +495,7 @@ class TestExpertAgent(ExpertAgent):
             response = self.llm_provider.chat(
                 [{"role": "user", "content": prompt}],
                 temperature=0.5,
-                max_tokens=300
+                max_tokens=HELP_MAX_TOKENS
             )
             return {"question": response or "无法生成问题"}
         else:
@@ -476,7 +507,7 @@ class TestExpertAgent(ExpertAgent):
             response = self.llm_provider.chat(
                 [{"role": "user", "content": prompt}],
                 temperature=0.5,
-                max_tokens=500
+                max_tokens=HELP_MAX_TOKENS
             )
             return {"interpretation": response or "无法生成解读"}
 

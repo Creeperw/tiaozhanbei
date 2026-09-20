@@ -1,6 +1,7 @@
 import functools
 import inspect
 import json
+import logging
 import re
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
@@ -8,6 +9,22 @@ import httpx
 
 from APP.backend.config import LLM_TIMEOUT_SECONDS
 from competition_app.llm.upload_provider import new_upload_session, upload_provider_headers
+
+logger = logging.getLogger(__name__)
+
+
+def _log_token_budget_truncation(stop_reason: Any, max_tokens: int) -> None:
+    """上游因预算用尽而截断时留痕。
+
+    截断的响应体仍是 HTTP 200，但 JSON 会被截成半截，调用方只能拿到空结果，
+    最终静默降级（模板解析、规则批改）。这里必须留下可检索的证据。
+    """
+    if str(stop_reason or "") in {"max_tokens", "length"}:
+        logger.warning(
+            "model output truncated by token budget: stop_reason=%s max_tokens=%s",
+            stop_reason,
+            max_tokens,
+        )
 
 
 # 上游返回这些状态码时按“模型服务不可用”处理：限流、网关过载、上游故障。
@@ -295,6 +312,9 @@ class LLMClient:
             )
             res.raise_for_status()
             data = res.json()
+        _log_token_budget_truncation(
+            (data.get("choices") or [{}])[0].get("finish_reason"), int(max_tokens)
+        )
         return data["choices"][0]["message"]
 
     def _local_stream(self, messages: List[Dict[str, Any]], temperature: float, max_tokens: int, extra_body: Optional[Dict[str, Any]]) -> Iterator[str]:
@@ -369,6 +389,7 @@ class LLMClient:
             res = client.post(f"{self.base_url}/v1/messages", json=payload, headers=self._api_headers())
             res.raise_for_status()
             data = res.json()
+        _log_token_budget_truncation(data.get("stop_reason"), int(payload["max_tokens"]))
         return _anthropic_response_to_message(data)
 
     def _api_stream(self, messages: List[Dict[str, Any]], temperature: float, max_tokens: int, extra_body: Optional[Dict[str, Any]]) -> Iterator[str]:

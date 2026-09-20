@@ -2,13 +2,24 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from typing import Any
 
 from APP.backend.agent_contracts import DiagnosisReport, EvidencePack, ExpertArtifact, LearnerContextBrief
 from APP.backend.cross_validation_service import validate_grading_artifact as cross_validate_grading_output
 from APP.backend.cross_validation_service import validate_resource_artifact as cross_validate_output
 from APP.backend.health_llm import build_llm_client
-from APP.backend.health_utils import extract_json_object
+from APP.backend.health_utils import describe_model_failure, extract_json_object
+
+logger = logging.getLogger(__name__)
+
+# 远程模型是推理模型，推理内容与正文共享 max_tokens 预算。预算过小会出现
+# stop_reason=max_tokens：响应体被截断，JSON 解析失败，批改与解析会静默降级。
+# 以下预算按“推理 + 完整 JSON 正文”实测取值，不要下调到 1000 附近。
+GRADING_MAX_TOKENS = 4000
+GRADING_AUDIT_MAX_TOKENS = 3000
+EXPLANATION_MAX_TOKENS = 4000
+VARIATION_MAX_TOKENS = 4000
 
 
 def _text(value: Any, default: str = "") -> str:
@@ -288,7 +299,7 @@ def _audit_subjective_grading(
             {"role": "user", "content": json.dumps(material, ensure_ascii=False)},
         ],
         temperature=0.0,
-        max_tokens=800,
+        max_tokens=GRADING_AUDIT_MAX_TOKENS,
         extra_body={"response_format": {"type": "json_object"}},
     )
     raw = extract_json_object(raw_text)
@@ -318,7 +329,7 @@ def _model_grade_subjective(
             diagnosis_report=diagnosis_report,
         ),
         temperature=0.1,
-        max_tokens=1600,
+        max_tokens=GRADING_MAX_TOKENS,
         extra_body={"response_format": {"type": "json_object"}},
     )
     grading = _normalize_expert_grading(extract_json_object(raw_text))
@@ -326,27 +337,6 @@ def _model_grade_subjective(
         submission=submission, grading=grading, evidence_pack=evidence_pack
     )
     return grading, audit
-
-
-def _fallback_question_explanation(submission: dict[str, Any]) -> str:
-    names = [
-        _text(item)
-        for item in (
-            submission.get("knowledge_point_names")
-            or submission.get("knowledge_points")
-            or []
-        )
-        if _text(item)
-    ]
-    topic = "、".join(names[:3]) or "题干所涉及的知识点"
-    answer = _text(submission.get("standard_answer"), "题库参考答案")
-    rubric = _text(submission.get("rubric"))
-    rubric_hint = f"作答时还应对照评分要点：{rubric}。" if rubric else ""
-    return (
-        f"本题围绕{topic}展开。参考答案为“{answer}”。"
-        "判断时应先识别题干中的限定条件，再把这些条件与核心概念、适用范围和易混点逐项对应，"
-        f"不能只凭单个关键词作答。{rubric_hint}"
-    )
 
 
 def _audit_question_explanation(
@@ -378,7 +368,7 @@ def _audit_question_explanation(
             {"role": "user", "content": json.dumps(material, ensure_ascii=False)},
         ],
         temperature=0.0,
-        max_tokens=500,
+        max_tokens=GRADING_AUDIT_MAX_TOKENS,
         extra_body={"response_format": {"type": "json_object"}},
     )
     raw = extract_json_object(raw_text)
@@ -423,7 +413,7 @@ def generate_question_explanation(*, submission: dict[str, Any]) -> str:
                 {"role": "user", "content": json.dumps(material, ensure_ascii=False)},
             ],
             temperature=0.1,
-            max_tokens=1000,
+            max_tokens=EXPLANATION_MAX_TOKENS,
             extra_body={"response_format": {"type": "json_object"}},
         )
         explanation = _text(extract_json_object(raw_text).get("explanation"))
@@ -436,10 +426,14 @@ def generate_question_explanation(*, submission: dict[str, Any]) -> str:
         if audit["decision"] != "pass":
             raise ValueError(f"question explanation audit={audit['decision']}")
         return explanation
-    except Exception:
-        # A model outage must not hide the answer explanation after grading. The
-        # deterministic fallback only uses trusted question authority fields.
-        return _fallback_question_explanation(submission)
+    except Exception as exc:  # noqa: BLE001 - 失败必须可见，且不得把模板文字当解析落库
+        # 生成失败时不返回替代文本：调用方据此不写入题目解析字段，
+        # 避免模板文字被当作“首次作答生成”的解析固化进题库并扩散给其他学习者。
+        logger.warning(
+            "question explanation generation failed: %s",
+            describe_model_failure(exc),
+        )
+        return ""
 
 
 def generate_handout(
@@ -853,7 +847,7 @@ def generate_question_variation(
             kp_names=kp_names,
         ),
         temperature=0.4,
-        max_tokens=1600,
+        max_tokens=VARIATION_MAX_TOKENS,
         extra_body={"response_format": {"type": "json_object"}},
     )
     generated = extract_json_object(raw_text)

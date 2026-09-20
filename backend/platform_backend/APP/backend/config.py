@@ -86,8 +86,10 @@ GOVERNANCE_AGENT_DECISION_ENABLED = os.getenv(
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 # 远程 LLM Anthropic 兼容服务地址。
 LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.deepseek.com/anthropic")
-# 远程 LLM 模型名。
-LLM_API_MODEL = os.getenv("LLM_API_MODEL", "qwen3.7-max-2026-06-08")
+# 远程 LLM 模型名。默认值必须与 LLM_API_BASE_URL 所属端点接受的模型名一致：
+# 名称不匹配时端点直接返回 HTTP 400，所有解析/批改/讲义调用会静默降级为模板。
+# deepseek /anthropic 端点当前接受：deepseek-flash、deepseek-v4-pro。
+LLM_API_MODEL = os.getenv("LLM_API_MODEL", "deepseek-flash")
 
 # --- 本地 vLLM OpenAI 兼容接口配置（LLM_MODE=local 时启用） ---
 # Planner/Executor 模型的 OpenAI 兼容服务地址。

@@ -513,6 +513,22 @@ class SimulatedPatientEngine:
             case, diagnosis, learner_context, diagnosis_result, evidence_pack
         )
 
+        if grading_report.get("grading_available") is False:
+            # 批改不可用时不得继续冒充成绩：下面的时间效率修正会把总分算成只剩时间分
+            # （个位数），并被当成真实成绩写进历史、错题与统计。这里如实上报失败，
+            # 且不写回任何学习数据，学员可以重试。
+            logger.warning(
+                "simulated patient grading unavailable: session=%s case=%s",
+                request.session_id, case.get("id", ""),
+            )
+            return SimulatedPatientResponse(
+                session_id=request.session_id,
+                action="submit",
+                success=False,
+                error="批改服务暂时不可用，本次提交未计分，请稍后重试。",
+                turn_count=session["turn_count"],
+            )
+
         # 根据实际对话轮数修正时间效率分数（LLM 无法准确判断轮数）
         turn_count = session.get("turn_count", 0)
         if turn_count <= 15:
