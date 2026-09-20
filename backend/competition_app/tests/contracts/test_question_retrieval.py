@@ -1,5 +1,6 @@
 from competition_app.contracts.knowledge import (
     LearnerQuestionView,
+    QuestionBridge,
     QuestionDetail,
     QuestionRetrievalMetadata,
     to_learner_view,

@@ -328,6 +328,107 @@ class LearningWorkshopServiceTests(unittest.TestCase):
         self.assertEqual(scores, [5, 3, 2])
         self.assertEqual(sum(scores), 10)
 
+    def test_blueprint_unit_scope_bridges_stay_out_of_question_knowledge_points(self):
+        """组卷补题的宽召回范围不得写进卷面快照与知识点关联。
+
+        蓝图单元范围桥接是「这道题从哪个范围里找出来」，不是「这道题考了哪些
+        知识点」。它一旦落库，复习排期会为几百个学习者没学过的知识点建卡。
+        """
+
+        with self.Session() as db:
+            db.add(database.KnowledgePoint(
+                kp_id="KP_SCOPE",
+                name="单元范围内的知识点",
+                source="formal-content:test",
+            ))
+            db.commit()
+            published = publish_agent_paper(
+                db,
+                user_id=1,
+                execution_id="EXE_SCOPE_BRIDGE",
+                paper={
+                    "title": "含补题范围的试卷",
+                    "items": [{
+                        "question": {
+                            "question_id": "GENERATED_Q",
+                            "question_type": "short_answer",
+                            "stem": "按单元范围合成的题",
+                            "reference_answer": "答案",
+                            "source_metadata": {"kp_names": {}},
+                            "bridges": [
+                                {
+                                    "kp_id": "KP_SCOPE",
+                                    "match_method": "resolved_blueprint_unit",
+                                    "relation": "blueprint_unit_scope",
+                                },
+                                {
+                                    "kp_id": "KP_SCOPE",
+                                    "match_method": "strict",
+                                    "relation": "secondary",
+                                },
+                            ],
+                        },
+                    }],
+                },
+                blueprint={},
+                evidence_pack={},
+            )
+
+            item = db.query(database.PaperItemRecord).filter_by(
+                paper_id=published["paper_id"]
+            ).one()
+            # 同名知识点经准入后只剩一条；范围桥接被丢弃，真实桥接仍是主知识点。
+            self.assertEqual(json.loads(item.kp_snapshot_json), ["KP_SCOPE"])
+            links = db.query(database.QuestionKPLinkRecord).filter_by(
+                question_version_id="GENERATED_Q:agent"
+            ).all()
+            self.assertEqual([(link.kp_id, link.is_primary) for link in links], [("KP_SCOPE", True)])
+
+    def test_paper_with_only_scope_bridges_has_no_question_knowledge_points(self):
+        with self.Session() as db:
+            published = publish_agent_paper(
+                db,
+                user_id=1,
+                execution_id="EXE_SCOPE_ONLY",
+                paper={
+                    "title": "只有补题范围的试卷",
+                    "items": [{
+                        "question": {
+                            "question_id": "GENERATED_ONLY_SCOPE",
+                            "question_type": "short_answer",
+                            "stem": "只有范围桥接的题",
+                            "reference_answer": "答案",
+                            "source_metadata": {"kp_names": {}},
+                            "bridges": [
+                                {
+                                    "kp_id": "KP_A",
+                                    "match_method": "resolved_blueprint_unit",
+                                    "relation": "blueprint_unit_scope",
+                                },
+                                {
+                                    "kp_id": "KP_B",
+                                    "match_method": "resolved_blueprint_unit",
+                                    "relation": "blueprint_unit_scope",
+                                },
+                            ],
+                        },
+                    }],
+                },
+                blueprint={},
+                evidence_pack={},
+            )
+
+            item = db.query(database.PaperItemRecord).filter_by(
+                paper_id=published["paper_id"]
+            ).one()
+            self.assertEqual(item.kp_snapshot_json, "[]")
+            self.assertEqual(
+                db.query(database.QuestionKPLinkRecord).filter_by(
+                    question_version_id="GENERATED_ONLY_SCOPE:agent"
+                ).count(),
+                0,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

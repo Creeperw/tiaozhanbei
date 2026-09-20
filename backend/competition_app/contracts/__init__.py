@@ -22,6 +22,8 @@ from competition_app.contracts.knowledge import (
     QuestionDetail,
     QuestionRetrievalMetadata,
     QuestionSearchResult,
+    SCOPE_BRIDGE_MATCH_METHOD,
+    question_kp_ids,
     to_learner_view,
 )
 
@@ -61,10 +63,12 @@ __all__ = [
     "QuestionSearchResult",
     "RepairAction",
     "RepairIssue",
+    "SCOPE_BRIDGE_MATCH_METHOD",
     "UiAction",
     "UncertaintyItem",
     "WritebackIntent",
     "WorkshopModule",
     "WorkshopOverview",
+    "question_kp_ids",
     "to_learner_view",
 ]

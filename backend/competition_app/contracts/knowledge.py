@@ -165,6 +165,23 @@ class QuestionSearchDecision(ContractModel):
     channel_summary: list[str] = Field(default_factory=list)
 
 
+# 组卷在填空缺口上合成题目时，会把该蓝图单元检索到的宽召回知识点整体挂成
+# ``match_method="resolved_blueprint_unit"`` 的桥接。那是「这道题从哪个范围里
+# 找出来」的检索范围，不是「这道题考了哪些知识点」。两者混同，一份卷子里就会
+# 出现几百个学习者没学过的知识点，并顺着卷面快照写进掌握度与复习排期。
+SCOPE_BRIDGE_MATCH_METHOD = "resolved_blueprint_unit"
+
+
+def question_kp_ids(question: QuestionDetail) -> list[str]:
+    """题目自身考的知识点；不含组卷补题挂上的蓝图单元范围桥接。"""
+
+    return sorted({
+        bridge.kp_id
+        for bridge in question.bridges
+        if bridge.match_method != SCOPE_BRIDGE_MATCH_METHOD
+    })
+
+
 def to_learner_view(question: QuestionDetail) -> LearnerQuestionView:
     return LearnerQuestionView(
         question_id=question.question_id,
@@ -172,5 +189,5 @@ def to_learner_view(question: QuestionDetail) -> LearnerQuestionView:
         stem=question.stem,
         options=question.options,
         tags=question.tags,
-        kp_ids=sorted({bridge.kp_id for bridge in question.bridges}),
+        kp_ids=question_kp_ids(question),
     )

@@ -5,7 +5,12 @@ from typing import Literal
 from pydantic import Field
 
 from competition_app.contracts.base import ContractModel
-from competition_app.contracts.knowledge import EvidenceItem, LearnerQuestionView, QuestionDetail
+from competition_app.contracts.knowledge import (
+    EvidenceItem,
+    LearnerQuestionView,
+    QuestionDetail,
+    question_kp_ids,
+)
 
 AssessmentDimension = Literal[
     "concept_definition",
@@ -198,7 +203,7 @@ class ExamPaperDraft(ContractModel):
                 stem=item.question.stem,
                 options=item.question.options,
                 tags=item.question.tags,
-                kp_ids=sorted({bridge.kp_id for bridge in item.question.bridges}),
+                kp_ids=question_kp_ids(item.question),
             )
             for item in self.items
         ]

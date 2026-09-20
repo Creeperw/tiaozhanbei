@@ -18,6 +18,7 @@ from APP.backend.database import (
 )
 from APP.backend.knowledge_point_identity_service import resolve_agent_knowledge_point
 from APP.backend.time_utils import utc_now
+from competition_app.contracts.knowledge import SCOPE_BRIDGE_MATCH_METHOD
 
 
 logger = logging.getLogger(__name__)
@@ -244,10 +245,16 @@ def publish_agent_paper(
             break
         question = item.get("question") or {}
         bridges = question.get("bridges") or []
+        # 只认题目自身的知识点桥接。组卷在填空缺口上补题时，会把整个蓝图单元的
+        # 宽召回范围挂成 ``resolved_blueprint_unit`` 桥接——那是这道题从哪个范围
+        # 里找出来，不是这道题考了哪些知识点。把它当题目知识点落库，一份卷子就
+        # 会带出几百个学习者没学过的知识点，并顺着卷面快照写进掌握度与复习排期。
         kp_ids = list(dict.fromkeys(
             str(bridge.get("kp_id"))
             for bridge in bridges
-            if isinstance(bridge, dict) and str(bridge.get("kp_id") or "").strip()
+            if isinstance(bridge, dict)
+            and str(bridge.get("kp_id") or "").strip()
+            and str(bridge.get("match_method") or "") != SCOPE_BRIDGE_MATCH_METHOD
         ))
         source_metadata = question.get("source_metadata") or {}
         kp_name_hints = (
