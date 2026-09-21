@@ -16,9 +16,14 @@ from competition_app.contracts.auth import (
     StoredAuthUser,
 )
 from competition_app.repositories.auth import AuthRepository
+from competition_app.repositories.auth import UsernameTakenError
 
 
 class InvalidCredentialsError(ValueError):
+    pass
+
+
+class VerificationEmailError(RuntimeError):
     pass
 
 
@@ -32,23 +37,89 @@ class AuthenticationService:
         *,
         admin_username: str | None = None,
         admin_password: str | None = None,
+        mail_username: str = "",
+        mail_password: str = "",
+        mail_from: str = "noreply@example.com",
+        mail_port: int = 465,
+        mail_server: str = "smtp.qq.com",
+        mail_starttls: bool = False,
+        mail_ssl_tls: bool = True,
     ) -> None:
         self.repository = repository
         self.session_ttl = timedelta(hours=session_ttl_hours)
+        self.mail_settings = {
+            "username": mail_username,
+            "password": mail_password,
+            "from": mail_from,
+            "port": mail_port,
+            "server": mail_server,
+            "starttls": mail_starttls,
+            "ssl_tls": mail_ssl_tls,
+        }
         if admin_username and admin_password:
             self._ensure_admin(admin_username, admin_password)
 
     def register(self, request: RegisterRequest) -> tuple[AuthResponse, str]:
         now = datetime.now(timezone.utc)
+        email = str(request.email).strip().casefold() if request.email else None
+        if email:
+            if not request.verification_code or not self.repository.consume_verification_code(
+                email, request.verification_code, "register", now
+            ):
+                raise InvalidCredentialsError("邮箱验证码无效或已过期")
+            if self.repository.get_user_by_email(email) is not None:
+                raise UsernameTakenError("该邮箱已被注册")
         user = self._build_user(
             request.username,
             request.password,
             request.display_name or request.username,
             role="user",
             now=now,
+            email=email,
         )
         self.repository.create_user(user)
         return self._start_session(user, now)
+
+    def issue_verification_code(self, email: str, purpose: str = "register") -> str:
+        normalized_email = email.strip().casefold()
+        if purpose == "register" and self.repository.get_user_by_email(normalized_email):
+            raise UsernameTakenError("该邮箱已被注册")
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        self.repository.create_verification_code(
+            normalized_email,
+            code,
+            purpose,
+            datetime.now(timezone.utc) + timedelta(minutes=5),
+        )
+        return code
+
+    async def send_verification_code(self, email: str, purpose: str = "register") -> None:
+        if not self.mail_settings["username"] or not self.mail_settings["password"]:
+            raise VerificationEmailError("邮件服务未配置，请联系管理员")
+        from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+
+        code = self.issue_verification_code(email, purpose)
+        message = MessageSchema(
+            subject="【时珍智训】注册验证码" if purpose == "register" else "【时珍智训】验证码",
+            recipients=[email],
+            body=(
+                f"<p>您的验证码是：</p><h1>{code}</h1>"
+                "<p>验证码 5 分钟内有效，请勿泄露给他人。</p>"
+            ),
+            subtype=MessageType.html,
+        )
+        config = ConnectionConfig(
+            MAIL_USERNAME=self.mail_settings["username"],
+            MAIL_PASSWORD=self.mail_settings["password"],
+            MAIL_FROM=self.mail_settings["from"],
+            MAIL_PORT=self.mail_settings["port"],
+            MAIL_SERVER=self.mail_settings["server"],
+            MAIL_STARTTLS=self.mail_settings["starttls"],
+            MAIL_SSL_TLS=self.mail_settings["ssl_tls"],
+            USE_CREDENTIALS=True,
+            VALIDATE_CERTS=True,
+        )
+        await FastMail(config).send_message(message)
 
     def _build_user(
         self,
@@ -58,6 +129,7 @@ class AuthenticationService:
         *,
         role: str,
         now: datetime,
+        email: str | None = None,
     ) -> StoredAuthUser:
         salt = secrets.token_bytes(16)
         return StoredAuthUser(
@@ -65,6 +137,7 @@ class AuthenticationService:
             username=username,
             normalized_username=self.normalize_username(username),
             display_name=display_name,
+            email=email,
             role=role,
             onboarding_required=False,
             password_hash=self._derive_password(
@@ -91,12 +164,16 @@ class AuthenticationService:
                 username,
                 role="admin",
                 now=now,
+                email=None,
             )
         )
 
     def login(self, request: LoginRequest) -> tuple[AuthResponse, str]:
-        user = self.repository.get_user_by_normalized_username(
-            self.normalize_username(request.username)
+        identifier = request.username.strip()
+        user = (
+            self.repository.get_user_by_email(identifier)
+            if "@" in identifier
+            else self.repository.get_user_by_normalized_username(self.normalize_username(identifier))
         )
         if user is None or user.status != "active" or not self._verify_password(
             request.password, user
@@ -177,6 +254,7 @@ class AuthenticationService:
                     "user_id",
                     "username",
                     "display_name",
+                    "email",
                     "role",
                     "status",
                     "onboarding_required",

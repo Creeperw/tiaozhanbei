@@ -371,6 +371,13 @@ class ApplicationContainer:
             session_ttl_hours=settings.auth_session_ttl_hours,
             admin_username=settings.admin_username,
             admin_password=settings.admin_default_password,
+            mail_username=settings.mail_username,
+            mail_password=settings.mail_password,
+            mail_from=settings.mail_from,
+            mail_port=settings.mail_port,
+            mail_server=settings.mail_server,
+            mail_starttls=settings.mail_starttls,
+            mail_ssl_tls=settings.mail_ssl_tls,
         )
         account_profile_service = AccountProfileService(
             account_profile_repository,

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from threading import RLock
 from typing import Protocol
+from uuid import uuid4
 
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +25,16 @@ def _utc_datetime(value):
 
 class AuthRepository(Protocol):
     def create_user(self, user: StoredAuthUser) -> None: ...
+
+    def get_user_by_email(self, email: str) -> StoredAuthUser | None: ...
+
+    def create_verification_code(
+        self, email: str, code: str, purpose: str, expires_at: datetime
+    ) -> None: ...
+
+    def consume_verification_code(
+        self, email: str, code: str, purpose: str, now: datetime
+    ) -> bool: ...
 
     def get_user_by_normalized_username(
         self, normalized_username: str
@@ -51,6 +62,7 @@ class InMemoryAuthRepository:
         self._users: dict[str, StoredAuthUser] = {}
         self._user_ids_by_name: dict[str, str] = {}
         self._sessions: dict[str, AuthSession] = {}
+        self._verification_codes: list[dict[str, object]] = []
         self._lock = RLock()
 
     def create_user(self, user: StoredAuthUser) -> None:
@@ -59,6 +71,47 @@ class InMemoryAuthRepository:
                 raise UsernameTakenError("该用户名已被注册")
             self._users[user.user_id] = user.model_copy(deep=True)
             self._user_ids_by_name[user.normalized_username] = user.user_id
+
+    def get_user_by_email(self, email: str) -> StoredAuthUser | None:
+        normalized = email.strip().casefold()
+        with self._lock:
+            user = next(
+                (item for item in self._users.values() if (item.email or '').casefold() == normalized),
+                None,
+            )
+            return user.model_copy(deep=True) if user else None
+
+    def create_verification_code(
+        self, email: str, code: str, purpose: str, expires_at: datetime
+    ) -> None:
+        with self._lock:
+            self._verification_codes = [
+                item for item in self._verification_codes
+                if not (item['email'] == email and item['purpose'] == purpose and not item['used'])
+            ]
+            self._verification_codes.append({
+                'email': email,
+                'code': code,
+                'purpose': purpose,
+                'expires_at': expires_at,
+                'used': False,
+            })
+
+    def consume_verification_code(
+        self, email: str, code: str, purpose: str, now: datetime
+    ) -> bool:
+        with self._lock:
+            for item in reversed(self._verification_codes):
+                if (
+                    item['email'] == email
+                    and item['code'] == code
+                    and item['purpose'] == purpose
+                    and not item['used']
+                    and item['expires_at'] > now
+                ):
+                    item['used'] = True
+                    return True
+            return False
 
     def get_user_by_normalized_username(
         self, normalized_username: str
@@ -127,10 +180,10 @@ class SqlAuthRepository:
                     text(
                         "INSERT INTO app_users "
                         "(user_id, username, normalized_username, display_name, "
-                        "password_hash, password_salt, password_iterations, role, status, "
+                        "email, password_hash, password_salt, password_iterations, role, status, "
                         "onboarding_required, created_at) "
                         "VALUES (:user_id, :username, :normalized_username, :display_name, "
-                        ":password_hash, :password_salt, :password_iterations, :role, :status, "
+                        ":email, :password_hash, :password_salt, :password_iterations, :role, :status, "
                         ":onboarding_required, :created_at)"
                     ),
                     values,
@@ -143,7 +196,50 @@ class SqlAuthRepository:
                     values,
                 )
         except IntegrityError as exc:
-            raise UsernameTakenError("该用户名已被注册") from exc
+            raise UsernameTakenError("该用户名或邮箱已被注册") from exc
+
+    def get_user_by_email(self, email: str) -> StoredAuthUser | None:
+        return self._get_user("lower(email)=lower(:identity)", email.strip())
+
+    def create_verification_code(
+        self, email: str, code: str, purpose: str, expires_at: datetime
+    ) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE auth_verification_codes SET used_at=:now "
+                    "WHERE email=:email AND purpose=:purpose AND used_at IS NULL"
+                ),
+                {"email": email, "purpose": purpose, "now": expires_at},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO auth_verification_codes "
+                    "(id, email, code, purpose, expires_at) "
+                    "VALUES (:id, :email, :code, :purpose, :expires_at)"
+                ),
+                {
+                    "id": f"VERIFY_{uuid4().hex}",
+                    "email": email,
+                    "code": code,
+                    "purpose": purpose,
+                    "expires_at": expires_at,
+                },
+            )
+
+    def consume_verification_code(
+        self, email: str, code: str, purpose: str, now: datetime
+    ) -> bool:
+        with self.engine.begin() as connection:
+            result = connection.execute(
+                text(
+                    "UPDATE auth_verification_codes SET used_at=:now "
+                    "WHERE email=:email AND code=:code AND purpose=:purpose "
+                    "AND used_at IS NULL AND expires_at > :now"
+                ),
+                {"email": email, "code": code, "purpose": purpose, "now": now},
+            )
+            return result.rowcount == 1
 
     def get_user_by_normalized_username(
         self, normalized_username: str
@@ -188,7 +284,7 @@ class SqlAuthRepository:
         with self.engine.connect() as connection:
             row = connection.execute(
                 text(
-                    "SELECT user_id, username, normalized_username, display_name, "
+                    "SELECT user_id, username, normalized_username, display_name, email, "
                     "password_hash, password_salt, password_iterations, role, status, "
                     "onboarding_required, created_at "
                     f"FROM app_users WHERE {where}"

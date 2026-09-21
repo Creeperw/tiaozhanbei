@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   BrainCircuit,
+  Mail,
   Loader2,
   Lock,
   Target,
@@ -16,8 +17,12 @@ const AuthPage = ({ onLogin, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authServiceStatus, setAuthServiceStatus] = useState('checking');
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeCountdown, setCodeCountdown] = useState(0);
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
+    verificationCode: '',
     displayName: '',
     password: '',
   });
@@ -48,9 +53,42 @@ const AuthPage = ({ onLogin, onBack }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!codeCountdown) return undefined;
+    const timer = window.setInterval(() => {
+      setCodeCountdown((current) => Math.max(0, current - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [codeCountdown]);
+
   const switchMode = (nextMode) => {
     setMode(nextMode);
     setError('');
+  };
+
+  const sendVerificationCode = async () => {
+    const email = formData.email.trim();
+    if (!email) {
+      setError('请先填写邮箱地址');
+      return;
+    }
+    setCodeSending(true);
+    setError('');
+    try {
+      const response = await fetch(`${AUTH_API_BASE}/send-code`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await readJsonResponse(response, {});
+      if (!response.ok) throw new Error(data.detail || '验证码发送失败');
+      setCodeCountdown(Number(data.expires_in) > 0 ? 60 : 60);
+    } catch (reason) {
+      setError(reason instanceof TypeError ? authServiceUnavailableMessage : reason.message || '验证码发送失败');
+    } finally {
+      setCodeSending(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -63,6 +101,10 @@ const AuthPage = ({ onLogin, onBack }) => {
       const payload = {
         username: formData.username,
         password: formData.password,
+        ...(mode === 'register' ? {
+          email: formData.email.trim(),
+          verification_code: formData.verificationCode.trim(),
+        } : {}),
         ...(mode === 'register' && formData.displayName.trim()
           ? { display_name: formData.displayName.trim() }
           : {}),
@@ -97,7 +139,7 @@ const AuthPage = ({ onLogin, onBack }) => {
   const description =
     mode === 'login'
       ? '登录后进入时珍智训首页，继续使用培训助手、知识库溯源、练习批改与学情规划。'
-      : '创建账号后将直接登录并进入时珍智训首页。';
+      : '使用邮箱验证码完成注册，注册后将直接进入时珍智训首页。';
 
   return (
     <div className="auth-page auth-page--single-screen relative min-h-screen overflow-hidden text-slate-900" style={{backgroundImage: 'url(/design-images/home/login-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}}>
@@ -152,6 +194,48 @@ const AuthPage = ({ onLogin, onBack }) => {
               )}
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                {mode === 'register' && <div>
+                  <label htmlFor="auth-email" className="mb-1 block text-sm font-medium text-slate-700">邮箱</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 text-slate-400" size={18} />
+                    <input
+                      id="auth-email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full rounded-2xl border border-emerald-100 bg-emerald-50/45 py-3 pl-10 pr-4 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      placeholder="用于接收注册验证码"
+                      required
+                    />
+                  </div>
+                </div>}
+                {mode === 'register' && <div>
+                  <label htmlFor="auth-verification-code" className="mb-1 block text-sm font-medium text-slate-700">邮箱验证码</label>
+                  <div className="flex gap-2">
+                    <input
+                      id="auth-verification-code"
+                      name="verificationCode"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={formData.verificationCode}
+                      onChange={handleChange}
+                      className="min-w-0 flex-1 rounded-2xl border border-emerald-100 bg-emerald-50/45 px-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      placeholder="输入 6 位验证码"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={sendVerificationCode}
+                      disabled={codeSending || codeCountdown > 0}
+                      className="shrink-0 rounded-2xl border border-emerald-200 px-3 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {codeSending ? '发送中…' : codeCountdown > 0 ? `${codeCountdown}s 后重发` : '发送验证码'}
+                    </button>
+                  </div>
+                </div>}
                 <div>
                   <label htmlFor="auth-username" className="mb-1 block text-sm font-medium text-slate-700">{mode === 'login' ? '账号' : '用户名'}</label>
                   <div className="relative">

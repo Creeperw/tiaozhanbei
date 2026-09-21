@@ -14,7 +14,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, TypeAdapter
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.routing import Match
@@ -89,7 +89,7 @@ from competition_app.contracts.preference_training import (
     TrainingJobCreate,
 )
 from competition_app.repositories.auth import UsernameTakenError
-from competition_app.services.auth import InvalidCredentialsError
+from competition_app.services.auth import InvalidCredentialsError, VerificationEmailError
 from competition_app.services.feedback_governance import (
     list_feedback_rule_classifications,
 )
@@ -1692,10 +1692,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
     @app.post("/api/v1/auth/register", status_code=201)
     async def register(request: RegisterRequest):
+        if container.mode == "live" and request.email is None:
+            raise HTTPException(status_code=422, detail="请使用邮箱完成注册")
         try:
             result, raw_token = container.authentication_service.register(request)
         except UsernameTakenError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except InvalidCredentialsError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         response = JSONResponse(status_code=201, content=result.model_dump(mode="json"))
         set_session_cookie(response, raw_token, result.expires_at)
         if backend_handoff is not None:
@@ -1704,6 +1708,24 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             except Exception:
                 pass
         return response
+
+    @app.post("/api/v1/auth/send-code")
+    async def send_registration_code(payload: dict[str, str]):
+        email = str(payload.get("email", "")).strip()
+        try:
+            normalized_email = str(TypeAdapter(EmailStr).validate_python(email)).casefold()
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail="邮箱地址格式不正确") from exc
+        try:
+            await container.authentication_service.send_verification_code(normalized_email)
+        except UsernameTakenError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except VerificationEmailError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.exception("registration verification email delivery failed")
+            raise HTTPException(status_code=502, detail="验证码邮件发送失败，请稍后重试") from exc
+        return {"message": "验证码已发送", "expires_in": 300}
 
     @app.post("/api/v1/auth/login")
     async def login(request: LoginRequest):

@@ -363,6 +363,7 @@ class Settings:
     vision_api_model: str = "Qwen/Qwen3-VL-8B-Instruct"
     vision_api_timeout_seconds: int = 30
     mail_username: str = ""
+    mail_password: str = field(default="", repr=False)
     mail_from: str = "noreply@example.com"
     mail_port: int = 465
     mail_server: str = "smtp.qq.com"
@@ -692,8 +693,9 @@ class Settings:
             vision_api_timeout_seconds=_parse_int(
                 values, "VISION_API_TIMEOUT_SECONDS", 30, minimum=1
             ),
-            mail_username=values.get("MAIL_USERNAME", ""),
-            mail_from=values.get("MAIL_FROM", "noreply@example.com"),
+            mail_username=values.get("MAIL_USERNAME", "3319883565@qq.com"),
+            mail_password=values.get("MAIL_PASSWORD", ""),
+            mail_from=values.get("MAIL_FROM", "3319883565@qq.com"),
             mail_port=_parse_int(values, "MAIL_PORT", 465, minimum=1),
             mail_server=values.get("MAIL_SERVER", "smtp.qq.com"),
             mail_starttls=_parse_bool(values, "MAIL_STARTTLS", False),
@@ -782,7 +784,6 @@ class Settings:
                 or None
             ),
             vision_api_key=values.get("VISION_API_KEY") or None,
-            mail_password=values.get("MAIL_PASSWORD") or None,
             exa_api_key=values.get("EXA_API_KEY") or None,
             mineru_token=(
                 values.get("MINERU_TOKEN")

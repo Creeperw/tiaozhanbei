@@ -46,7 +46,7 @@ describe('AuthPage main-backend cookie contract', () => {
     expect(localStorage.getItem('token')).toBeNull();
   });
 
-  it('registers with the main backend contract without email verification fields', async () => {
+  it('registers with the main backend contract using an email verification code', async () => {
     const user = { user_id: 'USER_2', username: 'newlearner', display_name: '新同学' };
     const request = vi.fn((url) => (
       url === '/health'
@@ -58,8 +58,10 @@ describe('AuthPage main-backend cookie contract', () => {
     render(<AuthPage onLogin={onLogin} />);
 
     fireEvent.click(screen.getByRole('button', { name: '创建学习账号' }));
-    expect(screen.getByText('创建账号后将直接登录并进入时珍智训首页。')).toBeInTheDocument();
+    expect(screen.getByText('使用邮箱验证码完成注册，注册后将直接进入时珍智训首页。')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('用户名'), { target: { value: 'newlearner' } });
+    fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: 'new@example.com' } });
+    fireEvent.change(screen.getByLabelText('邮箱验证码'), { target: { value: '123456' } });
     fireEvent.change(screen.getByLabelText('显示名（可选）'), { target: { value: '新同学' } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'strong-password' } });
     fireEvent.click(screen.getByRole('button', { name: '提交' }));
@@ -68,6 +70,8 @@ describe('AuthPage main-backend cookie contract', () => {
     const [, options] = request.mock.calls.find(([url]) => url === '/api/v1/auth/register');
     expect(JSON.parse(options.body)).toEqual({
       username: 'newlearner',
+      email: 'new@example.com',
+      verification_code: '123456',
       display_name: '新同学',
       password: 'strong-password',
     });

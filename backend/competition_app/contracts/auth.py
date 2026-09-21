@@ -11,6 +11,8 @@ class RegisterRequest(ContractModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=8, max_length=128)
     display_name: str | None = Field(default=None, max_length=64)
+    email: EmailStr | None = None
+    verification_code: str | None = Field(default=None, min_length=6, max_length=6)
 
     @field_validator("username")
     @classmethod
@@ -40,6 +42,7 @@ class AuthUser(ContractModel):
     user_id: str
     username: str
     display_name: str
+    email: EmailStr | None = None
     role: str = "user"
     status: str = "active"
     onboarding_required: bool = False
