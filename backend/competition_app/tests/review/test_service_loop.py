@@ -109,6 +109,34 @@ def test_completed_question_attempt_admits_knowledge_point_to_queue() -> None:
     assert queue.entries[0].memory_unit.source_attempt_id == "QUESTION_ATTEMPT_2"
 
 
+def test_review_queue_pagination_does_not_truncate_counts_or_background_work() -> None:
+    service = ReviewService(InMemoryReviewRepository())
+    service.ingest_question_attempts(
+        learner_id="L1",
+        attempts=[{
+            "attempt_id": f"ATTEMPT_{index}",
+            "kp_ids": [f"KP_{index:03d}"],
+            "knowledge_point_name": f"知识点 {index}",
+            "is_correct": False,
+            "score": 0,
+            "answered_at": (NOW - timedelta(days=1)).isoformat(),
+        } for index in range(205)],
+    )
+
+    first = service.get_queue("L1", now=NOW, limit=200)
+    second = service.get_queue("L1", now=NOW, limit=200, offset=200)
+    assert first.total_count == second.total_count == 205
+    assert first.due_count == second.due_count == 205
+    assert first.awaiting_resource_count == 205
+    assert len(first.entries) == 200 and first.has_more
+    assert len(second.entries) == 5 and not second.has_more
+    assert len(service.dispatch_candidates("L1")) == 205
+
+    postponed = service.postpone_due_memory_units("L1", now=NOW)
+    assert len(postponed) == 205
+    assert service.get_queue("L1", now=NOW).due_count == 0
+
+
 def test_question_completion_without_prior_card_is_idempotently_admitted() -> None:
     service = ReviewService(InMemoryReviewRepository())
     attempt = {

@@ -1908,13 +1908,34 @@ def serialize_notification(row: NotificationRecord) -> dict[str, Any]:
     }
 
 
-def list_notifications(db: Session, user_id: int, *, status: str = "all", limit: int = 50) -> dict[str, Any]:
+def list_notifications(
+    db: Session,
+    user_id: int,
+    *,
+    status: str = "all",
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
     query = db.query(NotificationRecord).filter(NotificationRecord.user_id == user_id)
     if status != "all":
         query = query.filter(NotificationRecord.status == status)
-    rows = query.order_by(NotificationRecord.created_at.desc(), NotificationRecord.id.desc()).limit(limit).all()
+    total_count = query.count()
+    rows = (
+        query.order_by(NotificationRecord.created_at.desc(), NotificationRecord.id.desc())
+        .offset(max(0, offset))
+        .limit(limit)
+        .all()
+    )
     unread = db.query(NotificationRecord).filter_by(user_id=user_id, status="unread").count()
-    return {"schema_version": SCHEMA_VERSION, "unread_count": unread, "items": [serialize_notification(row) for row in rows]}
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "unread_count": unread,
+        "items": [serialize_notification(row) for row in rows],
+        "total_count": total_count,
+        "offset": max(0, offset),
+        "limit": max(1, limit),
+        "has_more": max(0, offset) + len(rows) < total_count,
+    }
 
 
 def update_notification_status(db: Session, user_id: int, notification_id: str, status: str) -> dict[str, Any]:

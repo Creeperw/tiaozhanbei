@@ -72,6 +72,11 @@ function runtimeEventToTracePayload(event) {
   if (name === 'run_interrupted' || name === 'graph_interrupted') {
     return { type: 'workflow_interrupted', text: '等待用户补充信息' };
   }
+  if (name === 'workflow_heartbeat') {
+    // Heartbeats keep the HTTP stream alive during long model/tool calls, but
+    // are transport signals rather than learner-facing trace content.
+    return null;
+  }
   if (name === 'step_failed') {
     return {
       type: 'step_error',

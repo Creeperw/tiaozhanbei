@@ -373,7 +373,10 @@ class ReviewService:
         *,
         now: datetime | None = None,
         limit: int = 50,
+        offset: int = 0,
     ) -> ReviewQueue:
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
         calculated_at = self._as_utc(now or datetime.now(timezone.utc))
         deliveries = self.repository.list_active_deliveries(learner_id)
         delivery_mapping = (
@@ -444,17 +447,25 @@ class ReviewService:
                 item.memory_unit.kp_id,
             )
         )
-        entries = entries[: max(1, min(limit, 200))]
+        total_count = len(entries)
+        due_count = sum(item.is_due for item in entries)
+        active_task_count = sum(item.task is not None for item in entries)
+        awaiting_resource_count = sum(
+            item.is_due and (item.task is None or item.resource is None)
+            for item in entries
+        )
+        page_entries = entries[offset : offset + limit]
         return ReviewQueue(
             learner_id=learner_id,
             calculated_at=calculated_at,
-            entries=entries,
-            due_count=sum(item.is_due for item in entries),
-            active_task_count=sum(item.task is not None for item in entries),
-            awaiting_resource_count=sum(
-                item.is_due and (item.task is None or item.resource is None)
-                for item in entries
-            ),
+            entries=page_entries,
+            total_count=total_count,
+            offset=offset,
+            limit=limit,
+            has_more=offset + len(page_entries) < total_count,
+            due_count=due_count,
+            active_task_count=active_task_count,
+            awaiting_resource_count=awaiting_resource_count,
         )
 
     def dispatch_candidates(self, learner_id: str) -> list[ReviewQueueEntry]:
@@ -466,10 +477,17 @@ class ReviewService:
         their own budget and skip policy.
         """
 
-        queue = self.get_queue(learner_id, limit=200)
+        candidates: list[ReviewQueueEntry] = []
+        offset = 0
+        while True:
+            queue = self.get_queue(learner_id, limit=200, offset=offset)
+            candidates.extend(queue.entries)
+            if not queue.has_more:
+                break
+            offset += len(queue.entries)
         return [
             item
-            for item in queue.entries
+            for item in candidates
             if item.is_due and (item.task is None or item.resource is None)
         ]
 
@@ -499,9 +517,16 @@ class ReviewService:
         that were postponed.
         """
 
-        queue = self.get_queue(learner_id, now=now, limit=200)
+        due_entries: list[ReviewQueueEntry] = []
+        offset = 0
+        while True:
+            queue = self.get_queue(learner_id, now=now, limit=200, offset=offset)
+            due_entries.extend(queue.entries)
+            if not queue.has_more:
+                break
+            offset += len(queue.entries)
         postponed: list[str] = []
-        for entry in queue.entries:
+        for entry in due_entries:
             if not entry.is_due or entry.task is not None:
                 continue
             self.repository.postpone_memory_unit(

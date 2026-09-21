@@ -200,6 +200,10 @@ class ReviewQueue(ContractModel):
     )
     projection_source: Literal["canonical_review_memory"] = "canonical_review_memory"
     entries: list[ReviewQueueEntry] = Field(default_factory=list)
+    total_count: int = Field(default=0, ge=0)
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=50, ge=1, le=200)
+    has_more: bool = False
     due_count: int = Field(default=0, ge=0)
     active_task_count: int = Field(default=0, ge=0)
     awaiting_resource_count: int = Field(default=0, ge=0)

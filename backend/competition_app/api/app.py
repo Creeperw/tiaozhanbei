@@ -1239,7 +1239,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         calculated_at = getattr(queue, "calculated_at", None)
         return {
             "source": "canonical_review_memory",
-            "total_count": len(getattr(queue, "entries", []) or []),
+            "total_count": int(getattr(queue, "total_count", len(getattr(queue, "entries", []) or [])) or 0),
             "due_count": int(getattr(queue, "due_count", 0) or 0),
             "active_task_count": int(
                 getattr(queue, "active_task_count", 0) or 0
@@ -4002,6 +4002,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         request: Request,
         status: str = Query(default="all", pattern="^(all|unread|read|dismissed)$"),
         limit: int = Query(default=50, ge=1, le=100),
+        offset: int = Query(default=0, ge=0),
     ) -> dict:
         user = current_user(request)
         if user is None:
@@ -4013,6 +4014,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id,
             status=status,
             limit=limit,
+            offset=offset,
         )
 
     @app.patch("/api/v1/notifications/{notification_id}")
@@ -7029,7 +7031,12 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
         dispatcher.request(learner_id)
 
     @app.get("/api/v1/learners/{learner_id}/review-queue")
-    async def get_review_queue(learner_id: str, request: Request, limit: int = 50):
+    async def get_review_queue(
+        learner_id: str,
+        request: Request,
+        limit: int = Query(default=50, ge=1, le=200),
+        offset: int = Query(default=0, ge=0),
+    ):
         require_owner(request, learner_id)
         if backend_handoff is not None:
             behavior = await asyncio.to_thread(
@@ -7039,7 +7046,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                 learner_id=learner_id,
                 attempts=behavior.get("question_attempt", []),
             )
-        queue = container.review_service.get_queue(learner_id, limit=limit)
+        queue = container.review_service.get_queue(learner_id, limit=limit, offset=offset)
         _request_due_review_dispatch(learner_id, queue)
         return queue
 
@@ -7047,6 +7054,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
     async def get_current_user_review_queue(
         request: Request,
         limit: int = Query(default=50, ge=1, le=200),
+        offset: int = Query(default=0, ge=0),
     ):
         """Stable current-user queue; the learner-id route remains compatible."""
 
@@ -7061,7 +7069,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                 learner_id=user.user_id,
                 attempts=behavior.get("question_attempt", []),
             )
-        queue = container.review_service.get_queue(user.user_id, limit=limit)
+        queue = container.review_service.get_queue(user.user_id, limit=limit, offset=offset)
         _request_due_review_dispatch(user.user_id, queue)
         return queue
 
@@ -7069,6 +7077,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
     async def get_review_dashboard(
         request: Request,
         limit: int = Query(default=50, ge=1, le=200),
+        offset: int = Query(default=0, ge=0),
         history_limit: int = Query(default=100, ge=1, le=500),
     ) -> dict:
         """Current-user review queue, KP mastery and review history."""
@@ -7097,7 +7106,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                 user.user_id,
                 history_limit=history_limit,
             )
-        queue = container.review_service.get_queue(user.user_id, limit=limit)
+        queue = container.review_service.get_queue(user.user_id, limit=limit, offset=offset)
         _request_due_review_dispatch(user.user_id, queue)
         mastery = list(details.get("mastery") or [])
         scores = [
@@ -7431,11 +7440,12 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             if event_type == "business_text_delta":
                 state["raw"] = (state["raw"] + str(event.get("delta") or ""))[:24_000]
                 safe = project_public_business_text(state["raw"], limit=20_000)
-                # Keep a short unstable tail server-side.  It prevents an
+                # Keep only a short unstable tail server-side.  It prevents an
                 # unfinished <think>/internal-ID/fenced block from crossing a
                 # chunk boundary before the sanitizer can recognise it, while
-                # still making long answers visible during provider output.
-                stable = safe[:-96] if len(safe) > 96 else ""
+                # avoiding the old 96-character first-output delay.
+                unstable_tail = 32
+                stable = safe[:-unstable_tail] if len(safe) > unstable_tail else ""
                 emitted = state["emitted"]
                 if stable.startswith(emitted) and len(stable) > len(emitted):
                     delta = stable[len(emitted):]
@@ -7515,7 +7525,8 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             if event_type == "reasoning_delta":
                 state["raw"] = (state["raw"] + str(event.get("delta") or ""))[:24_000]
                 safe = project_public_business_text(state["raw"], limit=20_000)
-                stable = safe[:-96] if len(safe) > 96 else ""
+                unstable_tail = 32
+                stable = safe[:-unstable_tail] if len(safe) > unstable_tail else ""
                 emitted = state["emitted"]
                 if stable.startswith(emitted) and len(stable) > len(emitted):
                     delta = stable[len(emitted):]
@@ -7943,6 +7954,7 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             task = asyncio.create_task(run_workflow())
             workflow_tasks.add(task)
             workflow_tasks_by_thread[thread_id] = task
+            heartbeat_started = time.monotonic()
 
             def _forget_task(completed: asyncio.Task) -> None:
                 workflow_tasks.discard(completed)
@@ -7952,7 +7964,24 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
             task.add_done_callback(_forget_task)
             try:
                 while True:
-                    event = await queue.get()
+                    try:
+                        event = await asyncio.wait_for(queue.get(), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        # Long model/tool calls may legitimately produce no
+                        # learner-facing delta for several seconds.  Keep the
+                        # SSE connection active so browsers and reverse proxies
+                        # do not treat the run as stalled, and give the UI a
+                        # precise liveness signal instead of making it look
+                        # frozen until the next burst of output arrives.
+                        yield "data: " + json.dumps({
+                            "event": "workflow_heartbeat",
+                            "thread_id": thread_id,
+                            "elapsed_seconds": int(
+                                time.monotonic() - heartbeat_started
+                            ),
+                            "ts": time.time_ns() // 1_000_000,
+                        }, ensure_ascii=False) + "\n\n"
+                        continue
                     if event is None:
                         break
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"

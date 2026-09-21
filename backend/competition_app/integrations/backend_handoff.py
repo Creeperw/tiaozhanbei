@@ -1540,13 +1540,14 @@ class BackendHandoffRuntime:
         *,
         status: str = "all",
         limit: int = 50,
+        offset: int = 0,
     ) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         governance = importlib.import_module("APP.backend.learning_governance_service")
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
-            return governance.list_notifications(db, user.id, status=status, limit=limit)
+            return governance.list_notifications(db, user.id, status=status, limit=limit, offset=offset)
         finally:
             db.close()
 

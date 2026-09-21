@@ -347,6 +347,13 @@ describe('workflow chat event adapter', () => {
     }));
   });
 
+  it('keeps transport heartbeats out of the learner-facing trace', () => {
+    expect(runtimeEventToTrace({
+      event: 'workflow_heartbeat',
+      elapsed_seconds: 15,
+    })).toBeNull();
+  });
+
   it('treats a persisted completed repair as a successful re-audit', () => {
     expect(runtimeEventToTrace({
       event: 'audit_revision_completed', status: 'completed', ts: 20,
