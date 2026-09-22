@@ -41,7 +41,7 @@ async def test_type_wrapper_is_rejected_then_repaired_with_exact_feedback():
 async def test_wrapped_result_still_fails_after_existing_two_attempts():
     wrapped = {"CompiledAuditFindings": GOOD}
     outcome, requests, trace, _ = await run_responses([wrapped, wrapped])
-    assert outcome == "business_schema_invalid"
+    assert outcome == "schema_invalid"
     assert len(requests) == 2
     assert all(r["status"] == "validation_failed" for r in trace.response_diagnostics["structured_attempts"])
 

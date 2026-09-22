@@ -7699,9 +7699,10 @@ execute.onclick=async()=>{execute.disabled=true;out.hidden=false;out.textContent
                 error_code = "model_empty_response"
                 retryable = True
             elif "invalid structured output" in normalized or "invalid_json" in normalized:
-                # 模型输出无法解析为有效 JSON（含 agent 名 knowledge_* 时
-                # 不能误归类为知识检索失败）。
-                error_code = "model_invalid_output"
+                # Historical checkpoints created before structured failure
+                # reasons were persisted can only be classified as JSON
+                # syntax failures. New runs use run_state.error_code above.
+                error_code = "invalid_json"
                 retryable = True
             elif failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
                 error_code = "persistence_failed"

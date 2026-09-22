@@ -3483,6 +3483,21 @@ class PersonalizedReviewCardUseCase:
         structured_code = str(getattr(exc, "error_code", "") or "").strip()
         if structured_code:
             return structured_code
+        structured_reason = str(
+            getattr(exc, "structured_failure_reason", "")
+            or getattr(exc, "reason", "")
+            or ""
+        ).strip()
+        if structured_reason in {
+            "invalid_json",
+            "ambiguous_json",
+            "schema_invalid",
+            "business_schema_invalid",
+            "business_validation_failed",
+            "output_truncated",
+            "provider_schema_unsupported",
+        }:
+            return structured_reason
         message = str(exc).lower()
         failed_step = PersonalizedReviewCardUseCase._failure_step(exc)
         model_reason = str(getattr(exc, "reason", "") or "").lower()
@@ -3519,8 +3534,10 @@ class PersonalizedReviewCardUseCase:
         # 瞬态模型质量问题，与知识检索本身无关。必须优先于按关键字归类：
         # 例如 agent 名 knowledge_explanation_agent 中的 “knowledge” 会把
         # expert 讲解步骤的失败误报为“知识检索未能完成”。
-        if "invalid structured output" in message or "invalid_json" in message:
-            return "model_invalid_output"
+        if "invalid structured output" in message:
+            # Historical checkpoints created before the machine failure reason
+            # was persisted can only be classified as JSON syntax failures.
+            return "invalid_json"
         # These messages are emitted only by the bounded audit/repair state
         # machine and therefore carry stronger provenance than a ContextVar
         # fallback. The latter may contain the terminal phase of a previously
@@ -3591,6 +3608,21 @@ class PersonalizedReviewCardUseCase:
         message = str(exc).lower()
         if isinstance(exc, (TimeoutError, asyncio.TimeoutError)):
             return True
+        structured_reason = str(
+            getattr(exc, "structured_failure_reason", "")
+            or getattr(exc, "reason", "")
+            or ""
+        ).strip()
+        if structured_reason in {
+            "invalid_json",
+            "ambiguous_json",
+            "schema_invalid",
+            "business_schema_invalid",
+            "business_validation_failed",
+            "output_truncated",
+            "provider_schema_unsupported",
+        }:
+            return True
         # LangGraph preserves the provider failure text in ExecutionResult,
         # but the use case wraps that result in RuntimeError before persisting
         # the run.  Recognize the bounded transient HTTP classes here so a
@@ -3613,6 +3645,10 @@ class PersonalizedReviewCardUseCase:
                 "no content",
                 "invalid structured output",
                 "invalid_json",
+                "ambiguous_json",
+                "schema_invalid",
+                "business_validation_failed",
+                "output_truncated",
                 "database",
                 "mysql",
                 "知识检索",

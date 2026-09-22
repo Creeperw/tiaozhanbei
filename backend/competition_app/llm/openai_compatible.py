@@ -1545,7 +1545,12 @@ class OpenAICompatibleChatModel(ChatModel):
                     if len(records) < 2:
                         observation = {"attempt": attempt, "status": status}
                         if failure_reason in {
-                            "invalid_json", "ambiguous_json", "business_schema_invalid",
+                            "invalid_json",
+                            "ambiguous_json",
+                            "business_schema_invalid",
+                            "schema_invalid",
+                            "business_validation_failed",
+                            "output_truncated",
                         }:
                             observation["failure_reason"] = failure_reason
                         if status == "validation_failed" and failure is not None:
@@ -1919,7 +1924,11 @@ class OpenAICompatibleChatModel(ChatModel):
                 previous_failure = (
                     attempt_failures[-1] if attempt_failures else "invalid_json"
                 )
-                if previous_failure == "business_schema_invalid":
+                if previous_failure in {
+                    "business_schema_invalid",
+                    "schema_invalid",
+                    "business_validation_failed",
+                }:
                     # 2026-08-23: 主 Planner 修复重试必须保持原路由决策。此前 repair
                     # 指令只要求“修正字段类型/补全内容”，模型在重新生成
                     # JSON 时可能把 task_type 从 paper_generation 漂移成
@@ -2018,7 +2027,11 @@ class OpenAICompatibleChatModel(ChatModel):
                             structured_issues, previous_failure
                         )
                     )
-                    if preserve_planner_route and previous_failure == "business_schema_invalid":
+                    if preserve_planner_route and previous_failure in {
+                        "business_schema_invalid",
+                        "schema_invalid",
+                        "business_validation_failed",
+                    }:
                         repair_instruction += routing_anchor
                     repair_instruction += _repair_previous_output(attempt_texts)
                     attempt_messages[-1]["content"] = repair_instruction
@@ -2101,31 +2114,54 @@ class OpenAICompatibleChatModel(ChatModel):
                 # with the same large prompt after that budget is exhausted.
                 raise
             attempt_texts.append(content)
+            diagnostics = self._transport_value("response_diagnostics")
+            transport_attempts = (
+                diagnostics.get("attempts")
+                if isinstance(diagnostics, dict)
+                else None
+            )
+            finish_reason = (
+                transport_attempts[-1].get("finish_reason")
+                if isinstance(transport_attempts, list)
+                and transport_attempts
+                and isinstance(transport_attempts[-1], dict)
+                else None
+            )
             try:
                 parsed = _normalize_common_output(
                     _parse_json_object(content), role, original_output_schema
                 )
             except AmbiguousJSONObjectError:
-                attempt_failures.append("ambiguous_json")
+                failure_reason = (
+                    "output_truncated"
+                    if finish_reason == "length"
+                    else "ambiguous_json"
+                )
+                attempt_failures.append(failure_reason)
                 self._finish_debug_attempt(
                     role=role,
                     attempt=attempt + 1,
                     attempt_id=attempt_id,
                     status="invalid_json",
                     content=content,
-                    failure_reason="ambiguous_json",
+                    failure_reason=failure_reason,
                     previous_failure=previous_failure,
                 )
                 continue
             except (TypeError, json.JSONDecodeError):
-                attempt_failures.append("invalid_json")
+                failure_reason = (
+                    "output_truncated"
+                    if finish_reason == "length"
+                    else "invalid_json"
+                )
+                attempt_failures.append(failure_reason)
                 self._finish_debug_attempt(
                     role=role,
                     attempt=attempt + 1,
                     attempt_id=attempt_id,
                     status="invalid_json",
                     content=content,
-                    failure_reason="invalid_json",
+                    failure_reason=failure_reason,
                     previous_failure=previous_failure,
                 )
                 continue
@@ -2138,9 +2174,13 @@ class OpenAICompatibleChatModel(ChatModel):
                         parsed,
                         original_output_schema,
                     )
-                    parsed = _run_result_validator(parsed, result_validator)
                 except (TypeError, ValueError) as exc:
-                    attempt_failures.append("business_schema_invalid")
+                    failure_reason = (
+                        "output_truncated"
+                        if finish_reason == "length"
+                        else "schema_invalid"
+                    )
+                    attempt_failures.append(failure_reason)
                     # 每个角色都要留下“哪个字段不合契约”的机器证据。此前只有
                     # planner / compiler / audit_findings_compiler 收集，业务
                     # Agent（例如组卷的缺口生成）失败时只剩
@@ -2165,7 +2205,38 @@ class OpenAICompatibleChatModel(ChatModel):
                         content=content,
                         parsed=parsed,
                         failure=exc,
-                        failure_reason="business_schema_invalid",
+                        failure_reason=failure_reason,
+                        previous_failure=previous_failure,
+                        diagnostic_schema=original_output_schema,
+                    )
+                    continue
+                try:
+                    parsed = _run_result_validator(parsed, result_validator)
+                except (TypeError, ValueError) as exc:
+                    failure_reason = (
+                        "output_truncated"
+                        if finish_reason == "length"
+                        else "business_validation_failed"
+                    )
+                    attempt_failures.append(failure_reason)
+                    structured_issues.extend(
+                        {**item, "attempt": attempt + 1}
+                        for item in validation_issues(exc, original_output_schema)
+                    )
+                    validation_code = str(
+                        getattr(exc, "validation_code", "") or ""
+                    ).strip()
+                    if validation_code:
+                        business_validation_codes.append(validation_code[:80])
+                    self._finish_debug_attempt(
+                        role=role,
+                        attempt=attempt + 1,
+                        attempt_id=attempt_id,
+                        status="validation_failed",
+                        content=content,
+                        parsed=parsed,
+                        failure=exc,
+                        failure_reason=failure_reason,
                         previous_failure=previous_failure,
                         diagnostic_schema=original_output_schema,
                     )
@@ -2199,7 +2270,7 @@ class OpenAICompatibleChatModel(ChatModel):
         if structured_issues:
             self.last_error_details["validation_issues"] = structured_issues[:16]
         error = ModelResponseError(
-            "Model returned invalid structured output after one repair attempt",
+            f"Model structured output failed: {reason}",
             reason=reason,
             failover_eligible=True,
         )

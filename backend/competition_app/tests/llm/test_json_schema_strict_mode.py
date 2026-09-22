@@ -358,14 +358,14 @@ async def test_schema_fallback_still_rejects_business_invalid_json() -> None:
             {"payload": {"output_schema": _nested_schema()}},
         )
 
-    assert exc_info.value.reason == "business_schema_invalid"
+    assert exc_info.value.reason == "schema_invalid"
     assert client.last_error_details == {
         "error_type": "ModelResponseError",
-        "reason": "business_schema_invalid",
+        "reason": "schema_invalid",
         "attempt_count": 2,
         "attempt_failures": [
-            "business_schema_invalid",
-            "business_schema_invalid",
+            "schema_invalid",
+            "schema_invalid",
         ],
         "response_lengths": [13, 13],
         # 业务 Agent 的契约失败也要留下“哪个字段没过哪条约束”。此前只有
@@ -378,6 +378,45 @@ async def test_schema_fallback_still_rejects_business_invalid_json() -> None:
             {"field_path": "/conflicts", "rule": "required", "attempt": 2},
         ],
     }
+
+
+@pytest.mark.asyncio
+async def test_finish_reason_length_is_classified_as_output_truncated() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {"content": '{"notes":"unfinished'},
+                        "finish_reason": "length",
+                    }
+                ]
+            },
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="deepseek-v4-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelResponseError) as exc_info:
+        await client.complete_json(
+            "memory_agent",
+            {"payload": {"output_schema": _nested_schema()}},
+        )
+
+    assert exc_info.value.reason == "output_truncated"
+    assert len(requests) == 2
+    assert client.last_error_details["attempt_failures"] == [
+        "output_truncated",
+        "output_truncated",
+    ]
 
 
 class _GeneratedItem(BaseModel):
@@ -451,7 +490,9 @@ async def test_business_agent_contract_failure_keeps_field_level_evidence() -> N
             },
         )
 
-    assert exc_info.value.reason == "business_schema_invalid"
+    # Pydantic's length bound is already present in model_json_schema(), so it
+    # is rejected at the local JSON Schema boundary before the result validator.
+    assert exc_info.value.reason == "schema_invalid"
     issues = client.last_error_details["validation_issues"]
     assert {
         "field_path": "/generated_items/0/reference_answer",
@@ -509,7 +550,7 @@ async def test_direct_client_executes_internal_result_validator() -> None:
             },
         )
 
-    assert exc_info.value.reason == "business_schema_invalid"
+    assert exc_info.value.reason == "business_validation_failed"
     assert len(requests) == 2
     repair_message = json.loads(requests[1].content)["messages"][-1]["content"]
     assert "Repair only the current Planner decision JSON" in repair_message

@@ -16,6 +16,11 @@ SCHEMA = {"type": "object", "properties": {"plan_document": {"type": "string", "
     (URL, "deepseek-v4-flash", "json_object"),
     (URL + "/", "deepseek-v4-flash", "json_object"),
     ("https://opencode.ai:443/zen/go/v1", "deepseek-v4-flash", "json_object"),
+    ("https://api.deepseek.com", "deepseek-flash", "json_object"),
+    ("https://api.deepseek.com/", "deepseek-flash", "json_object"),
+    ("https://api.deepseek.com/v1", "deepseek-flash", "json_object"),
+    ("https://api.deepseek.com/v1/", "deepseek-flash", "json_object"),
+    ("https://api.deepseek.com/v1", "deepseek-v4-pro", "json_schema"),
     ("https://opencode.ai/zen/v1", "deepseek-v4-flash", "json_schema"),
     (URL, "deepseek-v4-pro", "json_schema"),
     ("https://other.invalid/zen/go/v1", "deepseek-v4-flash", "json_schema"),
@@ -23,6 +28,34 @@ SCHEMA = {"type": "object", "properties": {"plan_document": {"type": "string", "
 ])
 def test_exact_provider_model_scope(url, model, expected):
     assert structured_output_mode(url, model) == expected
+
+
+@pytest.mark.asyncio
+async def test_official_deepseek_uses_json_object_without_schema_retry():
+    requests = []
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"plan_document":"complete"}'}}]},
+        )
+
+    client = OpenAICompatibleChatModel(
+        "https://api.deepseek.com/v1",
+        "secret",
+        "deepseek-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = await client.complete_json(
+        "diagnosis_agent",
+        {"payload": {"output_schema": SCHEMA}},
+    )
+
+    assert result["plan_document"] == "complete"
+    assert len(requests) == 1
+    assert requests[0]["response_format"] == {"type": "json_object"}
 
 
 @pytest.mark.asyncio
@@ -54,7 +87,7 @@ async def test_local_schema_still_rejects_invalid_output(raw):
     client = OpenAICompatibleChatModel(URL, "secret", "deepseek-v4-flash", transport=httpx.MockTransport(handler))
     with pytest.raises(ModelResponseError) as error:
         await client.complete_json("diagnosis_agent", {"payload": {"output_schema": SCHEMA}})
-    assert error.value.reason == "business_schema_invalid"
+    assert error.value.reason == "schema_invalid"
     assert len(requests) == 2
 
 

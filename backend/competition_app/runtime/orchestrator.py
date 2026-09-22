@@ -75,6 +75,17 @@ def failure_diagnostics(error: BaseException) -> dict[str, Any]:
     """Return bounded, machine-owned metadata for an execution failure."""
 
     diagnostics: dict[str, Any] = {}
+    structured_reason = str(getattr(error, "reason", "") or "").strip()
+    if structured_reason in {
+        "invalid_json",
+        "ambiguous_json",
+        "business_schema_invalid",
+        "schema_invalid",
+        "business_validation_failed",
+        "output_truncated",
+        "provider_schema_unsupported",
+    }:
+        diagnostics["structured_failure_reason"] = structured_reason
     timeout = getattr(error, "step_timeout_seconds", None)
     try:
         timeout = float(timeout)

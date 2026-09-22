@@ -930,7 +930,13 @@ class DiagnosisAgent:
                             ],
                         )
                     except ModelResponseError as exc:
-                        if exc.reason not in {"business_schema_invalid", "invalid_json"}:
+                        if exc.reason not in {
+                            "business_schema_invalid",
+                            "schema_invalid",
+                            "business_validation_failed",
+                            "invalid_json",
+                            "ambiguous_json",
+                        }:
                             raise
                         # This optional retry must not destroy a valid first
                         # needs_revision result. Rewrite from its issues, then

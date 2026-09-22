@@ -123,6 +123,7 @@ def safe_response_diagnostics(value: Any) -> dict:
             record = {"attempt": item["attempt"], "status": item["status"]}
             if item.get("failure_reason") in (
                 "invalid_json", "ambiguous_json", "business_schema_invalid",
+                "schema_invalid", "business_validation_failed", "output_truncated",
             ):
                 record["failure_reason"] = item["failure_reason"]
             issues = safe_validation_issues(item.get("validation_issues"))

@@ -58,7 +58,7 @@ async def run_responses(values, *, observe=True, role="audit_findings_compiler",
 @pytest.mark.asyncio
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize("first,reason", [
-    (BAD, "business_schema_invalid"),
+    (BAD, "schema_invalid"),
     ("not-json private text", "invalid_json"),
     ('{"a":1}\n{"b":2}', "ambiguous_json"),
 ])
@@ -72,7 +72,7 @@ async def test_first_failure_survives_success_without_changing_requests(first, r
     attempts = trace.response_diagnostics["structured_attempts"]
     assert attempts[0]["failure_reason"] == reason
     assert attempts[1] == {"attempt": 2, "status": "succeeded"}
-    if reason == "business_schema_invalid":
+    if reason == "schema_invalid":
         # 数组下标保留原值：它是 schema 结构位置而非模型文本，抹成 ``*``
         # 会让修复指令退化成“某一项有问题”，模型无法定位。
         assert attempts[0]["validation_issues"] == [
@@ -89,7 +89,7 @@ async def test_exhaustion_preserves_both_failures_without_changing_error():
     baseline = await run_responses([BAD, BAD], observe=False)
     assert observed[:2] == baseline[:2]
     assert observed[3] == baseline[3]
-    assert observed[0] == "business_schema_invalid"
+    assert observed[0] == "schema_invalid"
     assert [r["attempt"] for r in observed[2].response_diagnostics["structured_attempts"]] == [1, 2]
 
 

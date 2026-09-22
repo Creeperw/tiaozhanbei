@@ -10,6 +10,7 @@ from competition_app.application.personalized_review_card import (
     PersonalizedReviewCardUseCase,
     ReviewCardRequest,
     ReviewCardResult,
+    WorkflowExecutionError,
     WorkflowResumeRequest,
 )
 from competition_app.application.container import StreamingChatModel
@@ -202,9 +203,34 @@ def test_invalid_structured_output_is_not_mislabeled_as_knowledge_failure() -> N
     assert PersonalizedReviewCardUseCase._failure_step(error) == "expert"
     assert (
         PersonalizedReviewCardUseCase._failure_code(error)
-        == "model_invalid_output"
+        == "invalid_json"
     )
     assert PersonalizedReviewCardUseCase._is_retryable_failure(error) is True
+
+
+@pytest.mark.parametrize(
+    "reason,expected_message",
+    [
+        ("invalid_json", "模型返回的 JSON 格式不完整，请重新生成。"),
+        ("ambiguous_json", "模型返回了多个相互冲突的结果，请重新生成。"),
+        ("schema_invalid", "模型结果字段不符合要求，请重新生成。"),
+        (
+            "business_validation_failed",
+            "生成结果未满足本次业务约束，请调整要求后重试。",
+        ),
+        ("output_truncated", "模型结果未完整生成，请重新生成。"),
+    ],
+)
+def test_structured_failure_reason_keeps_specific_user_message(
+    reason: str,
+    expected_message: str,
+) -> None:
+    error = WorkflowExecutionError.__new__(WorkflowExecutionError)
+    RuntimeError.__init__(error, "personalized review card execution failed")
+    error.structured_failure_reason = reason
+
+    assert PersonalizedReviewCardUseCase._failure_code(error) == reason
+    assert PersonalizedReviewCardUseCase._FAILURE_USER_MESSAGES[reason] == expected_message
 
 
 def test_wrapped_provider_5xx_is_retryable() -> None:
@@ -388,6 +414,28 @@ async def test_planner_validation_issues_reach_failure_state() -> None:
     state = use_case.get_run_state("THREAD_VALIDATION_DIAGNOSTICS")
     assert state["failure_model_trace"][0]["validation_issues"] == issues
     assert "private" not in str(state)
+
+
+@pytest.mark.asyncio
+async def test_structured_failure_reason_reaches_failure_state() -> None:
+    from competition_app.llm.openai_compatible import ModelResponseError
+
+    class InvalidPlanner:
+        async def run(self, context):
+            raise ModelResponseError(
+                "structured output failed",
+                reason="business_validation_failed",
+                failover_eligible=True,
+            )
+
+    use_case = _use_case(planner=InvalidPlanner())
+    use_case.orchestrator.tool_registry = None
+    with pytest.raises(ModelResponseError):
+        await use_case.execute(_request("THREAD_STRUCTURED_FAILURE_REASON"))
+
+    state = use_case.get_run_state("THREAD_STRUCTURED_FAILURE_REASON")
+    assert state["error_code"] == "business_validation_failed"
+    assert state["retryable"] is True
 
 
 @pytest.mark.asyncio

@@ -1047,7 +1047,13 @@ class PlanContractCompilerAgent:
                     extraction_feedback, source_digest, observation,
                 )
             except ModelResponseError as exc:
-                if not attempt or exc.reason not in {"business_schema_invalid", "invalid_json"}:
+                if not attempt or exc.reason not in {
+                    "business_schema_invalid",
+                    "schema_invalid",
+                    "business_validation_failed",
+                    "invalid_json",
+                    "ambiguous_json",
+                }:
                     raise
                 return result.model_copy(update={"revision_count": 1})
             if result.result.status != "compiled":
