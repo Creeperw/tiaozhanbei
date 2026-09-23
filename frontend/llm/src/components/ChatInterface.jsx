@@ -530,7 +530,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, fee
         {isUser ? <User size={18} /> : (isDecisionPhase ? <BrainCircuit size={18} className="animate-pulse" /> : <Bot size={18} />)}
       </div>
 
-      <div className={`relative max-w-[90%] sm:max-w-[80%] min-w-0 flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`relative ${isUser ? 'max-w-[90%] sm:max-w-[80%]' : 'max-w-[98%] sm:max-w-[96%]'} min-w-0 flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
         <div className={`assistant-message__meta flex items-center gap-2 mb-1 text-xs text-gray-400 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
           <span className="font-medium opacity-80">{isUser ? '我' : '智能助教'}</span>
           <span>{formatMessageTime(timestamp)}</span>
