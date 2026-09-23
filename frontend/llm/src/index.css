@@ -179,6 +179,7 @@
 }
 
 /* Retained learning-path controls from the qualification route. */
+
 .app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger {
   display: inline-flex;
   min-height: 34px;
@@ -7871,6 +7872,47 @@ textarea:focus-visible {
 .agent-stream-output__text strong { color: #2f443c; font-weight: 720; }
 .agent-stream-output__caret { display: inline-block; width: 5px; height: 12px; margin-left: 2px; vertical-align: -2px; background: #177b5b; animation: assistant-stream-caret 760ms steps(1) infinite; }
 .agent-inline .agent-inline__body > footer { margin: 10px 0 0 1px; color: #8d9a94; font-size: .66rem; line-height: 1.6; }
+/* Trace polish overrides follow the trace base rules. */
+.agent-inline.agent-inline { border-color: #cfe1d8; background: linear-gradient(180deg, #fff, #fbfdfc); box-shadow: 0 2px 4px rgba(21,60,47,.045), 0 14px 32px rgba(21,60,47,.075); }
+.agent-inline .agent-inline__toggle { min-height: 52px; padding: 10px 15px; }
+.agent-inline .agent-inline__mark { box-shadow: 0 0 0 4px rgba(14,122,85,.07); }
+.agent-inline .agent-inline__body { border-top-color: #dceae3; background: linear-gradient(90deg, rgba(232,247,239,.5), transparent 24%), #fbfdfc; padding: 14px 15px 12px; }
+.agent-stream { gap: 14px; padding-left: 18px; }
+.agent-stream-stage { padding-bottom: 1px; }
+.agent-stream-stage__rail { top: 14px; left: -18px; border-color: #fbfdfc; }
+.agent-stream-stage__headline { min-height: 38px; flex-wrap: wrap; align-items: center; gap: 6px 8px; border: 1px solid #e1ebe6; border-radius: 11px; background: linear-gradient(105deg, #fff, #f8fbf9); padding: 7px 10px; box-shadow: 0 2px 7px rgba(21,60,47,.035); }
+.agent-stream-stage[data-status="running"] .agent-stream-stage__headline,
+.agent-stream-stage[data-status="streaming"] .agent-stream-stage__headline,
+.agent-stream-stage[data-status="repairing"] .agent-stream-stage__headline { border-color: #bfe1d1; background: linear-gradient(105deg, #f0faf5, #fbfefd); box-shadow: 0 3px 10px rgba(23,128,94,.07); }
+.agent-stream-stage[data-status="error"] .agent-stream-stage__headline { border-color: #efcbd3; background: #fff8f9; }
+.agent-stream-stage__headline > strong { overflow: visible; flex: 1 1 12rem; min-width: min(12rem, 100%); text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+.agent-stream-stage__details { gap: 7px; margin: 7px 0 0 22px; }
+.agent-stream-operation { min-height: 38px; border-radius: 10px; padding: 5px 10px 5px 7px; box-shadow: 0 1px 2px rgba(21,60,47,.025); }
+.agent-stream-operation__copy { min-width: 0; align-items: flex-start; flex-wrap: wrap; row-gap: 2px; }
+.agent-stream-operation__copy > span { overflow: visible; min-width: 0; flex: 1 1 12rem; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
+.agent-working { border-color: #d3e5dc; border-left: 3px solid #9bcdb7; border-radius: 10px; background: linear-gradient(180deg, #f8fbf9, #f4f8f6); box-shadow: 0 2px 7px rgba(21,60,47,.035); }
+.agent-working.is-streaming { border-left-color: #198461; background: linear-gradient(180deg, #eef9f4, #f8fcfa); box-shadow: 0 3px 11px rgba(23,128,94,.08); }
+.agent-working__toggle, .agent-result-node__toggle { min-height: 42px; padding-block: 7px; }
+.agent-working__heading small, .agent-result-node__heading small { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+.agent-working__body, .agent-result-node__body { max-height: 520px; padding: 11px 14px 13px; }
+.agent-result-node { border-color: #b9d9ca; border-left: 4px solid #13845e; border-radius: 11px; background: linear-gradient(180deg, #fbfefd, #f4faf7); box-shadow: 0 3px 11px rgba(21,84,60,.08); }
+.agent-result-node.is-streaming { border-color: #8fc9af; border-left-color: #0f9b69; background: linear-gradient(180deg, #eefaf4, #f9fdfb); }
+.agent-result-node__icon { box-shadow: 0 0 0 4px rgba(14,122,85,.07); }
+.agent-result-node__body { border-top-color: #d7e9df; background: rgba(255,255,255,.72); }
+.agent-stream-output { margin-top: 5px; border-left-width: 3px; border-left-color: #9fbeb0; border-radius: 0 8px 8px 0; background: rgba(63,96,82,.055); padding: 7px 11px 8px; }
+.agent-stream-output.is-streaming { border-left-color: #16825e; background: linear-gradient(90deg, rgba(29,128,94,.1), rgba(29,128,94,.025)); }
+@media (max-width: 640px) {
+  .agent-inline .agent-inline__stats { display: flex; flex-wrap: wrap; justify-content: flex-end; white-space: normal; }
+  .agent-inline .agent-inline__stats > span { display: inline-flex; }
+  .agent-stream { gap: 12px; padding-left: 16px; }
+  .agent-stream-stage__rail { left: -16px; }
+  .agent-stream-stage__headline > strong { flex-basis: 100%; min-width: 0; }
+  .agent-stream-stage__details { margin-left: 12px; }
+  .agent-stream-operation__copy > span { flex-basis: 100%; }
+  .agent-working__toggle, .agent-result-node__toggle { grid-template-columns: 22px minmax(0, 1fr) auto 16px; }
+  .agent-working__live, .agent-result-node__badge { display: inline-flex; }
+  .agent-working__heading, .agent-result-node__heading { min-width: 0; }
+}
 @keyframes agent-stream-line-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes agent-stream-rail-pulse { 55% { box-shadow: 0 0 0 7px rgba(23, 128, 94, 0); } }
 @keyframes agent-stream-dot { 0%, 70%, 100% { opacity: .25; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-2px); } }
