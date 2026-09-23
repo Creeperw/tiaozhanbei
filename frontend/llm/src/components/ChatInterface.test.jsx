@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import ChatInterface from './ChatInterface';
+import ChatInterface, { traceHasSettledNodes } from './ChatInterface';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
 import { formatMessageTime } from '../chatTime';
 import { loadAllLearningHistory } from '../legacyLearningClient';
@@ -80,6 +80,16 @@ describe('ChatInterface session workspace', () => {
     localStorage.clear();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     document.execCommand = vi.fn(() => true);
+  });
+
+  it('treats a trace with all participating stages settled as complete', () => {
+    expect(traceHasSettledNodes([
+      { status: 'done' },
+      { status: 'done' },
+      { status: 'skipped' },
+    ])).toBe(true);
+    expect(traceHasSettledNodes([{ status: 'done' }, { status: 'running' }])).toBe(false);
+    expect(traceHasSettledNodes([{ status: 'skipped' }])).toBe(false);
   });
 
   it('does not fetch or display obsolete read-only sessions', async () => {

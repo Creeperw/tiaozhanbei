@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { API_BASE, MAIN_API_BASE, fetchWithAuth } from '../utils/api';
 import { getAppShellConfig } from '../appShell';
-import { extractTraceEventsFromContent, hasExecutionDoneEvent, removeTraceEventsFromContent, stripAssistantVisibleContent } from '../chatProtocol';
+import { extractTraceEventsFromContent, hasTerminalTraceEvent, removeTraceEventsFromContent, stripAssistantVisibleContent } from '../chatProtocol';
 import HomeButton from './HomeButton';
 
 // --- Markdown Imports ---
@@ -344,10 +344,26 @@ const deduplicateKnowledgeRetrievals = (retrievals = []) => {
   }));
 };
 
-const hasExecutionDoneTrace = (message) => (
-  hasExecutionDoneEvent(message?.content || '')
-  || (Array.isArray(message?.traceEvents)
-    && message.traceEvents.some(event => event?.type === 'execution_done'))
+const hasTerminalTrace = (message) => hasTerminalTraceEvent(
+  message?.content || '',
+  message?.traceEvents,
+);
+
+const TRACE_SETTLED_STATUSES = new Set([
+  'done',
+  'success',
+  'completed',
+  'archived',
+  'error',
+  'failed',
+  'skipped',
+  'waiting_human_review',
+]);
+
+export const traceHasSettledNodes = (nodes = []) => (
+  nodes.length > 0
+  && nodes.every((node) => TRACE_SETTLED_STATUSES.has(node.status))
+  && nodes.some((node) => node.status !== 'skipped')
 );
 
 const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, feedbackStatus, branch, actions, traceEvents: persistedTraceEvents, publicationStatus, onAction, onInspectKnowledge, onFeedback, onRegenerate, onSwitchBranch, isGenerating, isReviewing }) => {
@@ -414,20 +430,23 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, messageId, fee
       console.error("Parsed videos error", e);
     }
   }
-  const hasTerminalTraceEvent = traceEvents.some((event) => [
-    'workflow_done',
-    'workflow_failed',
-    'workflow_interrupted',
-    'human_review_waiting',
-  ].includes(event.type));
+  const hasTerminalEvent = traceEvents.some((event) => hasTerminalTraceEvent(event));
   // A model_output/step_completed event only closes one stage.  Local repair,
   // forced re-audit and persistence may still be running afterwards.  Keep the
   // collaboration transcript live until the backend emits a run-level terminal
-  // event instead of declaring success from per-agent status alone.
+  // event. If that event was lost, an entirely settled set of stages is the
+  // safe fallback; otherwise a completed stage would leave the header spinning
+  // forever even though all visible work is finished.
+  const replayedTraceNodes = traceEvents.length > 0
+    ? buildTraceFromEvents(traceEvents, { historical: false })
+    : [];
+  const traceHasSettledStages = traceHasSettledNodes(replayedTraceNodes);
   const traceIsLive = Boolean(
-    isGenerating || (traceEvents.length > 0 && !hasTerminalTraceEvent)
+    !traceHasSettledStages && (isGenerating || (traceEvents.length > 0 && !hasTerminalEvent))
   );
-  const traceNodes = traceEvents.length > 0 ? buildTraceFromEvents(traceEvents, { historical: !traceIsLive }) : [];
+  const traceNodes = traceEvents.length > 0
+    ? (traceIsLive ? replayedTraceNodes : buildTraceFromEvents(traceEvents, { historical: true }))
+    : [];
   const traceRoles = traceNodes.length > 0 ? buildAgentPresentation(traceNodes) : [];
   const participatingTraceRoles = traceRoles.filter((role) => (
     role.nodes?.length > 0 && !['pending', 'skipped', 'idle'].includes(role.status)
@@ -1066,7 +1085,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     return null;
   }, [messages]);
   const currentAssistantHasExecutionDone = useMemo(
-    () => hasExecutionDoneTrace(currentAssistantMessage),
+    () => hasTerminalTrace(currentAssistantMessage),
     [currentAssistantMessage]
   );
   const isAnswerStreamingCurrentSession = isCurrentSessionLoading && !!currentAssistantMessage && !currentAssistantHasExecutionDone;
@@ -2685,9 +2704,9 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                     style={{ height: '100%' }}
                     itemContent={(index, msg) => {
                       const isLast = index === messages.length - 1;
-                      const messageHasExecutionDone = msg.role === 'assistant' ? hasExecutionDoneTrace(msg) : false;
-                      const isGenerating = isCurrentSessionLoading && isLast && msg.role === 'assistant' && !messageHasExecutionDone;
-                      const isReviewing = isCurrentSessionLoading && isLast && msg.role === 'assistant' && messageHasExecutionDone;
+                      const messageHasTerminalTrace = msg.role === 'assistant' ? hasTerminalTrace(msg) : false;
+                      const isGenerating = isCurrentSessionLoading && isLast && msg.role === 'assistant' && !messageHasTerminalTrace;
+                      const isReviewing = isCurrentSessionLoading && isLast && msg.role === 'assistant' && messageHasTerminalTrace;
 
                       return (
                         <ChatBubble
