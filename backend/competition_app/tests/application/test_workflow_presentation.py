@@ -829,6 +829,24 @@ def test_resource_message_adds_nonofficial_current_fact_reminder() -> None:
     assert "人工复核" not in message
 
 
+def test_resource_message_does_not_add_intro_and_separates_markdown_heading() -> None:
+    message = workflow_result_to_markdown(
+        {
+            "status": "success",
+            "task_type": "general_learning_support",
+            "resource": {
+                "title": "为什么先把它学扎实",
+                "content": {
+                    "知识讲解": "## 为什么先把它学扎实\n\n阴阳学说是中医理论的基础。",
+                },
+            },
+        }
+    )
+
+    assert "下面是为你整理的" not in message
+    assert "**知识讲解**：\n\n## 为什么先把它学扎实" in message
+
+
 def test_resource_message_hides_internal_ids_and_uses_learner_labels() -> None:
     message = workflow_result_to_markdown(
         {

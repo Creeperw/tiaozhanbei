@@ -127,7 +127,10 @@ def _markdown_value(value: Any, depth: int = 0) -> str:
                 str(key),
                 str(key).replace("_", " "),
             )
-            rows.append(f"**{label}**：{rendered}")
+            if re.match(r"^(?:#{1,6}\s+|[-*+]\s+|>\s+)", rendered):
+                rows.append(f"**{label}**：\n\n{rendered}")
+            else:
+                rows.append(f"**{label}**：{rendered}")
         return "\n\n".join(rows)
     return json.dumps(value, ensure_ascii=False, default=str)
 
@@ -365,7 +368,6 @@ def workflow_result_to_markdown(result: Any) -> str:
 
     resource = _plain(body.get("resource")) or {}
     if resource:
-        title = resource.get("title") or "学习内容"
         content = _markdown_value(resource.get("content") or {})
         audit = _plain(body.get("audit")) or {}
         reminders = [
@@ -387,7 +389,6 @@ def workflow_result_to_markdown(result: Any) -> str:
         return "\n\n".join(
             part
             for part in (
-                f"下面是为你整理的「{title}」。",
                 content,
                 reminder_text,
                 action_hint.strip(),
