@@ -125,6 +125,114 @@ describe('LangGraph six-agent trace state', () => {
     expect(state.nodes.find((node) => node.agent === 'audit_agent')?.status).toBe('skipped');
   });
 
+  it('settles every modern workflow terminal event, including cancellation', () => {
+    for (const type of [
+      'workflow_done',
+      'workflow_failed',
+      'workflow_interrupted',
+      'workflow_cancelled',
+      'human_review_waiting',
+    ]) {
+      let state = reduceLangGraphEvent(emptyState, {
+        type: 'execution_start', agent: 'expert_agent', stepId: 'expert', ts: 10,
+      });
+      state = reduceLangGraphEvent(state, { type, ts: 20 });
+      expect(state.workflowTerminal, type).toBe(true);
+      expect(state.nodes[0].status, type).toBe(
+        type === 'human_review_waiting'
+          ? 'running'
+            : type === 'workflow_interrupted'
+              ? 'running'
+              : type === 'workflow_cancelled'
+                ? 'running'
+          : type === 'workflow_failed'
+            ? 'error'
+            : 'done',
+      );
+    }
+  });
+
+  it('clears stale streaming flags from already-completed nodes at workflow end', () => {
+    let state = reduceLangGraphEvent(emptyState, {
+      type: 'execution_start', agent: 'planner_agent', stepId: 'planner', ts: 10,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'reasoning_stream', kind: 'started',
+      agent: 'planner_agent', stepId: 'planner', ts: 11,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'execution_done', agent: 'planner_agent', stepId: 'planner', ts: 12,
+    });
+
+    // Reproduce the stale flag left by a completed node in the affected live run.
+    state = {
+      ...state,
+      nodes: state.nodes.map((node) => ({ ...node, reasoningStreaming: true })),
+    };
+    state = reduceLangGraphEvent(state, { type: 'workflow_done', ts: 20 });
+
+    const planner = state.nodes.find((node) => node.id === 'planner');
+    expect(planner.status).toBe('done');
+    expect(planner.reasoningStreaming).toBe(false);
+    expect(planner.workingOutputStreaming).toBe(false);
+    expect(planner.formalOutputStreaming).toBe(false);
+    expect(planner.publicOutputStreaming).toBe(false);
+  });
+
+  it.each(['workflow_failed', 'workflow_interrupted'])('clears streaming flags on %s', (type) => {
+    let state = reduceLangGraphEvent(emptyState, {
+      type: 'execution_start', agent: 'expert_agent', stepId: 'expert', ts: 10,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'reasoning_stream', kind: 'started',
+      agent: 'expert_agent', stepId: 'expert', ts: 11,
+    });
+    state = {
+      ...state,
+      nodes: state.nodes.map((node) => ({
+        ...node,
+        workingOutputStreaming: true,
+        formalOutputStreaming: true,
+        publicOutputStreaming: true,
+      })),
+    };
+    state = reduceLangGraphEvent(state, {
+      type,
+      agent: 'expert_agent',
+      stepId: 'expert',
+      text: '终止',
+      ts: 20,
+    });
+
+    const expert = state.nodes.find((node) => node.id === 'expert');
+    expect(expert.reasoningStreaming).toBe(false);
+    expect(expert.workingOutputStreaming).toBe(false);
+    expect(expert.formalOutputStreaming).toBe(false);
+    expect(expert.publicOutputStreaming).toBe(false);
+  });
+
+  it('replays events by seq, then ts, without using the current clock', () => {
+    const nodes = buildTraceFromEvents([
+      { type: 'execution_done', agent: 'expert_agent', stepId: 'expert', text: '完成', seq: 3, ts: 100 },
+      { type: 'execution_start', agent: 'expert_agent', stepId: 'expert', text: '开始', seq: 1, ts: 300 },
+      { type: 'workflow_done', seq: 4, ts: 400 },
+    ]);
+
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].startTime).toBe(300);
+    expect(nodes[0].endTime).toBe(100);
+    expect(nodes[0].status).toBe('done');
+  });
+
+  it('keeps original order for events with no sequence or timestamp', () => {
+    const nodes = buildTraceFromEvents([
+      { type: 'execution_start', agent: 'expert_agent', stepId: 'expert', text: '先开始' },
+      { type: 'execution_start', agent: 'knowledge_base_agent', stepId: 'knowledge', text: '后开始' },
+    ]);
+
+    expect(nodes.map((node) => node.agent)).toEqual(['expert_agent', 'knowledge_base_agent']);
+  });
+
   it('removes planned-only agents when an interrupted run has already ended', () => {
     let state = reduceLangGraphEvent(emptyState, {
       type: 'planning_done',

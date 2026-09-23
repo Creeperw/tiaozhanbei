@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { TERMINAL_TRACE_EVENT_TYPES } from '../chatProtocol';
 
 /** @typedef {'idle'|'running'|'done'|'error'|'rollingBack'|'archived'} NodeStatus */
 /** @typedef {{ id:string, name:string, args?:object, resultSnippet?:string, status:NodeStatus, startTime:number, endTime?:number }} ToolCall */
@@ -86,7 +87,42 @@ export const useLangGraphStore = create((set, get) => ({
 }));
 
 function finishNode(nodes, id, patch = {}, ts = now()) {
-  return nodes.map(n => n.id === id ? { ...n, ...patch, status: patch.status || 'done', endTime: n.endTime || ts } : n);
+  return nodes.map((node) => {
+    if (node.id !== id) return node;
+    const status = patch.status || 'done';
+    const settled = ['done', 'success', 'completed', 'archived'].includes(status);
+    return {
+      ...node,
+      ...patch,
+      status,
+      endTime: node.endTime || ts,
+      ...(settled ? {
+        reasoningStreaming: false,
+        workingOutputStreaming: false,
+        formalOutputStreaming: false,
+        publicOutputStreaming: false,
+      } : {}),
+    };
+  });
+}
+
+function clearStreamingFlags(node) {
+  return {
+    ...node,
+    reasoningStreaming: false,
+    workingOutputStreaming: false,
+    formalOutputStreaming: false,
+    publicOutputStreaming: false,
+  };
+}
+
+function settleNode(node, status, ts, patch = {}) {
+  return {
+    ...clearStreamingFlags(node),
+    ...patch,
+    status,
+    endTime: node.endTime || ts,
+  };
 }
 
 function upsertNode(nodes, id, name, text, status = 'running', ts = now(), agent = '') {
@@ -146,12 +182,7 @@ function appendActivity(nodes, nodeId, activity) {
 }
 
 export function reduceLangGraphEvent(state, ev) {
-  const terminalEventTypes = new Set([
-    'workflow_done',
-    'workflow_failed',
-    'workflow_interrupted',
-    'human_review_waiting',
-  ]);
+  const terminalEventTypes = new Set(TERMINAL_TRACE_EVENT_TYPES);
   if (state.workflowTerminal && !terminalEventTypes.has(ev?.type)) return state;
   let nodes = state.nodes;
   let currentActiveNodeId = state.currentActiveNodeId;
@@ -350,7 +381,7 @@ export function reduceLangGraphEvent(state, ev) {
     nodes = nodes.map((node) => {
       const failed = matchingNode ? node.id === matchingNode.id : node.status === 'running';
       return failed
-        ? { ...node, status: 'error', endTime: ts, error: ev.text || '执行失败' }
+        ? settleNode(node, 'error', ts, { error: ev.text || '执行失败' })
         : node;
     });
     currentActiveNodeId = null;
@@ -564,14 +595,16 @@ export function reduceLangGraphEvent(state, ev) {
     );
     currentActiveNodeId = null;
     isRollingBack = false;
-  } else if (ev.type === 'workflow_interrupted') {
+  } else if (ev.type === 'workflow_interrupted' || ev.type === 'workflow_cancelled') {
     // A compiled graph may contain later optional gates that never actually
     // start (for example Audit on a lightweight conversational response).
     // Once the run reaches a terminal interruption, those planned-only nodes
     // are no longer participants and must not remain visible as "waiting".
     nodes = nodes.map((node) => (
       node.status === 'pending'
-        ? { ...node, status: 'skipped', endTime: ts }
+        ? settleNode(node, 'skipped', ts)
+        : ['running', 'rollingBack'].includes(node.status)
+          ? clearStreamingFlags(node)
         : node
     ));
     currentActiveNodeId = null;
@@ -579,19 +612,11 @@ export function reduceLangGraphEvent(state, ev) {
   } else if (ev.type === 'workflow_done') {
     nodes = nodes.map((node) => {
       if (node.status === 'pending') return { ...node, status: 'skipped', endTime: ts };
-      if (node.status !== 'running') return node;
+      const settled = settleNode(node, 'done', ts);
       return {
-        ...node,
-        status: 'done',
-        endTime: ts,
+        ...settled,
         tools: node.tools.map(tool => tool.status === 'running' ? { ...tool, status: 'done', endTime: ts } : tool),
         intents: (node.intents || []).map(intent => intent.status === 'running' ? { ...intent, status: 'done', endTime: ts } : intent),
-        // Clear any leftover streaming flags so no section keeps a blinking
-        // caret after the workflow has completed (fixes "输出完了还有光标闪").
-        reasoningStreaming: false,
-        workingOutputStreaming: false,
-        formalOutputStreaming: false,
-        publicOutputStreaming: false,
       };
     });
     currentActiveNodeId = null;
@@ -619,7 +644,36 @@ export function reduceLangGraphEvent(state, ev) {
 
 /** Convert a persisted event list into message-level execution nodes. */
 export function buildTraceFromEvents(events = [], options = {}) {
-  const state = events.reduce((acc, event, idx) => reduceLangGraphEvent(acc, event.ts ? event : { ...event, ts: now() - (events.length - idx) * 120 }), {
+  const indexedEvents = (Array.isArray(events) ? events : [])
+    .map((event, index) => ({ event, index }))
+    .sort((left, right) => {
+      const leftSeq = Number(left.event?.seq);
+      const rightSeq = Number(right.event?.seq);
+      const leftHasSeq = Number.isFinite(leftSeq);
+      const rightHasSeq = Number.isFinite(rightSeq);
+      if (leftHasSeq && rightHasSeq && leftSeq !== rightSeq) return leftSeq - rightSeq;
+      if (leftHasSeq !== rightHasSeq) return leftHasSeq ? -1 : 1;
+
+      const leftTs = Number(left.event?.ts);
+      const rightTs = Number(right.event?.ts);
+      const leftHasTs = Number.isFinite(leftTs);
+      const rightHasTs = Number.isFinite(rightTs);
+      if (leftHasTs && rightHasTs && leftTs !== rightTs) return leftTs - rightTs;
+      if (leftHasTs !== rightHasTs) return leftHasTs ? -1 : 1;
+      return left.index - right.index;
+    });
+  const knownTimestamps = indexedEvents
+    .map(({ event }) => Number(event?.ts))
+    .filter(Number.isFinite);
+  const fallbackBase = knownTimestamps.length > 0
+    ? Math.min(...knownTimestamps) - indexedEvents.length
+    : 0;
+  const state = indexedEvents.reduce((acc, { event }, index) => reduceLangGraphEvent(
+    acc,
+    Number.isFinite(Number(event?.ts))
+      ? event
+      : { ...event, ts: fallbackBase + index },
+  ), {
     nodes: [],
     currentActiveNodeId: null,
     isRollingBack: false,
