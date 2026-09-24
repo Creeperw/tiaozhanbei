@@ -21,7 +21,7 @@ import {
   NotebookPen,
   X,
 } from 'lucide-react';
-import { getAppShellConfig } from '../appShell';
+import { getAppShellConfig, normalizeNotificationPage } from '../appShell';
 import HomeButton from './HomeButton';
 import LearningTargetSelector from './LearningTargetSelector';
 import UserProfileModal from './UserProfileModal';
@@ -310,12 +310,12 @@ const notificationTime = (value) => {
   return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 };
 
-function NotificationPopover({ open, items, loading, onClose, onSelect, panelRef }) {
+function NotificationPopover({ open, items, unreadCount, totalCount, hasMore, loading, onClose, onSelect, panelRef }) {
   if (!open) return null;
   return (
     <section ref={panelRef} className="app-shell__notification-popover" role="dialog" aria-label="未处理通知">
       <header>
-        <div><strong>通知</strong><span>{items.length ? `${items.length} 条未处理` : '暂无未处理通知'}</span></div>
+        <div><strong>通知</strong><span>{unreadCount ? `未读 ${unreadCount} 条 · 当前显示 ${items.length} 条${hasMore ? ` · 共 ${totalCount} 条` : ''}` : '暂无未读通知'}</span></div>
         <button type="button" aria-label="关闭通知" onClick={onClose}><X aria-hidden="true" size={17} /></button>
       </header>
       <div className="app-shell__notification-list">
@@ -448,7 +448,7 @@ function DesktopTopbar({
             : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} navigationContext={navigationContext} onNavigate={onNavigate} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} authenticated={authenticated} onLoginRequested={onLoginRequested} />)}
         </nav>
         <div className="app-shell__topbar-actions">
-          <button type="button" className="app-shell__assistant-entry app-shell__assistant-entry--featured" aria-label="AI 智能助手" onClick={() => { if (!authenticated) { onLoginRequested?.(); return; } onNavigate({ page: 'assistant', params: { newConversation: true } }); }}>
+          <button type="button" className="app-shell__assistant-entry app-shell__assistant-entry--featured" aria-label="AI 智能助手" onClick={() => { if (!authenticated) { onLoginRequested?.(); return; } onNavigate({ page: 'assistant', params: {} }); }}>
             <MessageSquareMore aria-hidden="true" size={18} /><span>AI 智能助手</span>
           </button>
           <button type="button" data-notification-trigger className="app-shell__topbar-icon" aria-label={'通知，' + unreadNotifications + ' 条未读'} aria-haspopup="dialog" aria-expanded={notificationOpen} onClick={() => { closeProfileMenu(); onToggleNotifications(); }}>
@@ -583,6 +583,8 @@ export default function AppShell({ currentUser, currentPage, currentIntent = nul
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [notificationItems, setNotificationItems] = useState([]);
+  const [notificationTotalCount, setNotificationTotalCount] = useState(0);
+  const [notificationHasMore, setNotificationHasMore] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const notificationPanelRef = useRef(null);
@@ -610,11 +612,15 @@ export default function AppShell({ currentUser, currentPage, currentIntent = nul
         if (!cancelled && response.ok) {
           setUnreadNotifications(Number(payload.unread_count) || 0);
           setNotificationItems(Array.isArray(payload.items) ? payload.items : []);
+          setNotificationTotalCount(Number(payload.total_count) || 0);
+          setNotificationHasMore(Boolean(payload.has_more));
         }
       } catch {
         if (!cancelled) {
           setUnreadNotifications(0);
           setNotificationItems([]);
+          setNotificationTotalCount(0);
+          setNotificationHasMore(false);
         }
       } finally {
         if (!cancelled) setNotificationsLoading(false);
@@ -658,7 +664,9 @@ export default function AppShell({ currentUser, currentPage, currentIntent = nul
     // notification centre when no page is advertised. 页面键必须是当前外壳
     // 真正能渲染的页面：历史通知里存在已废弃的键，直接跳转会被归一化成首页，
     // 用户看到的就是「点了通知什么也没发生」，不如退到通知中心。
-    const advertisedPage = item?.action?.type === 'navigate' ? item.action.page : null;
+    const advertisedPage = item?.action?.type === 'navigate'
+      ? normalizeNotificationPage(item.action.page)
+      : null;
     const actionPage = shell.allowedPages?.has(advertisedPage) ? advertisedPage : null;
     if (item?.notification_id) {
       setNotificationItems((current) => current.filter((entry) => entry.notification_id !== item.notification_id));
@@ -817,6 +825,9 @@ export default function AppShell({ currentUser, currentPage, currentIntent = nul
       <NotificationPopover
         open={notificationOpen}
         items={authenticated ? notificationItems : []}
+        unreadCount={authenticated ? unreadNotifications : 0}
+        totalCount={authenticated ? notificationTotalCount : 0}
+        hasMore={authenticated ? notificationHasMore : false}
         loading={authenticated ? notificationsLoading : false}
         panelRef={notificationPanelRef}
         onClose={() => setNotificationOpen(false)}

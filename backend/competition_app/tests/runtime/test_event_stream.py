@@ -66,6 +66,7 @@ def test_recording_sink_persists_only_safe_model_lifecycle_metadata() -> None:
         "agent": "planner_agent",
         "call_id": "MODEL_CALL_1",
         "step_id": "planner",
+        "seq": 1,
     }]
     assert forwarded[0]["raw_input"]["system_prompt"] == "private"
 
@@ -91,7 +92,10 @@ def test_provider_reasoning_is_safely_projected_persisted_and_forwarded() -> Non
     sink = RecordingEventSink(forwarded.append)
     sink(reasoning_event)
 
-    assert sink.drain() == [public_runtime_event(reasoning_event)]
+    assert sink.drain() == [{
+        **public_runtime_event(reasoning_event),
+        "seq": 1,
+    }]
     assert forwarded == [reasoning_event]
 
 

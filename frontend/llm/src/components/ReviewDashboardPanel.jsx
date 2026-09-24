@@ -89,7 +89,7 @@ function HistoricalMasterySection({ state, onLoad }) {
   );
 }
 
-function ReviewQueueCard({ entries, names, dueCount, loading }) {
+function ReviewQueueCard({ entries, names, dueCount, totalCount, hasMore, loading }) {
   return (
     <section className="rounded-[24px] border border-emerald-100 bg-white/90 p-5 shadow-sm shadow-emerald-100/40 sm:p-6" aria-label="复习队列">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -112,7 +112,10 @@ function ReviewQueueCard({ entries, names, dueCount, loading }) {
             return (
               <article key={`${unit.kp_id}:${unit.next_review_at}`} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-sm font-normal text-slate-900">{displayName}</span>
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm font-normal text-slate-900">{displayName}</span>
+                    <small className="mt-1 block truncate text-[11px] text-slate-400" title={unit.kp_id}>知识点 ID：{unit.kp_id}</small>
+                  </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${entry.is_due ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{entry.is_due ? '已到期' : '待复习'}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -125,6 +128,9 @@ function ReviewQueueCard({ entries, names, dueCount, loading }) {
         </div>
       ) : (
         <p className="mt-5 rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">当前没有复习任务。完成知识点配套题并通过批改后，会自动加入这里。</p>
+      )}
+      {!loading && entries.length > 0 && hasMore && (
+        <p className="mt-3 text-xs text-slate-500">当前显示 {entries.length} / {totalCount} 项，可继续加载其余复习项。</p>
       )}
     </section>
   );
@@ -224,6 +230,8 @@ export default function ReviewDashboardPanel() {
           entries={queueEntries}
           names={names}
           dueCount={dashboard.summary?.due_count ?? 0}
+          totalCount={dashboard.queue?.total_count ?? queueEntries.length}
+          hasMore={Boolean(dashboard.queue?.has_more)}
           loading={loading}
         />
       </div>

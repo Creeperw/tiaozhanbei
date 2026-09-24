@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   extractTraceEventsFromContent,
+  hasTerminalTraceEvent,
   hasExecutionDoneEvent,
   removeTraceEventsFromContent,
   stripAssistantVisibleContent,
@@ -30,6 +31,21 @@ test('keeps only completed thinking and event history on rollback', () => {
 test('does not expose incomplete thinking content after rollback', () => {
   assert.equal(stripAssistantVisibleContent('<think>尚未完成'), '');
   assert.equal(hasExecutionDoneEvent('<<EV:{"type":"tool_done"}>>'), false);
+});
+
+test('recognizes modern workflow terminal events and legacy execution_done', () => {
+  for (const type of [
+    'workflow_done',
+    'workflow_failed',
+    'workflow_interrupted',
+    'workflow_cancelled',
+    'human_review_waiting',
+    'execution_done',
+  ]) {
+    assert.equal(hasTerminalTraceEvent(`<<EV:${JSON.stringify({ type })}>>`), true, type);
+  }
+  assert.equal(hasTerminalTraceEvent('<<EV:{"type":"step_completed"}>>'), false);
+  assert.equal(hasTerminalTraceEvent('', [{ event: 'workflow_cancelled' }]), true);
 });
 
 test('keeps EV payloads intact when formal output contains nested markers and bare terminators', () => {

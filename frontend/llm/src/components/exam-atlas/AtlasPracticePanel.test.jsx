@@ -47,7 +47,7 @@ describe('AtlasPracticePanel', () => {
     expect(screen.getByText('题干3')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '第三题答案' } });
-    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改本题' }));
     await screen.findByText(/得分 85/);
     const body = JSON.parse(requests.find(({ url }) => url.endsWith('/grade')).options.body);
     expect(body).toMatchObject({ question_id: 'q-3', request_id: 'claim-3', student_answer: '第三题答案' });
@@ -95,7 +95,7 @@ describe('AtlasPracticePanel', () => {
     // Unlabelled questions offer the manual difficulty tagging control.
     expect(screen.getByText('本题暂无难度标注')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '对立制约，互根互用。' } });
-    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改本题' }));
 
     expect(await screen.findByText(/得分 88/)).toBeInTheDocument();
     const gradeRequest = requests.find(({ url }) => url.endsWith('/practice/grade'));
@@ -179,7 +179,7 @@ describe('AtlasPracticePanel', () => {
     );
     await screen.findByText('旧知识点题目');
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '旧答案' } });
-    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改本题' }));
     await screen.findByText(/得分 80/);
 
     rerender(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-second', kpName: '新知识点' }} />);
@@ -238,7 +238,7 @@ describe('AtlasPracticePanel', () => {
     render(<AtlasPracticePanel taskItemId="ITEM_BOUND" />);
     expect(await screen.findByText('绑定题目')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '绑定答案' } });
-    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改本题' }));
 
     expect(await screen.findByText(/得分 100/)).toBeInTheDocument();
     expect(requests[0].url).toContain('/daily-task-items/ITEM_BOUND/practice/questions');
@@ -295,7 +295,7 @@ describe('AtlasPracticePanel', () => {
     expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: /选项甲/ }));
-    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改本题' }));
     await screen.findByText(/得分 100/);
 
     expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();

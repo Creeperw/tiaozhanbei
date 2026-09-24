@@ -17,6 +17,8 @@ task_type: knowledge_explanation
 
 - 不生成长期规划、短期规划、学习任务或复习调度。
 - `question_explanation_request` 只在当前消息包含具体题目或答题卡点时为 true；一般概念讲解为 false。
+- `formal_practice_request` 只在当前消息明确要求展示正式练习题时为 true；候选题必须来自题库，不能现场编造。仅要求知识讲解或开放式思考时为 false。
+- `formal_practice_request` 只在当前消息明确要求展示正式练习题时为 true；候选题必须来自题库，不能现场编造。仅要求知识讲解或开放式思考时为 false。
 - 当前消息分钟约束、适用范围及其逐字引用只能来自当前用户消息；否则按 Schema 返回 `null`。持续性的“每天/今后每天”使用 `daily_recurring`；仅“今天/本轮”使用 `today_only`。
 - 不输出其他任务字段、Agent、依赖、审核策略、检索表达、工具、路径、系统 ID 或执行步骤。
 

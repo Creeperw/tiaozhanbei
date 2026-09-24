@@ -215,6 +215,12 @@ class PlannerModelOutput(BaseModel):
             "或对当前页面具体题目的明确指代作为依据；仅要求讲解某个知识点、学说或概念时必须为false。"
         ),
     )
+    formal_practice_request: bool = Field(
+        default=False,
+        description=(
+            "完整语义是否明确要求本轮展示正式练习题；仅要求知识讲解或开放式思考时必须为false。"
+        ),
+    )
     emotional_support_request: bool = Field(
         default=False,
         description="完整语义是否主要需要情绪支持而非启动学习业务写入流程。",
@@ -381,6 +387,10 @@ class PlannerKnowledgeExplanationOutput(PlannerBranchOutput):
     question_explanation_request: bool = Field(
         default=False,
         description="本轮是否是在处理一份具体题目或答题卡点。",
+    )
+    formal_practice_request: bool = Field(
+        default=False,
+        description="本轮是否明确要求展示正式练习题；题目必须由题库候选提供，不能现场编造。",
     )
     routing_reason: str = Field(
         min_length=1,

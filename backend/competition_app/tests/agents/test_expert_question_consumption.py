@@ -230,6 +230,32 @@ async def test_expert_can_skip_available_question_candidates() -> None:
 
 
 @pytest.mark.asyncio
+async def test_expert_allows_retrieved_short_answer_question_candidates() -> None:
+    context = context_with_candidates()
+    knowledge = context["dependency_outputs"]["knowledge"].payload
+    knowledge._question_details = [
+        knowledge._question_details[0].model_copy(update={
+            "question_type": "简答题",
+            "stem": "请说明四君子汤的功效。",
+            "reference_answer": "益气健脾。",
+        })
+    ]
+
+    draft = (await ExpertAgent(CandidateModel(True, ["Q_1"])).run(context)).payload
+
+    assert draft.question_consumption.use_question_candidates is True
+    assert draft.question_consumption.resource_type == "practice"
+    assert draft.content["练习资源"] == [{
+        "question_id": "Q_1",
+        "question_type": "简答题",
+        "stem": "请说明四君子汤的功效。",
+        "options": [],
+        "tags": ["方剂学"],
+        "kp_ids": ["KP_1"],
+    }]
+
+
+@pytest.mark.asyncio
 async def test_expert_excludes_questions_outside_current_evidence_kps_before_model() -> None:
     context = context_with_candidates()
     knowledge = context["dependency_outputs"]["knowledge"].payload
@@ -434,7 +460,9 @@ def test_expert_filters_non_safe_review_question_types() -> None:
     assert ExpertAgent._is_review_question_type("single_choice") is True
     assert ExpertAgent._is_review_question_type("fill_blank") is True
     assert ExpertAgent._is_review_question_type("临床案例问答") is False
-    assert ExpertAgent._is_review_question_type("简答题") is False
+    assert ExpertAgent._is_review_question_type("简答题") is True
+    assert ExpertAgent._is_review_question_type("问答题") is True
+    assert ExpertAgent._is_review_question_type("病例分析/实践技能题") is True
 
 
 @pytest.mark.asyncio

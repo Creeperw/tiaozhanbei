@@ -34,7 +34,6 @@ class _CompletedSubmitEngine:
             is_complete=True,
         )
 
-
 def test_simulated_patient_uses_authenticated_identity_instead_of_payload_user_id() -> None:
     app = FastAPI()
     app.include_router(simulated_patient_routes.router)
@@ -146,7 +145,6 @@ def test_projection_failure_is_fail_open_for_completed_submit() -> None:
 
     assert response.status_code == 200
     assert response.json()["data"]["history_id"] == "H1"
-
 
 def test_acupuncture_cases_load_from_versioned_data_file() -> None:
     assert simulated_patient_routes.ACUPUNCTURE_CASE_DATA_PATH.parent.name == "data"

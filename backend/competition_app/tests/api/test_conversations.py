@@ -235,3 +235,9 @@ def test_conversation_history_returns_persisted_trace_events(tmp_path: Path) -> 
         forbidden_trace_fields.isdisjoint(event)
         for event in assistant["trace_events"]
     )
+    trace_events = assistant["trace_events"]
+    assert all(isinstance(event.get("seq"), int) for event in trace_events)
+    assert [event["seq"] for event in trace_events] == sorted(
+        event["seq"] for event in trace_events
+    )
+    assert trace_events[-1]["event"] in {"run_completed", "run_interrupted", "run_failed"}

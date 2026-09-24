@@ -17,7 +17,11 @@ from competition_app.contracts.resource import (
     ResourceDraft,
 )
 from competition_app.contracts.audit_policy import ResourceProvenance
-from competition_app.contracts.knowledge import EvidenceItem
+from competition_app.contracts.knowledge import (
+    EvidenceItem,
+    QuestionDetail,
+    to_learner_view,
+)
 from competition_app.llm.base import ChatModel
 from competition_app.llm.openai_compatible import ModelResponseError
 from competition_app.llm.prompt_skills import prompt_skill_registry
@@ -27,6 +31,7 @@ from competition_app.runtime.event_stream import emit_runtime_event
 from competition_app.services.conversation_history import (
     sanitize_compressed_dialogue_summary,
 )
+from competition_app.tools.question_channel_reservation import reserve_question_details
 
 
 KNOWLEDGE_EXPLANATION_FALLBACK_NOTICE = (
@@ -34,6 +39,9 @@ KNOWLEDGE_EXPLANATION_FALLBACK_NOTICE = (
 )
 _EXPERT_EVIDENCE_MAX_ITEMS = 10
 _EXPERT_EVIDENCE_MAX_CHARS = 16_000
+_FORMAL_PRACTICE_NO_CANDIDATE_NOTICE = (
+    "当前题库中没有检索到与本次知识点匹配的正式练习题，本次不编造题目。"
+)
 
 
 class KnowledgeExplanationValidationError(ValueError):
@@ -201,6 +209,19 @@ class KnowledgeExplanationAgent:
                 for item in evidence_pack.evidence_items
             ]
             retrieval_summary = str(getattr(evidence_pack, "retrieval_summary", "")).strip()
+        formal_practice_request = bool(context.get("formal_practice_request"))
+        formal_question_candidates = self._formal_question_candidates(
+            evidence_pack,
+            limit=8,
+        )
+        selected_formal_question = None
+        if formal_practice_request and formal_question_candidates:
+            selected_formal_question = await self._select_formal_question(
+                context=context,
+                evidence_pack=evidence_pack,
+                candidates=formal_question_candidates,
+                prompt_skill=skill,
+            )
         memory_output = context.get("dependency_outputs", {}).get("memory")
         memory_payload = getattr(memory_output, "payload", None)
         context_summary = getattr(memory_payload, "context_summary", None)
@@ -259,6 +280,7 @@ class KnowledgeExplanationAgent:
                             "question_explanation_request": bool(
                                 question_explanation_request
                             ),
+                            "formal_practice_request": formal_practice_request,
                             "external_information_request": bool(
                                 external_information_request
                             ),
@@ -312,6 +334,17 @@ class KnowledgeExplanationAgent:
                                             "不得臆造。"
                                         )
                                     )
+                                ),
+                                **(
+                                    {
+                                        "formal_practice_rule": (
+                                            "正式练习题由系统从真实题库候选中物化到练习资源。"
+                                            "正文不得自行提出、改写或编造正式题、选项、答案或解析，"
+                                            "也不要把候选题复制到知识讲解正文中。"
+                                        )
+                                    }
+                                    if formal_practice_request
+                                    else {}
                                 ),
                                 "title": "可选标题。",
                                 "thinking_questions": "可选：启发式思考问题列表（2-3 个，只提问不含答案）；题目讲解可不含。",
@@ -460,9 +493,20 @@ class KnowledgeExplanationAgent:
         )
         if reference_markup:
             body_text = f"{body_text.rstrip()}\n\n{reference_markup}"
+        selected_questions = []
+        if formal_practice_request and selected_formal_question:
+            selected_questions = [
+                to_learner_view(selected_formal_question).model_dump(mode="json")
+            ]
+        elif formal_practice_request:
+            body_text = (
+                f"{body_text.rstrip()}\n\n> {_FORMAL_PRACTICE_NO_CANDIDATE_NOTICE}"
+            )
         content: dict[str, object] = {
             content_key: body_text
         }
+        if formal_practice_request:
+            content["练习资源"] = selected_questions
         # The prose-producing Expert does not own a structured resource
         # selection contract.  Do not append a question after generation: an
         # Audit repair could not remove or replace that system-added item.
@@ -489,18 +533,159 @@ class KnowledgeExplanationAgent:
             safety_notes=evidence_pack.risk_notes
             or ["仅用于中医药教学，不构成现实诊疗建议。"],
             question_consumption=QuestionConsumptionDecision(
-                use_question_candidates=False,
-                usage_reason="知识讲解以自然语言思考问题完成自检，本节点不自动追加正式题目。",
-                selected_question_ids=[],
-                resource_type="none",
+                use_question_candidates=bool(selected_questions),
+                usage_reason=(
+                    "系统从当前知识点的正式题库候选中选择练习题。"
+                    if selected_questions
+                    else (
+                        _FORMAL_PRACTICE_NO_CANDIDATE_NOTICE
+                        if formal_practice_request
+                        else "知识讲解以自然语言思考问题完成自检，本节点不自动追加正式题目。"
+                    )
+                ),
+                selected_question_ids=[
+                    item["question_id"] for item in selected_questions
+                ],
+                resource_type="practice" if selected_questions else "none",
             ),
             provenance=ResourceProvenance(
-                question_origin="none",
+                question_origin=("formal_candidate" if selected_questions else "none"),
+                selected_question_ids=[
+                    item["question_id"] for item in selected_questions
+                ],
                 selected_evidence_ids=[primary.evidence_id],
                 generated_sections=list(content),
+                materialized_sections=(
+                    ["练习资源"] if selected_questions else []
+                ),
             ),
         )
         return envelope(context, "expert_agent", "knowledge_explanation", draft)
+
+    @staticmethod
+    def _formal_question_candidates(
+        evidence_pack: Any,
+        *,
+        limit: int,
+    ) -> list[QuestionDetail]:
+        """Return retrieved, in-scope formal questions for safe materialization."""
+
+        details = list(getattr(evidence_pack, "_question_details", []) or [])
+        resolved_kp_ids = set(getattr(evidence_pack, "resolved_kp_ids", []) or [])
+        if resolved_kp_ids:
+            details = [
+                item
+                for item in details
+                if resolved_kp_ids.intersection(
+                    bridge.kp_id for bridge in item.bridges if bridge.kp_id
+                )
+            ]
+        details = [
+            item
+            for item in details
+            if KnowledgeExplanationAgent._is_formal_practice_question_type(
+                item.question_type
+            )
+        ]
+        return reserve_question_details(details, limit=limit)
+
+    async def _select_formal_question(
+        self,
+        *,
+        context: dict[str, Any],
+        evidence_pack: Any,
+        candidates: list[QuestionDetail],
+        prompt_skill: Any,
+    ) -> QuestionDetail | None:
+        """Select one retrieved question, or abstain when relevance is unclear.
+
+        ``resolved_kp_ids`` is intentionally only a recall boundary: a broad
+        retrieval can contain questions from neighboring knowledge points. The
+        final choice therefore uses the model's semantic judgment over the
+        structured topic/focus fields and the candidate stems. The model can
+        return only an existing candidate ID; it never supplies question
+        content, answers, or explanations.
+        """
+
+        if len(candidates) == 1:
+            return candidates[0]
+        complete_json = getattr(self.chat_model, "complete_json", None)
+        if not callable(complete_json):
+            return None
+        selection_payload = {
+            "formal_question_selection_request": True,
+            "topic": str(getattr(evidence_pack, "query", "") or "").strip(),
+            "learning_focus_items": [
+                item.model_dump(mode="json")
+                for item in (getattr(evidence_pack, "learning_focus_items", []) or [])
+            ],
+            "resolved_kp_names": dict(
+                getattr(evidence_pack, "resolved_kp_names", {}) or {}
+            ),
+            "candidate_questions": [
+                {
+                    "question_id": item.question_id,
+                    "question_type": item.question_type,
+                    "stem": item.stem,
+                    "options": item.options,
+                    "kp_ids": sorted(
+                        {bridge.kp_id for bridge in item.bridges if bridge.kp_id}
+                    ),
+                }
+                for item in candidates
+            ],
+            "selection_contract": {
+                "selected_question_id": (
+                    "必须逐字返回 candidate_questions 中的一个 question_id；"
+                    "若没有明确与 topic/learning_focus_items 相关的候选，返回 null。"
+                ),
+                "reason": "简短说明结构化主题与所选题目的语义关联，不得复述答案。",
+            },
+        }
+        try:
+            raw = await complete_json(
+                "expert_agent",
+                build_model_context(
+                    context,
+                    target_agent="expert_agent",
+                    prompt_skill=prompt_skill,
+                    payload=selection_payload,
+                    permission_note=(
+                        "这是正式题库候选选择器。只能从给定候选 ID 中选择一个，"
+                        "不得生成、改写或补充题目内容；无法确认相关性时必须返回 null。"
+                    ),
+                ),
+            )
+        except (ValidationError, ValueError, ModelResponseError, TypeError):
+            return None
+        return self._resolve_formal_question_selection(raw, candidates)
+
+    @staticmethod
+    def _resolve_formal_question_selection(
+        raw: Any,
+        candidates: list[QuestionDetail],
+    ) -> QuestionDetail | None:
+        """Resolve only an existing candidate ID; all other outputs abstain."""
+
+        if not isinstance(raw, dict):
+            return None
+        selected_id = str(raw.get("selected_question_id") or "").strip()
+        if not selected_id or selected_id.casefold() in {"null", "none"}:
+            return None
+        return next(
+            (item for item in candidates if item.question_id == selected_id),
+            None,
+        )
+
+    @staticmethod
+    def _is_formal_practice_question_type(question_type: str) -> bool:
+        normalized = str(question_type).replace(" ", "").casefold()
+        return normalized in {
+            "单选题", "单项选择题", "多选题", "多项选择题", "判断题", "填空题",
+            "简答题", "问答题", "病例分析/实践技能题", "临床案例问答",
+            "single_choice", "multiple_choice", "true_false", "fill_blank",
+            "short_answer", "essay", "case_analysis",
+        }
 
     @staticmethod
     def _natural_language_payload(

@@ -1,5 +1,20 @@
 const EVENT_PREFIX = '<<EV:';
 
+export const TERMINAL_TRACE_EVENT_TYPES = Object.freeze([
+  'workflow_done',
+  'workflow_failed',
+  'workflow_interrupted',
+  'workflow_cancelled',
+  'human_review_waiting',
+]);
+
+const terminalTraceEventTypes = new Set(TERMINAL_TRACE_EVENT_TYPES);
+
+export const isTerminalTraceEvent = (event) => {
+  const type = event?.type || event?.event;
+  return type === 'execution_done' || terminalTraceEventTypes.has(type);
+};
+
 const scanTraceEventFrames = (content = '') => {
   const text = String(content || '');
   const frames = [];
@@ -68,4 +83,9 @@ export const extractTraceEventsFromContent = (content = '') => {
 
 export const hasExecutionDoneEvent = (content = '') => (
   extractTraceEventsFromContent(content).some(event => event?.type === 'execution_done')
+);
+
+export const hasTerminalTraceEvent = (content = '', traceEvents = []) => (
+  extractTraceEventsFromContent(content).some(isTerminalTraceEvent)
+  || (Array.isArray(traceEvents) && traceEvents.some(isTerminalTraceEvent))
 );

@@ -549,13 +549,13 @@ export default function AtlasPracticePanel({
               </Button>
               <div className="practice-submit-actions">
               <Button
-                aria-label="提交并批改"
+                aria-label="提交并批改本题"
                 className="practice-submit-button"
                 onClick={submit}
                 disabled={!submittedAnswer || skipping}
                 loading={submitting}
               >
-                <Send size={17} aria-hidden="true" />提交练习任务
+                <Send size={17} aria-hidden="true" />提交并批改本题
               </Button>
               {!fixedQuestionList && <Button
                 aria-label="跳过该题"

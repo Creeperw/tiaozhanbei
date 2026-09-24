@@ -33,6 +33,18 @@ def test_knowledge_explanation_audit_uses_canonical_non_blocking_pass_policy() -
     assert "non_blocking_issue_types" in audit.instructions
     assert "也必须直接 `pass`" in audit.instructions
     assert "思考题答案可从正文直接归纳" in audit.instructions
+
+
+def test_knowledge_explanation_skill_requires_candidate_question_when_requested() -> None:
+    skill = prompt_skill_registry.load("expert_agent", "knowledge_explanation")
+    audit = prompt_skill_registry.load("audit_agent", "knowledge_explanation")
+
+    assert "用户明确要求“一道/几道练习题、出题、做题、测试一下”等正式练习" in skill.instructions
+    assert "use_question_candidates=true" in skill.instructions
+    assert "简答题、问答题或病例分析题" in skill.instructions
+    assert "不得用“先不出题”" in skill.instructions
+    assert "候选题为空时，明确说明当前没有可用的正式题目" in skill.instructions
+
     assert "决定为 revise" in audit.instructions
     assert "全部关键项通过才 `pass`；可修正缺项使用 `revise`" not in audit.instructions
 

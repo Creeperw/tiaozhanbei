@@ -18,6 +18,7 @@ const PRIMARY_NAV = [
   },
 ];
 const INTERNAL_ALLOWED_PAGES = ['assistant', 'knowledge', 'settings', 'capability-detail', 'learning-path-tasks'];
+const PAGE_ALIASES = { learning_path: 'learning-path' };
 const SUPPORT_NAV = [
   { key: 'admin-feedback', label: '管理入口', roles: ['admin'], children: [{ label: '反馈与进化', intent: intent('admin-feedback') }, { label: '知识治理', intent: intent('knowledge', { view: 'personal' }) }] },
 ];
@@ -35,6 +36,11 @@ export const PAGE_TITLES = {
   'capability-detail': '平台核心能力',
   'admin-feedback': '管理入口',
 };
+
+export function normalizeNotificationPage(page) {
+  const normalized = PAGE_ALIASES[String(page || '')] || String(page || '');
+  return normalized || null;
+}
 const MODULE_ROUTES = {
   practice: { endpoint: '/training/practice/grade' },
   practiceWorkspace: { endpoint: '/training/workspace/tasks' },

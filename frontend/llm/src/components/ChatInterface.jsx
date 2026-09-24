@@ -1165,9 +1165,8 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   }, [currentSessionId]);
 
   useEffect(() => {
-    // 仅在非流式场景（会话切换/历史恢复）时补一次定位：流式输出期间由
-    // Virtuoso 的 followOutput 负责跟随，这里再跳底会与平滑滚动打架，
-    // 造成“一输出就强制拉到最底部”。
+    // 仅在非流式场景（会话切换/历史恢复）时补一次定位；流式期间由
+    // Virtuoso 的即时 followOutput 负责跟随，避免平滑动画与消息更新竞争。
     if (!isCurrentSessionLoading && autoScroll) {
       if (virtuosoRef.current) {
         virtuosoRef.current.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' });
@@ -2695,9 +2694,9 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                     ref={virtuosoRef}
                     data={messages}
                     computeItemKey={(index, item) => item.id || `msg-${index}`}
-                    // 仅在用户停留在底部时平滑跟随新内容；用户向上滚动查看
-                    // 正在输出的内容后立即停止跟随，不再强制拉底。
-                    followOutput={(isAtBottom) => (isAtBottom ? 'smooth' : false)}
+                    // 仅在用户停留在底部时即时跟随新内容；用户向上滚动查看
+                    // 正在输出的内容后立即停止跟随，不再与滚动动画竞争。
+                    followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
                     atBottomStateChange={handleAtBottomChange}
                     increaseViewportBy={{ top: 200, bottom: 200 }}
                     className="assistant-messages__virtuoso"

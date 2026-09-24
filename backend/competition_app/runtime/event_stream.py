@@ -26,6 +26,7 @@ _PUBLIC_MODEL_EVENT_FIELDS = frozenset(
         "step_id",
         "status",
         "ts",
+        "seq",
         "error_type",
     }
 )
@@ -451,13 +452,21 @@ class RecordingEventSink:
         self._skip_types = skip_types or frozenset()
         self._lock = threading.Lock()
         self._events: list[dict[str, Any]] = []
+        self._sequence = 0
 
     def __call__(self, event: dict[str, Any]) -> None:
         event_type = str(event.get("event") or "")
+        with self._lock:
+            self._sequence += 1
+            sequence = self._sequence
+        recorded_source = event if event.get("seq") is not None else {
+            **event,
+            "seq": sequence,
+        }
         recorded_event = (
-            public_runtime_event(event)
+            public_runtime_event(recorded_source)
             if event_type in self._SAFE_LIFECYCLE_TYPES
-            else event
+            else recorded_source
         )
         if event_type not in self._skip_types or event_type in self._SAFE_LIFECYCLE_TYPES:
             with self._lock:

@@ -665,8 +665,19 @@ class ApplicationContainer:
         )
         task_load_policy_loader = None
         path_candidate_loader = None
+        knowledge_point_name_loader = None
         daily_task_progress_loader = None
         if backend_handoff_runtime is not None:
+
+            def load_knowledge_point_names(
+                learner_id: str,
+                kp_ids: list[str],
+            ) -> dict[str, str]:
+                return backend_handoff_runtime.load_knowledge_point_names(
+                    learner_id, kp_ids
+                )
+
+            knowledge_point_name_loader = load_knowledge_point_names
 
             def load_task_load_policy(
                 learner_id: str,
@@ -702,6 +713,7 @@ class ApplicationContainer:
             plan_repository,
             knowledge_point_resolver=knowledge_point_resolver,
             video_resource_resolver=video_resource_resolver,
+            knowledge_point_name_loader=knowledge_point_name_loader,
             task_load_policy_loader=task_load_policy_loader,
             path_candidate_loader=path_candidate_loader,
             review_knowledge_point_loader=load_review_knowledge_points,

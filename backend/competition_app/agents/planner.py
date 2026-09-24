@@ -124,6 +124,7 @@ class PlannerDecision(BaseModel):
     requires_learning_plan_output: bool = False
     external_information_request: bool = False
     question_explanation_request: bool = False
+    formal_practice_request: bool = False
     emotional_support_request: bool = False
     requires_memory_governance: bool = False
     requires_knowledge_support: bool = False
@@ -396,6 +397,7 @@ class PlannerAgent:
                 ),
                 external_information_request=model_output.external_information_request,
                 question_explanation_request=model_output.question_explanation_request,
+                formal_practice_request=model_output.formal_practice_request,
                 emotional_support_request=model_output.emotional_support_request,
                 requires_memory_governance=model_output.requires_memory_governance,
                 requires_knowledge_support=model_output.requires_knowledge_support,
@@ -758,6 +760,9 @@ class PlannerAgent:
             context["question_explanation_request"] = bool(
                 raw.get("question_explanation_request", False)
             )
+            context["formal_practice_request"] = bool(
+                raw.get("formal_practice_request", False)
+            )
             context["emotional_support_request"] = bool(
                 raw.get("emotional_support_request", False)
             )
@@ -1082,6 +1087,7 @@ class PlannerAgent:
         # owning route, mirroring how casual_response/query_kind are sanitized.
         external_information_request = bool(raw.get("external_information_request", False))
         question_explanation_request = bool(raw.get("question_explanation_request", False))
+        formal_practice_request = bool(raw.get("formal_practice_request", False))
         emotional_support_request = bool(raw.get("emotional_support_request", False))
         requires_memory_governance = bool(
             raw.get("requires_memory_governance", False)
@@ -1094,6 +1100,7 @@ class PlannerAgent:
             external_information_request = False
         if task_type != "knowledge_explanation":
             question_explanation_request = False
+            formal_practice_request = False
         if task_type != "casual_conversation":
             emotional_support_request = False
             requires_memory_governance = False
@@ -1349,6 +1356,7 @@ class PlannerAgent:
             "requires_learning_plan_output": requires_learning_plan_output,
             "external_information_request": external_information_request,
             "question_explanation_request": question_explanation_request,
+            "formal_practice_request": formal_practice_request,
             "emotional_support_request": emotional_support_request,
             "requires_memory_governance": requires_memory_governance,
             "requires_knowledge_support": requires_knowledge_support,

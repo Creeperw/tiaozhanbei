@@ -468,6 +468,31 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def load_knowledge_point_names(
+        self,
+        external_user_id: str,
+        kp_ids: list[str],
+    ) -> dict[str, str]:
+        """Read display names for plan-owned formal knowledge-point IDs."""
+
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            self._workshop_user(db, external_user_id)
+            values = [str(value).strip() for value in kp_ids if str(value).strip()]
+            if not values:
+                return {}
+            return {
+                str(row.kp_id): str(row.name).strip()
+                for row in db.query(database.KnowledgePoint)
+                .filter(database.KnowledgePoint.kp_id.in_(values))
+                .all()
+                if str(row.name or "").strip()
+                and str(row.name).strip() != str(row.kp_id)
+            }
+        finally:
+            db.close()
+
     def ensure_executable_knowledge_bundle(
         self,
         bundle: dict[str, Any],

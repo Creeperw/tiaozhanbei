@@ -37,6 +37,28 @@ class CapturingExplanationModel:
         }
 
 
+class FormalPracticeExplanationModel(CapturingExplanationModel):
+    def __init__(self) -> None:
+        super().__init__()
+        self.candidate_questions = None
+        self.selection_calls = 0
+
+    async def complete_json(self, role, payload, on_delta=None):
+        self.payload = payload
+        if payload["payload"].get("formal_question_selection_request"):
+            self.selection_calls += 1
+            return {"selected_question_id": "Q_1", "reason": "唯一候选"}
+        self.candidate_questions = payload["payload"].get("candidate_questions")
+        return {
+            "title": "四君子汤讲解",
+            "explanation_content": (
+                "四君子汤的核心功效是益气健脾，复习时应把组成与功效联系起来。"
+            ),
+            "thinking_questions": [],
+            "uncertainty": [],
+        }
+
+
 class CapturingRepairModel(CapturingExplanationModel):
     async def complete_json(self, role, payload, on_delta=None):
         self.payload = payload
@@ -131,6 +153,130 @@ def _add_question_candidates(context: dict) -> dict:
         )
     ]
     return context
+
+
+def _question_detail(question_id: str, stem: str, kp_id: str) -> QuestionDetail:
+    return QuestionDetail(
+        question_id=question_id,
+        question_type="简答题",
+        stem=stem,
+        options=[],
+        reference_answer="系统答案",
+        analysis="系统解析",
+        tags=[kp_id],
+        source_metadata={},
+        bridges=[
+            QuestionBridge(
+                kp_id=kp_id,
+                bridge_layer="strict",
+                relation="primary",
+                confidence=0.9,
+                rank=1,
+                evidence_chunk_uid=f"CHUNK_{kp_id}",
+                match_method="strict",
+            )
+        ],
+        retrieval=QuestionRetrievalMetadata(
+            channels=["bridge", "bm25"],
+            channel_scores={"bridge": 1.0, "bm25": 0.8},
+            fusion_score=0.9,
+        ),
+    )
+
+
+def test_formal_question_selection_rejects_unknown_or_empty_id() -> None:
+    candidates = [_question_detail("Q_1", "题干", "KP_1")]
+
+    assert KnowledgeExplanationAgent._resolve_formal_question_selection(
+        {"selected_question_id": "Q_NOT_FOUND"}, candidates
+    ) is None
+    assert KnowledgeExplanationAgent._resolve_formal_question_selection(
+        {"selected_question_id": None}, candidates
+    ) is None
+    assert KnowledgeExplanationAgent._resolve_formal_question_selection(
+        {"selected_question_id": "Q_1"}, candidates
+    ) is candidates[0]
+
+
+@pytest.mark.asyncio
+async def test_knowledge_explanation_materializes_retrieved_formal_practice() -> None:
+    context = _add_question_candidates(_context())
+    context["formal_practice_request"] = True
+    model = FormalPracticeExplanationModel()
+
+    result = await KnowledgeExplanationAgent(model).run(context)
+
+    assert model.selection_calls == 0
+    assert result.payload.content["练习资源"] == [{
+        "question_id": "Q_1",
+        "question_type": "单项选择题",
+        "stem": "风寒感冒的常用治法是？",
+        "options": [
+            "{'option_id': 'A', 'content': '辛温解表'}",
+            "{'option_id': 'B', 'content': '益气健脾'}",
+            "{'option_id': 'C', 'content': ''}",
+        ],
+        "tags": ["感冒"],
+        "kp_ids": ["KP_1"],
+    }]
+    assert result.payload.question_consumption.use_question_candidates is True
+    assert result.payload.question_consumption.selected_question_ids == ["Q_1"]
+    assert result.payload.question_consumption.resource_type == "practice"
+    assert result.payload.provenance.question_origin == "formal_candidate"
+
+
+@pytest.mark.asyncio
+async def test_formal_practice_selects_existing_relevant_candidate_not_first() -> None:
+    context = _context()
+    context["formal_practice_request"] = True
+    evidence = context["dependency_outputs"]["knowledge"].payload
+    evidence.query = "Meta分析"
+    evidence.resolved_kp_ids = ["KP_META", "KP_UNRELATED"]
+    evidence.resolved_kp_names = {
+        "KP_META": "Meta分析",
+        "KP_UNRELATED": "细胞",
+    }
+    evidence._question_details = [
+        _question_detail("Q_UNRELATED", "人体生命活动的基本单位是什么？", "KP_UNRELATED"),
+        _question_detail("Q_META", "Meta分析漏斗图不对称的原因有哪些？", "KP_META"),
+    ]
+
+    class SelectorModel(CapturingExplanationModel):
+        def __init__(self) -> None:
+            super().__init__()
+            self.selection_payload = None
+
+        async def complete_json(self, role, payload, on_delta=None):
+            self.payload = payload
+            if payload["payload"].get("formal_question_selection_request"):
+                self.selection_payload = payload["payload"]
+                return {"selected_question_id": "Q_META", "reason": "与当前主题相关"}
+            return await super().complete_json(role, payload, on_delta)
+
+    model = SelectorModel()
+    result = await KnowledgeExplanationAgent(model).run(context)
+
+    assert result.payload.content["练习资源"][0]["question_id"] == "Q_META"
+    assert result.payload.question_consumption.selected_question_ids == ["Q_META"]
+    assert "reference_answer" not in result.payload.content["练习资源"][0]
+    assert "analysis" not in result.payload.content["练习资源"][0]
+    assert [
+        item["question_id"]
+        for item in model.selection_payload["candidate_questions"]
+    ] == ["Q_UNRELATED", "Q_META"]
+
+
+@pytest.mark.asyncio
+async def test_knowledge_explanation_reports_no_formal_candidate_without_inventing() -> None:
+    context = _context()
+    context["formal_practice_request"] = True
+
+    result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(context)
+
+    assert result.payload.content["练习资源"] == []
+    assert "当前题库中没有检索到" in result.payload.content["知识讲解"]
+    assert result.payload.question_consumption.use_question_candidates is False
+    assert result.payload.question_consumption.resource_type == "none"
 
 
 @pytest.mark.asyncio

@@ -133,6 +133,11 @@ def _state_with_intervention(
         )
     )
 
+
+def _state_without_task(now: datetime) -> LearningPlanResult:
+    state = _state(now, due_at=None)
+    return state.model_copy(update={"learning_task": None})
+
 def _carried(stored: LearningTask) -> list:
     return [
         item
@@ -249,6 +254,110 @@ def test_legacy_task_receives_a_full_24_hour_window_without_being_replaced() -> 
     assert timer["remaining_seconds"] == 24 * 60 * 60
     assert stored.task_id == "TASK_REFRESH_1"
     assert stored.refresh_due_at == now + timedelta(hours=24)
+
+
+def test_missing_initial_task_is_created_once_and_then_respects_24_hour_window() -> None:
+    now = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    repository = InMemoryLearningPlanRepository()
+    repository.save_current("learner-daily-refresh", _state_without_task(now))
+    service = DailyTaskRefreshService(
+        repository,
+        knowledge_point_resolver=lambda name, chapter="": "KP_FJ_001",
+        video_resource_resolver=lambda resource_ref: dict(
+            resource_ref,
+            duration_seconds=120,
+            source="bilibili",
+            bvid="BV_REFRESH_INITIAL",
+        ),
+    )
+
+    first = service.ensure_current("learner-daily-refresh", now=now)
+    stored_after_first = repository.get_current("learner-daily-refresh").learning_task
+    second = service.ensure_current(
+        "learner-daily-refresh", now=now + timedelta(hours=23)
+    )
+    stored_after_second = repository.get_current("learner-daily-refresh").learning_task
+
+    assert first["refreshed"] is True
+    assert first["reason"] == "initial_task_created"
+    assert first["remaining_seconds"] == 24 * 60 * 60
+    assert stored_after_first is not None
+    assert stored_after_first.refresh_due_at == now + timedelta(hours=24)
+    assert second["refreshed"] is False
+    assert second["reason"] == "active"
+    assert second["current_task_id"] == stored_after_first.task_id
+    assert stored_after_second.task_id == stored_after_first.task_id
+
+
+def test_missing_initial_task_does_not_create_non_executable_placeholder() -> None:
+    now = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    repository = InMemoryLearningPlanRepository()
+    state = _state_without_task(now)
+    package = state.short_term_plan.short_term_learning_package
+    package = package.model_copy(
+        update={
+            "task_blocks": [
+                ShortTermTaskBlock(
+                    content="阅读一段尚未接入资源的材料",
+                    estimated_minutes=20,
+                    item_type="reading",
+                )
+            ]
+        }
+    )
+    repository.save_current(
+        "learner-daily-refresh",
+        state.model_copy(
+            update={
+                "short_term_plan": state.short_term_plan.model_copy(
+                    update={"short_term_learning_package": package}
+                )
+            }
+        ),
+    )
+    service = DailyTaskRefreshService(repository)
+
+    result = service.ensure_current("learner-daily-refresh", now=now)
+
+    assert result["refreshed"] is False
+    assert result["reason"] == "initial_task_resources_unavailable"
+    assert repository.get_current("learner-daily-refresh").learning_task is None
+
+
+def test_initial_task_can_materialize_from_verified_path_candidate() -> None:
+    now = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    repository = InMemoryLearningPlanRepository()
+    repository.save_current("learner-daily-refresh", _state_without_task(now))
+    service = DailyTaskRefreshService(
+        repository,
+        knowledge_point_resolver=lambda name, chapter="": (
+            "KP_FJ_001" if name == "四君子汤" else None
+        ),
+        path_candidate_loader=lambda learner_id, **kwargs: {
+            "state_digest": "STATE_1",
+            "items": [
+                {
+                    "eligible": True,
+                    "estimated_minutes": 20,
+                    "recommended_action": "learn",
+                    "knowledge_points": [
+                        {"kp_id": "KP_FJ_001", "name": "四君子汤"}
+                    ],
+                    "source_refs": ["plan:short-term"],
+                    "evidence_refs": ["route:approved"],
+                    "score": 0.8,
+                }
+            ],
+        },
+    )
+
+    result = service.ensure_current("learner-daily-refresh", now=now)
+
+    stored = repository.get_current("learner-daily-refresh").learning_task
+    assert result["reason"] == "initial_task_created"
+    assert stored is not None
+    assert stored.refresh_due_at == now + timedelta(hours=24)
+    assert any(item.kp_id == "KP_FJ_001" for item in stored.items)
 
 
 def test_overdue_task_rolls_to_next_short_term_block_once() -> None:

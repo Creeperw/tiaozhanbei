@@ -18,7 +18,10 @@ from competition_app.exam_scope import (
     current_exam_scope,
     reset_exam_workspace,
 )
-from competition_app.repositories.learning_plan import LearningPlanRepository
+from competition_app.repositories.learning_plan import (
+    LearningPlanRepository,
+    plan_head_versions,
+)
 from competition_app.services.learning_plan import (
     KnowledgePointResolver,
     VideoResourceResolver,
@@ -43,6 +46,7 @@ class DailyTaskRefreshService:
         repository: LearningPlanRepository,
         knowledge_point_resolver: KnowledgePointResolver | None = None,
         video_resource_resolver: VideoResourceResolver | None = None,
+        knowledge_point_name_loader: Callable[[list[str]], dict[str, str]] | None = None,
         task_load_policy_loader: Callable[..., dict[str, Any]] | None = None,
         path_candidate_loader: Callable[..., dict[str, Any]] | None = None,
         review_knowledge_point_loader: Callable[[str], list[str]] | None = None,
@@ -51,6 +55,7 @@ class DailyTaskRefreshService:
         self.repository = repository
         self.knowledge_point_resolver = knowledge_point_resolver
         self.video_resource_resolver = video_resource_resolver
+        self.knowledge_point_name_loader = knowledge_point_name_loader
         self.task_load_policy_loader = task_load_policy_loader
         self.path_candidate_loader = path_candidate_loader
         # 到期复习知识点名称列表；用于把复习知识点纳入 24h 滚动任务的每日测验。
@@ -74,8 +79,15 @@ class DailyTaskRefreshService:
         current_time = self._utc(now or datetime.now(timezone.utc))
         with self._lock:
             plans = self.repository.get_current(learner_id)
-            if plans is None or plans.learning_task is None:
-                return self._result(None, current_time, available=False)
+            if plans is None:
+                return self._result(
+                    None,
+                    current_time,
+                    available=False,
+                    reason="learning_plan_required",
+                )
+            if plans.learning_task is None:
+                return self._ensure_initial_task(plans, current_time)
 
             task = plans.learning_task
             if task.refresh_started_at is None or task.refresh_due_at is None:
@@ -202,6 +214,253 @@ class DailyTaskRefreshService:
                 reason="refresh_due",
                 task_load_policy=task_load_policy,
             )
+
+    def _ensure_initial_task(
+        self,
+        plans: Any,
+        now: datetime,
+    ) -> dict[str, Any]:
+        """Materialize the first task without resetting an existing 24h window.
+
+        Short-term plan publication intentionally invalidates the daily-task
+        layer.  The first dashboard read is therefore allowed to create one
+        executable task, but only from the already persisted plan and verified
+        path candidates.  Once saved, the normal ``refresh_due_at`` branch
+        controls all subsequent reads for the next 24 hours.
+        """
+
+        short_plan = plans.short_term_plan
+        package = short_plan.short_term_learning_package if short_plan else None
+        if short_plan is None or package is None:
+            return self._result(
+                None,
+                now,
+                available=False,
+                reason="short_term_plan_required",
+            )
+
+        task_load_policy: dict[str, Any] = {}
+        plan_context = {
+            "long_term_plan": (
+                plans.long_term_plan.model_dump(mode="json")
+                if plans.long_term_plan is not None
+                else None
+            ),
+            "short_term_plan": short_plan.model_dump(mode="json"),
+            "learning_task": None,
+        }
+        if self.task_load_policy_loader is not None:
+            try:
+                loaded_policy = self.task_load_policy_loader(
+                    short_plan.learner_id,
+                    plan_context=plan_context,
+                )
+                if isinstance(loaded_policy, dict):
+                    task_load_policy = loaded_policy
+            except Exception:
+                # Load policy is advisory and must not block first-task creation.
+                task_load_policy = {}
+        if isinstance(task_load_policy.get("recommended_minutes"), (int, float)):
+            plan_context["available_minutes"] = task_load_policy[
+                "recommended_minutes"
+            ]
+
+        path_candidates: dict[str, Any] = {}
+        if self.path_candidate_loader is not None:
+            try:
+                loaded_candidates = self.path_candidate_loader(
+                    short_plan.learner_id,
+                    plan_context=plan_context,
+                    scope="daily_task",
+                    limit=30,
+                    include_blocked=True,
+                )
+                if isinstance(loaded_candidates, dict):
+                    raw_items = loaded_candidates.get("items")
+                    if isinstance(raw_items, list):
+                        path_candidates = {
+                            "state_digest": loaded_candidates.get("state_digest"),
+                            "eligible": [
+                                item
+                                for item in raw_items
+                                if isinstance(item, dict)
+                                and item.get("eligible") is True
+                            ],
+                            "blocked": [
+                                item
+                                for item in raw_items
+                                if isinstance(item, dict)
+                                and item.get("eligible") is not True
+                            ],
+                        }
+                    else:
+                        path_candidates = loaded_candidates
+            except Exception:
+                # Candidate data is advisory; an unavailable candidate service
+                # must not manufacture a task from prose or block the dashboard.
+                path_candidates = {}
+
+        blocks = list(package.task_blocks)
+        executable_blocks = []
+        for block in blocks:
+            block_type = (
+                block.get("item_type")
+                if isinstance(block, dict)
+                else getattr(block, "item_type", None)
+            )
+            if block_type in {"knowledge_practice", "video_section"}:
+                executable_blocks.append(block)
+        selected_block = executable_blocks[0] if executable_blocks else None
+        content_source = selected_block or (blocks[0] if blocks else None)
+        content, block_minutes, _ = self._block_values(content_source)
+        if not content:
+            return self._result(
+                None,
+                now,
+                available=False,
+                reason="initial_task_content_unavailable",
+                task_load_policy=task_load_policy,
+            )
+        recommended_minutes = task_load_policy.get("recommended_minutes")
+        target_minutes = (
+            float(recommended_minutes)
+            if isinstance(recommended_minutes, (int, float))
+            and not isinstance(recommended_minutes, bool)
+            and float(recommended_minutes) > 0
+            else float(block_minutes or 10)
+        )
+        if isinstance(recommended_minutes, (int, float)) and not isinstance(
+            recommended_minutes, bool
+        ) and float(recommended_minutes) > 0:
+            target_minutes = max(10.0, min(24 * 60, target_minutes))
+        else:
+            target_minutes = max(1.0, min(24 * 60, target_minutes))
+        review_points = self._review_knowledge_points(short_plan.learner_id)
+        focus = short_plan.short_term_focus
+        intent_knowledge_points = (
+            list(focus.focus_names) if focus is not None else []
+        )
+        if focus is not None:
+            focus_ids = [
+                str(value).strip()
+                for value in focus.knowledge_point_ids
+                if str(value).strip()
+            ]
+            if self.knowledge_point_name_loader is not None and focus_ids:
+                try:
+                    names_by_id = self.knowledge_point_name_loader(focus_ids)
+                except Exception:
+                    names_by_id = {}
+                intent_knowledge_points.extend(
+                    str(names_by_id.get(kp_id) or "").strip()
+                    for kp_id in focus_ids
+                    if str(names_by_id.get(kp_id) or "").strip()
+                )
+        learning_chapter = ""
+        if isinstance(selected_block, dict):
+            learning_chapter = str(
+                selected_block.get("learning_chapter") or ""
+            ).strip()
+        schedule = (
+            build_daily_task_schedule(
+                exam_scope_id=current_exam_scope(short_plan.learner_id),
+                target_minutes=target_minutes,
+                learning_chapter=learning_chapter,
+                intent_knowledge_points=intent_knowledge_points,
+                review_knowledge_points=review_points,
+                knowledge_point_resolver=self.knowledge_point_resolver,
+                path_candidates=path_candidates,
+                task_load_policy=task_load_policy,
+            )
+            if self.knowledge_point_resolver is not None
+            else None
+        )
+        selected_names = (
+            [item.knowledge_point_name for item in schedule.selected]
+            if schedule is not None
+            else []
+        )
+        items = materialize_daily_task_items(
+            task_content=content,
+            learning_chapter=learning_chapter,
+            estimated_minutes=target_minutes,
+            focus_knowledge_points=selected_names,
+            task_blocks=[selected_block] if selected_block is not None else [],
+            knowledge_point_resolver=self.knowledge_point_resolver,
+            video_resource_resolver=self.video_resource_resolver,
+            quiz_target_count=None,
+            review_knowledge_points=review_points,
+        )
+        if not items:
+            return self._result(
+                None,
+                now,
+                available=False,
+                reason="initial_task_resources_unavailable",
+                task_load_policy=task_load_policy,
+            )
+
+        actual_kp_ids = {
+            str(item.kp_id)
+            for item in items
+            if item.item_type == "knowledge_practice"
+            and not item.completion_policy.get("quiz")
+            and item.kp_id
+        }
+        actual_names = list(
+            dict.fromkeys(
+                str(item.knowledge_point_name or "").strip()
+                for item in items
+                if item.item_type == "knowledge_practice"
+                and not item.completion_policy.get("quiz")
+                and str(item.knowledge_point_name or "").strip()
+            )
+        )
+        if schedule is not None:
+            schedule = reconcile_daily_task_schedule(
+                schedule,
+                materialized_kp_ids=actual_kp_ids,
+            )
+        task = LearningTask(
+            task_id=f"TASK_{uuid4().hex}",
+            learner_id=short_plan.learner_id,
+            short_term_plan_id=short_plan.plan_id,
+            task_type="daily_learning",
+            task_content=content,
+            learning_chapter=learning_chapter,
+            focus_knowledge_points=actual_names,
+            estimated_minutes=max(1.0, sum(item.estimated_minutes for item in items)),
+            expected_output=package.expected_output,
+            completion_criteria=package.completion_criteria,
+            version=1,
+            status="pending",
+            created_at=now,
+            updated_at=now,
+            refresh_started_at=now,
+            refresh_due_at=now + DAILY_TASK_REFRESH_INTERVAL,
+            items=items,
+            daily_task_schedule=schedule,
+        )
+        saved = self.repository.save_current(
+            short_plan.learner_id,
+            plans.model_copy(update={"learning_task": task}),
+            expected_heads=plan_head_versions(plans),
+        )
+        if not saved:
+            winner = self.repository.get_current(short_plan.learner_id)
+            winning_task = winner.learning_task if winner is not None else None
+            return self._result(
+                winning_task,
+                now,
+                reason="concurrent_initial_task",
+            )
+        return self._result(
+            task,
+            now,
+            refreshed=True,
+            reason="initial_task_created",
+            task_load_policy=task_load_policy,
+        )
 
     def refresh_due_tasks(
         self,

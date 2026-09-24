@@ -1627,6 +1627,12 @@ class PersonalizedReviewCardUseCase:
         context["question_explanation_request"] = bool(
             planner_output.payload.question_explanation_request
         )
+        context["formal_practice_request"] = bool(
+            planner_output.payload.formal_practice_request
+        )
+        context["formal_practice_request"] = bool(
+            planner_output.payload.formal_practice_request
+        )
         context["emotional_support_request"] = bool(
             planner_output.payload.emotional_support_request
         )
@@ -2975,10 +2981,25 @@ class PersonalizedReviewCardUseCase:
                 continue
             seen.add(key)
             merged.append(event)
+        next_sequence = max(
+            (
+                int(event["seq"])
+                for event in merged
+                if isinstance(event.get("seq"), (int, float))
+                and not isinstance(event.get("seq"), bool)
+            ),
+            default=0,
+        ) + 1
+        for event in merged:
+            if event.get("seq") is None:
+                event["seq"] = next_sequence
+                next_sequence += 1
         indexed = list(enumerate(merged))
         indexed.sort(key=lambda pair: (
+            pair[1].get("seq") is None,
+            pair[1].get("seq") if pair[1].get("seq") is not None else 0,
             pair[1].get("ts") is None,
-            pair[1].get("ts") if pair[1].get("ts") is not None else pair[0],
+            pair[1].get("ts") if pair[1].get("ts") is not None else 0,
             pair[0],
         ))
         return [event for _, event in indexed]

@@ -223,7 +223,18 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
         fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'mist', action: 'mistakes' }) }).then(r => readJsonResponse(r, {})),
         fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'hist', action: 'history_list' }) }).then(r => readJsonResponse(r, {})),
       ]);
-      if (favRes.success) setFavoritesList(favRes.data?.list || []);
+      if (favRes.success) {
+        const remote = Array.isArray(favRes.data?.list) ? favRes.data.list : [];
+        const local = getCollections();
+        const merged = [...remote, ...local].filter((item, index, all) => (
+          all.findIndex((candidate) => (
+            candidate.resource_type === item.resource_type
+            && candidate.resource_id === item.resource_id
+          )) === index
+        ));
+        setCollections(merged);
+        setFavoritesList(merged);
+      }
       if (mistRes.success) setMistakesList(mistRes.data?.list || []);
       if (histRes.success) setBackendHistory(histRes.data?.list || []);
     } catch { /* silent */ }

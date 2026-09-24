@@ -168,11 +168,21 @@ export const emptyPaperPage = {
 export const emptyReviewDashboard = {
   schema_version: '1.0',
   summary: { knowledge_point_count: 0, average_mastery: null, due_count: 0, active_task_count: 0, history_count: 0 },
-  queue: { entries: [], due_count: 0, active_task_count: 0, awaiting_resource_count: 0 },
+  queue: { entries: [], total_count: 0, offset: 0, limit: 50, has_more: false, due_count: 0, active_task_count: 0, awaiting_resource_count: 0 },
   mastery: [],
   mastery_history: [],
   review_states: [],
   review_tasks: [],
+};
+
+export const emptyNotifications = {
+  schema_version: '1.0',
+  unread_count: 0,
+  items: [],
+  total_count: 0,
+  offset: 0,
+  limit: 6,
+  has_more: false,
 };
 
 const createEmptyTrainingWorkspace = () => ({
@@ -1289,9 +1299,9 @@ export async function loadMistakes({ fetcher, status = 'all', offset = 0, limit 
   }
 }
 
-export async function loadReviewDashboard({ fetcher, limit = 50, historyLimit = 100 }) {
+export async function loadReviewDashboard({ fetcher, limit = 50, offset = 0, historyLimit = 100 }) {
   try {
-    const params = new URLSearchParams({ limit: String(limit), history_limit: String(historyLimit) });
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset), history_limit: String(historyLimit) });
     const { data, source } = await fetcher({
       paths: [`/v1/review-dashboard?${params.toString()}`],
       fallback: emptyReviewDashboard,

@@ -138,7 +138,7 @@ def test_learning_governance_endpoints_use_authenticated_owner(tmp_path: Path) -
         },
     )
     effectiveness = client.get("/api/v1/resource-effectiveness?days=7")
-    notifications = client.get("/api/v1/notifications?status=unread")
+    notifications = client.get("/api/v1/notifications?status=unread&limit=6&offset=12")
     updated = client.patch("/api/v1/notifications/NOTIF_1", json={"status": "read"})
     preferences = client.put(
         "/api/v1/notification-preferences",
@@ -171,6 +171,8 @@ def test_learning_governance_endpoints_use_authenticated_owner(tmp_path: Path) -
     assert runtime.calls[3][1] == learner_id
     assert runtime.calls[3][2]["recommendation_credential"] == "signed-recommendation-credential"
     assert runtime.calls[4][0] == "resource_effectiveness"
+    assert runtime.calls[5][0] == "notifications"
+    assert runtime.calls[5][2] == {"status": "unread", "limit": 6, "offset": 12}
     assert updated.json()["learner_id"] == learner_id
     assert review.json()["learner_id"] == learner_id
 

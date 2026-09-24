@@ -20,7 +20,7 @@ describe('AppShell', () => {
     const entry = screen.getByRole('button', { name: 'AI 智能助手' });
     expect(entry).toHaveClass('app-shell__assistant-entry--featured');
     fireEvent.click(entry);
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'assistant', params: { newConversation: true } });
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'assistant', params: {} });
   });
 
   it('keeps the compact featured topbar layout from the home-login navigation branch', () => {
@@ -434,7 +434,7 @@ describe('AppShell', () => {
     expect(patchCalls).toEqual([expect.stringContaining('/v1/notifications/NOTIF_DAILY')]);
   });
 
-  it('falls back to the notification centre for a retired destination page', async () => {
+  it('normalizes the historical learning_path notification destination', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
@@ -472,7 +472,7 @@ describe('AppShell', () => {
     await user.click(item);
 
     const destination = onNavigate.mock.calls.at(-1)[0];
-    expect(destination.page).toBe('settings');
+    expect(destination.page).toBe('learning-path');
     expect(destination.params.notificationId).toBe('NOTIF_LEGACY');
   });
 });

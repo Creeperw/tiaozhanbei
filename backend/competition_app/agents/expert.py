@@ -614,10 +614,16 @@ class ExpertAgent:
             "多项选择题",
             "判断题",
             "填空题",
+            "简答题",
+            "问答题",
+            "病例分析/实践技能题",
             "single_choice",
             "multiple_choice",
             "true_false",
             "fill_blank",
+            "short_answer",
+            "essay",
+            "case_analysis",
         }
 
     @staticmethod

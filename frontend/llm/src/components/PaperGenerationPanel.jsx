@@ -92,6 +92,9 @@ const formatRemaining = (seconds) => {
 };
 
 const displayAnswer = (value) => Array.isArray(value) ? value.join('、') : String(value ?? '');
+const escapePaperHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[character]));
 const normalizePaperOrder = (paper) => ({
   ...paper,
   items: [...(paper?.items || [])].sort(
@@ -330,6 +333,8 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     if (paper.total_score) lines.push(`**满分**：${paper.total_score} 分  ·  **题量**：${paper.items.length} 题`);
     lines.push('---');
     paper.items.forEach((item) => {
+      const grading = (submitted?.items || paper.result?.items || [])
+        .find((entry) => entry.paper_item_id === item.paper_item_id);
       lines.push(`## ${item.position || ''}. ${typeLabel(item.question_type)}`);
       lines.push(String(item.stem || '').replace(/<[^>]+>/g, ''));
       const options = Array.isArray(item.options) ? item.options : [];
@@ -339,6 +344,13 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         text = String(text || '').replace(/<[^>]+>/g, '').trim().replace(/^[A-Z][.．、)\s]\s*/, '');
         lines.push(`- ${label}. ${text}`);
       });
+      if (paperSubmitted && grading) {
+        lines.push(`**标准答案**：${displayAnswer(grading.standard_answer).trim() || '暂无标准答案'}`);
+        lines.push(`**解析**：${String(grading.explanation || '暂无解析').trim()}`);
+        if (String(grading.grading_analysis || '').trim()) {
+          lines.push(`**本次批改**：${String(grading.grading_analysis).trim()}`);
+        }
+      }
       lines.push('---');
     });
     return lines.join('\n');
@@ -346,13 +358,13 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
 
   const buildPaperHtml = () => {
     const md = buildPaperMarkdown();
-    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+(paper?.title||'试卷')+'</title>'
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+escapePaperHtml(paper?.title||'试卷')+'</title>'
     +'<style>body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:0 8px;color:#1a1a1a;font-size:13px;line-height:1.45}'
     +'h1{font-size:1.15em;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin:0 0 10px 0}'
     +'h2{font-size:.95em;margin:14px 0 4px 0;font-weight:700}p{margin:0 0 4px 0}'
     +'hr{border:0;border-top:1px solid #e5e7eb;margin:8px 0}li{margin:1px 0;font-size:13px}'
     +'@media print{body{margin:0;padding:0 4px}@page{margin:1cm}}</style></head><body>'
-    +md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('**'))return'<p><strong>'+l.replace(/\*\*/g,'')+'</strong></p>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')
+    +md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+escapePaperHtml(l.slice(2))+'</h1>';if(l.startsWith('## '))return'<h2>'+escapePaperHtml(l.slice(3))+'</h2>';if(l.startsWith('**'))return'<p><strong>'+escapePaperHtml(l.replace(/\*\*/g,''))+'</strong></p>';if(l.startsWith('- '))return'<li>'+escapePaperHtml(l.slice(2))+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+escapePaperHtml(l)+'</p>';}).join('\n')
     +'</body></html>';
   };
 
@@ -367,7 +379,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
 
   const downloadDocx = () => {
     const html = buildPaperHtml();
-    const docxHtml = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+(paper?.title||'试卷')+'</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page{margin:1.5cm}body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:10px;color:#1a1a1a;font-size:11pt;line-height:1.4}h1{font-size:13pt;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin:0 0 10px 0}h2{font-size:10.5pt;margin:12px 0 3px 0;font-weight:700}hr{border:0;border-top:1px solid #e5e7eb;margin:6px 0}li{margin:1px 0;font-size:11pt}p{margin:0 0 3px 0}</style></head><body>'+html.replace(/^[\s\S]*<body>/, '').replace(/<\/body>[\s\S]*$/, '')+'</body></html>';
+    const docxHtml = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+escapePaperHtml(paper?.title||'试卷')+'</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page{margin:1.5cm}body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:10px;color:#1a1a1a;font-size:11pt;line-height:1.4}h1{font-size:13pt;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin:0 0 10px 0}h2{font-size:10.5pt;margin:12px 0 3px 0;font-weight:700}hr{border:0;border-top:1px solid #e5e7eb;margin:6px 0}li{margin:1px 0;font-size:11pt}p{margin:0 0 3px 0}</style></head><body>'+html.replace(/^[\s\S]*<body>/, '').replace(/<\/body>[\s\S]*$/, '')+'</body></html>';
     const blob = new Blob([docxHtml], { type: 'application/msword;charset=utf-8' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a');
     a.href = url; a.download = `${(paper?.title || '试卷').replace(/[\\/:*?"<>|]/g, '_')}.doc`;
