@@ -14,9 +14,11 @@ QuestionStatus = Literal[
     "preview_ready",
     "needs_human_review",
     "active",
+    "published",
     "inactive",
     "rejected",
     "failed",
+    "completed",
 ]
 
 
@@ -106,3 +108,13 @@ class QuestionBulkConfirmResponse(ContractModel):
 
 class QuestionIndexResponse(ContractModel):
     vector_index: dict[str, Any]
+
+
+class QuestionReviewRequest(ContractModel):
+    decision: Literal["approve", "reject"]
+    review_note: str = Field(default="", max_length=2000)
+
+
+class QuestionReviewCollection(ContractModel):
+    items: list[QuestionWorkspaceItem] = Field(default_factory=list)
+    page: PageMeta

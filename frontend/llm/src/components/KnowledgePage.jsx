@@ -406,7 +406,11 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
         {workspaceNavigation}
         <main className="knowledge-page__main knowledge-page__main--questions">
           <section className="knowledge-page__questions" aria-label="题目数据">
-            <QuestionWorkspacePage onUploadRequested={onNavigate ? () => onNavigate(uploadIntent('question')) : undefined} />
+            <QuestionWorkspacePage
+              isAdmin={isAdmin}
+              reviewerUsername={currentUser?.username}
+              onUploadRequested={onNavigate ? () => onNavigate(uploadIntent('question')) : undefined}
+            />
           </section>
         </main>
       </div>

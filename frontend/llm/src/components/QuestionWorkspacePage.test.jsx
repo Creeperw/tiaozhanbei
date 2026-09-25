@@ -260,4 +260,35 @@ describe('QuestionWorkspacePage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('仅支持 PDF、图片、Markdown 和 TXT 文件');
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('shows an admin question list and selected review detail, then advances after approval', async () => {
+    const first = { ...previewItem, owner_username: 'owner', original_filename: 'one.md', options: ['A. 望诊', 'B. 手术'] };
+    const second = { ...first, question_id: 'UQ_2', stem: '第二题', original_filename: 'two.md' };
+    const fetchMock = vi.fn((url, options = {}) => {
+      if (url.includes('/admin/reviews?status=preview_ready')) return response({ items: [first, second] });
+      if (url.endsWith('/admin/reviews/UQ_2') && options.method === 'POST') return response({ status: 'published' });
+      if (url.includes('/admin/reviews?status=published')) return response({ items: [{ ...second, status: 'published', reviewer_username: 'reviewer', reviewed_at: '2026-09-25T11:00:47', review_note: '已核对' }] });
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<QuestionWorkspacePage isAdmin reviewerUsername="reviewer" />);
+
+    const list = await screen.findByRole('complementary', { name: '题目列表' });
+    const detail = screen.getByRole('article', { name: '题目审核详情' });
+    expect(screen.getByText('当前审核账号：reviewer')).toBeInTheDocument();
+    expect(within(list).getAllByRole('button')).toHaveLength(2);
+    expect(within(detail).getByText(first.stem)).toBeInTheDocument();
+    expect(within(detail).getByRole('list', { name: '题目选项' })).toBeInTheDocument();
+    fireEvent.click(within(list).getByRole('button', { name: '查看题目 2' }));
+    expect(within(detail).getByText('第二题')).toBeInTheDocument();
+    fireEvent.click(within(detail).getByRole('button', { name: '通过并发布' }));
+    await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(1));
+    expect(within(detail).getByText(first.stem)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/admin/reviews/UQ_2'), expect.objectContaining({ method: 'POST' }));
+
+    fireEvent.change(screen.getByRole('combobox', { name: '筛选审核状态' }), { target: { value: 'published' } });
+    await waitFor(() => expect(within(detail).getByText('第二题')).toBeInTheDocument());
+    expect(within(detail).getByText('审核人：reviewer')).toBeInTheDocument();
+    expect(within(detail).getByText('审核意见：已核对')).toBeInTheDocument();
+  });
 });

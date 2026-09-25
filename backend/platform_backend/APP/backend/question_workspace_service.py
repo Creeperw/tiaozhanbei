@@ -20,7 +20,7 @@ import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from APP.backend.database import UserQuestionImportJob, UserQuestionItem
+from APP.backend.database import QuestionBankItem, UserModel, UserQuestionImportJob, UserQuestionItem
 from APP.backend.health_llm import build_llm_client
 from APP.backend.mineru_pdf_service import MinerUPdfParser
 from competition_app.contracts.upload import upload_progress
@@ -510,6 +510,34 @@ def list_job_items(db: Session, *, owner_user_id: int, job_id: str) -> list[dict
     ]
 
 
+def _refresh_import_status(
+    db: Session,
+    *,
+    owner_user_id: int,
+    job_id: str,
+) -> None:
+    """Keep the import history status aligned with its item states."""
+
+    job = get_import(db, owner_user_id=owner_user_id, job_id=job_id)
+    if job is None or job.status == "failed":
+        return
+    items = db.query(UserQuestionItem).filter_by(
+        owner_user_id=owner_user_id,
+        job_id=job_id,
+    ).all()
+    if not items:
+        return
+    states = {item.status for item in items}
+    if states <= {"active", "rejected", "inactive"}:
+        job.status = "completed"
+    elif "needs_human_review" in states:
+        job.status = "needs_human_review"
+    else:
+        job.status = "preview_ready"
+    db.commit()
+    db.refresh(job)
+
+
 def _sync_personal_question_index(
     db: Session,
     *,
@@ -667,6 +695,11 @@ def revise_item(
     except IntegrityError as exc:
         db.rollback()
         raise QuestionWorkspaceError("修订后与已有题目重复", status_code=409) from exc
+    _refresh_import_status(
+        db,
+        owner_user_id=owner_user_id,
+        job_id=item.job_id,
+    )
     return item
 
 
@@ -683,6 +716,11 @@ def reject_item(db: Session, *, owner_user_id: int, question_id: str) -> UserQue
     item.review_reason = "用户拒绝导入"
     db.commit()
     db.refresh(item)
+    _refresh_import_status(
+        db,
+        owner_user_id=owner_user_id,
+        job_id=item.job_id,
+    )
     return item
 
 
@@ -714,6 +752,11 @@ def confirm_item(db: Session, *, owner_user_id: int, question_id: str) -> UserQu
     item.confirmed_at = utc_now()
     db.commit()
     db.refresh(item)
+    _refresh_import_status(
+        db,
+        owner_user_id=owner_user_id,
+        job_id=item.job_id,
+    )
     return item
 
 
@@ -744,6 +787,11 @@ def confirm_import_items(
     db.commit()
     for item in pending_items:
         db.refresh(item)
+    _refresh_import_status(
+        db,
+        owner_user_id=owner_user_id,
+        job_id=job_id,
+    )
     return [_public_item(item) for item in pending_items]
 
 
@@ -753,3 +801,86 @@ def list_active_questions(db: Session, *, owner_user_id: int) -> list[dict[str, 
         status="active",
     ).order_by(UserQuestionItem.created_at.desc()).all()
     return [_public_item(item) for item in rows]
+
+
+def _admin_review_item(item: UserQuestionItem, job: UserQuestionImportJob, uploader: UserModel | None) -> dict[str, Any]:
+    payload = _public_item(item)
+    payload.update({
+        "job_id": item.job_id,
+        "original_filename": job.original_filename,
+        "owner_user_id": item.owner_user_id,
+        "owner_username": uploader.username if uploader else str(item.owner_user_id),
+        "reviewer_user_id": item.reviewer_user_id,
+        "reviewer_username": item.reviewer_username,
+        "reviewed_at": item.reviewed_at,
+        "review_note": item.review_note,
+        "published_question_id": item.published_question_id,
+    })
+    return payload
+
+
+def list_admin_review_items(db: Session, *, status: str | None = None) -> list[dict[str, Any]]:
+    query = db.query(UserQuestionItem).join(
+        UserQuestionImportJob,
+        UserQuestionImportJob.job_id == UserQuestionItem.job_id,
+    )
+    if status:
+        query = query.filter(UserQuestionItem.status == status)
+    rows = query.order_by(UserQuestionItem.created_at.desc()).all()
+    result = []
+    for item in rows:
+        job = db.query(UserQuestionImportJob).filter_by(job_id=item.job_id).one()
+        uploader = db.query(UserModel).filter_by(id=item.owner_user_id).one_or_none()
+        result.append(_admin_review_item(item, job, uploader))
+    return result
+
+
+def review_question_item(
+    db: Session,
+    *,
+    question_id: str,
+    reviewer: UserModel,
+    decision: str,
+    review_note: str = "",
+) -> dict[str, Any] | None:
+    item = db.query(UserQuestionItem).filter_by(question_id=question_id).one_or_none()
+    if item is None:
+        return None
+    if decision not in {"approve", "reject"}:
+        raise QuestionWorkspaceError("无效的审核决定", status_code=422)
+    if item.status in {"active", "published", "rejected"} and item.reviewed_at is not None:
+        raise QuestionWorkspaceError("该题目已经审核完成", status_code=409)
+    note = _normalize_text(review_note)
+    item.reviewer_user_id = reviewer.id
+    item.reviewer_username = reviewer.username
+    item.reviewed_at = utc_now()
+    item.review_note = note
+    if decision == "reject":
+        item.status = "rejected"
+        item.review_reason = note or "管理员审核未通过"
+    else:
+        public_id = f"UQ_{item.question_id}"
+        existing = db.query(QuestionBankItem).filter_by(question_id=public_id).one_or_none()
+        if existing is None:
+            db.add(QuestionBankItem(
+                question_id=public_id,
+                stem=item.stem,
+                answer=item.answer,
+                analysis=item.analysis,
+                options_json=item.options_json,
+                kp_ids_json=item.kp_ids_json,
+                question_type=item.question_type,
+                difficulty=item.difficulty,
+                difficulty_source=item.difficulty_source,
+                quality_score=0.7,
+                source=f"user_upload:{item.owner_user_id}",
+                status="active",
+            ))
+        item.status = "published"
+        item.published_question_id = public_id
+        item.review_reason = ""
+    db.commit()
+    db.refresh(item)
+    job = db.query(UserQuestionImportJob).filter_by(job_id=item.job_id).one()
+    uploader = db.query(UserModel).filter_by(id=item.owner_user_id).one_or_none()
+    return _admin_review_item(item, job, uploader)

@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
-from APP.backend.auth import get_current_user
+from APP.backend.auth import get_current_user, require_admin_user
 from APP.backend.contracts.common import page_meta
 from APP.backend.contracts.question import (
     QuestionBulkConfirmResponse,
@@ -14,6 +14,7 @@ from APP.backend.contracts.question import (
     QuestionImportDetail,
     QuestionIndexResponse,
     QuestionRevisionRequest,
+    QuestionReviewRequest,
     QuestionStateResponse,
     QuestionWorkspaceCollection,
 )
@@ -32,11 +33,46 @@ from APP.backend.question_workspace_service import (
     reject_item,
     revise_item,
     sync_personal_question_index,
+    list_admin_review_items,
+    review_question_item,
 )
 
 router = APIRouter(prefix="/question-workspace", tags=["Question Workspace"])
 QUESTION_WORKSPACE_UPLOAD_ROOT = Path(__file__).resolve().parents[1] / "user_questions" / "uploads"
 QUESTION_WORKSPACE_INDEX_ROOT = Path(__file__).resolve().parents[1] / "user_questions" / "indexes"
+
+
+@router.get("/admin/reviews")
+def read_admin_reviews(
+    status_filter: str | None = Query(default=None, alias="status"),
+    current_user: UserModel = Depends(require_admin_user),
+    db: Session = Depends(get_db),
+):
+    if status_filter and status_filter not in {"preview_ready", "needs_human_review", "published", "rejected"}:
+        raise HTTPException(status_code=422, detail="invalid review status")
+    return {"items": list_admin_review_items(db, status=status_filter)}
+
+
+@router.post("/admin/reviews/{question_id}")
+def review_admin_question(
+    question_id: str,
+    req: QuestionReviewRequest,
+    current_user: UserModel = Depends(require_admin_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        item = review_question_item(
+            db,
+            question_id=question_id,
+            reviewer=current_user,
+            decision=req.decision,
+            review_note=req.review_note,
+        )
+    except QuestionWorkspaceError as exc:
+        _raise_workspace_error(exc)
+    if item is None:
+        raise HTTPException(status_code=404, detail="question was not found")
+    return item
 
 
 def question_index_sync(db: Session, *, owner_user_id: int) -> dict:
@@ -86,6 +122,7 @@ def read_import_history(
         "preview_ready",
         "needs_human_review",
         "failed",
+        "completed",
     }
     if status_filter and status_filter not in allowed_statuses:
         raise HTTPException(status_code=422, detail="invalid import status")

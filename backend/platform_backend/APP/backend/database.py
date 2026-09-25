@@ -900,6 +900,7 @@ class QuestionBankItem(Base):
     stem = Column(Text)
     answer = Column(Text, default="")
     analysis = Column(Text, default="")
+    options_json = Column(Text, default="[]")
     kp_ids_json = Column(Text, default="[]")
     question_type = Column(String(50), default="single_choice", index=True)
     # Optional source metadata; populated only when an imported source declares it.
@@ -1785,6 +1786,11 @@ class UserQuestionItem(Base):
     status = Column(String(40), nullable=False, default="needs_human_review", index=True)
     review_reason = Column(Text, nullable=False, default="")
     confirmed_at = Column(DateTime, nullable=True)
+    reviewer_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    reviewer_username = Column(String(120), nullable=True, default=None)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_note = Column(Text, nullable=False, default="")
+    published_question_id = Column(String(120), nullable=True, index=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     __table_args__ = (
@@ -1852,6 +1858,35 @@ def _ensure_formal_content_tables(bind):
     )
     _ensure_optional_difficulty_columns(bind)
     inspector = inspect(bind)
+    question_item_columns = {
+        column["name"] for column in inspector.get_columns("user_question_items")
+    }
+    question_bank_columns = {
+        column["name"] for column in inspector.get_columns("question_bank_items")
+    }
+    review_additions = (
+        ("reviewer_user_id", "INTEGER NULL"),
+        ("reviewer_username", "VARCHAR(120) NULL"),
+        ("reviewed_at", "DATETIME NULL"),
+        ("review_note", "TEXT NULL"),
+        ("published_question_id", "VARCHAR(120) NULL"),
+    )
+    with bind.begin() as connection:
+        for column_name, definition in review_additions:
+            if column_name not in question_item_columns:
+                _add_column_if_missing_after_race(
+                    connection,
+                    "user_question_items",
+                    column_name,
+                    f"ALTER TABLE user_question_items ADD COLUMN {column_name} {definition}",
+                )
+        if "options_json" not in question_bank_columns:
+            _add_column_if_missing_after_race(
+                connection,
+                "question_bank_items",
+                "options_json",
+                "ALTER TABLE question_bank_items ADD COLUMN options_json TEXT NULL",
+            )
     if bind.dialect.name != "sqlite":
         return
     columns = {column["name"] for column in inspector.get_columns("question_ingestion_task_records")}

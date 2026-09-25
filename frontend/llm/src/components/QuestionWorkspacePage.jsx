@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
   CheckCircle2,
+  ChevronDown,
   FileText,
   RefreshCw,
   ShieldCheck,
@@ -24,13 +25,15 @@ function statusLabel(status) {
     preview_ready: '待确认',
     needs_human_review: '需人工修订',
     failed: '失败',
+    completed: '已完成',
     active: '已激活',
+    published: '已发布公共题库',
     rejected: '已拒绝',
     inactive: '已停用',
   }[status] || status;
 }
 
-export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange }) {
+export default function QuestionWorkspacePage({ isAdmin = false, reviewerUsername = '', onUploadRequested, onBusyChange }) {
   const [activeQuestions, setActiveQuestions] = useState([]);
   const [importJobs, setImportJobs] = useState([]);
   const [previewItems, setPreviewItems] = useState([]);
@@ -42,6 +45,9 @@ export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange 
   const [draftAnswers, setDraftAnswers] = useState({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [adminReviews, setAdminReviews] = useState([]);
+  const [reviewFilter, setReviewFilter] = useState('preview_ready');
+  const [selectedReviewId, setSelectedReviewId] = useState('');
   useEffect(() => { onBusyChange?.(uploading); }, [uploading, onBusyChange]);
 
   const activeIds = useMemo(
@@ -53,6 +59,13 @@ export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange 
     setLoading(true);
     setError('');
     try {
+      if (isAdmin) {
+        const response = await fetchWithAuth(`${API_BASE}/question-workspace/admin/reviews?status=${reviewFilter}`);
+        const payload = await readJsonResponse(response, {});
+        if (!response.ok) throw new Error(payload.detail || '审核队列加载失败');
+        setAdminReviews(Array.isArray(payload.items) ? payload.items : []);
+        return;
+      }
       const [questionsResponse, importsResponse] = await Promise.all([
         fetchWithAuth(`${API_BASE}/question-workspace/questions`),
         fetchWithAuth(`${API_BASE}/question-workspace/imports`),
@@ -74,7 +87,38 @@ export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange 
 
   useEffect(() => {
     loadWorkspace();
-  }, []);
+  }, [isAdmin, reviewFilter]);
+
+  useEffect(() => {
+    if (!adminReviews.some((item) => item.question_id === selectedReviewId)) {
+      setSelectedReviewId(adminReviews[0]?.question_id || '');
+    }
+  }, [adminReviews, selectedReviewId]);
+
+  const reviewAdminQuestion = async (questionId, decision) => {
+    setBusyQuestionId(questionId);
+    setError('');
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE}/question-workspace/admin/reviews/${encodeURIComponent(questionId)}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            decision,
+            review_note: decision === 'approve' ? '管理员审核通过并发布公共题库' : '管理员审核未通过',
+          }),
+        },
+      );
+      const payload = await readJsonResponse(response, {});
+      if (!response.ok) throw new Error(payload.detail || '审核操作失败');
+      setAdminReviews((items) => items.filter((item) => item.question_id !== questionId));
+      setNotice(decision === 'approve' ? '题目已通过审核并发布到公共题库。' : '题目已驳回。');
+    } catch (reviewError) {
+      setError(reviewError.message || '审核操作失败');
+    } finally {
+      setBusyQuestionId('');
+    }
+  };
 
   const uploadQuestions = async () => {
     if (!selectedFile) {
@@ -276,6 +320,86 @@ export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange 
     }
   };
 
+  if (isAdmin) {
+    const selectedReview = adminReviews.find((item) => item.question_id === selectedReviewId) || adminReviews[0];
+
+    return (
+      <section className="question-workspace question-review-console" aria-labelledby="question-review-title">
+        <div className="question-workspace__intro">
+          <div>
+            <span className="app-shell__section-label">内容治理中心</span>
+            <h2 id="question-review-title">题目审核台</h2>
+            <p>审核用户提交的题目，确认内容、选项、答案和知识点后发布到公共题库。</p>
+          </div>
+          <div className="question-workspace__guardrail"><ShieldCheck aria-hidden="true" size={19} /><span>当前审核账号：{reviewerUsername || '当前管理员'}</span></div>
+        </div>
+        <div className="question-review-console__toolbar">
+          <div className="question-review-console__queue-summary"><strong>审核队列</strong><span>{adminReviews.length} 道题目</span></div>
+          <label className="question-review-console__filter">
+            <span>筛选状态</span>
+            <span className="question-review-console__filter-control">
+              <select aria-label="筛选审核状态" value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}>
+                <option value="preview_ready">待审核</option>
+                <option value="needs_human_review">需补充资料</option>
+                <option value="published">已发布</option>
+                <option value="rejected">已驳回</option>
+              </select>
+              <ChevronDown aria-hidden="true" size={16} />
+            </span>
+          </label>
+          <Button variant="ghost" onClick={loadWorkspace} disabled={loading}><RefreshCw aria-hidden="true" size={16} />刷新队列</Button>
+        </div>
+        {error && <InlineError message={error} />}
+        {notice && <p className="question-workspace__notice" role="status">{notice}</p>}
+        {!loading && adminReviews.length === 0 && <EmptyState title="当前没有待审核题目" description="用户提交的新题目会出现在这里。" />}
+        {adminReviews.length > 0 && (
+          <div className="question-review-console__workspace">
+            <aside className="question-review-console__queue" aria-label="题目列表">
+              <div className="question-review-console__queue-heading"><span>题目列表</span><strong>{adminReviews.length}</strong></div>
+              <div className="question-review-console__list">
+                {adminReviews.map((item, index) => (
+                  <button
+                    className={`question-review-card ${item.question_id === selectedReview?.question_id ? 'is-selected' : ''}`}
+                    key={item.question_id}
+                    type="button"
+                    aria-label={`查看题目 ${index + 1}`}
+                    aria-pressed={item.question_id === selectedReview?.question_id}
+                    onClick={() => setSelectedReviewId(item.question_id)}
+                  >
+                    <span className="question-review-card__index">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="question-review-card__summary">
+                      <span className="question-review-card__status"><StatusBadge status={item.status === 'published' ? 'success' : item.status === 'rejected' ? 'danger' : 'info'}>{statusLabel(item.status)}</StatusBadge><small>{item.question_type}</small></span>
+                      <strong>{item.stem}</strong>
+                      <span className="question-review-card__source">{item.owner_username} · {item.original_filename}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </aside>
+            {selectedReview && (
+              <article className="question-review-console__detail" aria-label="题目审核详情">
+                <header className="question-review-console__detail-header">
+                  <div><span className="app-shell__section-label">审核详情</span><h3>题目审核</h3></div>
+                  <StatusBadge status={selectedReview.status === 'published' ? 'success' : selectedReview.status === 'rejected' ? 'danger' : 'info'}>{statusLabel(selectedReview.status)}</StatusBadge>
+                </header>
+                <div className="question-review-card__meta"><span>提交人：{selectedReview.owner_username}</span><span>来源：{selectedReview.original_filename}</span><span>题目 ID：{selectedReview.question_id}</span></div>
+                <h4>{selectedReview.stem}</h4>
+                {selectedReview.options?.length > 0 && <ul className="question-workspace__options" aria-label="题目选项">{selectedReview.options.map((option, optionIndex) => <li key={`${selectedReview.question_id}-review-option-${optionIndex}`}>{option}</li>)}</ul>}
+                <div className="question-review-card__answer"><span>参考答案</span><strong>{selectedReview.answer || '未提供'}</strong></div>
+                {selectedReview.explanation && <p className="question-review-console__explanation"><span>解析：</span>{selectedReview.explanation}</p>}
+                {selectedReview.kp_ids?.length > 0 && <div className="question-review-console__knowledge"><span>关联知识点</span>{selectedReview.kp_ids.map((kp) => <em key={kp}>{kp}</em>)}</div>}
+                <footer>
+                  <div className="question-review-console__review-meta"><span>审核人：{selectedReview.reviewer_username || '尚未审核'}</span>{selectedReview.reviewed_at && <span>审核时间：{selectedReview.reviewed_at}</span>}{selectedReview.review_note && <span>审核意见：{selectedReview.review_note}</span>}</div>
+                  {(selectedReview.status === 'preview_ready' || selectedReview.status === 'needs_human_review') && <div className="question-review-console__actions"><Button variant="ghost" onClick={() => reviewAdminQuestion(selectedReview.question_id, 'reject')} disabled={busyQuestionId === selectedReview.question_id}>驳回</Button><Button variant="secondary" onClick={() => reviewAdminQuestion(selectedReview.question_id, 'approve')} loading={busyQuestionId === selectedReview.question_id}>通过并发布</Button></div>}
+                </footer>
+              </article>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section className="question-workspace" aria-labelledby="question-workspace-title">
       <div className="question-workspace__intro">
@@ -385,6 +509,15 @@ export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange 
                     <span>{item.kp_ids?.join(' · ') || '待关联知识点'}</span>
                   </div>
                   <strong>{item.stem}</strong>
+                  {item.options?.length > 0 && (
+                    <ul className="question-workspace__options" aria-label="题目选项">
+                      {item.options.map((option, optionIndex) => (
+                        <li key={`${item.question_id}-option-${optionIndex}`}>
+                          {option}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {item.status === 'needs_human_review' ? (
                     <label className="question-workspace__revision">
                       <span>修订参考答案</span>
@@ -460,7 +593,19 @@ export default function QuestionWorkspacePage({ onUploadRequested, onBusyChange 
             {activeQuestions.map((item) => (
               <li key={item.question_id}>
                 <CheckCircle2 aria-hidden="true" size={18} />
-                <div><strong>{item.stem}</strong><span>{item.question_type} · {item.kp_ids?.join(' · ')}</span></div>
+                <div className="question-workspace__active-body">
+                  <strong>{item.stem}</strong>
+                  <span>{item.question_type} · {item.kp_ids?.join(' · ')}</span>
+                  {item.options?.length > 0 && (
+                    <ul className="question-workspace__options" aria-label="题目选项">
+                      {item.options.map((option, optionIndex) => (
+                        <li key={`${item.question_id}-active-option-${optionIndex}`}>
+                          {option}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   loading={busyQuestionId === item.question_id}

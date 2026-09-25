@@ -63,6 +63,7 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
             db.add_all([
                 database.UserModel(id=1, username="owner", email="owner@example.com", hashed_password="x"),
                 database.UserModel(id=2, username="other", email="other@example.com", hashed_password="x"),
+                database.UserModel(id=3, username="reviewer", email="reviewer@example.com", hashed_password="x", role="admin"),
             ])
             db.commit()
 
@@ -200,6 +201,22 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
             404,
         )
 
+    def test_single_confirmation_closes_import_history(self):
+        uploaded = self.upload_markdown()
+        job_id = uploaded.json()["job_id"]
+        question_id = uploaded.json()["items"][0]["question_id"]
+
+        confirmed = self.client.post(f"/question-workspace/items/{question_id}/confirm")
+
+        self.assertEqual(confirmed.status_code, 200)
+        history = self.client.get("/question-workspace/imports").json()["items"]
+        self.assertEqual(history[0]["job_id"], job_id)
+        self.assertEqual(history[0]["status"], "completed")
+        self.assertEqual(
+            self.client.get("/question-workspace/imports", params={"status": "completed"}).json()["page"]["total"],
+            1,
+        )
+
     def test_bulk_confirmation_activates_import_and_rebuilds_index_once(self):
         from APP.backend.routers import question_workspace_routes
 
@@ -222,6 +239,63 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
         sync_mock.assert_called_once()
         active = self.client.get("/question-workspace/questions").json()["items"]
         self.assertEqual(len(active), 1)
+        self.assertEqual(
+            self.client.get(f"/question-workspace/imports/{job_id}").json()["status"],
+            "completed",
+        )
+
+    def test_rejecting_all_items_closes_import_history(self):
+        uploaded = self.upload_markdown()
+        job_id = uploaded.json()["job_id"]
+        question_id = uploaded.json()["items"][0]["question_id"]
+
+        rejected = self.client.post(f"/question-workspace/items/{question_id}/reject")
+
+        self.assertEqual(rejected.status_code, 200)
+        self.assertEqual(
+            self.client.get(f"/question-workspace/imports/{job_id}").json()["status"],
+            "completed",
+        )
+
+    def test_admin_review_publishes_question_and_records_reviewer(self):
+        uploaded = self.upload_markdown()
+        question_id = uploaded.json()["items"][0]["question_id"]
+
+        self.current_user_id = 3
+        queue = self.client.get(
+            "/question-workspace/admin/reviews",
+            params={"status": "preview_ready"},
+        )
+
+        self.assertEqual(queue.status_code, 200)
+        self.assertEqual(queue.json()["items"][0]["owner_username"], "owner")
+        reviewed = self.client.post(
+            f"/question-workspace/admin/reviews/{question_id}",
+            json={"decision": "approve", "review_note": "内容核验通过"},
+        )
+
+        self.assertEqual(reviewed.status_code, 200)
+        body = reviewed.json()
+        self.assertEqual(body["status"], "published")
+        self.assertEqual(body["reviewer_username"], "reviewer")
+        self.assertTrue(body["published_question_id"])
+        with self.Session() as db:
+            public = db.query(database.QuestionBankItem).one()
+            self.assertEqual(public.question_id, body["published_question_id"])
+            self.assertEqual(public.stem, "阴阳相互关系的基本内容是什么?")
+
+    def test_non_admin_cannot_read_or_review_admin_queue(self):
+        uploaded = self.upload_markdown()
+        question_id = uploaded.json()["items"][0]["question_id"]
+
+        self.assertEqual(self.client.get("/question-workspace/admin/reviews").status_code, 403)
+        self.assertEqual(
+            self.client.post(
+                f"/question-workspace/admin/reviews/{question_id}",
+                json={"decision": "approve"},
+            ).status_code,
+            403,
+        )
 
     def test_duplicate_content_is_rejected_per_owner_without_public_side_effects(self):
         first = self.upload_markdown()
