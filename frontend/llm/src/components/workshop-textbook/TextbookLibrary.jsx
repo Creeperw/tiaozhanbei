@@ -238,6 +238,8 @@ export default function TextbookLibrary({
   onDelete,
   onToggleHidden,
   progressLoading = false,
+  planLoading = false,
+  planError = '',
   catalogBooks = books,
   initialFilter = 'all',
 }) {
@@ -255,8 +257,11 @@ export default function TextbookLibrary({
     query,
   }), [activeFilter, activeSource, filterSourceBooks, query]);
   const counts = useMemo(
-    () => textbookFilterCounts(catalogBooks, { progressLoading }),
-    [catalogBooks, progressLoading],
+    () => ({
+      ...textbookFilterCounts(catalogBooks, { progressLoading }),
+      ...(planLoading || planError ? { planned: null } : {}),
+    }),
+    [catalogBooks, progressLoading, planLoading, planError],
   );
   const sourceCounts = useMemo(
     () => textbookSourceCounts(catalogBooks),
@@ -265,6 +270,10 @@ export default function TextbookLibrary({
   const activeSourceLabel = SOURCE_OPTIONS.find((option) => option.id === activeSource)?.label || '全部教材';
   const activeFilterLabel = TEXTBOOK_FILTERS.find((filter) => filter.id === activeFilter)?.label || '全部状态';
   const learningCount = counts.learning === null ? '--' : counts.learning;
+  const planNotice = activeFilter === 'planned'
+    ? planError ? '计划教材暂不可用，已加载的教材仍可使用，也可切换全部状态查看目录。'
+      : planLoading ? '正在读取计划教材，可切换全部状态查看已加载目录。' : ''
+    : '';
   const noResultsText = query.trim()
     ? '没有找到匹配的教材'
     : EMPTY_TEXT[activeFilter] || emptyText;
@@ -415,7 +424,8 @@ export default function TextbookLibrary({
             );
           })}
         </div>
-      ) : <div className="textbook-library__empty">{noResultsText}</div>}
+      ) : !planNotice && <div className="textbook-library__empty">{noResultsText}</div>}
+      {planNotice && <div className="textbook-library__empty" role={planError ? undefined : 'status'}>{planNotice}</div>}
       {remainingCount > 0 && activeFilter === 'all' && !normalizedQuery && (
         <div className="textbook-library__expand">
           <button type="button" onClick={onExpandAll}>展开全部教材</button>

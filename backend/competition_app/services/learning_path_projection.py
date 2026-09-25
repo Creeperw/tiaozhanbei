@@ -47,6 +47,7 @@ class LearningPathProjectionService:
         offset: int = 0,
         limit: int = 100,
         selection: TextbookSelectionContext | None = None,
+        mastery_loader: Callable[[], list[dict[str, Any]]] | None = None,
     ) -> LearningPathPage:
         # 阶段定位以长期计划内嵌选择为准（阶段晋级由服务端核验证据推进）；
         # 当前周期“正在学的教材”以最新短期计划为准（读时同步），长期内嵌副本
@@ -118,6 +119,10 @@ class LearningPathProjectionService:
         if book_match is None:
             raise KeyError("learning path parent node does not exist")
         book_node, book_name = book_match
+        # Stage/book navigation does not consume mastery. Resolve it only after
+        # validating a knowledge-point page; callers may still supply rows directly.
+        if mastery_rows is None and mastery_loader is not None:
+            mastery_rows = mastery_loader()
         nodes = self._knowledge_nodes(
             book_node=book_node,
             book_name=book_name,

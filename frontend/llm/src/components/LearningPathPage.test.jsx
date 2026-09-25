@@ -66,8 +66,8 @@ function installLearningPathFetch(dashboardPayload = {}, options = {}) {
       return Promise.resolve(response(options.stagePayload));
     }
     if (path.includes('/learning-path')) return Promise.resolve(response(options.rootPayload || routePayload));
-    if (path.includes('/learning-context')) {
-      if (options.learningContextFetch) return options.learningContextFetch(path);
+    if (path.includes('/learning-plans/current/context')) {
+      if (options.planContextFetch) return options.planContextFetch(path);
       return Promise.resolve(response({
         long_term_plan: { content: '【最终目标】通过中医执业医师资格考试。' },
         short_term_plan: { content: '【本周安排】完成中医基础理论复习。' },
@@ -159,7 +159,7 @@ describe('LearningPathPage', () => {
   });
 
   it('shows the persisted planning details and returns to the short route', async () => {
-    installLearningPathFetch();
+    const fetchMock = installLearningPathFetch();
     render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole('button', { name: '了解详情' }));
@@ -167,6 +167,8 @@ describe('LearningPathPage', () => {
     expect(await screen.findByText('【最终目标】通过中医执业医师资格考试。')).toBeInTheDocument();
     expect(screen.getByText('【本周安排】完成中医基础理论复习。')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/learning-context'))).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/learning-plans/current/context'))).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: '返回短期学习路径' }));
     expect(await screen.findByRole('heading', { name: '短期学习路径' })).toBeInTheDocument();
@@ -371,7 +373,7 @@ describe('LearningPathPage', () => {
     const planningRequest = deferred();
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     installLearningPathFetch({}, {
-      learningContextFetch: () => planningRequest.promise,
+      planContextFetch: () => planningRequest.promise,
     });
     const { unmount } = render(
       <LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />,
@@ -388,6 +390,14 @@ describe('LearningPathPage', () => {
     });
 
     expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('renders the formal route without waiting for historical plans', async () => {
+    installLearningPathFetch();
+    loadAllLearningHistory.mockImplementationOnce(() => new Promise(() => {}));
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: /进入中医基础与文化语言/ })).toBeInTheDocument();
+    expect(screen.getByText('正在读取历史计划…')).toBeInTheDocument();
   });
 
   it('exposes keyboard-operable ARIA task tabs', async () => {

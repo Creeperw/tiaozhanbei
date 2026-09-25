@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
 import { fetchWithAuth, readJsonResponse } from './utils/api';
+import { invalidateLearningTargetRead } from './components/exam-atlas/examAtlasApi';
+
+vi.mock('./components/exam-atlas/examAtlasApi', () => ({ invalidateLearningTargetRead: vi.fn() }));
 
 vi.mock('./utils/api', () => ({
   AUTH_API_BASE: 'http://api.test/api/v1/auth',
@@ -105,10 +108,11 @@ vi.mock('./components/SettingsHubPage', () => ({
 }));
 vi.mock('./components/AdminFeedbackPage', () => ({ default: () => <div>Admin page</div> }));
 vi.mock('./components/AppShell', () => ({
-  default: ({ children, currentPage, currentIntent, currentUser, onNavigate, onLoginRequested }) => (
+  default: ({ children, currentPage, currentIntent, currentUser, onNavigate, onLoginRequested, onLogout }) => (
     <div data-testid="authenticated-shell" data-page={currentPage} data-intent-page={currentIntent?.page || ''}>
       <span>{currentUser ? currentUser.username : '未登录'}</span>
       {!currentUser && <button type="button" onClick={onLoginRequested}>登录</button>}
+      {currentUser && <button type="button" onClick={onLogout}>Log out</button>}
       <button type="button" onClick={() => onNavigate({ page: 'assistant', params: {} })}>Go assistant</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'sources' } })}>Go knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
@@ -128,6 +132,7 @@ vi.mock('./components/AppShell', () => ({
 
 describe('authenticated application shell', () => {
   beforeEach(() => {
+    invalidateLearningTargetRead.mockClear();
     localStorage.clear();
     sessionStorage.clear();
     document.body.style.overflow = '';
@@ -193,6 +198,25 @@ describe('authenticated application shell', () => {
 
     expect(screen.getByText('Home portal')).toBeInTheDocument();
     expect(screen.queryByText('Auth')).not.toBeInTheDocument();
+  });
+
+  it('invalidates shared target reads at authentication boundaries', async () => {
+    render(<App />);
+    await screen.findByText('Home portal');
+    expect(invalidateLearningTargetRead).toHaveBeenCalledTimes(1);
+    let finishLogout;
+    fetchWithAuth.mockReturnValueOnce(new Promise((resolve) => { finishLogout = resolve; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
+    expect(invalidateLearningTargetRead).toHaveBeenCalledTimes(2);
+    finishLogout({ ok: true });
+    await screen.findByText('未登录');
+    expect(invalidateLearningTargetRead).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Complete login' }));
+    expect(invalidateLearningTargetRead).toHaveBeenCalledTimes(4);
+    fireEvent(window, new CustomEvent('competition:unauthorized'));
+    expect(invalidateLearningTargetRead).toHaveBeenCalledTimes(5);
+    expect(screen.getByText('未登录')).toBeInTheDocument();
   });
 
   it('returns to the visitor homepage if authentication expires on the login page', async () => {

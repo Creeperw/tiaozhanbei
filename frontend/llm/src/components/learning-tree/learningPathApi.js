@@ -1,8 +1,8 @@
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../../utils/api';
 
-export async function loadPlannedLearningPath(parentId = '') {
+export async function loadPlannedLearningPath(parentId = '', { signal } = {}) {
   const query = parentId ? `?parent_id=${encodeURIComponent(parentId)}` : '';
-  const response = await fetchWithAuth(`${MAIN_API_BASE}/learning-path${query}`);
+  const response = await fetchWithAuth(`${MAIN_API_BASE}/learning-path${query}`, signal ? { signal } : {});
   const payload = await readJsonResponse(response, {});
   if (!response.ok) {
     const detail = payload?.detail;

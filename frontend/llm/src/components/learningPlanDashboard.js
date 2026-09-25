@@ -305,45 +305,57 @@ export function useTextbookLearningSnapshots({ books = [], taskBook = '', cacheK
   return snapshots;
 }
 
+function initialLearningOverview(cacheKey) {
+  const data = learningOverviewCache.get(cacheKey)?.data;
+  const statisticsLoading = data?.totalFocusMinutes == null;
+  const policyLoading = data?.recommendedMinutes == null;
+  return {
+    totalFocusMinutes: data?.totalFocusMinutes ?? null,
+    recommendedMinutes: data?.recommendedMinutes ?? null,
+    statisticsLoading,
+    policyLoading,
+    loading: statisticsLoading || policyLoading,
+  };
+}
+
 export function useLearningPlanMetrics({ books = [], taskBook = '', cacheKey = 'anonymous' } = {}) {
-  const [overview, setOverview] = useState(() => (
-    learningOverviewCache.get(cacheKey)?.data || {
-      loading: true,
-      totalFocusMinutes: null,
-      recommendedMinutes: null,
-    }
-  ));
+  const [overview, setOverview] = useState(() => initialLearningOverview(cacheKey));
   const snapshots = useTextbookLearningSnapshots({ books, taskBook, cacheKey });
 
   useEffect(() => {
     let controller = null;
     let requestVersion = 0;
-    const cachedOverview = learningOverviewCache.get(cacheKey)?.data;
-    if (cachedOverview) setOverview(cachedOverview);
-    else setOverview({ loading: true, totalFocusMinutes: null, recommendedMinutes: null });
-    const load = async () => {
+    let current = initialLearningOverview(cacheKey);
+    setOverview(current);
+    const load = () => {
       controller?.abort();
-      controller = new AbortController();
+      const requestController = new AbortController();
+      controller = requestController;
       const version = ++requestVersion;
-      const [statistics, policy] = await Promise.allSettled([
-        loadMainApi('/learning-statistics/overview?days=30', controller.signal),
-        loadMainApi('/task-load-policy', controller.signal),
-      ]);
-      if (controller.signal.aborted || version !== requestVersion) return;
-      const minutes = Number(policy.status === 'fulfilled' ? policy.value?.recommended_minutes : NaN);
-      const previous = learningOverviewCache.get(cacheKey)?.data;
-      const nextOverview = {
-        loading: false,
-        totalFocusMinutes: statistics.status === 'fulfilled'
-          ? focusMinutesFromStatistics(statistics.value)
-          : previous?.totalFocusMinutes ?? null,
-        recommendedMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : null,
+      const publish = (patch) => {
+        if (requestController.signal.aborted || version !== requestVersion) return;
+        current = { ...current, ...patch };
+        current.loading = current.statisticsLoading || current.policyLoading;
+        learningOverviewCache.set(cacheKey, {
+          data: {
+            totalFocusMinutes: current.totalFocusMinutes,
+            recommendedMinutes: current.recommendedMinutes,
+          },
+          updatedAt: Date.now(),
+        });
+        setOverview(current);
       };
-      if (policy.status !== 'fulfilled') {
-        nextOverview.recommendedMinutes = previous?.recommendedMinutes ?? null;
-      }
-      learningOverviewCache.set(cacheKey, { data: nextOverview, updatedAt: Date.now() });
-      setOverview(nextOverview);
+      loadMainApi('/learning-statistics/overview?days=30', requestController.signal)
+        .then((statistics) => publish({
+          totalFocusMinutes: focusMinutesFromStatistics(statistics), statisticsLoading: false,
+        }))
+        .catch(() => publish({ statisticsLoading: false }));
+      loadMainApi('/task-load-policy', requestController.signal)
+        .then((policy) => {
+          const minutes = Number(policy?.recommended_minutes);
+          publish({ recommendedMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : null, policyLoading: false });
+        })
+        .catch(() => publish({ policyLoading: false }));
     };
     load();
     window.addEventListener('focus', load);

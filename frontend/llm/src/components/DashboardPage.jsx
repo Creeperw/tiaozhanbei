@@ -188,6 +188,13 @@ export default function DashboardPage({
   const [pathLoading, setPathLoading] = useState(
     () => !initialTeachingResourcesCache?.pathReady,
   );
+  const [pathBooksLoading, setPathBooksLoading] = useState(
+    () => !initialTeachingResourcesCache?.pathBooksReady,
+  );
+  const [knownBookStageIds, setKnownBookStageIds] = useState(
+    () => initialTeachingResourcesCache?.knownBookStageIds || [],
+  );
+  const [pathError, setPathError] = useState('');
   const [fallbackKnowledgePoint, setFallbackKnowledgePoint] = useState({ sectionId: '', value: '' });  const [showAllTextbooks, setShowAllTextbooks] = useState(
     () => Boolean(navigationContext.expandAll),
   );
@@ -304,6 +311,10 @@ export default function DashboardPage({
     let cancelled = false;
     const cached = readTeachingResourcesPageCache(teachingResourcesCacheKey);
     const hasCachedPath = Boolean(cached?.pathReady);
+    const controller = new AbortController();
+    setPathError('');
+    setPathBooksLoading(!cached?.pathBooksReady);
+    setKnownBookStageIds(cached?.knownBookStageIds || []);
     if (hasCachedPath) {
       setTrack(cached.track || { id: '', label: '' });
       setNodes(cached.nodes || []);
@@ -326,70 +337,150 @@ export default function DashboardPage({
       setPlannedPath(null);
       setPathLoading(true);
     }
+    let metadata = null;
+    let publishedPlan = null;
+    let discardCachedStageBooks = null;
+    const metadataRequest = Promise.allSettled([
+      loadLearningTarget(),
+      loadExamTracks(),
+    ]).then(([targetRequest, tracksRequest]) => {
+      if (cancelled) return null;
+      if (targetRequest.status === 'rejected' && targetRequest.reason?.name === 'AbortError') {
+        controller.abort();
+        return null;
+      }
+      const target = targetRequest.status === 'fulfilled' ? targetRequest.value?.target || {} : {};
+      const tracks = tracksRequest.status === 'fulfilled' && Array.isArray(tracksRequest.value?.items)
+        ? tracksRequest.value.items : [];
+      const id = getTrackId(target, tracks, navigationContext.trackId);
+      metadata = { id, label: getTrackLabel(target, tracks, id) };
+      if (publishedPlan) {
+        if (cached?.track?.id !== id) discardCachedStageBooks?.();
+        setTrack(metadata);
+        updateTeachingResourcesPageCache(teachingResourcesCacheKey, { track: metadata });
+        onKnowledgeContextChange?.({ trackId: id, planId: publishedPlan.plan_ref?.plan_id });
+      }
+      return metadata;
+    });
     const loadPath = async () => {
       try {
-        const [targetRequest, tracksRequest] = await Promise.allSettled([
-          loadLearningTarget(),
-          loadExamTracks(),
-        ]);
-        const targetResult = targetRequest.status === 'fulfilled' ? targetRequest.value : {};
-        const tracksResult = tracksRequest.status === 'fulfilled' ? tracksRequest.value : {};
-        const tracks = Array.isArray(tracksResult?.items) ? tracksResult.items : [];
-        const target = targetResult?.target || {};
-        const trackId = getTrackId(target, tracks, navigationContext.trackId);
         try {
-          const planned = await loadPlannedLearningPath();
-          if (cancelled) return;
+          const planned = await loadPlannedLearningPath('', { signal: controller.signal });
+          if (cancelled || controller.signal.aborted) return;
           const rootNodes = planned.nodes.map(adaptPlannedPathNode);
           const rootStages = rootNodes.filter((node) => node.node_type === 'stage');
-          if (cancelled) return;
-          const stageBookPages = await Promise.all(rootStages.map(async (stage) => {
-            try {
-              const page = await loadPlannedLearningPath(stage.node_id);
-              return page.nodes.filter((node) => node.node_type === 'book').map((node) => ({
-                ...adaptPlannedPathNode(node), stage_title: stage.title, stage_order: stage.order,
-              }));
-            } catch {
-              return [];
-            }
-          }));
-          if (cancelled) return;
-          const nextTrack = { id: trackId, label: getTrackLabel(target, tracks, trackId) };
-          const nextPlannedBooks = stageBookPages.flat();
           const nextCurrentStageId = selectCurrentStageId(
             rootStages,
             preferredStageId(navigationContext, initialPreferences) || cached?.currentStageId || '',
           );
+          // Keep known books during revalidation, but never carry them across
+          // a different plan, plan version, route version or exam track.
+          const samePlan = Boolean(planned.plan_ref?.plan_id)
+            && (!metadata || cached?.track?.id === metadata.id)
+            && ['plan_id', 'plan_version', 'route_id', 'route_version'].every(
+              (key) => cached?.plannedPath?.plan_ref?.[key] === planned.plan_ref[key],
+            );
+          const nextTrack = metadata || (samePlan && cached.track)
+            || { id: navigationContext.trackId || '', label: '' };
+          const booksByStage = new Map(rootStages.map((stage) => [
+            stage.node_id,
+            samePlan ? (cached?.plannedBooks || []).filter((book) => book.parent_id === stage.node_id) : [],
+          ]));
+          const knownStages = new Set(samePlan ? rootStages.filter((stage) => (
+            cached?.pathBooksReady || cached?.knownBookStageIds?.includes(stage.node_id)
+          )).map((stage) => stage.node_id) : []);
+          const refreshedStages = new Set();
+          discardCachedStageBooks = () => {
+            rootStages.forEach((stage) => {
+              if (!refreshedStages.has(stage.node_id)) {
+                booksByStage.set(stage.node_id, []);
+                knownStages.delete(stage.node_id);
+              }
+            });
+            const books = rootStages.flatMap((stage) => booksByStage.get(stage.node_id));
+            setPlannedBooks(books);
+            setKnownBookStageIds([...knownStages]);
+            updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+              plannedBooks: books,
+              knownBookStageIds: [...knownStages],
+              pathBooksReady: knownStages.size === rootStages.length,
+            });
+          };
+          const knownBooks = rootStages.flatMap((stage) => booksByStage.get(stage.node_id));
+          publishedPlan = planned;
           setTrack(nextTrack);
-          setPlannedBooks(nextPlannedBooks);
+          setPlannedBooks(knownBooks);
+          setKnownBookStageIds([...knownStages]);
           setCurrentStageId(nextCurrentStageId);
           setNodes(rootNodes);
           setPlannedPath(planned);
+          setPathLoading(false);
+          setPathBooksLoading(rootStages.length > 0);
           updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
             pathReady: true,
+            pathBooksReady: rootStages.length === 0 || (samePlan && Boolean(cached?.pathBooksReady)),
             track: nextTrack,
             nodes: rootNodes,
-            plannedBooks: nextPlannedBooks,
+            plannedBooks: knownBooks,
+            knownBookStageIds: [...knownStages],
             plannedPath: planned,
             currentStageId: nextCurrentStageId,
           });
-          onKnowledgeContextChange?.({ trackId, planId: planned.plan_ref?.plan_id });
+          if (metadata) onKnowledgeContextChange?.({ trackId: metadata.id, planId: planned.plan_ref?.plan_id });
+
+          let failed = false;
+          const loadStageBooks = async (stage) => {
+            try {
+              const page = await loadPlannedLearningPath(stage.node_id, { signal: controller.signal });
+              if (cancelled || controller.signal.aborted) return;
+              booksByStage.set(stage.node_id, page.nodes.filter((node) => node.node_type === 'book').map((node) => ({
+                ...adaptPlannedPathNode(node), stage_title: stage.title, stage_order: stage.order,
+              })));
+              knownStages.add(stage.node_id);
+              refreshedStages.add(stage.node_id);
+              const books = rootStages.flatMap((item) => booksByStage.get(item.node_id) || []);
+              setPlannedBooks(books);
+              setKnownBookStageIds([...knownStages]);
+              updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+                plannedBooks: books,
+                knownBookStageIds: [...knownStages],
+              });
+            } catch (loadError) {
+              if (cancelled || controller.signal.aborted || loadError?.name === 'AbortError') return;
+              failed = true;
+              setPathError('部分阶段教材加载失败，请刷新重试；已加载的教材仍可使用。');
+            }
+          };
+          const activeStage = rootStages.find((stage) => stage.node_id === nextCurrentStageId);
+          if (activeStage) await loadStageBooks(activeStage);
+          if (cancelled || controller.signal.aborted) return;
+          await Promise.all(rootStages.filter((stage) => stage !== activeStage).map(loadStageBooks));
+          if (cancelled || controller.signal.aborted) return;
+          setPathBooksLoading(false);
+          updateTeachingResourcesPageCache(teachingResourcesCacheKey, { pathBooksReady: !failed });
           return;
-        } catch {
+        } catch (loadError) {
+          if (cancelled || controller.signal.aborted || loadError?.name === 'AbortError') return;
           // Existing exam-tree data remains a compatibility fallback for users
           // who have not generated a long-term plan yet.
         }
+        const nextTrack = await metadataRequest;
+        if (cancelled || controller.signal.aborted || !nextTrack) return;
+        const trackId = nextTrack.id;
         if (!trackId) {
           setTrack({ id: '', label: '' });
           setNodes([]);
           setPlannedBooks([]);
           setPlannedPath(null);
+          setKnownBookStageIds([]);
           setCurrentStageId('');
           updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
             pathReady: true,
+            pathBooksReady: true,
             track: { id: '', label: '' },
             nodes: [],
             plannedBooks: [],
+            knownBookStageIds: [],
             plannedPath: null,
             currentStageId: '',
           });
@@ -403,7 +494,6 @@ export default function DashboardPage({
         }))).flat();
         const summaries = await Promise.all(children.map((node) => loadNodeLearnerSummary(trackId, node.membership_id)));
         if (cancelled) return;
-        const nextTrack = { id: trackId, label: getTrackLabel(target, tracks, trackId) };
         const nextNodes = buildPathNodes(children, summaries);
         const nextCurrentStageId = selectCurrentStageId(
           nextNodes,
@@ -413,27 +503,36 @@ export default function DashboardPage({
         setNodes(nextNodes);
         setPlannedBooks([]);
         setPlannedPath(null);
+        setKnownBookStageIds([]);
         setCurrentStageId(nextCurrentStageId);
         updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
           pathReady: true,
+          pathBooksReady: true,
           track: nextTrack,
           nodes: nextNodes,
           plannedBooks: [],
+          knownBookStageIds: [],
           plannedPath: null,
           currentStageId: nextCurrentStageId,
         });
         onKnowledgeContextChange?.({ trackId });
       } catch {
-        if (!cancelled && !hasCachedPath) {
-          setNodes([]);
-          setPlannedBooks([]);
+        if (!cancelled) {
+          setPathError('学习路径加载失败，请刷新重试。');
+          if (!hasCachedPath) {
+            setNodes([]);
+            setPlannedBooks([]);
+          }
         }
       }
     };
     loadPath().finally(() => {
-      if (!cancelled) setPathLoading(false);
+      if (!cancelled) {
+        setPathLoading(false);
+        setPathBooksLoading(false);
+      }
     });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; controller.abort(); };
   }, [
     initialPreferences,
     onKnowledgeContextChange,
@@ -635,6 +734,10 @@ export default function DashboardPage({
   const currentStageProgressLoading = currentStageBooks.some((book) => (
     !learningMetrics.snapshots.byBook[normalizedBookName(book)]
   ));
+  const currentStageBooksKnown = currentStage && knownBookStageIds.includes(currentStage.node_id);
+  const currentStageBooksLoading = pathLoading || (pathBooksLoading && !currentStageBooksKnown);
+  const currentStageBooksUnknown = !currentStageBooksKnown && !currentStageBooks.length
+    && (pathLoading || pathBooksLoading || Boolean(pathError));
   const catalogProgressLoading = visibleTextbooks.some((book) => (
     !learningMetrics.snapshots.byBook[normalizedBookName(book)]
   ));
@@ -778,10 +881,6 @@ export default function DashboardPage({
         libraryOnly
         pathContent={(
           <div className="workshop-library-page">
-              {textbooksLoading ? (
-                <PageLoadingSpinner className="workshop-library-page__loading" label="正在加载教材目录" />
-              ) : libraryTextbooks.length > 0 ? (
-                <>
                   {!hidePlan && <section className="workshop-plan" aria-label="当前学习计划">
                     <div className="workshop-plan__summary">
                       <span><Route aria-hidden="true" size={15} />Learning plan</span>
@@ -805,21 +904,21 @@ export default function DashboardPage({
                       </div>
                       <p>{currentStage?.description || plannedPath?.message || '结合你的长期目标，按计划教材循序推进学习。'}</p>
                       <div className="workshop-plan__meta">
-                        <article className={learningMetrics.loading ? 'is-loading' : ''}>
+                        <article className={learningMetrics.statisticsLoading ? 'is-loading' : ''}>
                           <span className="workshop-plan__meta-icon"><Clock3 aria-hidden="true" size={25} /></span>
                           <span><small>累计学习时长</small><strong>{formatLearningDuration(learningMetrics.totalFocusMinutes)}</strong></span>
                         </article>
                         <article className={pathLoading ? 'is-loading' : ''}>
                           <span className="workshop-plan__meta-icon"><Route aria-hidden="true" size={25} /></span>
-                          <span><small>学习阶段</small><strong>{currentStage?.title || '等待生成学习阶段'}</strong></span>
+                          <span><small>学习阶段</small><strong>{currentStage?.title || (pathLoading ? '正在读取学习阶段…' : pathError ? '学习阶段暂不可用' : '等待生成学习阶段')}</strong></span>
                         </article>
                         <article className={currentStageProgressLoading ? 'is-loading' : ''}>
                           <span className="workshop-plan__meta-icon"><BookOpenCheck aria-hidden="true" size={25} /></span>
-                          <span><small>计划教材</small><strong>{currentStageBooks.length} 本 <em>/</em> 已完成 {completedStageBooks ?? '--'} 本</strong></span>
+                          <span><small>计划教材</small><strong>{currentStageBooksUnknown ? '--' : currentStageBooks.length} 本 <em>/</em> 已完成 {currentStageBooksUnknown ? '--' : completedStageBooks ?? '--'} 本</strong></span>
                         </article>
                       </div>
                     </div>
-                    <div className={`workshop-plan__focus${currentBookName ? '' : ' is-awaiting-plan'}`} aria-busy={currentTaskLoading || Boolean(currentBookName && !currentBookSnapshot)}>
+                    <div className={`workshop-plan__focus${currentBookName ? '' : ' is-awaiting-plan'}`} aria-busy={currentTaskLoading || (currentBookName ? !currentBookSnapshot : currentStageBooksLoading)}>
                       <span className="workshop-plan__decoration" aria-hidden="true" />
                       <div className="workshop-plan__focus-content">
                       <span><Sparkles aria-hidden="true" size={14} />当前在学</span>
@@ -850,6 +949,12 @@ export default function DashboardPage({
                             </button>
                           </div>
                         </>
+                      ) : currentStageBooksLoading || currentTaskLoading ? (
+                        <div role="status">正在读取当前学习安排…</div>
+                      ) : pathError && !currentStageBooksKnown ? (
+                        <p>当前学习安排暂不可用。</p>
+                      ) : currentStage ? (
+                        <p>当前阶段暂无可用教材，请查看完整学习计划。</p>
                       ) : (
                         <>
                           <h2>先制定你的长期学习计划</h2>
@@ -860,12 +965,18 @@ export default function DashboardPage({
                       </div>
                     </div>
                   </section>}
+                  {pathError && <p role="alert">{pathError}</p>}
+                  {textbooksLoading && <PageLoadingSpinner className="workshop-library-page__loading" label="正在加载教材目录" />}
+                  {textbookError && <div className="dashboard-daily__path-empty" role="alert"><p>{textbookError}</p></div>}
+                  {libraryTextbooks.length > 0 ? (
                   <TextbookLibrary
                     books={textbookViewModels}
                     onUploadRequested={() => onNavigate?.(uploadIntent('textbook'))}
                     initialFilter="planned"
                     emptyText="当前计划暂未匹配到教材"
                     onOpen={openTextbook}
+                    planLoading={pathLoading || pathBooksLoading}
+                    planError={pathError}
                     progressLoading={catalogProgressLoading}
                     catalogBooks={textbookCatalogViewModels}
                     remainingCount={plannedBooks.length > 0 && !showAllTextbooks ? remainingTextbooks.length : 0}
@@ -892,10 +1003,7 @@ export default function DashboardPage({
                     onDelete={deleteTextbook}
                     onToggleHidden={toggleHiddenTextbook}
                   />
-                </>
-              ) : textbookError ? (
-                <div className="dashboard-daily__path-empty"><p>{textbookError}</p></div>
-              ) : pathMode === 'classic' ? (
+              ) : textbooksLoading || textbookError ? null : pathMode === 'classic' ? (
                 <div className="dashboard-daily__path-empty" data-state="classic-route-unavailable">
                   <p>{classicError || '经典路线正在准备中。'}</p>
                 </div>

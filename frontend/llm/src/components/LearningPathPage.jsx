@@ -401,7 +401,7 @@ function LearningRoute({ onNavigate }) {
     setPlanningDetails((current) => ({ ...current, loading: true, error: '' }));
     const generation = planningGenerationRef.current + 1;
     planningGenerationRef.current = generation;
-    const request = fetchWithAuth(`${MAIN_API_BASE}/learning-context`)
+    const request = fetchWithAuth(`${MAIN_API_BASE}/learning-plans/current/context`)
       .then(async (response) => ({
         response,
         payload: await readJsonResponse(response, {}),

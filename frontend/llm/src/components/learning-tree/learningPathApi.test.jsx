@@ -27,6 +27,18 @@ describe('planned learning path API', () => {
     );
   });
 
+  it('forwards cancellation and preserves abort failures', async () => {
+    const controller = new AbortController();
+    const abortError = new DOMException('cancelled', 'AbortError');
+    controller.abort();
+    fetch.mockRejectedValueOnce(abortError);
+    await expect(loadPlannedLearningPath('stage-1', { signal: controller.signal })).rejects.toBe(abortError);
+    expect(fetch).toHaveBeenCalledWith('/api/v1/learning-path?parent_id=stage-1', expect.objectContaining({
+      signal: controller.signal,
+      credentials: 'include',
+    }));
+  });
+
   it('loads the five qualification targets and resolves their textbook route detail', async () => {
     fetch
       .mockResolvedValueOnce({

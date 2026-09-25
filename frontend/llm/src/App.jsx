@@ -23,6 +23,7 @@ import { createPageIntent, getIntentPage } from './pageIntent';
 import { intentToPath, pathToIntent } from './urlRouting';
 import { legacyPersonalizationSettingsView } from './settingsNavigation';
 import { readCurrentPage } from './pageContext';
+import { invalidateLearningTargetRead } from './components/exam-atlas/examAtlasApi';
 
 const pendingNavigationKey = 'competition.pending-navigation';
 const persistedPageIntentKey = 'competition.current-page-intent';
@@ -143,6 +144,7 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const requestId = ++authRequestId.current;
+    invalidateLearningTargetRead();
     const verifySession = async () => {
       try {
         const res = await fetchWithAuth(`${AUTH_API_BASE}/me`);
@@ -161,6 +163,7 @@ export default function App() {
 
     const clearSession = () => {
       authRequestId.current += 1;
+      invalidateLearningTargetRead();
       setCurrentUser(null);
       setAuthRequested(false);
       setShowHomeGuide(false);
@@ -175,6 +178,7 @@ export default function App() {
   }, [applyPageIntent]);
 
   const handleLogin = (user) => {
+    invalidateLearningTargetRead();
     setCurrentUser(user);
     setAuthRequested(false);
     setShowHomeGuide(!hasSeenHomeGuide());
@@ -182,9 +186,11 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    invalidateLearningTargetRead();
     try {
       await fetchWithAuth(`${AUTH_API_BASE}/logout`, { method: 'POST' });
     } finally {
+      invalidateLearningTargetRead();
       setCurrentUser(null);
       applyPageIntent(createPageIntent('dashboard'));
       setShowHomeGuide(false);

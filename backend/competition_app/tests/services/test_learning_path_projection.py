@@ -67,6 +67,38 @@ def test_projects_stage_book_and_knowledge_point_pages() -> None:
     assert points.nodes[0].navigation.kp_id == "KP_1"
 
 
+def test_mastery_is_loaded_only_for_a_valid_book_page() -> None:
+    calls = []
+
+    def load_mastery():
+        calls.append("mastery")
+        return [{"kp_id": "KP_1", "mastery": 0.85}]
+
+    service = LearningPathProjectionService(_loader)
+    options = dict(learner_id="LEARNER_TEST", plan=_plan(), mastery_loader=load_mastery)
+    root = service.page(**options)
+    books = service.page(**options, parent_id=root.nodes[0].node_id)
+    assert calls == []
+    try:
+        service.page(**options, parent_id="missing")
+    except KeyError:
+        pass
+    else:
+        raise AssertionError("unknown parent should fail")
+    assert calls == []
+
+    points = service.page(**options, parent_id=books.nodes[0].node_id)
+    assert calls == ["mastery"]
+    assert points.nodes[0].mastery == 0.85
+    assert points.nodes[0].status == "completed"
+
+    supplied = service.page(
+        **options, parent_id=books.nodes[0].node_id, mastery_rows=[]
+    )
+    assert calls == ["mastery"]
+    assert supplied.nodes[0].mastery is None
+
+
 def test_unknown_parent_is_rejected() -> None:
     service = LearningPathProjectionService(_loader)
     try:

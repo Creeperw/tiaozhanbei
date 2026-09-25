@@ -1,7 +1,9 @@
 from pathlib import Path
 import json
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from competition_app.api.app import create_app
@@ -218,6 +220,23 @@ def test_learning_path_api_projects_only_the_signed_in_users_plan(tmp_path: Path
     container = ApplicationContainer.build(
         Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
     )
+    context_calls = []
+
+    def load_context(learner_id):
+        context_calls.append(learner_id)
+        return {"mastery": [{"kp_id": "KP_PATH", "mastery": 0.85}]}
+
+    container.backend_handoff_runtime = SimpleNamespace(
+        app=FastAPI(), load_learning_context=load_context,
+        record_legacy_simulated_patient_activity=lambda *_args: None,
+    )
+    container.knowledge_backend = SimpleNamespace(map=SimpleNamespace(
+        learning_path_book_knowledge_points=lambda book, offset, limit: {
+            "items": [{"kp_id": "KP_PATH", "name": "阴阳", "chapter": "基础"}][offset:offset + limit],
+            "total": 1,
+            "route_ids": ["textbook_14_5"],
+        },
+    ))
     client = TestClient(create_app(container, auth_required=True))
     registered = client.post(
         "/api/v1/auth/register",
@@ -269,6 +288,16 @@ def test_learning_path_api_projects_only_the_signed_in_users_plan(tmp_path: Path
     assert books.status_code == 200
     assert books.json()["nodes"][0]["node_type"] == "book"
     assert books.json()["nodes"][0]["title"] == "《中医学基础》"
+    assert context_calls == []
+    invalid = client.get("/api/v1/learning-path", params={"parent_id": "missing"})
+    assert invalid.status_code == 404
+    assert context_calls == []
+    points = client.get("/api/v1/learning-path", params={
+        "parent_id": books.json()["nodes"][0]["node_id"], "limit": 1,
+    })
+    assert points.status_code == 200
+    assert points.json()["nodes"][0]["mastery"] == 0.85
+    assert context_calls == [learner_id]
 
 
 def test_learning_path_api_returns_an_actionable_empty_state_before_planning(tmp_path: Path) -> None:

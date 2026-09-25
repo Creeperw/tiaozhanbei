@@ -9,8 +9,43 @@ async function request(path, options) {
   return payload;
 }
 
+let pendingLearningTarget = null;
+let learningTargetReadVersion = 0;
+
+export function invalidateLearningTargetRead() {
+  learningTargetReadVersion += 1;
+  const pending = pendingLearningTarget;
+  pendingLearningTarget = null;
+  pending?.controller.abort();
+}
+
 export function loadLearningTarget() {
-  return request('/personalization/learning-target');
+  if (pendingLearningTarget) return pendingLearningTarget.promise;
+  const controller = new AbortController();
+  const entry = { controller, promise: null };
+  entry.promise = request('/personalization/learning-target', { signal: controller.signal })
+    .then((payload) => {
+      // A response from a previous login or target selection must never be
+      // delivered, even if the transport finished before abort took effect.
+      if (controller.signal.aborted) throw new DOMException('学习目标读取已失效', 'AbortError');
+      return payload;
+    })
+    .finally(() => {
+      if (pendingLearningTarget === entry) pendingLearningTarget = null;
+    });
+  pendingLearningTarget = entry;
+  return entry.promise;
+}
+
+async function updateLearningTargets(path, options) {
+  invalidateLearningTargetRead();
+  const version = learningTargetReadVersion;
+  try {
+    return await request(path, options);
+  } finally {
+    // Reads started while a write was pending may still contain the old target.
+    if (version === learningTargetReadVersion) invalidateLearningTargetRead();
+  }
 }
 
 export function loadLearningTargets() {
@@ -18,7 +53,7 @@ export function loadLearningTargets() {
 }
 
 export function enrollLearningTargets(examTrackIds, currentExamTrackId) {
-  return request('/personalization/learning-targets', {
+  return updateLearningTargets('/personalization/learning-targets', {
     method: 'POST',
     body: JSON.stringify({
       exam_track_ids: examTrackIds,
@@ -28,7 +63,7 @@ export function enrollLearningTargets(examTrackIds, currentExamTrackId) {
 }
 
 export function saveLearningTarget(examTrackId) {
-  return request('/personalization/learning-target', {
+  return updateLearningTargets('/personalization/learning-target', {
     method: 'PUT',
     body: JSON.stringify({
       target_type: 'certification',

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import QualificationRoutePage from './QualificationRoutePage';
 import { ASSISTANT_WORKFLOW_COMPLETED_EVENT } from '../assistantWorkflowEvents';
 import { clearQualificationRoutePageCache } from './qualificationRoutePageCache';
+import { invalidateLearningTargetRead } from './exam-atlas/examAtlasApi';
 
 vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasDetail: vi.fn() }));
 import { loadAtlasDetail } from './knowledge-atlas/knowledgeAtlasApi';
@@ -140,11 +141,15 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
 describe('QualificationRoutePage', () => {
   beforeEach(() => {
     clearQualificationRoutePageCache();
+    invalidateLearningTargetRead();
     loadAtlasDetail.mockReset();
     buildPersonalizedLearningPath.mockReset();
     buildPersonalizedLearningPath.mockResolvedValue({ sessionId: 'CONV_TEST' });
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    invalidateLearningTargetRead();
+    vi.unstubAllGlobals();
+  });
 
   it('keeps the history summary outside the horizontal route canvas and refreshes saved tasks', async () => {
     const dashboard = {

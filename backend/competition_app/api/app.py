@@ -4391,11 +4391,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "availability": "requires_long_term_plan",
                 "message": "请先完成长期学习规划，再生成阶段、教材和知识点路径。",
             }
-        behavior = (
-            await asyncio.to_thread(backend_handoff.load_learning_context, user.user_id)
-            if backend_handoff is not None
-            else {}
-        )
+        def load_path_mastery() -> list[dict[str, Any]]:
+            if backend_handoff is None:
+                return []
+            return backend_handoff.load_learning_context(user.user_id).get("mastery") or []
+
         loader = (
             container.knowledge_backend.map.learning_path_book_knowledge_points
             if container.knowledge_backend is not None
@@ -4414,7 +4414,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 learner_id=user.user_id,
                 plan=plans.long_term_plan,
                 parent_id=parent_id,
-                mastery_rows=behavior.get("mastery") or [],
+                mastery_loader=load_path_mastery,
                 offset=offset,
                 limit=limit,
                 selection=current_selection,

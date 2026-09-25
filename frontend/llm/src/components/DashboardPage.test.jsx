@@ -1,17 +1,17 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './DashboardPage';
 import { clearTextbookSnapshotCache, visibleWorkshopTextbooks } from './learningPlanDashboard';
 import { clearTextbookCache } from './workshop-textbook/textbookCache';
-import { clearTeachingResourcesPageCache } from './teachingResourcesPageCache';
+import { clearTeachingResourcesPageCache, readTeachingResourcesPageCache, updateTeachingResourcesPageCache } from './teachingResourcesPageCache';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
 import {
   loadClassicLearningRoute,
   loadClassicLearningRoutes,
   loadPlannedLearningPath,
 } from './learning-tree/learningPathApi';
-import { loadExamTracks, loadLearningTarget } from './exam-atlas/examAtlasApi';
+import { loadExamNodes, loadExamTracks, loadLearningTarget } from './exam-atlas/examAtlasApi';
 
 vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
 vi.mock('./exam-atlas/examAtlasApi', () => ({
@@ -60,6 +60,13 @@ function pathPage(nodes) {
   };
 }
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
+}
+
 describe('DashboardPage replacement learning workshop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,6 +107,155 @@ describe('DashboardPage replacement learning workshop', () => {
   });
 
 
+  it('loads the formal path and current books before target metadata finishes', async () => {
+    const target = deferred();
+    const tracks = deferred();
+    loadLearningTarget.mockReturnValue(target.promise);
+    loadExamTracks.mockReturnValue(tracks.promise);
+    const fetchOriginal = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url, ...args) => (
+      String(url).includes('/dashboard/home') ? new Promise(() => {}) : fetchOriginal(url, ...args)
+    )));
+    const onKnowledgeContextChange = vi.fn();
+    render(<DashboardPage onNavigate={vi.fn()} onKnowledgeContextChange={onKnowledgeContextChange} />);
+
+    await waitFor(() => expect(loadPlannedLearningPath).toHaveBeenCalledWith('', expect.any(Object)));
+    const plan = screen.getByRole('region', { name: '当前学习计划' });
+    expect(await within(plan).findByRole('button', { name: /继续学习/ })).toBeInTheDocument();
+    expect(within(plan).getByText('基础阶段')).toBeInTheDocument();
+    await act(async () => {
+      target.resolve({ target: { exam_track_id: 'track-1', exam_name: '中医考试' } });
+      tracks.resolve({ items: [] });
+    });
+    expect(onKnowledgeContextChange).toHaveBeenLastCalledWith({ trackId: 'track-1', planId: 'LP_1' });
+  });
+
+  it('shows the plan and continuation action while the catalog is still loading', async () => {
+    const loadNodes = loadAtlasNodes.getMockImplementation();
+    loadAtlasNodes.mockImplementation((options) => (
+      options.level === 1 ? new Promise(() => {}) : loadNodes(options)
+    ));
+    const onNavigate = vi.fn();
+    render(<DashboardPage onNavigate={onNavigate} />);
+
+    const plan = await screen.findByRole('region', { name: '当前学习计划' });
+    expect(await within(plan).findByText('基础阶段')).toBeInTheDocument();
+    fireEvent.click(await within(plan).findByRole('button', { name: /继续学习/ }));
+    expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.objectContaining({ lv1: '中医学基础' }),
+    }));
+    expect(screen.getByRole('status', { name: '正在加载教材目录' })).toBeInTheDocument();
+  });
+
+  it('waits for target metadata only when using the exam-tree fallback', async () => {
+    const target = deferred();
+    loadLearningTarget.mockReturnValue(target.promise);
+    loadPlannedLearningPath.mockRejectedValue(new Error('no formal plan'));
+    loadExamNodes.mockResolvedValue({ items: [] });
+    const onKnowledgeContextChange = vi.fn();
+    render(<DashboardPage onKnowledgeContextChange={onKnowledgeContextChange} />);
+    await waitFor(() => expect(loadPlannedLearningPath).toHaveBeenCalled());
+    expect(loadExamNodes).not.toHaveBeenCalled();
+    await act(async () => { target.resolve({ target: { exam_track_id: 'fallback-track' } }); });
+    expect(loadExamNodes).toHaveBeenCalledWith('fallback-track');
+    expect(onKnowledgeContextChange).toHaveBeenLastCalledWith({ trackId: 'fallback-track' });
+  });
+
+  it('discards unrefreshed cached books when delayed metadata confirms another exam', async () => {
+    const cacheKey = JSON.stringify(['delayed-track', 'personalized', '', '', '']);
+    updateTeachingResourcesPageCache(cacheKey, {
+      pathReady: true, pathBooksReady: true, track: { id: 'old-track' },
+      nodes: [stage], plannedPath: pathPage([stage]), plannedBooks: [book],
+      currentStageId: stage.node_id,
+    });
+    const target = deferred();
+    const books = deferred();
+    loadLearningTarget.mockReturnValue(target.promise);
+    loadPlannedLearningPath.mockImplementation((parentId) => parentId ? books.promise : Promise.resolve(pathPage([stage])));
+    render(<DashboardPage currentUser={{ username: 'delayed-track' }} />);
+    await waitFor(() => expect(loadPlannedLearningPath).toHaveBeenCalledWith('stage-1', expect.any(Object)));
+    expect(readTeachingResourcesPageCache(cacheKey).plannedBooks).toHaveLength(1);
+    await act(async () => { target.resolve({ target: { exam_track_id: 'new-track' } }); });
+    expect(readTeachingResourcesPageCache(cacheKey)).toMatchObject({
+      track: { id: 'new-track' }, plannedBooks: [], knownBookStageIds: [], pathBooksReady: false,
+    });
+    await act(async () => { books.resolve(pathPage([book])); });
+    expect(readTeachingResourcesPageCache(cacheKey).plannedBooks).toHaveLength(1);
+  });
+
+  it('ignores delayed metadata after changing users', async () => {
+    const target = deferred();
+    loadLearningTarget.mockReturnValueOnce(target.promise);
+    const onKnowledgeContextChange = vi.fn();
+    const { rerender } = render(<DashboardPage currentUser={{ username: 'old-user' }} onKnowledgeContextChange={onKnowledgeContextChange} />);
+    await waitFor(() => expect(loadPlannedLearningPath).toHaveBeenCalledWith('stage-1', expect.any(Object)));
+    rerender(<DashboardPage currentUser={{ username: 'new-user' }} onKnowledgeContextChange={onKnowledgeContextChange} />);
+    await waitFor(() => expect(onKnowledgeContextChange).toHaveBeenCalledWith({ trackId: 'track-1', planId: 'LP_1' }));
+    const count = onKnowledgeContextChange.mock.calls.length;
+    await act(async () => { target.resolve({ target: { exam_track_id: 'old-track' } }); });
+    expect(onKnowledgeContextChange).toHaveBeenCalledTimes(count);
+    const key = JSON.stringify(['new-user', 'personalized', '', '', '']);
+    expect(readTeachingResourcesPageCache(key).track.id).toBe('track-1');
+  });
+
+  it('publishes stages before books and the current book before a slow later stage', async () => {
+    const currentBooks = deferred();
+    const laterBooks = deferred();
+    loadPlannedLearningPath.mockImplementation((parentId) => {
+      if (parentId === 'stage-1') return currentBooks.promise;
+      if (parentId === 'stage-2') return laterBooks.promise;
+      return Promise.resolve(pathPage([stage, { ...stage, node_id: 'stage-2', title: '后续阶段', order: 2, status: 'locked' }]));
+    });
+    const fetchOriginal = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url, ...args) => (
+      String(url).includes('/dashboard/home') ? new Promise(() => {}) : fetchOriginal(url, ...args)
+    )));
+    render(<DashboardPage onNavigate={vi.fn()} />);
+
+    const plan = await screen.findByRole('region', { name: '当前学习计划' });
+    expect(await within(plan).findByText('基础阶段')).toBeInTheDocument();
+    expect(within(plan).queryByText('先制定你的长期学习计划')).not.toBeInTheDocument();
+    currentBooks.resolve(pathPage([book]));
+    expect(await within(plan).findByRole('button', { name: /继续学习/ })).toBeInTheDocument();
+    expect(within(plan).getByText('《中医学基础》')).toBeInTheDocument();
+    await waitFor(() => expect(loadPlannedLearningPath).toHaveBeenCalledWith('stage-2', expect.any(Object)));
+    await act(async () => { laterBooks.reject(new Error('later stage unavailable')); });
+    expect(screen.getByRole('alert')).toHaveTextContent('部分阶段教材加载失败');
+    expect(within(plan).getByRole('button', { name: /继续学习/ })).toBeInTheDocument();
+  });
+
+  it('keeps the formal path visible when the textbook catalog fails', async () => {
+    loadAtlasNodes.mockRejectedValueOnce(new Error('章节目录不可用'));
+    render(<DashboardPage onNavigate={vi.fn()} />);
+    expect(await screen.findByText('章节目录不可用')).toBeInTheDocument();
+    const plan = screen.getByRole('region', { name: '当前学习计划' });
+    expect(await within(plan).findByText('基础阶段')).toBeInTheDocument();
+    expect(await within(plan).findByRole('button', { name: /继续学习/ })).toBeInTheDocument();
+  });
+
+  it('shows a confirmed empty current stage without waiting for later stage books', async () => {
+    loadPlannedLearningPath.mockImplementation((parentId) => {
+      if (parentId === 'stage-1') return Promise.resolve(pathPage([]));
+      if (parentId === 'stage-2') return new Promise(() => {});
+      return Promise.resolve(pathPage([stage, { ...stage, node_id: 'stage-2', title: '后续阶段', order: 2, status: 'locked' }]));
+    });
+    const fetchOriginal = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url, ...args) => (
+      String(url).includes('/dashboard/home')
+        ? Promise.resolve({ ok: true, text: async () => JSON.stringify({ current_learning_task: null }) })
+        : fetchOriginal(url, ...args)
+    )));
+    render(<DashboardPage onNavigate={vi.fn()} />);
+    await waitFor(() => expect(loadPlannedLearningPath).toHaveBeenCalledWith('stage-2', expect.any(Object)));
+    const plan = screen.getByRole('region', { name: '当前学习计划' });
+    expect(within(plan).getByText('当前阶段暂无可用教材，请查看完整学习计划。')).toBeInTheDocument();
+    expect(within(plan).queryByText('正在读取当前学习安排…')).not.toBeInTheDocument();
+    const count = within(plan).getByText('计划教材').closest('article');
+    expect(count).toHaveTextContent('0 本 / 已完成 0 本');
+    const library = screen.getByRole('region', { name: '教材学习列表' });
+    expect(within(library).getByRole('status')).toHaveTextContent('正在读取计划教材');
+  });
+
   it('shows every textbook when no long-term plan exists', () => {
     const all = [{ name: 'book-a' }, { name: 'book-b' }];
     expect(visibleWorkshopTextbooks({
@@ -108,6 +264,73 @@ describe('DashboardPage replacement learning workshop', () => {
       remainingTextbooks: all,
       showAllTextbooks: false,
     })).toEqual(all);
+  });
+
+  it('keeps catalog navigation available without claiming the pending plan is empty', async () => {
+    loadPlannedLearningPath.mockImplementation(() => new Promise(() => {}));
+    const fetchOriginal = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url, ...args) => (
+      String(url).includes('/learning-statistics/') || String(url).includes('/task-load-policy')
+        ? new Promise(() => {}) : fetchOriginal(url, ...args)
+    )));
+    const onNavigate = vi.fn();
+    render(<DashboardPage onNavigate={onNavigate} />);
+
+    const library = await screen.findByRole('region', { name: '教材学习列表' });
+    expect(within(library).queryByText('尚未加入长期学习计划')).not.toBeInTheDocument();
+    expect(within(library).getByRole('status')).toHaveTextContent('正在读取计划教材');
+    fireEvent.click(within(library).getByRole('button', { name: /已加入计划/ }));
+    fireEvent.click(within(library).getByRole('menuitemradio', { name: /全部状态/ }));
+    fireEvent.click(within(library).getByRole('button', { name: '继续学习《中医学基础》' }));
+    expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.objectContaining({ lv1: '中医学基础' }),
+    }));
+    expect(screen.getByText('待统计')).toBeInTheDocument();
+  });
+
+  it('reports failed stage books rather than presenting an empty plan', async () => {
+    loadPlannedLearningPath.mockImplementation((parentId) => parentId
+      ? Promise.reject(new Error('stage unavailable')) : Promise.resolve(pathPage([stage])));
+    render(<DashboardPage onNavigate={vi.fn()} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('部分阶段教材加载失败');
+    const library = screen.getByRole('region', { name: '教材学习列表' });
+    expect(within(library).queryByText('尚未加入长期学习计划')).not.toBeInTheDocument();
+    expect(within(library).getByText(/计划教材暂不可用/)).toBeInTheDocument();
+  });
+
+  it.each([1, 2])('preserves cached books only for the same plan version (%s)', async (version) => {
+    const cacheKey = JSON.stringify(['cache-refresh', 'personalized', '', '', '']);
+    updateTeachingResourcesPageCache(cacheKey, {
+      pathReady: true,
+      pathBooksReady: true,
+      track: { id: 'track-1', label: '中医考试' },
+      nodes: [stage],
+      plannedPath: pathPage([stage]),
+      plannedBooks: [book],
+      currentStageId: stage.node_id,
+      allTextbooks: [{ name: '中医学基础', navigation: book.navigation }],
+    });
+    const stageRequest = deferred();
+    loadPlannedLearningPath.mockImplementation((parentId) => parentId ? stageRequest.promise
+      : Promise.resolve({ ...pathPage([stage]), plan_ref: { ...pathPage([]).plan_ref, plan_version: version } }));
+    const { unmount } = render(<DashboardPage currentUser={{ username: 'cache-refresh' }} onNavigate={vi.fn()} />);
+    await waitFor(() => expect(loadPlannedLearningPath).toHaveBeenCalledWith('stage-1', expect.any(Object)));
+    const library = screen.getByRole('region', { name: '教材学习列表' });
+    if (version === 1) {
+      expect(within(library).getByRole('button', { name: '继续学习《中医学基础》' })).toBeInTheDocument();
+    } else {
+      expect(within(library).queryByRole('button', { name: '继续学习《中医学基础》' })).not.toBeInTheDocument();
+      expect(within(library).getByRole('status')).toHaveTextContent('正在读取计划教材');
+    }
+    const signal = loadPlannedLearningPath.mock.calls.find(([parent]) => parent === 'stage-1')[1].signal;
+    if (version === 1) {
+      await act(async () => { stageRequest.resolve(pathPage([])); });
+      expect(within(library).queryByRole('button', { name: '继续学习《中医学基础》' })).not.toBeInTheDocument();
+      expect(within(library).getByText('尚未加入长期学习计划')).toBeInTheDocument();
+    }
+    unmount();
+    expect(signal.aborted).toBe(true);
+    if (version === 2) await act(async () => { stageRequest.resolve(pathPage([book])); });
   });
 
   it('always opens a textbook from the all-textbook route', async () => {
